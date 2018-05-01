@@ -5,11 +5,6 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <!-- Workaround for NU1201 (https://github.com/dotnet/standard/issues/481) -->
-    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Transport\NServiceBus.Transport.AzureServiceBus.csproj" />
   </ItemGroup>
