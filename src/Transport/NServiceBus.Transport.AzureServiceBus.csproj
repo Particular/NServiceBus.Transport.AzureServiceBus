@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\NServiceBus.snk</AssemblyOriginatorKeyFile>
-    <OutputPath>..\..\binaries\</OutputPath>
+    <Description>Azure Service Bus .NET Standard transport for NServiceBus</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,8 +19,4 @@
     <DotNetCliToolReference Include="dotnet-sourcelink-git" Version="2.5.0" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <PackageId>NServiceBus.Transport.AzureServiceBus</PackageId>
-    <Description>Azure Service Bus .NET Standard transport for NServiceBus</Description>
-  </PropertyGroup>
 </Project>
