@@ -12,13 +12,11 @@
 
     class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
-        readonly SettingsHolder settings;
-        readonly string connectionString;
+        MessageSenderPool messageSenderPool;
 
         public AzureServiceBusTransportInfrastructure(SettingsHolder settings, string connectionString)
         {
-            this.settings = settings;
-            this.connectionString = connectionString;
+            messageSenderPool = new MessageSenderPool(connectionString);
         }
 
         public override TransportReceiveInfrastructure ConfigureReceiveInfrastructure()
@@ -28,7 +26,11 @@
 
         public override TransportSendInfrastructure ConfigureSendInfrastructure()
         {
-            throw new NotImplementedException();
+            // TODO: check that we have Manage rights
+            // Requires Namespace manager, similar to the old ASB https://github.com/Particular/NServiceBus.AzureServiceBus/blob/2e5e4f374128a47f5b7df535c4c2fff5a595639a/src/Transport/Connectivity/NamespaceManagerAdapter.cs#L24
+            return new TransportSendInfrastructure(
+                () => new MessageDispatcher(messageSenderPool),
+                () => Task.FromResult(StartupCheckResult.Success));
         }
 
         public override TransportSubscriptionInfrastructure ConfigureSubscriptionInfrastructure()
@@ -60,9 +62,9 @@
             return base.Start();
         }
 
-        public override Task Stop()
+        public override async Task Stop()
         {
-            return base.Stop();
+            await messageSenderPool.Close().ConfigureAwait(false);
         }
 
         public override IEnumerable<Type> DeliveryConstraints => new List<Type>
