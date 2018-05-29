@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="[3.0.0-preview-02, 4.0.0)" />
-    <PackageReference Include="NServiceBus" Version="[7.0.0-rc0002, 8.0.0)" />
+    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="[3.0.1.16, 4.0.0)" />
+    <PackageReference Include="NServiceBus" Version="[7.0.0, 8.0.0)" />
     <PackageReference Include="Particular.CodeRules" Version="0.2.0" PrivateAssets="All" />
     <PackageReference Include="Particular.Packaging" Version="0.1.0" PrivateAssets="All" />
   </ItemGroup>
