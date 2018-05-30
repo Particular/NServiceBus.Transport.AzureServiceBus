@@ -1,6 +1,5 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
-    using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Threading.Tasks;
@@ -35,14 +34,14 @@
         }
 
         // TODO: suggest to ASB team to expose transfer queue name on MessageSender. If that's accepted, we don't need the incomingQueue parameter
-        public void ReturnMessageSender(MessageSender sender, string incomingQueue = null)
+        public void ReturnMessageSender(MessageSender sender, ServiceBusConnection connection = null, string incomingQueue = null)
         {
             if (sender.IsClosedOrClosing)
             {
                 return;
             }
 
-            if (senders.TryGetValue((sender.Path, sender.ServiceBusConnection, incomingQueue), out var sendersForDestination))
+            if (senders.TryGetValue((sender.Path, connection, incomingQueue), out var sendersForDestination))
             {
                 sendersForDestination.Enqueue(sender);
             }

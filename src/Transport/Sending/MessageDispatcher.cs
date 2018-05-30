@@ -1,7 +1,9 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
+    using System;
     using System.Threading.Tasks;
     using Extensibility;
+    using Microsoft.Azure.ServiceBus;
 
     class MessageDispatcher : IDispatchMessages
     {
@@ -16,9 +18,14 @@
         {
             // Assumption: we're not implementing batching as it will be done by ASB client
 
+            transaction.TryGet<ServiceBusConnection>(out var connection);
+            transaction.TryGet<string>("IncomingQueue", out var incomingQueue);
+
             foreach (var transportOperation in outgoingMessages.UnicastTransportOperations)
             {
-                var sender = messageSenderPool.GetMessageSender(transportOperation.Destination);
+                var connectionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : connection;
+
+                var sender = messageSenderPool.GetMessageSender(transportOperation.Destination, connectionToUse, incomingQueue);
 
                 try
                 {
@@ -28,25 +35,25 @@
                 }
                 finally
                 {
-                    messageSenderPool.ReturnMessageSender(sender);
+                    messageSenderPool.ReturnMessageSender(sender, connectionToUse, incomingQueue);
                 }
             }
 
+            foreach (var transportOperation in outgoingMessages.MulticastTransportOperations)
             {
-                var sender = messageSenderPool.GetMessageSender("topic-1");
+                var connectionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : connection;
+
+                var sender = messageSenderPool.GetMessageSender("topic-1", connectionToUse, incomingQueue);
 
                 try
                 {
-                    foreach (var transportOperation in outgoingMessages.MulticastTransportOperations)
-                    {
-                        var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints);
+                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints);
 
-                        await sender.SendAsync(message).ConfigureAwait(false);
-                    }
+                    await sender.SendAsync(message).ConfigureAwait(false);
                 }
                 finally
                 {
-                    messageSenderPool.ReturnMessageSender(sender);
+                    messageSenderPool.ReturnMessageSender(sender, connectionToUse, incomingQueue);
                 }
             }
         }
