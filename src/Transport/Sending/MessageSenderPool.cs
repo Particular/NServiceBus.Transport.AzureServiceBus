@@ -4,6 +4,7 @@
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Threading.Tasks;
+    using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Core;
 
     class MessageSenderPool
@@ -11,17 +12,40 @@
         public MessageSenderPool(string connectionString)
         {
             this.connectionString = connectionString;
-            senders = new ConcurrentDictionary<string, ConcurrentQueue<MessageSender>>();
+            senders = new ConcurrentDictionary<(string, ServiceBusConnection, string), ConcurrentQueue<MessageSender>>();
         }
 
-        public MessageSender GetMessageSender(string entityPath)
+        public MessageSender GetMessageSender(string destination, ServiceBusConnection connection = null, string incomingQueue = null)
         {
-            throw new NotImplementedException();
+            var sendersForDestination = senders.GetOrAdd((destination, connection, incomingQueue), tuple => new ConcurrentQueue<MessageSender>());
+
+            if (!sendersForDestination.TryDequeue(out var sender) || sender.IsClosedOrClosing)
+            {
+                if (connection != null)
+                {
+                    sender = new MessageSender(connection, destination, incomingQueue);
+                }
+                else
+                {
+                    sender = new MessageSender(connectionString, destination);
+                }
+            }
+
+            return sender;
         }
 
-        public void ReturnMessageSender(MessageSender sender)
+        // TODO: suggest to ASB team to expose transfer queue name on MessageSender. If that's accepted, we don't need the incomingQueue parameter
+        public void ReturnMessageSender(MessageSender sender, string incomingQueue = null)
         {
-            throw new NotImplementedException();
+            if (sender.IsClosedOrClosing)
+            {
+                return;
+            }
+
+            if (senders.TryGetValue((sender.Path, sender.ServiceBusConnection, incomingQueue), out var sendersForDestination))
+            {
+                sendersForDestination.Enqueue(sender);
+            }
         }
 
         public async Task Close()
@@ -43,6 +67,6 @@
 
         readonly string connectionString;
 
-        ConcurrentDictionary<string, ConcurrentQueue<MessageSender>> senders;
+        ConcurrentDictionary<(string destination, ServiceBusConnection connnection, string incomingQueue), ConcurrentQueue<MessageSender>> senders;
     }
 }
