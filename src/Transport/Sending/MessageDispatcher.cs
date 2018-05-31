@@ -1,6 +1,5 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
-    using System;
     using System.Threading.Tasks;
     using Extensibility;
     using Microsoft.Azure.ServiceBus;
@@ -20,6 +19,7 @@
 
             transaction.TryGet<ServiceBusConnection>(out var connection);
             transaction.TryGet<string>("IncomingQueue", out var incomingQueue);
+            transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
 
             foreach (var transportOperation in outgoingMessages.UnicastTransportOperations)
             {
@@ -29,7 +29,7 @@
 
                 try
                 {
-                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints);
+                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
                     await sender.SendAsync(message).ConfigureAwait(false);
                 }
@@ -47,7 +47,7 @@
 
                 try
                 {
-                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints);
+                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
                     await sender.SendAsync(message).ConfigureAwait(false);
                 }
