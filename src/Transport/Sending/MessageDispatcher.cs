@@ -35,7 +35,7 @@
                 }
                 finally
                 {
-                    messageSenderPool.ReturnMessageSender(sender, connectionToUse, incomingQueue);
+                    messageSenderPool.ReturnMessageSender(sender, connectionToUse);
                 }
             }
 
@@ -53,7 +53,7 @@
                 }
                 finally
                 {
-                    messageSenderPool.ReturnMessageSender(sender, connectionToUse, incomingQueue);
+                    messageSenderPool.ReturnMessageSender(sender, connectionToUse);
                 }
             }
         }

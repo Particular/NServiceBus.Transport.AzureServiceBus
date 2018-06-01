@@ -33,16 +33,14 @@
             return sender;
         }
 
-        // TODO: suggest to ASB team to expose transfer queue name on MessageSender. If that's accepted, we don't need the incomingQueue parameter
-        // https://github.com/Azure/azure-service-bus-dotnet/pull/476
-        public void ReturnMessageSender(MessageSender sender, ServiceBusConnection connection = null, string incomingQueue = null)
+        public void ReturnMessageSender(MessageSender sender, ServiceBusConnection connection = null)
         {
             if (sender.IsClosedOrClosing)
             {
                 return;
             }
 
-            if (senders.TryGetValue((sender.Path, connection, incomingQueue), out var sendersForDestination))
+            if (senders.TryGetValue((sender.Path, connection, sender.TransferDestinationPath), out var sendersForDestination))
             {
                 sendersForDestination.Enqueue(sender);
             }
