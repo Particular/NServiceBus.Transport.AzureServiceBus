@@ -1,5 +1,6 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
+    using System.Collections.Generic;
     using System.Threading.Tasks;
     using Extensibility;
     using Microsoft.Azure.ServiceBus;
@@ -13,7 +14,7 @@
             this.messageSenderPool = messageSenderPool;
         }
 
-        public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, ContextBag context)
+        public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, ContextBag context)
         {
             // Assumption: we're not implementing batching as it will be done by ASB client
 
@@ -21,7 +22,12 @@
             transaction.TryGet<string>("IncomingQueue", out var incomingQueue);
             transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
 
-            foreach (var transportOperation in outgoingMessages.UnicastTransportOperations)
+            var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
+            var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
+
+            var tasks = new List<Task>(unicastTransportOperations.Count + multicastTransportOperations.Count);
+
+            foreach (var transportOperation in unicastTransportOperations)
             {
                 var connectionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : connection;
 
@@ -31,7 +37,7 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    await sender.SendAsync(message).ConfigureAwait(false);
+                    tasks.Add(sender.SendAsync(message));
                 }
                 finally
                 {
@@ -39,7 +45,7 @@
                 }
             }
 
-            foreach (var transportOperation in outgoingMessages.MulticastTransportOperations)
+            foreach (var transportOperation in multicastTransportOperations)
             {
                 var connectionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : connection;
 
@@ -49,13 +55,15 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    await sender.SendAsync(message).ConfigureAwait(false);
+                    tasks.Add(sender.SendAsync(message));
                 }
                 finally
                 {
                     messageSenderPool.ReturnMessageSender(sender, connectionToUse);
                 }
             }
+
+            return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
         }
     }
 }
