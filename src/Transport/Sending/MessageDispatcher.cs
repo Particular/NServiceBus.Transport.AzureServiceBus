@@ -1,9 +1,12 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
+    using System;
     using System.Collections.Generic;
+    using System.Threading;
     using System.Threading.Tasks;
     using Extensibility;
     using Microsoft.Azure.ServiceBus;
+    using Microsoft.Azure.ServiceBus.Core;
 
     class MessageDispatcher : IDispatchMessages
     {
@@ -33,16 +36,13 @@
 
                 var sender = messageSenderPool.GetMessageSender(transportOperation.Destination, connectionToUse, incomingQueue);
 
-                try
-                {
-                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
+                var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    tasks.Add(sender.SendAsync(message));
-                }
-                finally
+                tasks.Add(sender.SendAsync(message).ContinueWith((t, state) =>
                 {
-                    messageSenderPool.ReturnMessageSender(sender, connectionToUse);
-                }
+                    var (localPool, localSender, localConnection) = (ValueTuple<MessageSenderPool, MessageSender, ServiceBusConnection>)state;
+                    localPool.ReturnMessageSender(localSender, localConnection);
+                }, (messageSenderPool, sender, connectionToUse), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default));
             }
 
             foreach (var transportOperation in multicastTransportOperations)
@@ -51,16 +51,13 @@
 
                 var sender = messageSenderPool.GetMessageSender("topic-1", connectionToUse, incomingQueue);
 
-                try
-                {
-                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
+                var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    tasks.Add(sender.SendAsync(message));
-                }
-                finally
+                tasks.Add(sender.SendAsync(message).ContinueWith((t, state) =>
                 {
-                    messageSenderPool.ReturnMessageSender(sender, connectionToUse);
-                }
+                    var (localPool, localSender, localConnection) = (ValueTuple<MessageSenderPool, MessageSender, ServiceBusConnection>)state;
+                    localPool.ReturnMessageSender(localSender, localConnection);
+                }, (messageSenderPool, sender, connectionToUse), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default));
             }
 
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
