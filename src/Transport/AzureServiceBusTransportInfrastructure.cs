@@ -24,7 +24,7 @@
             // TODO: check that we have Receive rights
             
             return new TransportReceiveInfrastructure(
-                () => null, 
+                () => new MessagePump(),
                 () => new QueueCreator(),  // TODO: check for Manage Rights
                 () => Task.FromResult(StartupCheckResult.Success));
         }
