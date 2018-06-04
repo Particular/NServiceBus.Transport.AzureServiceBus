@@ -21,13 +21,18 @@
 
         public override TransportReceiveInfrastructure ConfigureReceiveInfrastructure()
         {
-            throw new NotImplementedException();
+            // TODO: check that we have Receive rights
+            
+            return new TransportReceiveInfrastructure(
+                () => null, 
+                () => null,  // TODO: check for Manage Rights
+                () => Task.FromResult(StartupCheckResult.Success));
         }
 
         public override TransportSendInfrastructure ConfigureSendInfrastructure()
         {
-            // TODO: check that we have Manage rights
-            // Requires Namespace manager, similar to the old ASB https://github.com/Particular/NServiceBus.AzureServiceBus/blob/2e5e4f374128a47f5b7df535c4c2fff5a595639a/src/Transport/Connectivity/NamespaceManagerAdapter.cs#L24
+            // TODO: check that we have Send rights
+
             return new TransportSendInfrastructure(
                 () => new MessageDispatcher(messageSenderPool),
                 () => Task.FromResult(StartupCheckResult.Success));
