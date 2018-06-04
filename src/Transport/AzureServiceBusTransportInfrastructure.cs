@@ -25,7 +25,7 @@
             
             return new TransportReceiveInfrastructure(
                 () => null, 
-                () => null,  // TODO: check for Manage Rights
+                () => new QueueCreator(),  // TODO: check for Manage Rights
                 () => Task.FromResult(StartupCheckResult.Success));
         }
 
@@ -40,7 +40,7 @@
 
         public override TransportSubscriptionInfrastructure ConfigureSubscriptionInfrastructure()
         {
-            throw new NotImplementedException();
+            return new TransportSubscriptionInfrastructure(() => new SubscriptionManager());
         }
 
         public override EndpointInstance BindToLocalEndpoint(EndpointInstance instance) => instance;
