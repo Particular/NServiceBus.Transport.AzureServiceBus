@@ -37,6 +37,7 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
+                    // Invoke sender and immediately return it back to the pool w/o awaiting for completion
                     tasks.Add(sender.SendAsync(message));
                 }
                 finally
@@ -55,6 +56,7 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
+                    // Invoke sender and immediately return it back to the pool w/o awaiting for completion
                     tasks.Add(sender.SendAsync(message));
                 }
                 finally
