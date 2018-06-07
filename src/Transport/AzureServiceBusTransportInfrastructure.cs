@@ -5,6 +5,7 @@
     using System.Text;
     using System.Threading.Tasks;
     using DelayedDelivery;
+    using Microsoft.Azure.ServiceBus;
     using Performance.TimeToBeReceived;
     using Routing;
     using Settings;
@@ -12,10 +13,12 @@
 
     class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
-        MessageSenderPool messageSenderPool;
+        readonly string connectionString;
+        readonly MessageSenderPool messageSenderPool;
 
         public AzureServiceBusTransportInfrastructure(SettingsHolder settings, string connectionString)
         {
+            this.connectionString = connectionString;
             messageSenderPool = new MessageSenderPool(connectionString);
         }
 
@@ -24,9 +27,15 @@
             // TODO: check that we have Receive rights
             
             return new TransportReceiveInfrastructure(
-                () => new MessagePump(),
+                () => CreateMessagePump(),
                 () => new QueueCreator(),  // TODO: check for Manage Rights
                 () => Task.FromResult(StartupCheckResult.Success));
+        }
+
+        MessagePump CreateMessagePump()
+        {
+            // TODO: replace hard-coded values with settings
+            return new MessagePump(connectionString, TransportType.Amqp, 10, 100);
         }
 
         public override TransportSendInfrastructure ConfigureSendInfrastructure()
