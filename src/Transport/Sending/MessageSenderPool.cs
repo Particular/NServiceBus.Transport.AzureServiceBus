@@ -33,6 +33,7 @@
             return sender;
         }
 
+        // TODO: connection argument won't be required when https://github.com/Azure/azure-service-bus-dotnet/issues/482 is fixed
         public void ReturnMessageSender(MessageSender sender, ServiceBusConnection connection = null)
         {
             if (sender.IsClosedOrClosing)
