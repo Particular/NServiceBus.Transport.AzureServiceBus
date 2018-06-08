@@ -70,7 +70,6 @@
                 {
                     await semaphore.WaitAsync(messageProcessing.Token).ConfigureAwait(false);
 
-                    // By default, ASB client long polls for a minute
                     var receiveTask = receiver.ReceiveAsync();
 
                     ProcessMessage(receiveTask).Ignore();
@@ -85,14 +84,22 @@
         {
             var message = await receiveTask.ConfigureAwait(false);
 
-            // TODO: get message headers
-            // TODO: message id can be null, try to get out of message.messageId or NSB headers. Otherwise throw
-            // TODO: get body with interop in mind
+            // By default, ASB client long polls for a minute and returns null if it times out
+            if (message == null)
+            {
+                return;
+            }
+
+            // TODO: wrap in try/catch and dead-letter message if we can't convert/use it
+            var messageId = message.GetMessageId();
+            var headers = message.GetNServiceBusHeaders();
+            var body = message.GetBody();
+
             var transportTransaction = new TransportTransaction();
 
             using (var receiveCancellationTokenSource = new CancellationTokenSource())
             {
-                var messageContext = new MessageContext(message.MessageId, new Dictionary<string, string>(), new byte[] {0}, transportTransaction, receiveCancellationTokenSource, new ContextBag());
+                var messageContext = new MessageContext(messageId, headers, body, transportTransaction, receiveCancellationTokenSource, new ContextBag());
 
                 await onMessage(messageContext).ConfigureAwait(false);
             }
