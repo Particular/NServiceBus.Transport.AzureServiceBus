@@ -1,9 +1,9 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
-    using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
+    using System.Transactions;
     using Extensibility;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Core;
@@ -21,7 +21,7 @@
         CriticalError criticalError;
         PushSettings settings;
         MessageReceiver receiver;
-        
+
         // Start
         SemaphoreSlim semaphore;
         CancellationTokenSource messageProcessing;
@@ -47,8 +47,8 @@
             var prefetchCount = overriddenPrefetchCount;
 
             var receiveMode = settings.RequiredTransactionMode == TransportTransactionMode.None ? ReceiveMode.ReceiveAndDelete : ReceiveMode.PeekLock;
-            
-            receiver = new MessageReceiver(connectionString, settings.InputQueue, receiveMode, retryPolicy:null, prefetchCount);
+
+            receiver = new MessageReceiver(connectionString, settings.InputQueue, receiveMode, retryPolicy: null, prefetchCount);
 
             return Task.CompletedTask;
         }
@@ -80,7 +80,7 @@
             }
         }
 
-        async  Task ProcessMessage(Task<Message> receiveTask)
+        async Task ProcessMessage(Task<Message> receiveTask)
         {
             var message = await receiveTask.ConfigureAwait(false);
 
@@ -95,14 +95,58 @@
             var headers = message.GetNServiceBusHeaders();
             var body = message.GetBody();
 
-            var transportTransaction = new TransportTransaction();
+            var transportTransaction = CreateTransportTransaction(message.PartitionKey);
 
             using (var receiveCancellationTokenSource = new CancellationTokenSource())
             {
                 var messageContext = new MessageContext(messageId, headers, body, transportTransaction, receiveCancellationTokenSource, new ContextBag());
 
-                await onMessage(messageContext).ConfigureAwait(false);
+                try
+                {
+                    var scope = settings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
+                        ? new TransactionScope(TransactionScopeOption.RequiresNew, new TransactionOptions
+                        {
+                            IsolationLevel = IsolationLevel.Serializable
+                        }, TransactionScopeAsyncFlowOption.Enabled)
+                        : null;
+
+                    using (scope)
+                    {
+                        await onMessage(messageContext).ConfigureAwait(false);
+
+                        if (receiveCancellationTokenSource.IsCancellationRequested)
+                        {
+                            // TODO: perform safe abandon
+                            await receiver.AbandonAsync(message.SystemProperties.LockToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            // TODO: perform safe completion only when ReceiveMode is PeekLock
+                            await receiver.CompleteAsync(message.SystemProperties.LockToken).ConfigureAwait(false);
+
+                            scope?.Complete();
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    // invoke onError
+                }
             }
+        }
+
+        TransportTransaction CreateTransportTransaction(string incomingQueuePartitionKey)
+        {
+            var transportTransaction = new TransportTransaction();
+
+            if (settings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive)
+            {
+                transportTransaction.Set(receiver.ServiceBusConnection);
+                transportTransaction.Set("IncomingQueue", settings.InputQueue);
+                transportTransaction.Set("IncomingQueue.PartitionKey", incomingQueuePartitionKey);
+            }
+
+            return transportTransaction;
         }
 
         public Task Stop()
