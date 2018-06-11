@@ -6,6 +6,7 @@
     using System.Threading.Tasks;
     using System.Transactions;
     using Extensibility;
+    using Logging;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Core;
 
@@ -26,6 +27,8 @@
         // Start
         SemaphoreSlim semaphore;
         CancellationTokenSource messageProcessing;
+
+        static readonly ILog logger = LogManager.GetLogger<MessagePump>();
 
         public MessagePump(string connectionString, TransportType transportType, int prefetchMultiplier, int overriddenPrefetchCount)
         {
@@ -91,6 +94,8 @@
                 return;
             }
 
+            var lockToken = message.SystemProperties.LockToken;
+
             string messageId;
             Dictionary<string, string> headers;
             byte[] body;
@@ -103,12 +108,10 @@
             }
             catch (Exception exception)
             {
-                await receiver.DeadLetterAsync(message.SystemProperties.LockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
+                await receiver.DeadLetterAsync(lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
                 return;
             }
 
-            var onMessageCalled = false;
-            
             try
             {
                 using (var receiveCancellationTokenSource = new CancellationTokenSource())
@@ -119,13 +122,11 @@
 
                     using (var scope = CreateTransactionScope())
                     {
-                        onMessageCalled = true;
                         await onMessage(messageContext).ConfigureAwait(false);
 
                         if (receiveCancellationTokenSource.IsCancellationRequested == false)
                         {
-                            // TODO: perform safe completion only when ReceiveMode is PeekLock
-                            await receiver.CompleteAsync(message.SystemProperties.LockToken).ConfigureAwait(false);
+                            await receiver.SafeCompleteAsync(settings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
 
                             scope?.Complete();
                         }
@@ -133,36 +134,40 @@
 
                     if (receiveCancellationTokenSource.IsCancellationRequested)
                     {
-                        // TODO: perform safe abandon with suppressed scope
-                        await receiver.AbandonAsync(message.SystemProperties.LockToken).ConfigureAwait(false);
+                        await receiver.SafeAbandonAsync(settings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
                     }
                 }
             }
-            catch (Exception exception) when (onMessageCalled)
+            catch (Exception exception)
             {
-                ErrorHandleResult result;
-
-                using (var scope = CreateTransactionScope())
+                try
                 {
-                    var transportTransaction = CreateTransportTransaction(message.PartitionKey);
+                    ErrorHandleResult result;
 
-                    var errorContext = new ErrorContext(exception, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount);
-
-                    result = await onError(errorContext).ConfigureAwait(false);
-
-                    if (result == ErrorHandleResult.Handled)
+                    using (var scope = CreateTransactionScope())
                     {
-                        // TODO: complete message
-                        await receiver.CompleteAsync(message.SystemProperties.LockToken).ConfigureAwait(false);
+                        var transportTransaction = CreateTransportTransaction(message.PartitionKey);
+
+                        var errorContext = new ErrorContext(exception, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount);
+
+                        result = await onError(errorContext).ConfigureAwait(false);
+
+                        if (result == ErrorHandleResult.Handled)
+                        {
+                            await receiver.SafeCompleteAsync(settings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                        }
+
+                        scope?.Complete();
                     }
 
-                    scope?.Complete();
+                    if (result == ErrorHandleResult.RetryRequired)
+                    {
+                        await receiver.SafeAbandonAsync(settings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                    }
                 }
-
-                if (result == ErrorHandleResult.RetryRequired)
+                catch (Exception onErrorException)
                 {
-                    // TODO: perform safe abandon
-                    await receiver.AbandonAsync(message.SystemProperties.LockToken).ConfigureAwait(false);
+                    logger.WarnFormat("Recoverability failed for message with ID {0}. The message will be retried. Exception details: {1}", messageId, onErrorException);
                 }
             }
         }
