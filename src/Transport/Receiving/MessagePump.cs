@@ -65,6 +65,7 @@
 
             messageProcessing = new CancellationTokenSource();
 
+            // TODO: check if we need invoke ReceiveLoop in a Task.Run to fire and forget
             ReceiveLoop().Ignore();
         }
 
