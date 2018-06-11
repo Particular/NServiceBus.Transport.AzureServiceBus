@@ -103,35 +103,26 @@
             }
             catch (Exception exception)
             {
-                await receiver.DeadLetterAsync(message.SystemProperties.LockToken, deadLetterReason:"Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
+                await receiver.DeadLetterAsync(message.SystemProperties.LockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
                 return;
             }
 
-            var transportTransaction = CreateTransportTransaction(message.PartitionKey);
-
-            using (var receiveCancellationTokenSource = new CancellationTokenSource())
+            var onMessageCalled = false;
+            
+            try
             {
-                var messageContext = new MessageContext(messageId, headers, body, transportTransaction, receiveCancellationTokenSource, new ContextBag());
-
-                try
+                using (var receiveCancellationTokenSource = new CancellationTokenSource())
                 {
-                    var scope = settings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
-                        ? new TransactionScope(TransactionScopeOption.RequiresNew, new TransactionOptions
-                        {
-                            IsolationLevel = IsolationLevel.Serializable
-                        }, TransactionScopeAsyncFlowOption.Enabled)
-                        : null;
+                    var transportTransaction = CreateTransportTransaction(message.PartitionKey);
 
-                    using (scope)
+                    var messageContext = new MessageContext(messageId, headers, body, transportTransaction, receiveCancellationTokenSource, new ContextBag());
+
+                    using (var scope = CreateTransactionScope())
                     {
+                        onMessageCalled = true;
                         await onMessage(messageContext).ConfigureAwait(false);
 
-                        if (receiveCancellationTokenSource.IsCancellationRequested)
-                        {
-                            // TODO: perform safe abandon
-                            await receiver.AbandonAsync(message.SystemProperties.LockToken).ConfigureAwait(false);
-                        }
-                        else
+                        if (receiveCancellationTokenSource.IsCancellationRequested == false)
                         {
                             // TODO: perform safe completion only when ReceiveMode is PeekLock
                             await receiver.CompleteAsync(message.SystemProperties.LockToken).ConfigureAwait(false);
@@ -139,12 +130,52 @@
                             scope?.Complete();
                         }
                     }
-                }
-                catch (Exception)
-                {
-                    // invoke onError
+
+                    if (receiveCancellationTokenSource.IsCancellationRequested)
+                    {
+                        // TODO: perform safe abandon with suppressed scope
+                        await receiver.AbandonAsync(message.SystemProperties.LockToken).ConfigureAwait(false);
+                    }
                 }
             }
+            catch (Exception exception) when (onMessageCalled)
+            {
+                ErrorHandleResult result;
+
+                using (var scope = CreateTransactionScope())
+                {
+                    var transportTransaction = CreateTransportTransaction(message.PartitionKey);
+
+                    var errorContext = new ErrorContext(exception, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount);
+
+                    result = await onError(errorContext).ConfigureAwait(false);
+
+                    if (result == ErrorHandleResult.Handled)
+                    {
+                        // TODO: complete message
+                        await receiver.CompleteAsync(message.SystemProperties.LockToken).ConfigureAwait(false);
+                    }
+
+                    scope?.Complete();
+                }
+
+                if (result == ErrorHandleResult.RetryRequired)
+                {
+                    // TODO: perform safe abandon
+                    await receiver.AbandonAsync(message.SystemProperties.LockToken).ConfigureAwait(false);
+                }
+            }
+        }
+
+        TransactionScope CreateTransactionScope()
+        {
+            return settings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
+                ? new TransactionScope(TransactionScopeOption.RequiresNew, new TransactionOptions
+                {
+                    IsolationLevel = IsolationLevel.Serializable,
+                    Timeout = TransactionManager.MaximumTimeout
+                }, TransactionScopeAsyncFlowOption.Enabled)
+                : null;
         }
 
         TransportTransaction CreateTransportTransaction(string incomingQueuePartitionKey)
