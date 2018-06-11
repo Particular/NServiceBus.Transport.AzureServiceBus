@@ -210,12 +210,17 @@
             return transportTransaction;
         }
 
-        public Task Stop()
+        public async Task Stop()
         {
+            messageProcessing.Cancel();
+
+            while (semaphore.CurrentCount != maxConcurrency)
+            {
+                await Task.Delay(50).ConfigureAwait(false);
+            }
+
             semaphore?.Dispose();
             messageProcessing?.Dispose();
-
-            return Task.CompletedTask;
         }
     }
 }
