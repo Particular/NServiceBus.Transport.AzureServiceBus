@@ -220,6 +220,8 @@
                 await Task.Delay(50).ConfigureAwait(false);
             }
 
+            await receiver.CloseAsync().ConfigureAwait(false);
+
             semaphore?.Dispose();
             messageProcessing?.Dispose();
         }
