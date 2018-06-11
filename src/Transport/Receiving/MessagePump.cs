@@ -27,7 +27,6 @@
         // Start
         SemaphoreSlim semaphore;
         CancellationTokenSource messageProcessing;
-
         int maxConcurrency;
         
         static readonly ILog logger = LogManager.GetLogger<MessagePump>();
@@ -121,7 +120,9 @@
             }
             catch (Exception exception)
             {
+                // TODO: dead-lettering could throw
                 await receiver.DeadLetterAsync(lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
+
                 return;
             }
 
