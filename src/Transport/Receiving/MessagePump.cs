@@ -28,6 +28,8 @@
         SemaphoreSlim semaphore;
         CancellationTokenSource messageProcessing;
 
+        int maxConcurrency;
+        
         static readonly ILog logger = LogManager.GetLogger<MessagePump>();
 
         public MessagePump(string connectionString, TransportType transportType, int prefetchMultiplier, int overriddenPrefetchCount)
@@ -59,7 +61,8 @@
 
         public void Start(PushRuntimeSettings limitations)
         {
-            semaphore = new SemaphoreSlim(limitations.MaxConcurrency, limitations.MaxConcurrency);
+            maxConcurrency = limitations.MaxConcurrency;
+            semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
             messageProcessing = new CancellationTokenSource();
 
