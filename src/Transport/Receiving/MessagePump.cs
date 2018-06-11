@@ -76,7 +76,8 @@
 
                     var receiveTask = receiver.ReceiveAsync();
 
-                    ProcessMessage(receiveTask).Ignore();
+                    ProcessMessage(receiveTask)
+                        .ContinueWith(_ => semaphore.Release()).Ignore();
                 }
             }
             catch (OperationCanceledException)
