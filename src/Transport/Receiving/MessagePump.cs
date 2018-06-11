@@ -90,7 +90,16 @@
 
         async Task ProcessMessage(Task<Message> receiveTask)
         {
-            var message = await receiveTask.ConfigureAwait(false);
+            Message message = null;
+
+            try
+            {
+                message = await receiveTask.ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // TODO: invoke critical error if failing to receive
+            }
 
             // By default, ASB client long polls for a minute and returns null if it times out
             if (message == null)
