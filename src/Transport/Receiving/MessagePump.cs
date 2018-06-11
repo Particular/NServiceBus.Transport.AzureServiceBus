@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
+    using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
@@ -90,10 +91,21 @@
                 return;
             }
 
-            // TODO: wrap in try/catch and dead-letter message if we can't convert/use it
-            var messageId = message.GetMessageId();
-            var headers = message.GetNServiceBusHeaders();
-            var body = message.GetBody();
+            string messageId;
+            Dictionary<string, string> headers;
+            byte[] body;
+
+            try
+            {
+                messageId = message.GetMessageId();
+                headers = message.GetNServiceBusHeaders();
+                body = message.GetBody();
+            }
+            catch (Exception exception)
+            {
+                await receiver.DeadLetterAsync(message.SystemProperties.LockToken, deadLetterReason:"Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
+                return;
+            }
 
             var transportTransaction = CreateTransportTransaction(message.PartitionKey);
 
@@ -128,7 +140,7 @@
                         }
                     }
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     // invoke onError
                 }
