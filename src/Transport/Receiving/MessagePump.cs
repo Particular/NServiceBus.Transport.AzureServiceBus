@@ -121,8 +121,14 @@
             }
             catch (Exception exception)
             {
-                // TODO: dead-lettering could throw
-                await receiver.DeadLetterAsync(lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
+                try
+                {
+                    await receiver.SafeDeadLetterAsync(settings.RequiredTransactionMode, lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    // nothing we can do about it, message will be retried
+                }
 
                 return;
             }
