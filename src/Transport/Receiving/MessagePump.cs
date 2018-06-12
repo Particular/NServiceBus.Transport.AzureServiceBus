@@ -23,14 +23,14 @@
         Func<ErrorContext, Task<ErrorHandleResult>> onError;
         RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
         PushSettings pushSettings;
-        MessageReceiver receiver;
-
+        
         // Start
         Task receiveLoopTask;
         SemaphoreSlim semaphore;
         CancellationTokenSource messageProcessing;
         int maxConcurrency;
-        
+        MessageReceiver receiver;
+
         static readonly ILog logger = LogManager.GetLogger<MessagePump>();
 
         public MessagePump(string connectionString, TransportType transportType, int prefetchMultiplier, int overriddenPrefetchCount, TimeSpan timeToWaitBeforeTriggeringCircuitBreaker)
@@ -50,19 +50,23 @@
 
             circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{settings.InputQueue}'", timeToWaitBeforeTriggeringCircuitBreaker, criticalError);
 
-            // TODO: calculate prefetch count
-            var prefetchCount = overriddenPrefetchCount;
-
-            var receiveMode = settings.RequiredTransactionMode == TransportTransactionMode.None ? ReceiveMode.ReceiveAndDelete : ReceiveMode.PeekLock;
-
-            receiver = new MessageReceiver(connectionString, settings.InputQueue, receiveMode, retryPolicy: null, prefetchCount);
-
             return Task.CompletedTask;
         }
 
         public void Start(PushRuntimeSettings limitations)
         {
             maxConcurrency = limitations.MaxConcurrency;
+
+            var prefetchCount = overriddenPrefetchCount;
+
+            if (prefetchCount == 0)
+            {
+                prefetchCount = maxConcurrency * prefetchMultiplier;
+            }
+
+            var receiveMode = pushSettings.RequiredTransactionMode == TransportTransactionMode.None ? ReceiveMode.ReceiveAndDelete : ReceiveMode.PeekLock;
+            receiver = new MessageReceiver(connectionString, pushSettings.InputQueue, receiveMode, retryPolicy: default, prefetchCount);
+            
             semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
             messageProcessing = new CancellationTokenSource();
