@@ -25,6 +25,7 @@
         MessageReceiver receiver;
 
         // Start
+        Task receiveLoopTask;
         SemaphoreSlim semaphore;
         CancellationTokenSource messageProcessing;
         int maxConcurrency;
@@ -65,8 +66,7 @@
 
             messageProcessing = new CancellationTokenSource();
 
-            // TODO: check if we need invoke ReceiveLoop in a Task.Run to fire and forget
-            ReceiveLoop().Ignore();
+            receiveLoopTask = Task.Run(() => ReceiveLoop());
         }
 
         async Task ReceiveLoop()
@@ -221,6 +221,8 @@
         public async Task Stop()
         {
             messageProcessing.Cancel();
+
+            await receiveLoopTask.ConfigureAwait(false);
 
             while (semaphore.CurrentCount != maxConcurrency)
             {
