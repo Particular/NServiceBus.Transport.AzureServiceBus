@@ -16,12 +16,13 @@
         readonly TransportType transportType;
         readonly int prefetchMultiplier;
         readonly int overriddenPrefetchCount;
+        readonly TimeSpan timeToWaitBeforeTriggeringCircuitBreaker;
 
         // Init
         Func<MessageContext, Task> onMessage;
         Func<ErrorContext, Task<ErrorHandleResult>> onError;
-        CriticalError criticalError;
-        PushSettings settings;
+        RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
+        PushSettings pushSettings;
         MessageReceiver receiver;
 
         // Start
@@ -32,22 +33,22 @@
         
         static readonly ILog logger = LogManager.GetLogger<MessagePump>();
 
-        public MessagePump(string connectionString, TransportType transportType, int prefetchMultiplier, int overriddenPrefetchCount)
+        public MessagePump(string connectionString, TransportType transportType, int prefetchMultiplier, int overriddenPrefetchCount, TimeSpan timeToWaitBeforeTriggeringCircuitBreaker)
         {
             this.connectionString = connectionString;
             this.transportType = transportType;
             this.prefetchMultiplier = prefetchMultiplier;
             this.overriddenPrefetchCount = overriddenPrefetchCount;
+            this.timeToWaitBeforeTriggeringCircuitBreaker = timeToWaitBeforeTriggeringCircuitBreaker;
         }
 
         public Task Init(Func<MessageContext, Task> onMessage, Func<ErrorContext, Task<ErrorHandleResult>> onError, CriticalError criticalError, PushSettings settings)
         {
             this.onMessage = onMessage;
             this.onError = onError;
-            this.criticalError = criticalError;
-            this.settings = settings;
+            pushSettings = settings;
 
-            // TODO: hook up critical error
+            circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{settings.InputQueue}'", timeToWaitBeforeTriggeringCircuitBreaker, criticalError);
 
             // TODO: calculate prefetch count
             var prefetchCount = overriddenPrefetchCount;
@@ -95,12 +96,17 @@
             try
             {
                 message = await receiveTask.ConfigureAwait(false);
-            }
-            catch (Exception)
-            {
-                // TODO: invoke critical error if failing to receive
-            }
 
+                circuitBreaker.Success();
+            }
+            catch (ServiceBusException sbe) when (sbe.IsTransient)
+            {
+            }
+            catch (Exception exception)
+            {
+                await circuitBreaker.Failure(exception).ConfigureAwait(false);
+            }
+            
             // By default, ASB client long polls for a minute and returns null if it times out
             if (message == null)
             {
@@ -123,7 +129,7 @@
             {
                 try
                 {
-                    await receiver.SafeDeadLetterAsync(settings.RequiredTransactionMode, lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
+                    await receiver.SafeDeadLetterAsync(pushSettings.RequiredTransactionMode, lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
                 }
                 catch (Exception)
                 {
@@ -147,7 +153,7 @@
 
                         if (receiveCancellationTokenSource.IsCancellationRequested == false)
                         {
-                            await receiver.SafeCompleteAsync(settings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                            await receiver.SafeCompleteAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
 
                             scope?.Complete();
                         }
@@ -155,7 +161,7 @@
 
                     if (receiveCancellationTokenSource.IsCancellationRequested)
                     {
-                        await receiver.SafeAbandonAsync(settings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                        await receiver.SafeAbandonAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
                     }
                 }
             }
@@ -175,7 +181,7 @@
 
                         if (result == ErrorHandleResult.Handled)
                         {
-                            await receiver.SafeCompleteAsync(settings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                            await receiver.SafeCompleteAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
                         }
 
                         scope?.Complete();
@@ -183,7 +189,7 @@
 
                     if (result == ErrorHandleResult.RetryRequired)
                     {
-                        await receiver.SafeAbandonAsync(settings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                        await receiver.SafeAbandonAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
                     }
                 }
                 catch (Exception onErrorException)
@@ -195,7 +201,7 @@
 
         TransactionScope CreateTransactionScope()
         {
-            return settings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
+            return pushSettings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
                 ? new TransactionScope(TransactionScopeOption.RequiresNew, new TransactionOptions
                 {
                     IsolationLevel = IsolationLevel.Serializable,
@@ -208,10 +214,10 @@
         {
             var transportTransaction = new TransportTransaction();
 
-            if (settings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive)
+            if (pushSettings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive)
             {
                 transportTransaction.Set(receiver.ServiceBusConnection);
-                transportTransaction.Set("IncomingQueue", settings.InputQueue);
+                transportTransaction.Set("IncomingQueue", pushSettings.InputQueue);
                 transportTransaction.Set("IncomingQueue.PartitionKey", incomingQueuePartitionKey);
             }
 

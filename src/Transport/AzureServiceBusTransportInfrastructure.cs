@@ -35,7 +35,7 @@
         MessagePump CreateMessagePump()
         {
             // TODO: replace hard-coded values with settings
-            return new MessagePump(connectionString, TransportType.Amqp, 10, 100);
+            return new MessagePump(connectionString, TransportType.Amqp, 10, 100, TimeSpan.FromSeconds(30));
         }
 
         public override TransportSendInfrastructure ConfigureSendInfrastructure()
