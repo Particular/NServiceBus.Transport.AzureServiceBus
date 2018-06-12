@@ -14,11 +14,22 @@
 
             return Task.CompletedTask;
         }
+
         public static Task SafeAbandonAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken)
         {
             if (transportTransactionMode != TransportTransactionMode.None)
             {
                 return messageReceiver.AbandonAsync(lockToken);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public static Task SafeDeadLetterAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, string deadLetterReason, string deadLetterErrorDescription)
+        {
+            if (transportTransactionMode != TransportTransactionMode.None)
+            {
+                return messageReceiver.DeadLetterAsync(lockToken, deadLetterReason, deadLetterErrorDescription);
             }
 
             return Task.CompletedTask;
