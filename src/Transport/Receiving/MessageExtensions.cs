@@ -24,6 +24,16 @@
                 headers[Headers.ReplyToAddress] = message.ReplyTo;
             }
 
+            // Workaround for reply-to address set by ASB transport
+            if (headers.TryGetValue(Headers.ReplyToAddress, out var replyTo))
+            {
+                var index = replyTo.IndexOf('@');
+                if (index > 0)
+                {
+                    headers[Headers.ReplyToAddress] = replyTo.Substring(0, index);
+                }
+            }
+
             if (!string.IsNullOrWhiteSpace(message.CorrelationId))
             {
                 headers[Headers.CorrelationId] = message.CorrelationId;
