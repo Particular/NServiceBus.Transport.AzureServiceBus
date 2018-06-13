@@ -88,8 +88,7 @@
             typeof(DiscardIfNotReceivedBefore)
         };
 
-        // TODO: Change to SendsAtomicWithReceive when https://github.com/Azure/azure-service-bus-dotnet/issues/423 is closed
-        public override TransportTransactionMode TransactionMode => TransportTransactionMode.ReceiveOnly;
+        public override TransportTransactionMode TransactionMode => TransportTransactionMode.SendsAtomicWithReceive;
 
         public override OutboundRoutingPolicy OutboundRoutingPolicy => new OutboundRoutingPolicy(OutboundRoutingType.Unicast, OutboundRoutingType.Multicast, OutboundRoutingType.Unicast);
     }
