@@ -85,7 +85,7 @@
                     var receiveTask = receiver.ReceiveAsync();
 
                     ProcessMessage(receiveTask)
-                        .ContinueWith(_ => semaphore.Release()).Ignore();
+                        .ContinueWith(_ => semaphore.Release(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default).Ignore();
                 }
             }
             catch (OperationCanceledException)
