@@ -50,8 +50,8 @@
             {
                 var connectionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : connection;
 
-                // TODO: topic path needs to be provided during construction to allow value other than "topic-1" to interop with ASB
-                var sender = messageSenderPool.GetMessageSender("topic-1", connectionToUse, incomingQueue);
+                // TODO: topic path needs to be provided during construction to allow value other than "bundle-1" to interop with ASB
+                var sender = messageSenderPool.GetMessageSender("bundle-1", connectionToUse, incomingQueue);
 
                 try
                 {

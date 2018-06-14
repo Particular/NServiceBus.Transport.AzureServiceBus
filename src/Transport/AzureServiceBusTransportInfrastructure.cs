@@ -53,7 +53,7 @@
         {
             // TODO: use topic from settings
             // TODO: use subscription and rule shorteners from settings if registered
-            return new TransportSubscriptionInfrastructure(() => new SubscriptionManager(settings.LocalAddress(), "topic-1", connectionString, subscriptionName => subscriptionName, ruleName => ruleName));
+            return new TransportSubscriptionInfrastructure(() => new SubscriptionManager(settings.LocalAddress(), "bundle-1", connectionString, subscriptionName => subscriptionName, ruleName => ruleName));
         }
 
         public override EndpointInstance BindToLocalEndpoint(EndpointInstance instance) => instance;
