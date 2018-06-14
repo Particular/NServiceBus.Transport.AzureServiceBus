@@ -41,7 +41,13 @@
 
             if (existingRule != null && existingRule.Filter.ToString() != rule.Filter.ToString())
             {
-                await client.RemoveRuleAsync(rule.Name).ConfigureAwait(false);
+                try
+                {
+                    await client.RemoveRuleAsync(rule.Name).ConfigureAwait(false);
+                }
+                catch (MessagingEntityNotFoundException)
+                {
+                }
                 ruleWasRemoved = true;
             }
 
