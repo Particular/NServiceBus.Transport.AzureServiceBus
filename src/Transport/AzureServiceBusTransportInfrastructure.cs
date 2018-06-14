@@ -13,11 +13,13 @@
 
     class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
+        readonly SettingsHolder settings;
         readonly string connectionString;
         readonly MessageSenderPool messageSenderPool;
 
         public AzureServiceBusTransportInfrastructure(SettingsHolder settings, string connectionString)
         {
+            this.settings = settings;
             this.connectionString = connectionString;
             messageSenderPool = new MessageSenderPool(connectionString);
         }
@@ -49,7 +51,9 @@
 
         public override TransportSubscriptionInfrastructure ConfigureSubscriptionInfrastructure()
         {
-            return new TransportSubscriptionInfrastructure(() => new SubscriptionManager());
+            // TODO: use topic from settings
+            // TODO: use subscription and rule shorteners from settings if registered
+            return new TransportSubscriptionInfrastructure(() => new SubscriptionManager(settings.LocalAddress(), "topic-1", connectionString, subscriptionName => subscriptionName, ruleName => ruleName));
         }
 
         public override EndpointInstance BindToLocalEndpoint(EndpointInstance instance) => instance;
