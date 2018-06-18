@@ -1,10 +1,10 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
-    using System.Linq;
     using System.Threading.Tasks;
     using Extensibility;
     using Microsoft.Azure.ServiceBus;
+    using Microsoft.Azure.ServiceBus.Management;
 
     class SubscriptionManager : IManageSubscriptions
     {
@@ -30,34 +30,26 @@
             var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName},%'";
             var rule = new RuleDescription(ruleName, new SqlFilter(sqlExpression));
             
-            var client = new SubscriptionClient(connectionString, topicPath, subscriptionName);
+            var client = new ManagementClient(connectionString);
 
-            // TODO: replace with management client to get a specific rule
-            var rules = await client.GetRulesAsync().ConfigureAwait(false);
-            
-            var existingRule = rules.FirstOrDefault(x => x.Name == rule.Name);
+            var existingRule = await client.GetRuleAsync(topicPath, subscriptionName, rule.Name).ConfigureAwait(false);
 
-            var ruleWasRemoved = false;
-
-            if (existingRule != null && existingRule.Filter.ToString() != rule.Filter.ToString())
+            if (existingRule != null)
             {
-                try
+                if (existingRule.Filter.ToString() != rule.Filter.ToString())
                 {
-                    await client.RemoveRuleAsync(rule.Name).ConfigureAwait(false);
+                    rule.Action = existingRule.Action;
+
+                    await client.UpdateRuleAsync(topicPath, subscriptionName, rule).ConfigureAwait(false);
                 }
-                catch (MessagingEntityNotFoundException)
-                {
-                }
-                ruleWasRemoved = true;
             }
-
-            if (existingRule == null || ruleWasRemoved)
+            else
             {
                 try
                 {
-                    await client.AddRuleAsync(rule).ConfigureAwait(false);
+                    await client.CreateRuleAsync(topicPath, subscriptionName, rule).ConfigureAwait(false);
                 }
-                catch (ServiceBusException exception) when (exception.Message.Contains("already exists"))
+                catch (MessagingEntityAlreadyExistsException)
                 {
                 }
             }
@@ -69,11 +61,11 @@
         {
             var ruleName = eventType.FullName.Length > maxNameLength ? ruleShortener(eventType.FullName) : eventType.FullName;
 
-            var client = new SubscriptionClient(connectionString, topicPath, subscriptionName);
+            var client = new ManagementClient(connectionString);
 
             try
             {
-                await client.RemoveRuleAsync(ruleName).ConfigureAwait(false);
+                await client.DeleteRuleAsync(topicPath, subscriptionName, ruleName).ConfigureAwait(false);
             }
             catch (MessagingEntityNotFoundException)
             {
