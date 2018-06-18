@@ -32,10 +32,10 @@
             
             var client = new ManagementClient(connectionString);
 
-            var existingRule = await client.GetRuleAsync(topicPath, subscriptionName, rule.Name).ConfigureAwait(false);
-
-            if (existingRule != null)
+            try
             {
+                var existingRule = await client.GetRuleAsync(topicPath, subscriptionName, rule.Name).ConfigureAwait(false);
+
                 if (existingRule.Filter.ToString() != rule.Filter.ToString())
                 {
                     rule.Action = existingRule.Action;
@@ -43,7 +43,7 @@
                     await client.UpdateRuleAsync(topicPath, subscriptionName, rule).ConfigureAwait(false);
                 }
             }
-            else
+            catch (MessagingEntityNotFoundException)
             {
                 try
                 {
