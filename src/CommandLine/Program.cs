@@ -1,7 +1,9 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.CommandLine
 {
     using System;
+    using System.Threading.Tasks;
     using McMaster.Extensions.CommandLineUtils;
+    using Microsoft.Azure.ServiceBus.Management;
 
     class Program
     {
@@ -13,6 +15,8 @@
             };
 
             app.HelpOption(inherited: true);
+
+            var connectionString = app.Option("-c|--connection-string", "Connection string to Azure Service Bus (defaults to value from environment variable 'x')", CommandOptionType.SingleValue, inherited: true);
 
             app.Command("endpoint", endpointCommand =>
             {
@@ -55,10 +59,26 @@
                     var name = createCommand.Argument("name", "Name of the queue (required)").IsRequired();
                     
                     var size = createCommand.Option<int>("-s|--size", "Queue size in GB (defaults to 5)", CommandOptionType.SingleValue);
-
-                    createCommand.OnExecute(() =>
+                    var partitioning = createCommand.Option("-p|--partitioned", "Enable partitioning", CommandOptionType.NoValue);
+                    
+                    createCommand.OnExecute(async () =>
                     {
-                        Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}'");
+                        var connectionStringToUse = connectionString.HasValue() ? connectionString.Value() : Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
+
+                        var client = new ManagementClient(connectionStringToUse);
+
+                        var queueDescription = new QueueDescription(name.Value)
+                        {
+                            EnableBatchedOperations = true,
+                            LockDuration = TimeSpan.FromMinutes(5),
+                            MaxDeliveryCount = int.MaxValue,
+                            MaxSizeInMB = (size.HasValue() ? size.ParsedValue : 5) * 1024,
+                            EnablePartitioning = partitioning.HasValue()
+                        };
+
+                        await client.CreateQueueAsync(queueDescription);
+                        
+                        Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
                     });
                 });
             });
