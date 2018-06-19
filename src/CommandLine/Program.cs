@@ -55,7 +55,7 @@
 
                 queueCommand.Command("create", createCommand =>
                 {
-                    createCommand.Description = "Creates a queue with the settings required by the transport.";
+                    createCommand.Description = "Creates a queue with the settings required by the transport";
                     var name = createCommand.Argument("name", "Name of the queue (required)").IsRequired();
                     
                     var size = createCommand.Option<int>("-s|--size", "Queue size in GB (defaults to 5)", CommandOptionType.SingleValue);
@@ -79,6 +79,23 @@
                         await client.CreateQueueAsync(queueDescription);
                         
                         Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
+                    });
+                });
+
+                queueCommand.Command("delete", deleteCommand =>
+                {
+                    deleteCommand.Description = "Deletes a queue";
+                    var name = deleteCommand.Argument("name", "Name of the queue (required)").IsRequired();
+
+                    deleteCommand.OnExecute(async () =>
+                    {
+                        var connectionStringToUse = connectionString.HasValue() ? connectionString.Value() : Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
+
+                        var client = new ManagementClient(connectionStringToUse);
+
+                        await client.DeleteQueueAsync(name.Value);
+
+                        Console.WriteLine($"Queue name '{name.Value}' deleted");
                     });
                 });
             });
