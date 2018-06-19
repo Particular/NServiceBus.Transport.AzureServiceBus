@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <OutputType>Exe</OutputType>
-    <ToolCommandName>create-asbs-topology</ToolCommandName>
+    <ToolCommandName>asb-transport</ToolCommandName>
     <PackAsTool>True</PackAsTool>
     <Description>.NET Core global tool to generate topology for NServiceBus endpoints running on Azure Service Bus</Description>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
