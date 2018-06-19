@@ -63,21 +63,20 @@
                     
                     createCommand.OnExecute(async () =>
                     {
-                        var connectionStringToUse = connectionString.HasValue() ? connectionString.Value() : Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
-
-                        var client = new ManagementClient(connectionStringToUse);
-
-                        var queueDescription = new QueueDescription(name.Value)
+                        await Run(client =>
                         {
-                            EnableBatchedOperations = true,
-                            LockDuration = TimeSpan.FromMinutes(5),
-                            MaxDeliveryCount = int.MaxValue,
-                            MaxSizeInMB = (size.HasValue() ? size.ParsedValue : 5) * 1024,
-                            EnablePartitioning = partitioning.HasValue()
-                        };
+                            var queueDescription = new QueueDescription(name.Value)
+                            {
+                                EnableBatchedOperations = true,
+                                LockDuration = TimeSpan.FromMinutes(5),
+                                MaxDeliveryCount = int.MaxValue,
+                                MaxSizeInMB = (size.HasValue() ? size.ParsedValue : 5) * 1024,
+                                EnablePartitioning = partitioning.HasValue()
+                            };
 
-                        await client.CreateQueueAsync(queueDescription);
-                        
+                            return client.CreateQueueAsync(queueDescription);
+                        });
+
                         Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
                     });
                 });
@@ -89,11 +88,7 @@
 
                     deleteCommand.OnExecute(async () =>
                     {
-                        var connectionStringToUse = connectionString.HasValue() ? connectionString.Value() : Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
-
-                        var client = new ManagementClient(connectionStringToUse);
-
-                        await client.DeleteQueueAsync(name.Value);
+                        await Run(client => client.DeleteQueueAsync(name.Value));
 
                         Console.WriteLine($"Queue name '{name.Value}' deleted");
                     });
@@ -108,6 +103,17 @@
             });
 
             return app.Execute(args);
+
+            async Task Run(Func<ManagementClient, Task> func)
+            {
+                var connectionStringToUse = connectionString.HasValue() ? connectionString.Value() : Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
+
+                var client = new ManagementClient(connectionStringToUse);
+
+                await func(client);
+
+                await client.CloseAsync();
+            }
         }
     }
 }
