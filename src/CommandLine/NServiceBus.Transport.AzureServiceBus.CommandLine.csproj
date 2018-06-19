@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ToolCommandName>create-asbs-topology</ToolCommandName>
+    <PackAsTool>True</PackAsTool>
+    <Description>.NET Core global tool to generate topology for NServiceBus endpoints running on Azure Service Bus</Description>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="2.2.4" />
+    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.0.3-PR-493" />
+    <PackageReference Include="Particular.Packaging" Version="0.1.0" PrivateAssets="All" />
+    <PackageReference Include="Particular.CodeRules" Version="0.2.0" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SourceLink.Create.GitHub" Version="2.5.0" PrivateAssets="All" />
+    <DotNetCliToolReference Include="dotnet-sourcelink-git" Version="2.5.0" />
+  </ItemGroup>
+
+</Project>
