@@ -3,11 +3,14 @@
     using System;
     using System.Threading.Tasks;
     using McMaster.Extensions.CommandLineUtils;
+    using McMaster.Extensions.CommandLineUtils.Abstractions;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
 
     class Program
     {
+        const string EnvironmentVariableName = "AzureServiceBus_ConnectionString";
+
         static int Main(string[] args)
         {
             var app = new CommandLineApplication
@@ -15,10 +18,24 @@
                 Name = "asb-transport"
             };
 
+            var connectionString = new CommandOption("-c|--connection-string", CommandOptionType.SingleValue)
+            {
+                Description = $"Overrides environment variable '{EnvironmentVariableName}'"
+            };
+
+            // TODO: change to user ValueParserProvider when https://github.com/natemcmaster/CommandLineUtils/issues/109 is fixed
+            var size = new CommandOption<int>(Int32ValueParser.Singleton, "-s|--size", CommandOptionType.SingleValue)
+            {
+                Description = "Queue size in GB (defaults to 5)"
+            };
+
+            var partitioning = new CommandOption("-p|--partitioned", CommandOptionType.NoValue)
+            {
+                Description = "Enable partitioning"
+            };
+            
             app.HelpOption(inherited: true);
-
-            var connectionString = app.Option("-c|--connection-string", "Connection string to Azure Service Bus (defaults to value from environment variable 'x')", CommandOptionType.SingleValue, inherited: true);
-
+            
             app.Command("endpoint", endpointCommand =>
             {
                 endpointCommand.OnExecute(() =>
@@ -33,8 +50,9 @@
                     createCommand.Description = "Creates required infrastructure for an endpoint.";
                     var name = createCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
 
-                    var size = createCommand.Option<int>("-s|--size", "Queue size in GB (defaults to 5)", CommandOptionType.SingleValue);
-                    var partitioning = createCommand.Option("-p|--partitioned", "Enable partitioning", CommandOptionType.NoValue);
+                    createCommand.Options.Add(connectionString);
+                    createCommand.Options.Add(size);
+                    createCommand.Options.Add(partitioning);
                     var topicName = createCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                     var subscriptionName = createCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
 
@@ -101,9 +119,7 @@
                             }
                         });
 
-                        Console.WriteLine($"Endpoint name '{name.Value}', topic name '{topicNameToUse}', " +
-                                          $"subscription name '{(subscriptionName.HasValue() ? subscriptionName.Value() : name.Value)}'");
-
+                        Console.WriteLine($"Endpoint '{name.Value}' is ready.");
                     });
                 });
 
@@ -123,10 +139,11 @@
                 {
                     createCommand.Description = "Creates a queue with the settings required by the transport";
                     var name = createCommand.Argument("name", "Name of the queue (required)").IsRequired();
-                    
-                    var size = createCommand.Option<int>("-s|--size", "Queue size in GB (defaults to 5)", CommandOptionType.SingleValue);
-                    var partitioning = createCommand.Option("-p|--partitioned", "Enable partitioning", CommandOptionType.NoValue);
-                    
+
+                    createCommand.Options.Add(connectionString);
+                    createCommand.Options.Add(size);
+                    createCommand.Options.Add(partitioning);
+
                     createCommand.OnExecute(async () =>
                     {
                         await Run(client => CreateQueue(client, name, size, partitioning));
@@ -137,6 +154,8 @@
 
                 queueCommand.Command("delete", deleteCommand =>
                 {
+                    deleteCommand.Options.Add(connectionString);
+
                     deleteCommand.Description = "Deletes a queue";
                     var name = deleteCommand.Argument("name", "Name of the queue (required)").IsRequired();
 
@@ -160,7 +179,7 @@
 
             async Task Run(Func<ManagementClient, Task> func)
             {
-                var connectionStringToUse = connectionString.HasValue() ? connectionString.Value() : Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
+                var connectionStringToUse = connectionString.HasValue() ? connectionString.Value() : Environment.GetEnvironmentVariable(EnvironmentVariableName);
 
                 var client = new ManagementClient(connectionStringToUse);
 
