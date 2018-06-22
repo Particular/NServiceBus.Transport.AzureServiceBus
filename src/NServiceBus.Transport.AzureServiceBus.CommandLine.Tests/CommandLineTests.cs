@@ -10,7 +10,27 @@
     [TestFixture]
     public class CommandLineTests
     {
-        ManagementClient client;
+        const string EndpointName = "cli-queue";
+        const string QueueName = EndpointName;
+        const string TopicName = "cli-topic";
+        const string SubscriptionName = QueueName;
+
+        [Test]
+        public async Task Create_endpoint_when_there_are_no_entities()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName}");
+
+            Assert.AreEqual(0, exitCode);
+            Assert.IsTrue(error == string.Empty);
+            Assert.IsFalse(output.Contains("skipping"));
+
+            await VerifyQueue(QueueName);
+            await VerifyTopic(TopicName);
+            await VerifySubscription(TopicName, SubscriptionName, QueueName);
+        }
 
         [SetUp]
         public void Setup()
@@ -22,24 +42,6 @@
         public Task TearDown()
         {
             return client.CloseAsync();
-        }
-
-
-        [Test]
-        public async Task Create_endpoint_when_there_are_no_entities()
-        {
-            await DeleteQueue("abc");
-            await DeleteTopic("cli-topic");
-
-            var (output, error, exitCode) = await Execute("endpoint create abc --topic cli-topic");
-
-            Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
-            Assert.IsFalse(output.Contains("skipping"));
-
-            await VerifyQueue("abc");
-            await VerifyTopic("cli-topic");
-            await VerifySubscription(topicName:"cli-topic", subscriptionName:"abc", queueName:"abc");
         }
 
         async Task VerifyQueue(string queueName, bool enablePartitioning = false, int size = 5 * 1024)
@@ -142,5 +144,7 @@
             {
             }
         }
+
+        ManagementClient client;
     }
 }
