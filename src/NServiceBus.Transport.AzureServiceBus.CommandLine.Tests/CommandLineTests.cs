@@ -32,6 +32,48 @@
             await VerifySubscription(TopicName, SubscriptionName, QueueName);
         }
 
+        [Test]
+        public async Task Create_queue_when_it_does_not_exist()
+        {
+            await DeleteQueue(QueueName);
+
+            var (output, error, exitCode) = await Execute($"queue create {QueueName}");
+
+            Assert.AreEqual(0, exitCode);
+            Assert.IsTrue(error == string.Empty);
+            Assert.IsFalse(output.Contains("skipping"));
+
+            await VerifyQueue(QueueName);
+        }
+
+        [Test]
+        public async Task Create_queue_when_it_exists_should_throw()
+        {
+            await DeleteQueue(QueueName);
+            await Execute($"queue create {QueueName}");
+
+            var (_, error, exitCode) = await Execute($"queue create {QueueName}");
+
+            Assert.AreNotEqual(0, exitCode);
+            Assert.IsTrue(error.Contains(nameof(MessagingEntityAlreadyExistsException)));
+
+            await VerifyQueue(QueueName);
+        }
+
+        [Test]
+        public async Task Delete_queue_when_it_exists()
+        {
+            await DeleteQueue(QueueName);
+            await Execute($"queue create {QueueName}");
+
+            var (_, error, exitCode) = await Execute($"queue delete {QueueName}");
+
+            Assert.AreEqual(0, exitCode);
+            Assert.IsTrue(error == string.Empty);
+
+            await VerifyQueueExists(false);
+        }
+
         [SetUp]
         public void Setup()
         {
@@ -80,6 +122,12 @@
             // rules
             var rules = await client.GetRulesAsync(topicName, subscriptionName);
             Assert.IsEmpty(rules);
+        }
+
+        async Task VerifyQueueExists(bool queueShouldExist)
+        {
+            var queueExists = await client.QueueExistsAsync(QueueName);
+            Assert.AreEqual(queueShouldExist, queueExists);
         }
 
         static async Task<(string output, string error, int exitCode)> Execute(string command)
