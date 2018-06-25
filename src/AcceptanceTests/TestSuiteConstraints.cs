@@ -7,7 +7,7 @@
     {
         public bool SupportsDtc => false;
 
-        public bool SupportsCrossQueueTransactions => false;
+        public bool SupportsCrossQueueTransactions => true;
 
         public bool SupportsNativePubSub => true;
 
