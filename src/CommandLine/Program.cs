@@ -1,15 +1,11 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.CommandLine
 {
     using System;
-    using System.Threading.Tasks;
     using McMaster.Extensions.CommandLineUtils;
     using McMaster.Extensions.CommandLineUtils.Abstractions;
-    using Microsoft.Azure.ServiceBus.Management;
 
     class Program
     {
-        const string EnvironmentVariableName = "AzureServiceBus_ConnectionString";
-
         static int Main(string[] args)
         {
             var app = new CommandLineApplication
@@ -19,7 +15,7 @@
 
             var connectionString = new CommandOption("-c|--connection-string", CommandOptionType.SingleValue)
             {
-                Description = $"Overrides environment variable '{EnvironmentVariableName}'"
+                Description = $"Overrides environment variable '{CommandRunner.EnvironmentVariableName}'"
             };
 
             // TODO: change to user ValueParserProvider when https://github.com/natemcmaster/CommandLineUtils/issues/109 is fixed
@@ -57,7 +53,7 @@
 
                     createCommand.OnExecute(async () =>
                     {
-                        await Run(async client => await Endpoint.Create(client, name, topicName, subscriptionName, size, partitioning));
+                        await CommandRunner.Run(connectionString, client => Endpoint.Create(client, name, topicName, subscriptionName, size, partitioning));
 
                         Console.WriteLine($"Endpoint '{name.Value}' is ready.");
                     });
@@ -86,7 +82,7 @@
 
                     createCommand.OnExecute(async () =>
                     {
-                        await Run(client => Queue.Create(client, name, size, partitioning));
+                        await CommandRunner.Run(connectionString, client => Queue.Create(client, name, size, partitioning));
 
                         Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
                     });
@@ -101,7 +97,7 @@
 
                     deleteCommand.OnExecute(async () =>
                     {
-                        await Run(client => Queue.Delete(client, name));
+                        await CommandRunner.Run(connectionString, client => Queue.Delete(client, name));
 
                         Console.WriteLine($"Queue name '{name.Value}' deleted");
                     });
@@ -116,18 +112,6 @@
             });
 
             return app.Execute(args);
-
-            async Task Run(Func<ManagementClient, Task> func)
-            {
-                var connectionStringToUse = connectionString.HasValue() ? connectionString.Value() : Environment.GetEnvironmentVariable(EnvironmentVariableName);
-
-                var client = new ManagementClient(connectionStringToUse);
-
-                await func(client);
-
-                await client.CloseAsync();
-            }
         }
-
     }
 }
