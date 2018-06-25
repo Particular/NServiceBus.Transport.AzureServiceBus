@@ -30,7 +30,9 @@
             
             return new TransportReceiveInfrastructure(
                 () => CreateMessagePump(),
-                () => new QueueCreator(),  // TODO: check for Manage Rights
+                // TODO: use settings
+                () => new QueueCreator(settings.LocalAddress(), "bundle-1", connectionString, 5 * 1024, false, subscriptionName => subscriptionName),
+                // TODO: check for Manage Rights
                 () => Task.FromResult(StartupCheckResult.Success));
         }
 
