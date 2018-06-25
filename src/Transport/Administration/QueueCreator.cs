@@ -36,7 +36,13 @@
                 MaxSizeInMB = maxSizeInMB
             };
 
-            await client.CreateTopicAsync(topic).ConfigureAwait(false);
+            try
+            {
+                await client.CreateTopicAsync(topic).ConfigureAwait(false);
+            }
+            catch (MessagingEntityAlreadyExistsException)
+            {
+            }
 
             foreach (var address in queueBindings.ReceivingAddresses.Concat(queueBindings.SendingAddresses))
             {
@@ -49,7 +55,13 @@
                     EnablePartitioning = enablePartitioning
                 };
 
-                await client.CreateQueueAsync(queue).ConfigureAwait(false);
+                try
+                {
+                    await client.CreateQueueAsync(queue).ConfigureAwait(false);
+                }
+                catch (MessagingEntityAlreadyExistsException)
+                {
+                }
             }
 
             var subscriptionName = subscriptionShortener(mainInputQueueName);
@@ -65,9 +77,21 @@
                 //UserMetadata = mainInputQueueName
             };
 
-            await client.CreateSubscriptionAsync(subscription).ConfigureAwait(false);
+            try
+            {
+                await client.CreateSubscriptionAsync(subscription).ConfigureAwait(false);
+            }
+            catch (MessagingEntityAlreadyExistsException)
+            {
+            }
 
-            await client.DeleteRuleAsync(topicName, subscription.SubscriptionName, RuleDescription.DefaultRuleName).ConfigureAwait(false);
+            try
+            {
+                await client.DeleteRuleAsync(topicName, subscription.SubscriptionName, RuleDescription.DefaultRuleName).ConfigureAwait(false);
+            }
+            catch (MessagingEntityNotFoundException)
+            {
+            }
             
             await client.CloseAsync().ConfigureAwait(false);
         }
