@@ -2,6 +2,7 @@
 {
     using System;
     using Configuration.AdvancedExtensibility;
+    using Microsoft.Azure.ServiceBus;
     using Transport.AzureServiceBus;
 
     /// <summary>
@@ -65,12 +66,12 @@
         /// Overrides the default prefetch count calculation with the specified value.
         /// </summary>
         /// <param name="transportExtensions"></param>
-        /// <param name="prefetchOverride">The prefetch count to use.</param>
-        public static TransportExtensions<AzureServiceBusTransport> PrefetchCount(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int prefetchOverride)
+        /// <param name="prefetchCount">The prefetch count to use.</param>
+        public static TransportExtensions<AzureServiceBusTransport> PrefetchCount(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int prefetchCount)
         {
-            Guard.AgainstNegativeAndZero(nameof(prefetchOverride), prefetchOverride);
+            Guard.AgainstNegativeAndZero(nameof(prefetchCount), prefetchCount);
 
-            transportExtensions.GetSettings().Set(SettingsKeys.PrefetchOverride, prefetchOverride);
+            transportExtensions.GetSettings().Set(SettingsKeys.PrefetchCount, prefetchCount);
 
             return transportExtensions;
         }
@@ -150,7 +151,7 @@
         /// <returns></returns>
         public static TransportExtensions<AzureServiceBusTransport> UseWebSockets(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
         {
-            transportExtensions.GetSettings().Set(SettingsKeys.UseWebSockets, true);
+            transportExtensions.GetSettings().Set(SettingsKeys.TransportType, TransportType.AmqpWebSockets);
 
             return transportExtensions;
         }
