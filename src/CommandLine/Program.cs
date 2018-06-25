@@ -58,8 +58,6 @@
                         Console.WriteLine($"Endpoint '{name.Value}' is ready.");
                     });
                 });
-
-                // TODO: implement "endpoint show subscriptions"
             });
 
             app.Command("queue", queueCommand =>

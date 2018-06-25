@@ -30,7 +30,7 @@
 
             try
             {
-                await Subscription.Create(client, name, topicName, subscriptionName, size, partitioning);
+                await Subscription.Create(client, name, topicName, subscriptionName);
             }
             catch (MessagingEntityAlreadyExistsException)
             {

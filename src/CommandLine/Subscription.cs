@@ -7,9 +7,9 @@
 
     static class Subscription
     {
-        public static Task Create(ManagementClient client, CommandArgument endpointName, CommandOption topicName, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning)
+        public static Task Create(ManagementClient client, CommandArgument endpointName, CommandOption topicName, CommandOption subscriptionName)
         {
-            var topicNameToUse = topicName.HasValue() ? topicName.Value() : "bundle-1";
+            var topicNameToUse = topicName.HasValue() ? topicName.Value() : Topic.DefaultTopicName;
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
 
             var subscriptionDescription = new SubscriptionDescription(topicNameToUse, subscriptionNameToUse)
@@ -21,7 +21,7 @@
                 // TODO: uncomment when https://github.com/Azure/azure-service-bus-dotnet/issues/499 is fixed
                 //EnableBatchedOperations = true,
                 // TODO: https://github.com/Azure/azure-service-bus-dotnet/issues/501 is fixed
-                //UserMetadata = name.Value
+                //UserMetadata = endpointName.Value
             };
 
             return client.CreateSubscriptionAsync(subscriptionDescription);
