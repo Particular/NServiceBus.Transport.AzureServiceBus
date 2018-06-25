@@ -13,6 +13,8 @@
 
     class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
+        const string defaultTopicName = "bundle-1";
+
         readonly SettingsHolder settings;
         readonly string connectionString;
         readonly MessageSenderPool messageSenderPool;
@@ -30,16 +32,53 @@
             
             return new TransportReceiveInfrastructure(
                 () => CreateMessagePump(),
-                // TODO: use settings
-                () => new QueueCreator(settings.LocalAddress(), "bundle-1", connectionString, 5 * 1024, false, subscriptionName => subscriptionName),
+                () => CreateQueueCreator(),
                 // TODO: check for Manage Rights
                 () => Task.FromResult(StartupCheckResult.Success));
         }
 
         MessagePump CreateMessagePump()
         {
-            // TODO: replace hard-coded values with settings
-            return new MessagePump(connectionString, TransportType.Amqp, 10, 100, TimeSpan.FromSeconds(30));
+            if (!settings.TryGet(SettingsKeys.TransportType, out TransportType transportType))
+            {
+                transportType = TransportType.Amqp;
+            }
+
+            if (!settings.TryGet(SettingsKeys.PrefetchMultiplier, out int prefetchMultiplier))
+            {
+                prefetchMultiplier = 10;
+            }
+
+            settings.TryGet(SettingsKeys.PrefetchCount, out int prefetchCount);
+
+            if (!settings.TryGet(SettingsKeys.TimeToWaitBeforeTriggeringCircuitBreaker, out TimeSpan timeToWaitBeforeTriggeringCircuitBreaker))
+            {
+                timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
+            }
+
+            return new MessagePump(connectionString, transportType, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker);
+        }
+
+        QueueCreator CreateQueueCreator()
+        {
+            if (!settings.TryGet(SettingsKeys.TopicName, out string topicName))
+            {
+                topicName = defaultTopicName;
+            }
+
+            if (!settings.TryGet(SettingsKeys.MaximumSizeInGB, out int maximumSizeInGB))
+            {
+                maximumSizeInGB = 5;
+            }
+
+            settings.TryGet(SettingsKeys.EnablePartitioning, out bool enablePartitioning);
+
+            if (!settings.TryGet(SettingsKeys.SubscriptionNameShortener, out Func<string, string> subscriptionNameShortener))
+            {
+                subscriptionNameShortener = subscriptionName => subscriptionName;
+            }
+
+            return new QueueCreator(settings.LocalAddress(), topicName, connectionString, maximumSizeInGB * 1024, enablePartitioning, subscriptionNameShortener);
         }
 
         public override TransportSendInfrastructure ConfigureSendInfrastructure()
@@ -53,9 +92,27 @@
 
         public override TransportSubscriptionInfrastructure ConfigureSubscriptionInfrastructure()
         {
-            // TODO: use topic from settings
-            // TODO: use subscription and rule shorteners from settings if registered
-            return new TransportSubscriptionInfrastructure(() => new SubscriptionManager(settings.LocalAddress(), "bundle-1", connectionString, subscriptionName => subscriptionName, ruleName => ruleName));
+            return new TransportSubscriptionInfrastructure(() => CreateSubscriptionManager());
+        }
+
+        SubscriptionManager CreateSubscriptionManager()
+        {
+            if (!settings.TryGet(SettingsKeys.TopicName, out string topicName))
+            {
+                topicName = defaultTopicName;
+            }
+
+            if (!settings.TryGet(SettingsKeys.SubscriptionNameShortener, out Func<string, string> subscriptionNameShortener))
+            {
+                subscriptionNameShortener = subscriptionName => subscriptionName;
+            }
+
+            if (!settings.TryGet(SettingsKeys.RuleNameShortener, out Func<string, string> ruleNameShortener))
+            {
+                ruleNameShortener = ruleName => ruleName;
+            }
+
+            return new SubscriptionManager(settings.LocalAddress(), topicName, connectionString, subscriptionNameShortener, ruleNameShortener);
         }
 
         public override EndpointInstance BindToLocalEndpoint(EndpointInstance instance) => instance;
