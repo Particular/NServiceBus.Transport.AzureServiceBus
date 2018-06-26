@@ -112,6 +112,7 @@
             {
                 // Workaround for ASB MessageReceiver.Receive() that has a timeout and doesn't take a CancellationToken.
                 // We want to track how many receives are waiting and could be ignored when endpoint is stopping.
+                // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
                 Interlocked.Increment(ref numberOfExecutingReceives);
                 message = await receiveTask.ConfigureAwait(false);
                 Interlocked.Decrement(ref numberOfExecutingReceives);
