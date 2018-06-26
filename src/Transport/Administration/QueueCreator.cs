@@ -45,6 +45,10 @@
             catch (MessagingEntityAlreadyExistsException)
             {
             }
+            // TODO: remove when https://github.com/Azure/azure-service-bus-dotnet/issues/516 is fixed
+            catch (FormatException)
+            {
+            }
 
             foreach (var address in queueBindings.ReceivingAddresses.Concat(queueBindings.SendingAddresses))
             {
@@ -62,6 +66,10 @@
                     await client.CreateQueueAsync(queue).ConfigureAwait(false);
                 }
                 catch (MessagingEntityAlreadyExistsException)
+                {
+                }
+                // TODO: remove when https://github.com/Azure/azure-service-bus-dotnet/issues/516 is fixed
+                catch (FormatException)
                 {
                 }
             }
