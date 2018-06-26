@@ -78,13 +78,24 @@
                 subscriptionNameShortener = subscriptionName => subscriptionName;
             }
 
-            return new QueueCreator(settings.LocalAddress(), topicName, connectionString, maximumSizeInGB * 1024, enablePartitioning, subscriptionNameShortener);
+            string localAddress;
+
+            try
+            {
+                localAddress = settings.LocalAddress();
+            }
+            catch
+            {
+                // For TransportTests, LocalAddress() will throw. Construct local address manually.
+                localAddress = ToTransportAddress(LogicalAddress.CreateLocalAddress(settings.EndpointName(), new Dictionary<string, string>()));
+            }
+
+            return new QueueCreator(localAddress, topicName, connectionString, maximumSizeInGB * 1024, enablePartitioning, subscriptionNameShortener);
         }
 
         public override TransportSendInfrastructure ConfigureSendInfrastructure()
         {
             // TODO: check that we have Send rights
-
             return new TransportSendInfrastructure(
                 () => new MessageDispatcher(messageSenderPool),
                 () => Task.FromResult(StartupCheckResult.Success));

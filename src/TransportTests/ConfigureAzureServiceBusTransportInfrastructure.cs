@@ -8,7 +8,6 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
 {
     public TransportConfigurationResult Configure(SettingsHolder settings, TransportTransactionMode transactionMode)
     {
-        //TODO: fails on settings.LocalAddress()
         var result = new TransportConfigurationResult();
 
         result.PurgeInputQueueOnStartup = false;
