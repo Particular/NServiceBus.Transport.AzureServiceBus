@@ -17,6 +17,7 @@
         readonly int prefetchMultiplier;
         readonly int overriddenPrefetchCount;
         readonly TimeSpan timeToWaitBeforeTriggeringCircuitBreaker;
+        int numberOfExecutingReceives;
 
         // Init
         Func<MessageContext, Task> onMessage;
@@ -99,7 +100,11 @@
 
             try
             {
+                // Workaround for ASB MessageReceiver.Receive() that has a timeout and doesn't take a CancellationToken.
+                // We want to track how many receives are waiting and could be ignored when endpoint is stopping.
+                Interlocked.Increment(ref numberOfExecutingReceives);
                 message = await receiveTask.ConfigureAwait(false);
+                Interlocked.Decrement(ref numberOfExecutingReceives);
 
                 circuitBreaker.Success();
             }
@@ -112,7 +117,7 @@
             }
             
             // By default, ASB client long polls for a minute and returns null if it times out
-            if (message == null)
+            if (message == null || messageProcessing.IsCancellationRequested)
             {
                 return;
             }
@@ -234,7 +239,7 @@
 
             await receiveLoopTask.ConfigureAwait(false);
 
-            while (semaphore.CurrentCount != maxConcurrency)
+            while (semaphore.CurrentCount + numberOfExecutingReceives != maxConcurrency)
             {
                 await Task.Delay(50).ConfigureAwait(false);
             }
