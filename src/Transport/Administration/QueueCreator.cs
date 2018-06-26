@@ -8,6 +8,8 @@
 
     class QueueCreator : ICreateQueues
     {
+        const int maxNameLength = 50;
+
         readonly string mainInputQueueName;
         readonly string connectionString;
         readonly string topicName;
@@ -64,7 +66,7 @@
                 }
             }
 
-            var subscriptionName = subscriptionShortener(mainInputQueueName);
+            var subscriptionName = mainInputQueueName.Length > maxNameLength ? subscriptionShortener(mainInputQueueName) : mainInputQueueName;
             var subscription = new SubscriptionDescription(topicName, subscriptionName)
             {
                 LockDuration = TimeSpan.FromMinutes(5),
