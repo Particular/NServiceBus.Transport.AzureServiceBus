@@ -248,6 +248,7 @@
 
             semaphore?.Dispose();
             messageProcessing?.Dispose();
+            circuitBreaker?.Dispose();
         }
     }
 }
