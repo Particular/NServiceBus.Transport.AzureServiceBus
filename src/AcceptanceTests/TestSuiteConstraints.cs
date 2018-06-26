@@ -1,7 +1,6 @@
 ﻿namespace NServiceBus.AcceptanceTests
 {
     using AcceptanceTesting.Support;
-    using Transport.AzureServiceBus.AcceptanceTests;
 
     public partial class TestSuiteConstraints
     {
