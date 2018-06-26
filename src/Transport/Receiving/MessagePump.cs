@@ -86,7 +86,17 @@
                     var receiveTask = receiver.ReceiveAsync();
 
                     ProcessMessage(receiveTask)
-                        .ContinueWith(_ => semaphore.Release(), TaskContinuationOptions.ExecuteSynchronously).Ignore();
+                        .ContinueWith(_ =>
+                        {
+                            try
+                            {
+                                semaphore.Release();
+                            }
+                            catch (ObjectDisposedException)
+                            {
+                                // Can happen during endpoint shutdown
+                            }
+                        }, TaskContinuationOptions.ExecuteSynchronously).Ignore();
                 }
             }
             catch (OperationCanceledException)
@@ -110,6 +120,10 @@
             }
             catch (ServiceBusException sbe) when (sbe.IsTransient)
             {
+            }
+            catch (ObjectDisposedException)
+            {
+                // Can happen during endpoint shutdown
             }
             catch (Exception exception)
             {
