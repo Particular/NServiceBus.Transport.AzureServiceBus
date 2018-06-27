@@ -2,6 +2,7 @@
 {
     using System.Collections.Generic;
     using System.Threading.Tasks;
+    using System.Transactions;
     using Extensibility;
     using Microsoft.Azure.ServiceBus;
 
@@ -38,8 +39,12 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    // Invoke sender and immediately return it back to the pool w/o awaiting for completion
-                    tasks.Add(sender.SendAsync(message));
+                    using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency))
+                    {
+                        // Invoke sender and immediately return it back to the pool w/o awaiting for completion
+                        tasks.Add(sender.SendAsync(message));
+                        scope?.Complete();
+                    }
                 }
                 finally
                 {
@@ -59,8 +64,12 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    // Invoke sender and immediately return it back to the pool w/o awaiting for completion
-                    tasks.Add(sender.SendAsync(message));
+                    using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency))
+                    {
+                        // Invoke sender and immediately return it back to the pool w/o awaiting for completion
+                        tasks.Add(sender.SendAsync(message));
+                        scope?.Complete();
+                    }
                 }
                 finally
                 {
@@ -69,6 +78,13 @@
             }
 
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
+        }
+
+        TransactionScope CreateTransactionScope(DispatchConsistency dispatchConsistency)
+        {
+            return dispatchConsistency == DispatchConsistency.Isolated
+                ? new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled)
+                : null;
         }
     }
 }
