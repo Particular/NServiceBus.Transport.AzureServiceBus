@@ -9,10 +9,12 @@
     class MessageDispatcher : IDispatchMessages
     {
         readonly MessageSenderPool messageSenderPool;
+        readonly string topicName;
 
-        public MessageDispatcher(MessageSenderPool messageSenderPool)
+        public MessageDispatcher(MessageSenderPool messageSenderPool, string topicName)
         {
             this.messageSenderPool = messageSenderPool;
+            this.topicName = topicName;
         }
 
         public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, ContextBag context)
@@ -57,8 +59,7 @@
                 var connectionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : connection;
                 var incomingQueueToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : incomingQueue;
 
-                // TODO: topic path needs to be provided during construction to allow value other than "bundle-1" to interop with ASB
-                var sender = messageSenderPool.GetMessageSender("bundle-1", connectionToUse, incomingQueueToUse);
+                var sender = messageSenderPool.GetMessageSender(topicName, connectionToUse, incomingQueueToUse);
 
                 try
                 {

@@ -97,8 +97,18 @@
         {
             // TODO: check that we have Send rights
             return new TransportSendInfrastructure(
-                () => new MessageDispatcher(messageSenderPool),
+                () => CreateMessageDispatcher(),
                 () => Task.FromResult(StartupCheckResult.Success));
+        }
+
+        MessageDispatcher CreateMessageDispatcher()
+        {
+            if (!settings.TryGet(SettingsKeys.TopicName, out string topicName))
+            {
+                topicName = defaultTopicName;
+            }
+
+            return new MessageDispatcher(messageSenderPool, topicName);
         }
 
         public override TransportSubscriptionInfrastructure ConfigureSubscriptionInfrastructure()
