@@ -3,6 +3,7 @@
     using System;
     using Configuration.AdvancedExtensibility;
     using Microsoft.Azure.ServiceBus;
+    using Microsoft.Azure.ServiceBus.Primitives;
     using Transport.AzureServiceBus;
 
     /// <summary>
@@ -152,6 +153,19 @@
         public static TransportExtensions<AzureServiceBusTransport> UseWebSockets(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
         {
             transportExtensions.GetSettings().Set(SettingsKeys.TransportType, TransportType.AmqpWebSockets);
+
+            return transportExtensions;
+        }
+
+        /// <summary>
+        /// TODO
+        /// </summary>
+        /// <param name="transportExtensions"></param>
+        /// <param name="tokenProvider"></param>
+        /// <returns></returns>
+        public static TransportExtensions<AzureServiceBusTransport> CustomTokenProvider(this TransportExtensions<AzureServiceBusTransport> transportExtensions, ITokenProvider tokenProvider)
+        {
+            transportExtensions.GetSettings().Set(SettingsKeys.CustomTokenProvider, tokenProvider);
 
             return transportExtensions;
         }

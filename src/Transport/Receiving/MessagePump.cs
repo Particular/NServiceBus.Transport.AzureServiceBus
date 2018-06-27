@@ -9,15 +9,15 @@
     using Logging;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Core;
+    using Microsoft.Azure.ServiceBus.Primitives;
 
     class MessagePump : IPushMessages
     {
-        readonly string connectionString;
-        // TODO: uncomment when get to the implementation
-        //readonly TransportType transportType;
+        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly int prefetchMultiplier;
         readonly int overriddenPrefetchCount;
         readonly TimeSpan timeToWaitBeforeTriggeringCircuitBreaker;
+        readonly ITokenProvider tokenProvider;
         int numberOfExecutingReceives;
 
         // Init
@@ -25,7 +25,7 @@
         Func<ErrorContext, Task<ErrorHandleResult>> onError;
         RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
         PushSettings pushSettings;
-        
+
         // Start
         Task receiveLoopTask;
         SemaphoreSlim semaphore;
@@ -35,11 +35,10 @@
 
         static readonly ILog logger = LogManager.GetLogger<MessagePump>();
 
-        public MessagePump(string connectionString, TransportType transportType, int prefetchMultiplier, int overriddenPrefetchCount, TimeSpan timeToWaitBeforeTriggeringCircuitBreaker)
+        public MessagePump(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, int prefetchMultiplier, int overriddenPrefetchCount, TimeSpan timeToWaitBeforeTriggeringCircuitBreaker)
         {
-            this.connectionString = connectionString;
-            // TODO: uncomment when get to the implementation
-            //this.transportType = transportType;
+            this.connectionStringBuilder = connectionStringBuilder;
+            this.tokenProvider = tokenProvider;
             this.prefetchMultiplier = prefetchMultiplier;
             this.overriddenPrefetchCount = overriddenPrefetchCount;
             this.timeToWaitBeforeTriggeringCircuitBreaker = timeToWaitBeforeTriggeringCircuitBreaker;
@@ -68,8 +67,16 @@
             }
 
             var receiveMode = pushSettings.RequiredTransactionMode == TransportTransactionMode.None ? ReceiveMode.ReceiveAndDelete : ReceiveMode.PeekLock;
-            receiver = new MessageReceiver(connectionString, pushSettings.InputQueue, receiveMode, retryPolicy: default, prefetchCount);
-            
+
+            if (tokenProvider == null)
+            {
+                receiver = new MessageReceiver(connectionStringBuilder.GetNamespaceConnectionString(), pushSettings.InputQueue, receiveMode, retryPolicy: default, prefetchCount);
+            }
+            else
+            {
+                receiver = new MessageReceiver(connectionStringBuilder.Endpoint, pushSettings.InputQueue, tokenProvider, connectionStringBuilder.TransportType, receiveMode, retryPolicy: default, prefetchCount);
+            }
+
             semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
             messageProcessing = new CancellationTokenSource();
@@ -132,7 +139,7 @@
             {
                 await circuitBreaker.Failure(exception).ConfigureAwait(false);
             }
-            
+
             // By default, ASB client long polls for a minute and returns null if it times out
             if (message == null || messageProcessing.IsCancellationRequested)
             {

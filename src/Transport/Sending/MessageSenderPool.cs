@@ -5,12 +5,15 @@
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Core;
+    using Microsoft.Azure.ServiceBus.Primitives;
 
     class MessageSenderPool
     {
-        public MessageSenderPool(string connectionString)
+        public MessageSenderPool(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider)
         {
-            this.connectionString = connectionString;
+            this.connectionStringBuilder = connectionStringBuilder;
+            this.tokenProvider = tokenProvider;
+
             senders = new ConcurrentDictionary<(string, ServiceBusConnection, string), ConcurrentQueue<MessageSender>>();
         }
 
@@ -20,13 +23,21 @@
 
             if (!sendersForDestination.TryDequeue(out var sender) || sender.IsClosedOrClosing)
             {
+                // Send-Via case
                 if (connection != null)
                 {
                     sender = new MessageSender(connection, destination, incomingQueue);
                 }
                 else
                 {
-                    sender = new MessageSender(connectionString, destination);
+                    if (tokenProvider == null)
+                    {
+                        sender = new MessageSender(connectionStringBuilder.GetNamespaceConnectionString(), destination);
+                    }
+                    else
+                    {
+                        sender = new MessageSender(connectionStringBuilder.Endpoint, destination, tokenProvider, connectionStringBuilder.TransportType);
+                    }
                 }
             }
 
@@ -64,7 +75,8 @@
             await Task.WhenAll(tasks).ConfigureAwait(false);
         }
 
-        readonly string connectionString;
+        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
+        readonly ITokenProvider tokenProvider;
 
         ConcurrentDictionary<(string destination, ServiceBusConnection connnection, string incomingQueue), ConcurrentQueue<MessageSender>> senders;
     }

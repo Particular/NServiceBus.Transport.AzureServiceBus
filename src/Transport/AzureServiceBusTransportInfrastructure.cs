@@ -6,6 +6,7 @@
     using System.Threading.Tasks;
     using DelayedDelivery;
     using Microsoft.Azure.ServiceBus;
+    using Microsoft.Azure.ServiceBus.Primitives;
     using Performance.TimeToBeReceived;
     using Routing;
     using Settings;
@@ -17,13 +18,12 @@
 
         readonly SettingsHolder settings;
         readonly string connectionString;
-        readonly MessageSenderPool messageSenderPool;
+        MessageSenderPool messageSenderPool;
 
         public AzureServiceBusTransportInfrastructure(SettingsHolder settings, string connectionString)
         {
             this.settings = settings;
             this.connectionString = connectionString;
-            messageSenderPool = new MessageSenderPool(connectionString);
         }
 
         public override TransportReceiveInfrastructure ConfigureReceiveInfrastructure()
@@ -39,9 +39,11 @@
 
         MessagePump CreateMessagePump()
         {
-            if (!settings.TryGet(SettingsKeys.TransportType, out TransportType transportType))
+            var builder = new ServiceBusConnectionStringBuilder(connectionString);
+
+            if (settings.TryGet(SettingsKeys.TransportType, out TransportType transportType))
             {
-                transportType = TransportType.Amqp;
+                builder.TransportType = transportType;
             }
 
             if (!settings.TryGet(SettingsKeys.PrefetchMultiplier, out int prefetchMultiplier))
@@ -56,7 +58,9 @@
                 timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
             }
 
-            return new MessagePump(connectionString, transportType, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker);
+            settings.TryGet(SettingsKeys.CustomTokenProvider, out ITokenProvider tokenProvider);
+            
+            return new MessagePump(builder, tokenProvider, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker);
         }
 
         QueueCreator CreateQueueCreator()
@@ -108,6 +112,17 @@
                 topicName = defaultTopicName;
             }
 
+            var builder = new ServiceBusConnectionStringBuilder(connectionString);
+
+            if (settings.TryGet(SettingsKeys.TransportType, out TransportType transportType))
+            {
+                builder.TransportType = transportType;
+            }
+
+            settings.TryGet(SettingsKeys.CustomTokenProvider, out ITokenProvider tokenProvider);
+
+            messageSenderPool = new MessageSenderPool(builder, tokenProvider);
+            
             return new MessageDispatcher(messageSenderPool, topicName);
         }
 
@@ -162,7 +177,10 @@
 
         public override async Task Stop()
         {
-            await messageSenderPool.Close().ConfigureAwait(false);
+            if (messageSenderPool != null)
+            {
+                await messageSenderPool.Close().ConfigureAwait(false);
+            }
         }
 
         public override IEnumerable<Type> DeliveryConstraints => new List<Type>

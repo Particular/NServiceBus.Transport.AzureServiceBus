@@ -12,5 +12,6 @@
         public const string SubscriptionNameShortener = Base + nameof(SubscriptionNameShortener);
         public const string RuleNameShortener = Base + nameof(RuleNameShortener);
         public const string TransportType = Base + nameof(TransportType);
+        public const string CustomTokenProvider = Base + nameof(CustomTokenProvider);
     }
 }
