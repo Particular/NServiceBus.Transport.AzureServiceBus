@@ -13,7 +13,8 @@
     class MessagePump : IPushMessages
     {
         readonly string connectionString;
-        readonly TransportType transportType;
+        // TODO: uncomment when get to the implementation
+        //readonly TransportType transportType;
         readonly int prefetchMultiplier;
         readonly int overriddenPrefetchCount;
         readonly TimeSpan timeToWaitBeforeTriggeringCircuitBreaker;
@@ -37,7 +38,8 @@
         public MessagePump(string connectionString, TransportType transportType, int prefetchMultiplier, int overriddenPrefetchCount, TimeSpan timeToWaitBeforeTriggeringCircuitBreaker)
         {
             this.connectionString = connectionString;
-            this.transportType = transportType;
+            // TODO: uncomment when get to the implementation
+            //this.transportType = transportType;
             this.prefetchMultiplier = prefetchMultiplier;
             this.overriddenPrefetchCount = overriddenPrefetchCount;
             this.timeToWaitBeforeTriggeringCircuitBreaker = timeToWaitBeforeTriggeringCircuitBreaker;
