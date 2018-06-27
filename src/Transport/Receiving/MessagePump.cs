@@ -218,6 +218,8 @@
                 }
                 catch (Exception onErrorException)
                 {
+                    await receiver.SafeAbandonAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+
                     logger.WarnFormat("Recoverability failed for message with ID {0}. The message will be retried. Exception details: {1}", messageId, onErrorException);
                 }
             }
