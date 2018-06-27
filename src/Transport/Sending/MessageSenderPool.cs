@@ -14,7 +14,7 @@
             senders = new ConcurrentDictionary<(string, ServiceBusConnection, string), ConcurrentQueue<MessageSender>>();
         }
 
-        public MessageSender GetMessageSender(string destination, ServiceBusConnection connection = null, string incomingQueue = null)
+        public MessageSender GetMessageSender(string destination, ServiceBusConnection connection, string incomingQueue)
         {
             var sendersForDestination = senders.GetOrAdd((destination, connection, incomingQueue), tuple => new ConcurrentQueue<MessageSender>());
 
@@ -34,7 +34,7 @@
         }
 
         // TODO: connection argument won't be required when https://github.com/Azure/azure-service-bus-dotnet/issues/482 is fixed
-        public void ReturnMessageSender(MessageSender sender, ServiceBusConnection connection = null)
+        public void ReturnMessageSender(MessageSender sender, ServiceBusConnection connection)
         {
             if (sender.IsClosedOrClosing)
             {

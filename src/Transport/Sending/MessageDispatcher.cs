@@ -30,8 +30,9 @@
             foreach (var transportOperation in unicastTransportOperations)
             {
                 var connectionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : connection;
+                var incomingQueueToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : incomingQueue;
 
-                var sender = messageSenderPool.GetMessageSender(transportOperation.Destination, connectionToUse, incomingQueue);
+                var sender = messageSenderPool.GetMessageSender(transportOperation.Destination, connectionToUse, incomingQueueToUse);
 
                 try
                 {
@@ -49,9 +50,10 @@
             foreach (var transportOperation in multicastTransportOperations)
             {
                 var connectionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : connection;
+                var incomingQueueToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : incomingQueue;
 
                 // TODO: topic path needs to be provided during construction to allow value other than "bundle-1" to interop with ASB
-                var sender = messageSenderPool.GetMessageSender("bundle-1", connectionToUse, incomingQueue);
+                var sender = messageSenderPool.GetMessageSender("bundle-1", connectionToUse, incomingQueueToUse);
 
                 try
                 {
