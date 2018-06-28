@@ -106,7 +106,7 @@
             Assert.AreEqual(size, actual.MaxSizeInMB);
         }
 
-        async Task VerifySubscription(string topicName, string subscriptionName, string queueName, bool enablePartitioning = false, int size = 5 * 1024)
+        async Task VerifySubscription(string topicName, string subscriptionName, string queueName)
         {
             var actual = await client.GetSubscriptionAsync(topicName, subscriptionName);
 
