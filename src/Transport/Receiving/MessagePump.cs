@@ -142,6 +142,8 @@
             }
             catch (Exception exception)
             {
+                logger.WarnFormat("Failed to receive a message. Exception: {0}", exception.Message);
+
                 await circuitBreaker.Failure(exception).ConfigureAwait(false);
             }
 
