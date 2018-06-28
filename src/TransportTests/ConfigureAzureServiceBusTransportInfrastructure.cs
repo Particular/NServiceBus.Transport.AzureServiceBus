@@ -10,9 +10,10 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
 {
     public TransportConfigurationResult Configure(SettingsHolder settings, TransportTransactionMode transactionMode)
     {
-        var result = new TransportConfigurationResult();
-
-        result.PurgeInputQueueOnStartup = false;
+        var result = new TransportConfigurationResult
+        {
+            PurgeInputQueueOnStartup = false
+        };
 
         var transport = new AzureServiceBusTransport();
 

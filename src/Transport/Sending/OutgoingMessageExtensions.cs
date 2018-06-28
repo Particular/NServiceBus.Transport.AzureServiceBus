@@ -13,10 +13,11 @@
     {
         public static Message ToAzureServiceBusMessage(this OutgoingMessage outgoingMessage, List<DeliveryConstraint> deliveryConstraints, string incomingQueuePartitionKey)
         {
-            var message = new Message(outgoingMessage.Body);
-
-            // Cannot re-use MessageId to be compatible with ASB transport that could have native de-dup enabled
-            message.MessageId = Guid.NewGuid().ToString();
+            var message = new Message(outgoingMessage.Body)
+            {
+                // Cannot re-use MessageId to be compatible with ASB transport that could have native de-dup enabled
+                MessageId = Guid.NewGuid().ToString()
+            };
 
             // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
             message.UserProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
