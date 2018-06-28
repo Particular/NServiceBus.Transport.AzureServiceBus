@@ -16,7 +16,7 @@
             {
                 EnableBatchedOperations = true,
                 EnablePartitioning = partitioning.HasValue(),
-                MaxSizeInMB = (size.HasValue() ? size.ParsedValue : 5) * 1024,
+                MaxSizeInMB = (size.HasValue() ? size.ParsedValue : 5) * 1024
             };
 
             return client.CreateTopicAsync(topicDescription);
