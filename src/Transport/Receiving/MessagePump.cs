@@ -46,6 +46,11 @@
 
         public Task Init(Func<MessageContext, Task> onMessage, Func<ErrorContext, Task<ErrorHandleResult>> onError, CriticalError criticalError, PushSettings settings)
         {
+            if (settings.PurgeOnStartup)
+            {
+                throw new Exception("Azure Service Bus transport doesn't support PurgeOnStartup behavior");
+            }
+
             this.onMessage = onMessage;
             this.onError = onError;
             pushSettings = settings;
