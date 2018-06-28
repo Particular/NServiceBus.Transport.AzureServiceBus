@@ -29,7 +29,7 @@
             var ruleName = eventType.FullName.Length > maxNameLength ? ruleShortener(eventType.FullName) : eventType.FullName;
             var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
             var rule = new RuleDescription(ruleName, new SqlFilter(sqlExpression));
-            
+
             var client = new ManagementClient(connectionString);
 
             try

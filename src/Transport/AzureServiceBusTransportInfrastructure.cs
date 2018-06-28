@@ -29,7 +29,7 @@
         public override TransportReceiveInfrastructure ConfigureReceiveInfrastructure()
         {
             // TODO: check that we have Receive rights
-            
+
             return new TransportReceiveInfrastructure(
                 () => CreateMessagePump(),
                 () => CreateQueueCreator(),
@@ -59,7 +59,7 @@
             }
 
             settings.TryGet(SettingsKeys.CustomTokenProvider, out ITokenProvider tokenProvider);
-            
+
             return new MessagePump(builder, tokenProvider, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker);
         }
 
@@ -122,7 +122,7 @@
             settings.TryGet(SettingsKeys.CustomTokenProvider, out ITokenProvider tokenProvider);
 
             messageSenderPool = new MessageSenderPool(builder, tokenProvider);
-            
+
             return new MessageDispatcher(messageSenderPool, topicName);
         }
 

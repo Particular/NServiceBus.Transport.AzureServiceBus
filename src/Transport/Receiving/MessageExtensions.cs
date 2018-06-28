@@ -18,7 +18,7 @@
             }
 
             headers.Remove(TransportMessageHeaders.TransportEncoding);
-            
+
             if (!string.IsNullOrWhiteSpace(message.ReplyTo))
             {
                 headers[Headers.ReplyToAddress] = message.ReplyTo;

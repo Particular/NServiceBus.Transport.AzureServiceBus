@@ -102,7 +102,7 @@
             catch (MessagingEntityNotFoundException)
             {
             }
-            
+
             await client.CloseAsync().ConfigureAwait(false);
         }
     }

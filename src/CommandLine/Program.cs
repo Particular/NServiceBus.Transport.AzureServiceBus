@@ -28,9 +28,9 @@
             {
                 Description = "Enable partitioning"
             };
-            
+
             app.HelpOption(inherited: true);
-            
+
             app.Command("endpoint", endpointCommand =>
             {
                 endpointCommand.OnExecute(() =>
