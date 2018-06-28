@@ -58,7 +58,7 @@
             }
         }
 
-        public async Task Close()
+        public Task Close()
         {
             var tasks = new List<Task>();
 
@@ -72,7 +72,7 @@
                 }
             }
 
-            await Task.WhenAll(tasks).ConfigureAwait(false);
+            return Task.WhenAll(tasks);
         }
 
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
