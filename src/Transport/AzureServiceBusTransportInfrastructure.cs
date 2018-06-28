@@ -15,15 +15,30 @@
     class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
         const string defaultTopicName = "bundle-1";
+        static readonly Func<string, string> defaultNameShortener = name => name;
 
         readonly SettingsHolder settings;
-        readonly string connectionString;
+        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
+        readonly ITokenProvider tokenProvider;
+        readonly string topicName;
         MessageSenderPool messageSenderPool;
 
         public AzureServiceBusTransportInfrastructure(SettingsHolder settings, string connectionString)
         {
             this.settings = settings;
-            this.connectionString = connectionString;
+            connectionStringBuilder = new ServiceBusConnectionStringBuilder(connectionString);
+
+            if (settings.TryGet(SettingsKeys.TransportType, out TransportType transportType))
+            {
+                connectionStringBuilder.TransportType = transportType;
+            }
+
+            settings.TryGet(SettingsKeys.CustomTokenProvider, out tokenProvider);
+
+            if (!settings.TryGet(SettingsKeys.TopicName, out topicName))
+            {
+                topicName = defaultTopicName;
+            }
         }
 
         public override TransportReceiveInfrastructure ConfigureReceiveInfrastructure()
@@ -36,13 +51,6 @@
 
         MessagePump CreateMessagePump()
         {
-            var builder = new ServiceBusConnectionStringBuilder(connectionString);
-
-            if (settings.TryGet(SettingsKeys.TransportType, out TransportType transportType))
-            {
-                builder.TransportType = transportType;
-            }
-
             if (!settings.TryGet(SettingsKeys.PrefetchMultiplier, out int prefetchMultiplier))
             {
                 prefetchMultiplier = 10;
@@ -55,18 +63,11 @@
                 timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
             }
 
-            settings.TryGet(SettingsKeys.CustomTokenProvider, out ITokenProvider tokenProvider);
-
-            return new MessagePump(builder, tokenProvider, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker);
+            return new MessagePump(connectionStringBuilder, tokenProvider, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker);
         }
 
         QueueCreator CreateQueueCreator()
         {
-            if (!settings.TryGet(SettingsKeys.TopicName, out string topicName))
-            {
-                topicName = defaultTopicName;
-            }
-
             if (!settings.TryGet(SettingsKeys.MaximumSizeInGB, out int maximumSizeInGB))
             {
                 maximumSizeInGB = 5;
@@ -76,7 +77,7 @@
 
             if (!settings.TryGet(SettingsKeys.SubscriptionNameShortener, out Func<string, string> subscriptionNameShortener))
             {
-                subscriptionNameShortener = subscriptionName => subscriptionName;
+                subscriptionNameShortener = defaultNameShortener;
             }
 
             string localAddress;
@@ -91,7 +92,7 @@
                 localAddress = ToTransportAddress(LogicalAddress.CreateLocalAddress(settings.EndpointName(), new Dictionary<string, string>()));
             }
 
-            return new QueueCreator(localAddress, topicName, connectionString, maximumSizeInGB * 1024, enablePartitioning, subscriptionNameShortener);
+            return new QueueCreator(localAddress, topicName, connectionStringBuilder, tokenProvider, maximumSizeInGB * 1024, enablePartitioning, subscriptionNameShortener);
         }
 
         public override TransportSendInfrastructure ConfigureSendInfrastructure()
@@ -103,21 +104,7 @@
 
         MessageDispatcher CreateMessageDispatcher()
         {
-            if (!settings.TryGet(SettingsKeys.TopicName, out string topicName))
-            {
-                topicName = defaultTopicName;
-            }
-
-            var builder = new ServiceBusConnectionStringBuilder(connectionString);
-
-            if (settings.TryGet(SettingsKeys.TransportType, out TransportType transportType))
-            {
-                builder.TransportType = transportType;
-            }
-
-            settings.TryGet(SettingsKeys.CustomTokenProvider, out ITokenProvider tokenProvider);
-
-            messageSenderPool = new MessageSenderPool(builder, tokenProvider);
+            messageSenderPool = new MessageSenderPool(connectionStringBuilder, tokenProvider);
 
             return new MessageDispatcher(messageSenderPool, topicName);
         }
@@ -129,22 +116,17 @@
 
         SubscriptionManager CreateSubscriptionManager()
         {
-            if (!settings.TryGet(SettingsKeys.TopicName, out string topicName))
-            {
-                topicName = defaultTopicName;
-            }
-
             if (!settings.TryGet(SettingsKeys.SubscriptionNameShortener, out Func<string, string> subscriptionNameShortener))
             {
-                subscriptionNameShortener = subscriptionName => subscriptionName;
+                subscriptionNameShortener = defaultNameShortener;
             }
 
             if (!settings.TryGet(SettingsKeys.RuleNameShortener, out Func<string, string> ruleNameShortener))
             {
-                ruleNameShortener = ruleName => ruleName;
+                ruleNameShortener = defaultNameShortener;
             }
 
-            return new SubscriptionManager(settings.LocalAddress(), topicName, connectionString, subscriptionNameShortener, ruleNameShortener);
+            return new SubscriptionManager(settings.LocalAddress(), topicName, connectionStringBuilder, tokenProvider, subscriptionNameShortener, ruleNameShortener);
         }
 
         public override EndpointInstance BindToLocalEndpoint(EndpointInstance instance) => instance;
@@ -164,11 +146,6 @@
             }
 
             return queue.ToString();
-        }
-
-        public override Task Start()
-        {
-            return base.Start();
         }
 
         public override async Task Stop()

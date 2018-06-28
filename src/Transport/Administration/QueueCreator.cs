@@ -5,23 +5,26 @@
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
+    using Microsoft.Azure.ServiceBus.Primitives;
 
     class QueueCreator : ICreateQueues
     {
         const int maxNameLength = 50;
 
         readonly string mainInputQueueName;
-        readonly string connectionString;
+        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
+        readonly ITokenProvider tokenProvider;
         readonly string topicName;
         readonly int maxSizeInMB;
         readonly bool enablePartitioning;
         readonly Func<string, string> subscriptionShortener;
 
-        public QueueCreator(string mainInputQueueName, string topicName, string connectionString, int maxSizeInMB, bool enablePartitioning, Func<string, string> subscriptionShortener)
+        public QueueCreator(string mainInputQueueName, string topicName, ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, int maxSizeInMB, bool enablePartitioning, Func<string, string> subscriptionShortener)
         {
             this.mainInputQueueName = mainInputQueueName;
-            this.connectionString = connectionString;
             this.topicName = topicName;
+            this.connectionStringBuilder = connectionStringBuilder;
+            this.tokenProvider = tokenProvider;
             this.maxSizeInMB = maxSizeInMB;
             this.enablePartitioning = enablePartitioning;
             this.subscriptionShortener = subscriptionShortener;
@@ -36,7 +39,7 @@
                 throw new Exception(result.ErrorMessage);
             }
 
-            var client = new ManagementClient(connectionString);
+            var client = new ManagementClient(connectionStringBuilder, tokenProvider);
 
             var topic = new TopicDescription(topicName)
             {

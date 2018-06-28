@@ -5,20 +5,23 @@
     using Extensibility;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
+    using Microsoft.Azure.ServiceBus.Primitives;
 
     class SubscriptionManager : IManageSubscriptions
     {
         const int maxNameLength = 50;
 
         readonly string topicPath;
-        readonly string connectionString;
+        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
+        readonly ITokenProvider tokenProvider;
         readonly Func<string, string> ruleShortener;
         readonly string subscriptionName;
 
-        public SubscriptionManager(string inputQueueName, string topicPath, string connectionString, Func<string, string> subscriptionShortener, Func<string, string> ruleShortener)
+        public SubscriptionManager(string inputQueueName, string topicPath, ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, Func<string, string> subscriptionShortener, Func<string, string> ruleShortener)
         {
             this.topicPath = topicPath;
-            this.connectionString = connectionString;
+            this.connectionStringBuilder = connectionStringBuilder;
+            this.tokenProvider = tokenProvider;
             this.ruleShortener = ruleShortener;
 
             subscriptionName = inputQueueName.Length > maxNameLength ? subscriptionShortener(inputQueueName) : inputQueueName;
@@ -30,7 +33,7 @@
             var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
             var rule = new RuleDescription(ruleName, new SqlFilter(sqlExpression));
 
-            var client = new ManagementClient(connectionString);
+            var client = new ManagementClient(connectionStringBuilder, tokenProvider);
 
             try
             {
@@ -61,7 +64,7 @@
         {
             var ruleName = eventType.FullName.Length > maxNameLength ? ruleShortener(eventType.FullName) : eventType.FullName;
 
-            var client = new ManagementClient(connectionString);
+            var client = new ManagementClient(connectionStringBuilder, tokenProvider);
 
             try
             {
