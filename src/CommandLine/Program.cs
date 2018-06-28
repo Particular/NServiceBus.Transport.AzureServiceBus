@@ -116,7 +116,7 @@
             catch (Exception exception)
             {
                 Console.Error.WriteLine($"Command failed with exception ({exception.GetType().Name}): {exception.Message}");
-                return -1;
+                return 1;
             }
         }
     }

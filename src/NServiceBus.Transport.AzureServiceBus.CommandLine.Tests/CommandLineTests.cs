@@ -54,7 +54,7 @@
 
             var (_, error, exitCode) = await Execute($"queue create {QueueName}");
 
-            Assert.AreEqual(-1, exitCode);
+            Assert.AreEqual(1, exitCode);
             Assert.IsTrue(error.Contains(nameof(MessagingEntityAlreadyExistsException)));
 
             await VerifyQueue(QueueName);
