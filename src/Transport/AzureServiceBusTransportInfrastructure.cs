@@ -21,6 +21,7 @@
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly ITokenProvider tokenProvider;
         readonly string topicName;
+        readonly NamespacePermissions namespacePermissions;
         MessageSenderPool messageSenderPool;
 
         public AzureServiceBusTransportInfrastructure(SettingsHolder settings, string connectionString)
@@ -39,6 +40,8 @@
             {
                 topicName = defaultTopicName;
             }
+
+            namespacePermissions = new NamespacePermissions(connectionStringBuilder, tokenProvider);
         }
 
         public override TransportReceiveInfrastructure ConfigureReceiveInfrastructure()
@@ -46,7 +49,7 @@
             return new TransportReceiveInfrastructure(
                 () => CreateMessagePump(),
                 () => CreateQueueCreator(),
-                () => NamespacePermissions.CanManage());
+                () => namespacePermissions.CanManage());
         }
 
         MessagePump CreateMessagePump()
@@ -92,14 +95,14 @@
                 localAddress = ToTransportAddress(LogicalAddress.CreateLocalAddress(settings.EndpointName(), new Dictionary<string, string>()));
             }
 
-            return new QueueCreator(localAddress, topicName, connectionStringBuilder, tokenProvider, maximumSizeInGB * 1024, enablePartitioning, subscriptionNameShortener);
+            return new QueueCreator(localAddress, topicName, connectionStringBuilder, tokenProvider, namespacePermissions, maximumSizeInGB * 1024, enablePartitioning, subscriptionNameShortener);
         }
 
         public override TransportSendInfrastructure ConfigureSendInfrastructure()
         {
             return new TransportSendInfrastructure(
                 () => CreateMessageDispatcher(),
-                () => NamespacePermissions.CanSend());
+                () => namespacePermissions.CanSend());
         }
 
         MessageDispatcher CreateMessageDispatcher()

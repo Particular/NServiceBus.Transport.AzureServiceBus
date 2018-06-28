@@ -12,19 +12,21 @@
         const int maxNameLength = 50;
 
         readonly string mainInputQueueName;
+        readonly string topicName;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly ITokenProvider tokenProvider;
-        readonly string topicName;
+        readonly NamespacePermissions namespacePermissions;
         readonly int maxSizeInMB;
         readonly bool enablePartitioning;
         readonly Func<string, string> subscriptionShortener;
 
-        public QueueCreator(string mainInputQueueName, string topicName, ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, int maxSizeInMB, bool enablePartitioning, Func<string, string> subscriptionShortener)
+        public QueueCreator(string mainInputQueueName, string topicName, ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, NamespacePermissions namespacePermissions, int maxSizeInMB, bool enablePartitioning, Func<string, string> subscriptionShortener)
         {
             this.mainInputQueueName = mainInputQueueName;
             this.topicName = topicName;
             this.connectionStringBuilder = connectionStringBuilder;
             this.tokenProvider = tokenProvider;
+            this.namespacePermissions = namespacePermissions;
             this.maxSizeInMB = maxSizeInMB;
             this.enablePartitioning = enablePartitioning;
             this.subscriptionShortener = subscriptionShortener;
@@ -32,7 +34,7 @@
 
         public async Task CreateQueueIfNecessary(QueueBindings queueBindings, string identity)
         {
-            var result = await NamespacePermissions.CanManage().ConfigureAwait(false);
+            var result = await namespacePermissions.CanManage().ConfigureAwait(false);
 
             if (!result.Succeeded)
             {
