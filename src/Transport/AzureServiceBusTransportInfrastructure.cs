@@ -28,13 +28,10 @@
 
         public override TransportReceiveInfrastructure ConfigureReceiveInfrastructure()
         {
-            // TODO: check that we have Receive rights
-
             return new TransportReceiveInfrastructure(
                 () => CreateMessagePump(),
                 () => CreateQueueCreator(),
-                // TODO: check for Manage Rights
-                () => Task.FromResult(StartupCheckResult.Success));
+                () => NamespacePermissions.CanManage());
         }
 
         MessagePump CreateMessagePump()
@@ -99,10 +96,9 @@
 
         public override TransportSendInfrastructure ConfigureSendInfrastructure()
         {
-            // TODO: check that we have Send rights
             return new TransportSendInfrastructure(
                 () => CreateMessageDispatcher(),
-                () => Task.FromResult(StartupCheckResult.Success));
+                () => NamespacePermissions.CanSend());
         }
 
         MessageDispatcher CreateMessageDispatcher()

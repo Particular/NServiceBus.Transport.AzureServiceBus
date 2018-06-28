@@ -29,6 +29,13 @@
 
         public async Task CreateQueueIfNecessary(QueueBindings queueBindings, string identity)
         {
+            var result = await NamespacePermissions.CanManage().ConfigureAwait(false);
+
+            if (!result.Succeeded)
+            {
+                throw new Exception(result.ErrorMessage);
+            }
+
             var client = new ManagementClient(connectionString);
 
             var topic = new TopicDescription(topicName)
