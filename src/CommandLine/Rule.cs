@@ -12,7 +12,6 @@
             var topicNameToUse = topicName.HasValue() ? topicName.Value() : Topic.DefaultTopicName;
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
 
-            // TODO: remove when https://github.com/Azure/azure-service-bus-dotnet/issues/502 is implemented
             return client.DeleteRuleAsync(topicNameToUse, subscriptionNameToUse, ruleName);
         }
     }
