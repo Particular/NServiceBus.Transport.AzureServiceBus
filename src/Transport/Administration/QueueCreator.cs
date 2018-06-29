@@ -85,10 +85,8 @@
                 ForwardTo = mainInputQueueName,
                 EnableDeadLetteringOnFilterEvaluationExceptions = false,
                 MaxDeliveryCount = int.MaxValue,
-                // TODO: uncomment when https://github.com/Azure/azure-service-bus-dotnet/issues/499 is fixed
-                //EnableBatchedOperations = true,
-                // TODO: https://github.com/Azure/azure-service-bus-dotnet/issues/501 is fixed
-                //UserMetadata = mainInputQueueName
+                EnableBatchedOperations = true,
+                UserMetadata = mainInputQueueName
             };
 
             try

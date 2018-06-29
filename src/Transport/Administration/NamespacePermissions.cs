@@ -23,7 +23,6 @@
 
             try
             {
-                // TODO: blocked by https://github.com/Azure/azure-service-bus-dotnet/issues/519
                 await client.QueueExistsAsync("$an-awesome-possum-queue").ConfigureAwait(false);
             }
             catch (UnauthorizedException)
