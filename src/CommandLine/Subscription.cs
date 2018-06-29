@@ -18,10 +18,8 @@
                 ForwardTo = endpointName.Value,
                 EnableDeadLetteringOnFilterEvaluationExceptions = false,
                 MaxDeliveryCount = int.MaxValue,
-                // TODO: uncomment when https://github.com/Azure/azure-service-bus-dotnet/issues/499 is fixed
-                //EnableBatchedOperations = true,
-                // TODO: https://github.com/Azure/azure-service-bus-dotnet/issues/501 is fixed
-                //UserMetadata = endpointName.Value
+                EnableBatchedOperations = true,
+                UserMetadata = endpointName.Value
             };
 
             return client.CreateSubscriptionAsync(subscriptionDescription);

@@ -114,10 +114,8 @@
             Assert.IsTrue(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal));
             Assert.AreEqual(false, actual.EnableDeadLetteringOnFilterEvaluationExceptions);
             Assert.AreEqual(int.MaxValue, actual.MaxDeliveryCount);
-            // TODO: uncomment when https://github.com/Azure/azure-service-bus-dotnet/issues/499 is fixed
-            //Assert.AreEqual(true, actual.EnableBatchedOperations);
-            // TODO: https://github.com/Azure/azure-service-bus-dotnet/issues/501 is fixed
-            //Assert.AreEqual(queueName, actual.UserMetadata);
+            Assert.AreEqual(true, actual.EnableBatchedOperations);
+            Assert.AreEqual(queueName, actual.UserMetadata);
 
             // rules
             var rules = await client.GetRulesAsync(topicName, subscriptionName);

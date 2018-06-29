@@ -50,7 +50,7 @@
                 }
                 finally
                 {
-                    messageSenderPool.ReturnMessageSender(sender, connectionToUse);
+                    messageSenderPool.ReturnMessageSender(sender);
                 }
             }
 
@@ -74,7 +74,7 @@
                 }
                 finally
                 {
-                    messageSenderPool.ReturnMessageSender(sender, connectionToUse);
+                    messageSenderPool.ReturnMessageSender(sender);
                 }
             }
 

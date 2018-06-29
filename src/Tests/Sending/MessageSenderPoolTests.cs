@@ -13,7 +13,7 @@
 
             var firstMessageSender = pool.GetMessageSender("dest", null, null);
 
-            pool.ReturnMessageSender(firstMessageSender, null);
+            pool.ReturnMessageSender(firstMessageSender);
 
             var secondMessageSender = pool.GetMessageSender("dest", null, null);
 

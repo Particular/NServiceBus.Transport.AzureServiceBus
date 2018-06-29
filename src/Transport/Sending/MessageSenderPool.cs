@@ -44,15 +44,16 @@
             return sender;
         }
 
-        // TODO: connection argument won't be required when https://github.com/Azure/azure-service-bus-dotnet/issues/482 is fixed
-        public void ReturnMessageSender(MessageSender sender, ServiceBusConnection connection)
+        public void ReturnMessageSender(MessageSender sender)
         {
             if (sender.IsClosedOrClosing)
             {
                 return;
             }
 
-            if (senders.TryGetValue((sender.Path, connection, sender.TransferDestinationPath), out var sendersForDestination))
+            var connectionToUse = !sender.OwnsConnection ? sender.ServiceBusConnection : null;
+
+            if (senders.TryGetValue((sender.Path, connectionToUse, sender.TransferDestinationPath), out var sendersForDestination))
             {
                 sendersForDestination.Enqueue(sender);
             }
