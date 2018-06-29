@@ -76,10 +76,6 @@
                 catch (MessagingEntityAlreadyExistsException)
                 {
                 }
-                // TODO: remove when https://github.com/Azure/azure-service-bus-dotnet/issues/516 is fixed
-                catch (FormatException)
-                {
-                }
             }
 
             var subscriptionName = mainInputQueueName.Length > maxNameLength ? subscriptionShortener(mainInputQueueName) : mainInputQueueName;
