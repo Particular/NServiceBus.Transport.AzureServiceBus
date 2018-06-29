@@ -57,6 +57,10 @@
             catch (MessagingEntityAlreadyExistsException)
             {
             }
+            // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
+            catch (ServiceBusException sbe) when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
+            {
+            }
 
             foreach (var address in queueBindings.ReceivingAddresses.Concat(queueBindings.SendingAddresses))
             {
@@ -76,6 +80,10 @@
                 catch (MessagingEntityAlreadyExistsException)
                 {
                 }
+                // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
+                catch (ServiceBusException sbe) when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
+                {
+                }
             }
 
             var subscriptionName = mainInputQueueName.Length > maxNameLength ? subscriptionShortener(mainInputQueueName) : mainInputQueueName;
@@ -91,17 +99,13 @@
 
             try
             {
-                await client.CreateSubscriptionAsync(subscription).ConfigureAwait(false);
+                await client.CreateSubscriptionAsync(subscription, new RuleDescription("$default", new FalseFilter())).ConfigureAwait(false);
             }
             catch (MessagingEntityAlreadyExistsException)
             {
             }
-
-            try
-            {
-                await client.DeleteRuleAsync(topicName, subscription.SubscriptionName, RuleDescription.DefaultRuleName).ConfigureAwait(false);
-            }
-            catch (MessagingEntityNotFoundException)
+            // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
+            catch (ServiceBusException sbe) when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
             {
             }
 
