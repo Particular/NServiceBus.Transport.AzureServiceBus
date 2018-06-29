@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="2.2.4" />
-    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.0.3-PR-493" />
+    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.1.0-preview" />
     <PackageReference Include="Particular.Packaging" Version="0.1.0" PrivateAssets="All" />
   </ItemGroup>
 
