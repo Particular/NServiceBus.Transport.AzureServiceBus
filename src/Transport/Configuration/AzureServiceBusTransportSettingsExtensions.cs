@@ -12,10 +12,10 @@
     public static class AzureServiceBusTransportSettingsExtensions
     {
         /// <summary>
-        /// TODO:
+        /// Overrides the default topic name used to publish events between endpoints.
         /// </summary>
         /// <param name="transportExtensions"></param>
-        /// <param name="topicName"></param>
+        /// <param name="topicName">The name of the topic used to publish events between endpoints.</param>
         public static TransportExtensions<AzureServiceBusTransport> TopicName(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string topicName)
         {
             Guard.AgainstNullAndEmpty(nameof(topicName), topicName);
@@ -26,10 +26,10 @@
         }
 
         /// <summary>
-        /// TODO:
+        /// Overrides the default maximum size used when creating queues and topics.
         /// </summary>
         /// <param name="transportExtensions"></param>
-        /// <param name="maximumSizeInGB"></param>
+        /// <param name="maximumSizeInGB">The maximum size to use, in gigabytes.</param>
         public static TransportExtensions<AzureServiceBusTransport> EntityMaximumSize(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int maximumSizeInGB)
         {
             Guard.AgainstNegativeAndZero(nameof(maximumSizeInGB), maximumSizeInGB);
@@ -40,7 +40,7 @@
         }
 
         /// <summary>
-        /// TODO:
+        /// Enables entity partitioning when creating queues and topics.
         /// </summary>
         public static TransportExtensions<AzureServiceBusTransport> EnablePartitioning(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
         {
@@ -92,10 +92,10 @@
         }
 
         /// <summary>
-        /// TODO: 
+        /// Specifies a callback to apply to the subscription name when the endpoint's name is longer than 50 characters.
         /// </summary>
         /// <param name="transportExtensions"></param>
-        /// <param name="subscriptionNameShortener"></param>
+        /// <param name="subscriptionNameShortener">The callback to apply.</param>
         /// <returns></returns>
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameShortener)
         {
@@ -119,10 +119,10 @@
         }
 
         /// <summary>
-        /// TODO: 
+        /// Specifies a callback to apply to a subscription rule name when a subscribed event's name is longer than 50 characters.
         /// </summary>
         /// <param name="transportExtensions"></param>
-        /// <param name="ruleNameShortener"></param>
+        /// <param name="ruleNameShortener">The callback to apply.</param>
         /// <returns></returns>
         public static TransportExtensions<AzureServiceBusTransport> RuleNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameShortener)
         {
@@ -146,10 +146,9 @@
         }
 
         /// <summary>
-        /// TODO
+        /// Configures the transport to use AMQP over WebSockets.
         /// </summary>
         /// <param name="transportExtensions"></param>
-        /// <returns></returns>
         public static TransportExtensions<AzureServiceBusTransport> UseWebSockets(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
         {
             transportExtensions.GetSettings().Set(SettingsKeys.TransportType, TransportType.AmqpWebSockets);
@@ -158,11 +157,10 @@
         }
 
         /// <summary>
-        /// TODO
+        /// Overrides the default token provider with a custom implementation.
         /// </summary>
         /// <param name="transportExtensions"></param>
-        /// <param name="tokenProvider"></param>
-        /// <returns></returns>
+        /// <param name="tokenProvider">The token provider to be used.</param>
         public static TransportExtensions<AzureServiceBusTransport> CustomTokenProvider(this TransportExtensions<AzureServiceBusTransport> transportExtensions, ITokenProvider tokenProvider)
         {
             transportExtensions.GetSettings().Set(SettingsKeys.CustomTokenProvider, tokenProvider);
