@@ -100,17 +100,17 @@
                     var receiveTask = receiver.ReceiveAsync();
 
                     ProcessMessage(receiveTask)
-                        .ContinueWith(_ =>
+                        .ContinueWith((_, s) =>
                         {
                             try
                             {
-                                semaphore.Release();
+                                ((SemaphoreSlim)s).Release();
                             }
                             catch (ObjectDisposedException)
                             {
                                 // Can happen during endpoint shutdown
                             }
-                        }, TaskContinuationOptions.ExecuteSynchronously).Ignore();
+                        }, semaphore, TaskContinuationOptions.ExecuteSynchronously).Ignore();
                 }
             }
             catch (OperationCanceledException)
@@ -129,7 +129,6 @@
                 // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
                 Interlocked.Increment(ref numberOfExecutingReceives);
                 message = await receiveTask.ConfigureAwait(false);
-                Interlocked.Decrement(ref numberOfExecutingReceives);
 
                 circuitBreaker.Success();
             }
@@ -145,6 +144,11 @@
                 logger.WarnFormat("Failed to receive a message. Exception: {0}", exception.Message);
 
                 await circuitBreaker.Failure(exception).ConfigureAwait(false);
+            }
+            finally
+            {
+                // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
+                Interlocked.Decrement(ref numberOfExecutingReceives);
             }
 
             // By default, ASB client long polls for a minute and returns null if it times out

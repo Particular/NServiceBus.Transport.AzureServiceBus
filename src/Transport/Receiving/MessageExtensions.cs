@@ -54,7 +54,7 @@
 
         public static byte[] GetBody(this Message message)
         {
-            if (message.UserProperties.TryGetValue(TransportMessageHeaders.TransportEncoding, out var value) && value.ToString() == "wcf/byte-array")
+            if (message.UserProperties.TryGetValue(TransportMessageHeaders.TransportEncoding, out var value) && value.Equals("wcf/byte-array"))
             {
                 return message.GetBody<byte[]>();
             }
