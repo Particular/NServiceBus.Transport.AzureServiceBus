@@ -31,7 +31,7 @@
 
             foreach (var transportOperation in unicastTransportOperations)
             {
-                var receiverConnectionAndPathToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? receiverConnectionAndPath : (null, null);
+                var receiverConnectionAndPathToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? (null, null) : receiverConnectionAndPath;
 
                 var sender = messageSenderPool.GetMessageSender(transportOperation.Destination, receiverConnectionAndPathToUse);
 
@@ -54,7 +54,7 @@
 
             foreach (var transportOperation in multicastTransportOperations)
             {
-                var receiverConnectionAndPathToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? receiverConnectionAndPath : (null, null);
+                var receiverConnectionAndPathToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? (null, null) : receiverConnectionAndPath;
 
                 var sender = messageSenderPool.GetMessageSender(topicName, receiverConnectionAndPathToUse);
 
