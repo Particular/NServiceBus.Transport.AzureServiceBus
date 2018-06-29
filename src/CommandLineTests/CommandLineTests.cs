@@ -2,6 +2,7 @@
 {
     using System;
     using System.Diagnostics;
+    using System.Linq;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
@@ -119,7 +120,11 @@
 
             // rules
             var rules = await client.GetRulesAsync(topicName, subscriptionName);
-            Assert.IsEmpty(rules);
+            Assert.IsTrue(rules.Count == 1);
+
+            var rule = rules.First();
+            Assert.AreEqual("$default", rule.Name);
+            Assert.AreEqual(new FalseFilter().SqlExpression, ((FalseFilter)rule.Filter).SqlExpression);
         }
 
         async Task VerifyQueueExists(bool queueShouldExist)

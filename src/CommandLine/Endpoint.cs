@@ -3,7 +3,6 @@
     using System;
     using System.Threading.Tasks;
     using McMaster.Extensions.CommandLineUtils;
-    using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
 
     static class Endpoint
@@ -35,14 +34,6 @@
             catch (MessagingEntityAlreadyExistsException)
             {
                 Console.WriteLine("Subscription already exists, skipping creation");
-            }
-
-            try
-            {
-                await Rule.Delete(client, name, topicName, subscriptionName);
-            }
-            catch (MessagingEntityNotFoundException)
-            {
             }
         }
     }

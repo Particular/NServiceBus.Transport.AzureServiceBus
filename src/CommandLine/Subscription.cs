@@ -3,6 +3,7 @@
     using System;
     using System.Threading.Tasks;
     using McMaster.Extensions.CommandLineUtils;
+    using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
 
     static class Subscription
@@ -22,7 +23,7 @@
                 UserMetadata = endpointName.Value
             };
 
-            return client.CreateSubscriptionAsync(subscriptionDescription);
+            return client.CreateSubscriptionAsync(subscriptionDescription, new RuleDescription("$default", new FalseFilter()));
         }
     }
 }
