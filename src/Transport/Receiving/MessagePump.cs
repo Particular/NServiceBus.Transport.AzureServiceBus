@@ -258,8 +258,7 @@
 
             if (pushSettings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive)
             {
-                transportTransaction.Set(receiver.ServiceBusConnection);
-                transportTransaction.Set("IncomingQueue", pushSettings.InputQueue);
+                transportTransaction.Set((receiver.ServiceBusConnection, receiver.Path));
                 transportTransaction.Set("IncomingQueue.PartitionKey", incomingQueuePartitionKey);
             }
 

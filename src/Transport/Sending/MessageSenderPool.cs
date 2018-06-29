@@ -14,19 +14,20 @@
             this.connectionStringBuilder = connectionStringBuilder;
             this.tokenProvider = tokenProvider;
 
-            senders = new ConcurrentDictionary<(string, ServiceBusConnection, string), ConcurrentQueue<MessageSender>>();
+            senders = new ConcurrentDictionary<(string, (ServiceBusConnection, string)), ConcurrentQueue<MessageSender>>();
         }
 
-        public MessageSender GetMessageSender(string destination, ServiceBusConnection connection, string incomingQueue)
+        public MessageSender GetMessageSender(string destination, (ServiceBusConnection connection, string path) receiverConnectionAndPath)
         {
-            var sendersForDestination = senders.GetOrAdd((destination, connection, incomingQueue), tuple => new ConcurrentQueue<MessageSender>());
+            var sendersForDestination = senders.GetOrAdd((destination, receiverConnectionAndPath), _ => new ConcurrentQueue<MessageSender>());
 
             if (!sendersForDestination.TryDequeue(out var sender) || sender.IsClosedOrClosing)
             {
                 // Send-Via case
-                if (connection != null)
+                // TODO: replace with "if (receiverConnectionAndPath != (null, null))" when Resharper 2018.2 is out to support C# 7.3 syntax
+                if (receiverConnectionAndPath.path != null)
                 {
-                    sender = new MessageSender(connection, destination, incomingQueue);
+                    sender = new MessageSender(receiverConnectionAndPath.connection, destination, receiverConnectionAndPath.path);
                 }
                 else
                 {
@@ -53,7 +54,7 @@
 
             var connectionToUse = sender.OwnsConnection ? null : sender.ServiceBusConnection;
 
-            if (senders.TryGetValue((sender.Path, connectionToUse, sender.TransferDestinationPath), out var sendersForDestination))
+            if (senders.TryGetValue((sender.Path, (connectionToUse, sender.TransferDestinationPath)), out var sendersForDestination))
             {
                 sendersForDestination.Enqueue(sender);
             }
@@ -79,6 +80,6 @@
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly ITokenProvider tokenProvider;
 
-        ConcurrentDictionary<(string destination, ServiceBusConnection connnection, string incomingQueue), ConcurrentQueue<MessageSender>> senders;
+        ConcurrentDictionary<(string destination, (ServiceBusConnection connnection, string incomingQueue)), ConcurrentQueue<MessageSender>> senders;
     }
 }

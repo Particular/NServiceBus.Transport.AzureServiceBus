@@ -11,11 +11,11 @@
         {
             var pool = new MessageSenderPool(new ServiceBusConnectionStringBuilder("Endpoint=sb://fake.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=fake="), null);
 
-            var firstMessageSender = pool.GetMessageSender("dest", null, null);
+            var firstMessageSender = pool.GetMessageSender("dest", (null, null));
 
             pool.ReturnMessageSender(firstMessageSender);
 
-            var secondMessageSender = pool.GetMessageSender("dest", null, null);
+            var secondMessageSender = pool.GetMessageSender("dest", (null, null));
 
             Assert.AreEqual(firstMessageSender, secondMessageSender);
         }

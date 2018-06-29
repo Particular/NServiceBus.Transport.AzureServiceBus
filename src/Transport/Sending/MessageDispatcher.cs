@@ -21,8 +21,7 @@
         {
             // Assumption: we're not implementing batching as it will be done by ASB client
 
-            transaction.TryGet<ServiceBusConnection>(out var connection);
-            transaction.TryGet<string>("IncomingQueue", out var incomingQueue);
+            transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);
             transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
 
             var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
@@ -32,10 +31,9 @@
 
             foreach (var transportOperation in unicastTransportOperations)
             {
-                var connectionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : connection;
-                var incomingQueueToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : incomingQueue;
+                var receiverConnectionAndPathToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? receiverConnectionAndPath : (null, null);
 
-                var sender = messageSenderPool.GetMessageSender(transportOperation.Destination, connectionToUse, incomingQueueToUse);
+                var sender = messageSenderPool.GetMessageSender(transportOperation.Destination, receiverConnectionAndPathToUse);
 
                 try
                 {
@@ -56,10 +54,9 @@
 
             foreach (var transportOperation in multicastTransportOperations)
             {
-                var connectionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : connection;
-                var incomingQueueToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : incomingQueue;
+                var receiverConnectionAndPathToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? receiverConnectionAndPath : (null, null);
 
-                var sender = messageSenderPool.GetMessageSender(topicName, connectionToUse, incomingQueueToUse);
+                var sender = messageSenderPool.GetMessageSender(topicName, receiverConnectionAndPathToUse);
 
                 try
                 {
