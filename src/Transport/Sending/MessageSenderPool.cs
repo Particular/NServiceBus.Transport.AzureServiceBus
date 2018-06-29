@@ -51,7 +51,7 @@
                 return;
             }
 
-            var connectionToUse = !sender.OwnsConnection ? sender.ServiceBusConnection : null;
+            var connectionToUse = sender.OwnsConnection ? null : sender.ServiceBusConnection;
 
             if (senders.TryGetValue((sender.Path, connectionToUse, sender.TransferDestinationPath), out var sendersForDestination))
             {
