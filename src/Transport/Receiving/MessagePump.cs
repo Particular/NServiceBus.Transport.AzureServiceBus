@@ -100,17 +100,17 @@
                     var receiveTask = receiver.ReceiveAsync();
 
                     ProcessMessage(receiveTask)
-                        .ContinueWith(_ =>
+                        .ContinueWith((_, s) =>
                         {
                             try
                             {
-                                semaphore.Release();
+                                ((SemaphoreSlim)s).Release();
                             }
                             catch (ObjectDisposedException)
                             {
                                 // Can happen during endpoint shutdown
                             }
-                        }, TaskContinuationOptions.ExecuteSynchronously).Ignore();
+                        }, semaphore, TaskContinuationOptions.ExecuteSynchronously).Ignore();
                 }
             }
             catch (OperationCanceledException)
