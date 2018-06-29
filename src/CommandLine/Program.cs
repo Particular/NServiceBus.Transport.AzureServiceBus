@@ -2,7 +2,6 @@
 {
     using System;
     using McMaster.Extensions.CommandLineUtils;
-    using McMaster.Extensions.CommandLineUtils.Abstractions;
 
     class Program
     {
@@ -18,8 +17,7 @@
                 Description = $"Overrides environment variable '{CommandRunner.EnvironmentVariableName}'"
             };
 
-            // TODO: change to user ValueParserProvider when https://github.com/natemcmaster/CommandLineUtils/issues/109 is fixed
-            var size = new CommandOption<int>(Int32ValueParser.Singleton, "-s|--size", CommandOptionType.SingleValue)
+            var size = new CommandOption<int>(app.ValueParsers.GetParser<int>(), "-s|--size", CommandOptionType.SingleValue)
             {
                 Description = "Queue size in GB (defaults to 5)"
             };
