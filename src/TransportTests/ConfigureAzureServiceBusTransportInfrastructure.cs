@@ -10,6 +10,8 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
 {
     public TransportConfigurationResult Configure(SettingsHolder settings, TransportTransactionMode transactionMode)
     {
+        settings.Set<StartupDiagnosticEntries>(new StartupDiagnosticEntries());
+
         var result = new TransportConfigurationResult
         {
             PurgeInputQueueOnStartup = false
@@ -40,8 +42,8 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
         });
 
         var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
-
         result.TransportInfrastructure = transport.Initialize(settings, connectionString);
+
         return result;
     }
 
