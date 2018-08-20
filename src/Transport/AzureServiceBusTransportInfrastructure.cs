@@ -49,7 +49,7 @@
             return new TransportReceiveInfrastructure(
                 () => CreateMessagePump(),
                 () => CreateQueueCreator(),
-                () => namespacePermissions.CanManage());
+                () => namespacePermissions.CanReceive());
         }
 
         MessagePump CreateMessagePump()
@@ -129,7 +129,7 @@
                 ruleNameShortener = defaultNameShortener;
             }
 
-            return new SubscriptionManager(settings.LocalAddress(), topicName, connectionStringBuilder, tokenProvider, subscriptionNameShortener, ruleNameShortener);
+            return new SubscriptionManager(settings.LocalAddress(), topicName, connectionStringBuilder, tokenProvider, namespacePermissions, subscriptionNameShortener, ruleNameShortener);
         }
 
         public override EndpointInstance BindToLocalEndpoint(EndpointInstance instance) => instance;
