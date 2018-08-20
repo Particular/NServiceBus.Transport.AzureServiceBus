@@ -42,6 +42,25 @@
             }
 
             namespacePermissions = new NamespacePermissions(connectionStringBuilder, tokenProvider);
+
+            WriteStartupDiagnostics();
+        }
+
+        void WriteStartupDiagnostics()
+        {
+            settings.AddStartupDiagnosticsSection("Azure Service Bus .NET Standard", new
+            {
+                TopicName = settings.TryGet(SettingsKeys.TopicName, out string customTopicName) ? customTopicName : "default",
+                EntityMaximumSize = settings.TryGet(SettingsKeys.MaximumSizeInGB, out int entityMaxSize) ? entityMaxSize.ToString() : "default",
+                EnablePartitioning = settings.TryGet(SettingsKeys.EnablePartitioning, out bool enablePartitioning) ? enablePartitioning.ToString() : "default",
+                SubscriptionNameShortener = settings.TryGet(SettingsKeys.SubscriptionNameShortener, out Func<string, string> _) ? "configured" : "default",
+                RuleNameShortener = settings.TryGet(SettingsKeys.RuleNameShortener, out Func<string, string> _) ? "configured" : "default",
+                PrefetchMultiplier = settings.TryGet(SettingsKeys.PrefetchMultiplier, out int prefetchMultiplier) ? prefetchMultiplier.ToString() : "default",
+                PrefetchCount = settings.TryGet(SettingsKeys.PrefetchCount, out int prefetchCount) ? prefetchCount.ToString() : "default",
+                UseWebSockets = settings.TryGet(SettingsKeys.TransportType, out TransportType _) ? "True" : "default",
+                TimeToWaitBeforeTriggeringCircuitBreaker = settings.TryGet(SettingsKeys.TransportType, out TimeSpan timeToWait) ? timeToWait.ToString() : "default",
+                CustomTokenProvider = settings.TryGet(SettingsKeys.CustomTokenProvider, out ITokenProvider customTokenProvider) ? customTokenProvider.ToString() : "default"
+            });
         }
 
         public override TransportReceiveInfrastructure ConfigureReceiveInfrastructure()
