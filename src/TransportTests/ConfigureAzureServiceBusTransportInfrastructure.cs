@@ -10,6 +10,7 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
 {
     public TransportConfigurationResult Configure(SettingsHolder settings, TransportTransactionMode transactionMode)
     {
+        // TODO: remove when Core 7.1 is out
         settings.Set<StartupDiagnosticEntries>(new StartupDiagnosticEntries());
 
         var result = new TransportConfigurationResult
