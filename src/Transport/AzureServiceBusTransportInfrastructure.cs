@@ -5,6 +5,7 @@
     using System.Text;
     using System.Threading.Tasks;
     using DelayedDelivery;
+    using Features;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Primitives;
     using Performance.TimeToBeReceived;
@@ -40,6 +41,8 @@
             {
                 topicName = defaultTopicName;
             }
+
+            settings.EnableFeatureByDefault<TransactionScopeSuppressFeature>();
 
             namespacePermissions = new NamespacePermissions(connectionStringBuilder, tokenProvider);
 
