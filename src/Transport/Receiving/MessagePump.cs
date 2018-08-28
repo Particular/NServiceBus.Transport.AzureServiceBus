@@ -100,7 +100,7 @@
                     var receiveTask = receiver.ReceiveAsync();
 
                     ProcessMessage(receiveTask)
-                        .ContinueWith((_, s) =>
+                        .ContinueWith((t, s) =>
                         {
                             try
                             {
@@ -109,6 +109,11 @@
                             catch (ObjectDisposedException)
                             {
                                 // Can happen during endpoint shutdown
+                            }
+
+                            if (t.Exception != null)
+                            {
+                                logger.Debug($"Exception from {nameof(ProcessMessage)}: ", t.Exception.Flatten());
                             }
                         }, semaphore, TaskContinuationOptions.ExecuteSynchronously).Ignore();
                 }
