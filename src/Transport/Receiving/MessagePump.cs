@@ -18,7 +18,7 @@
         readonly int overriddenPrefetchCount;
         readonly TimeSpan timeToWaitBeforeTriggeringCircuitBreaker;
         readonly ITokenProvider tokenProvider;
-        int numberOfExecutingReceives;
+        long numberOfExecutingReceives;
 
         // Init
         Func<MessageContext, Task> onMessage;
@@ -275,7 +275,7 @@
 
             await receiveLoopTask.ConfigureAwait(false);
 
-            while (semaphore.CurrentCount + numberOfExecutingReceives != maxConcurrency)
+            while (semaphore.CurrentCount + Interlocked.Read(ref numberOfExecutingReceives) != maxConcurrency)
             {
                 await Task.Delay(50).ConfigureAwait(false);
             }
