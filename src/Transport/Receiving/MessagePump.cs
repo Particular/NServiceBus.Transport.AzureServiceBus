@@ -280,7 +280,7 @@
 
             await receiveLoopTask.ConfigureAwait(false);
 
-            while (semaphore.CurrentCount + numberOfExecutingReceives != maxConcurrency)
+            while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
             {
                 await Task.Delay(50).ConfigureAwait(false);
             }
