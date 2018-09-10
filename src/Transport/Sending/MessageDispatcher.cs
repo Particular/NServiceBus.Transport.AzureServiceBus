@@ -5,6 +5,7 @@
     using System.Transactions;
     using Extensibility;
     using Microsoft.Azure.ServiceBus;
+    using Microsoft.Azure.ServiceBus.Core;
 
     class MessageDispatcher : IDispatchMessages
     {
@@ -32,50 +33,44 @@
             foreach (var transportOperation in unicastTransportOperations)
             {
                 var receiverConnectionAndPathToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? (null, null) : receiverConnectionAndPath;
+                var destination = transportOperation.Destination;
 
-                var sender = messageSenderPool.GetMessageSender(transportOperation.Destination, receiverConnectionAndPathToUse);
-
-                try
-                {
-                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
-
-                    using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency))
-                    {
-                        // Invoke sender and immediately return it back to the pool w/o awaiting for completion
-                        tasks.Add(sender.SendAsync(message));
-                        scope?.Complete();
-                    }
-                }
-                finally
-                {
-                    messageSenderPool.ReturnMessageSender(sender);
-                }
+                tasks.Add(Send(destination, receiverConnectionAndPathToUse, transportOperation, partitionKey));
             }
 
             foreach (var transportOperation in multicastTransportOperations)
             {
                 var receiverConnectionAndPathToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? (null, null) : receiverConnectionAndPath;
 
-                var sender = messageSenderPool.GetMessageSender(topicName, receiverConnectionAndPathToUse);
+                tasks.Add(Send(topicName, receiverConnectionAndPathToUse, transportOperation, partitionKey));
+            }
 
-                try
+            return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
+        }
+
+        async Task Send(string destination, (ServiceBusConnection, string) receiverConnectionAndPathToUse, IOutgoingTransportOperation transportOperation, string partitionKey)
+        {
+            MessageSender sender = null;
+
+            try
+            {
+                sender = messageSenderPool.GetMessageSender(destination, receiverConnectionAndPathToUse);
+
+                var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
+
+                using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency))
                 {
-                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
-
-                    using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency))
-                    {
-                        // Invoke sender and immediately return it back to the pool w/o awaiting for completion
-                        tasks.Add(sender.SendAsync(message));
-                        scope?.Complete();
-                    }
+                    await sender.SendAsync(message).ConfigureAwait(false);
+                    scope?.Complete();
                 }
-                finally
+            }
+            finally
+            {
+                if (sender != null)
                 {
                     messageSenderPool.ReturnMessageSender(sender);
                 }
             }
-
-            return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
         }
 
         TransactionScope CreateTransactionScope(DispatchConsistency dispatchConsistency)
