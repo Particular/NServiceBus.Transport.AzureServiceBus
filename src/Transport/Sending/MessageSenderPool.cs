@@ -54,7 +54,16 @@
 
             var connectionToUse = sender.OwnsConnection ? null : sender.ServiceBusConnection;
 
-            if (senders.TryGetValue((sender.Path, (connectionToUse, sender.TransferDestinationPath)), out var sendersForDestination))
+            // TODO: remove workaround for ASB client bug when https://github.com/Azure/azure-service-bus-dotnet/issues/569 is fixed
+            var path = sender.Path;
+            var transferDestinationPath = sender.TransferDestinationPath;
+            if (!sender.OwnsConnection)
+            {
+                path = sender.TransferDestinationPath;
+                transferDestinationPath = sender.Path;
+            }
+
+            if (senders.TryGetValue((/*sender.Path*/path, (connectionToUse, /*sender.TransferDestinationPath*/transferDestinationPath)), out var sendersForDestination))
             {
                 sendersForDestination.Enqueue(sender);
             }
