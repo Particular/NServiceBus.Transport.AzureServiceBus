@@ -31,9 +31,19 @@
 
             foreach (var transportOperation in unicastTransportOperations)
             {
+                var destination = transportOperation.Destination;
+
+                // Workaround for reply-to address set by ASB transport
+                var index = transportOperation.Destination.IndexOf('@');
+
+                if (index > 0)
+                {
+                    destination = destination.Substring(0, index);
+                }
+
                 var receiverConnectionAndPathToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? (null, null) : receiverConnectionAndPath;
 
-                var sender = messageSenderPool.GetMessageSender(transportOperation.Destination, receiverConnectionAndPathToUse);
+                var sender = messageSenderPool.GetMessageSender(destination, receiverConnectionAndPathToUse);
 
                 try
                 {
