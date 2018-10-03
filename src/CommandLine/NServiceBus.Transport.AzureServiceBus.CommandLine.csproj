@@ -5,7 +5,7 @@
     <OutputType>Exe</OutputType>
     <ToolCommandName>asb-transport</ToolCommandName>
     <PackAsTool>True</PackAsTool>
-    <Description>.NET Core global tool to generate topology for NServiceBus endpoints running on Azure Service Bus</Description>
+    <Description>.NET Core global tool to manage Azure Service Bus entities for NServiceBus endpoints</Description>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
