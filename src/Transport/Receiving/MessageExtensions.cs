@@ -46,7 +46,7 @@
         {
             if (message.UserProperties.TryGetValue(TransportMessageHeaders.TransportEncoding, out var value) && value.Equals("wcf/byte-array"))
             {
-                return message.GetBody<byte[]>();
+                return message.GetBody<byte[]>() ?? Array.Empty<byte>();
             }
 
             return message.Body ?? Array.Empty<byte>();
