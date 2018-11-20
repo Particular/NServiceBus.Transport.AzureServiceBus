@@ -23,7 +23,7 @@
 
             try
             {
-                await client.QueueExistsAsync("$an-awesome-possum-queue").ConfigureAwait(false);
+                await client.QueueExistsAsync("$nservicebus-verification-queue").ConfigureAwait(false);
             }
             catch (UnauthorizedException)
             {
