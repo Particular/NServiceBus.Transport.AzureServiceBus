@@ -14,7 +14,7 @@
     <PackageReference Include="Particular.Packaging" Version="0.2.1" PrivateAssets="All" />
   </ItemGroup>
 
-  <ItemGroup Label="Needed for net461">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net461'" Label="Needed for net461">
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
   </ItemGroup>
 
