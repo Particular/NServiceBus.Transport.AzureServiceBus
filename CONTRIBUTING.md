@@ -17,16 +17,13 @@ top of things.
 Follow these steps to run the acceptance tests locally:
 
 * Add a new environment variable `Transport.UseSpecific` with the value `AzureServiceBusTransport`
-* Add a new environment variable `AzureServiceBusTransport.ConnectionString` containing a connection string to your Azure Servie Bus namespace
+* Add a new environment variable `AzureServiceBus_ConnectionString` containing a connection string to your Azure Servie Bus namespace
 
 ## Running Unit/Integration Tests
 
-To execute tests under `NServiceBus.AzureServiceBus.Tests`, two environment variables are required:
+To execute tests under `NServiceBus.AzureServiceBus.Tests`, the following environment variable is required:
 
 1. `AzureServiceBus_ConnectionString`
-1. `AzureServiceBus.ConnectionString.Fallback`
-
-Note that those should **not** point to the same namespace.
 
 ## Making Changes
 
