@@ -287,4 +287,4 @@ __pycache__/
 *.odx.cs
 *.xsd.cs
 /binaries/*
-/src/Tests/ApprovalFiles/APIApprovals.Approve.received.txt
+/src/Tests/ApprovalFiles/*
