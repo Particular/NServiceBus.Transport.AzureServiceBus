@@ -21,7 +21,7 @@ Follow these steps to run the acceptance tests locally:
 
 ## Running Unit/Integration Tests
 
-To execute tests under `NServiceBus.AzureServiceBus.Tests`, the following environment variable is required:
+To execute tests under `NServiceBus.Transport.AzureServiceBus.Tests`, the following environment variable is required:
 
 1. `AzureServiceBus_ConnectionString`
 
