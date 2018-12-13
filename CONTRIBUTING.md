@@ -13,22 +13,17 @@ top of things.
 * Fork the repository on GitHub
 
 ## Running the Acceptance Tests
- 
+
 Follow these steps to run the acceptance tests locally:
 
 * Add a new environment variable `Transport.UseSpecific` with the value `AzureServiceBusTransport`
-* Add a new environment variable `AzureServiceBusTransport.ConnectionString` containing a connection string to your Azure storage account 
-* Add a new environment variable `AzureServiceBusTransport.Topology` and set it to _ForwardingTopology_ to run tests configuring transport with `ForwardingTopology` topology. Don't setup `AzureServiceBusTransport.Topology` environment variable to run tests with `EndpointOrientedTopology` topology
-
+* Add a new environment variable `AzureServiceBus_ConnectionString` containing a connection string to your Azure Servie Bus namespace
 
 ## Running Unit/Integration Tests
 
-To execute tests under `NServiceBus.AzureServiceBus.Tests`, two environment variables are required:
+To execute tests under `NServiceBus.Transport.AzureServiceBus.Tests`, the following environment variable is required:
 
-1. `AzureServiceBus.ConnectionString`
-1. `AzureServiceBus.ConnectionString.Fallback`
-
-Note that those should **not** point to the same namespace.
+1. `AzureServiceBus_ConnectionString`
 
 ## Making Changes
 
@@ -47,14 +42,13 @@ Note that those should **not** point to the same namespace.
 * Run build.bat in the root to assure nothing else was accidentally broken.
 * We have a resharper layer that applies our coding standards so make sure that you're "all green in reshaper"
 
-
 ## Submitting Changes
 
 * Sign the [Contributor License Agreement](http://www.particular.net/contributors-license-agreement-consent).
 * Push your changes to a feature branch in your fork of the repository.
 * Submit a pull request to the NServiceBus repository
 
-# Additional Resources
+## Additional Resources
 
 * [General GitHub documentation](http://help.github.com/)
 * [GitHub pull request documentation](http://help.github.com/send-pull-requests/)

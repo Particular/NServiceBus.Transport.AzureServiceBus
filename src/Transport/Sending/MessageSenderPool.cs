@@ -24,21 +24,19 @@
             if (!sendersForDestination.TryDequeue(out var sender) || sender.IsClosedOrClosing)
             {
                 // Send-Via case
-                // TODO: replace with "if (receiverConnectionAndPath != (null, null))" when Resharper inspection 2018.2 is on TeamCity and is set to be default to support C# 7.3 syntax
-                // https://github.com/Particular/Deployment/issues/98
-                if (receiverConnectionAndPath.path != null)
+                if (receiverConnectionAndPath != (null, null))
                 {
-                    sender = new MessageSender(receiverConnectionAndPath.connection, destination, receiverConnectionAndPath.path);
+                    sender = new MessageSender(receiverConnectionAndPath.connection, destination, receiverConnectionAndPath.path, RetryPolicy.NoRetry);
                 }
                 else
                 {
                     if (tokenProvider == null)
                     {
-                        sender = new MessageSender(connectionStringBuilder.GetNamespaceConnectionString(), destination);
+                        sender = new MessageSender(connectionStringBuilder.GetNamespaceConnectionString(), destination, RetryPolicy.NoRetry);
                     }
                     else
                     {
-                        sender = new MessageSender(connectionStringBuilder.Endpoint, destination, tokenProvider, connectionStringBuilder.TransportType);
+                        sender = new MessageSender(connectionStringBuilder.Endpoint, destination, tokenProvider, connectionStringBuilder.TransportType, RetryPolicy.NoRetry);
                     }
                 }
             }

@@ -75,11 +75,11 @@
 
             if (tokenProvider == null)
             {
-                receiver = new MessageReceiver(connectionStringBuilder.GetNamespaceConnectionString(), pushSettings.InputQueue, receiveMode, retryPolicy: default, prefetchCount);
+                receiver = new MessageReceiver(connectionStringBuilder.GetNamespaceConnectionString(), pushSettings.InputQueue, receiveMode, retryPolicy: RetryPolicy.NoRetry, prefetchCount);
             }
             else
             {
-                receiver = new MessageReceiver(connectionStringBuilder.Endpoint, pushSettings.InputQueue, tokenProvider, connectionStringBuilder.TransportType, receiveMode, retryPolicy: default, prefetchCount);
+                receiver = new MessageReceiver(connectionStringBuilder.Endpoint, pushSettings.InputQueue, tokenProvider, connectionStringBuilder.TransportType, receiveMode, retryPolicy: RetryPolicy.NoRetry, prefetchCount);
             }
 
             semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);

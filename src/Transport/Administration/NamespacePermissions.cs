@@ -33,6 +33,10 @@
             {
                 return StartupCheckResult.Failed(exception.Message);
             }
+            finally
+            {
+                await client.CloseAsync().ConfigureAwait(false);
+            }
 
             return StartupCheckResult.Success;
         }
