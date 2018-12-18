@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CommandLine\NServiceBus.Transport.AzureServiceBus.CommandLine.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Label="Required to force the main project's transitive dependencies to be copied">
+    <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="2.2.5" />
+    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
+    <PackageReference Include="NUnit" Version="3.11.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="NServiceBus.Transport.AzureServiceBus.CommandLine.runtimeconfig.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

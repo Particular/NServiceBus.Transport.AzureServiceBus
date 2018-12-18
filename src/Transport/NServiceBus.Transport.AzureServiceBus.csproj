@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\NServiceBus.snk</AssemblyOriginatorKeyFile>
+    <Description>Azure Service Bus transport for NServiceBus</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="[3.2.1, 4.0.0)" />
+    <PackageReference Include="NServiceBus" Version="[7.0.1, 8.0.0)" />
+    <PackageReference Include="Particular.CodeRules" Version="0.2.1" PrivateAssets="All" />
+    <PackageReference Include="Particular.Packaging" Version="0.2.1" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net461'" Label="Needed for net461">
+    <PackageReference Include="System.ValueTuple" Version="4.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.DotNet.Analyzers.Compatibility" Version="0.2.12-alpha" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>
