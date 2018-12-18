@@ -26,17 +26,17 @@
                 // Send-Via case
                 if (receiverConnectionAndPath != (null, null))
                 {
-                    sender = new MessageSender(receiverConnectionAndPath.connection, destination, receiverConnectionAndPath.path, RetryPolicy.NoRetry);
+                    sender = new MessageSender(receiverConnectionAndPath.connection, destination, receiverConnectionAndPath.path);
                 }
                 else
                 {
                     if (tokenProvider == null)
                     {
-                        sender = new MessageSender(connectionStringBuilder.GetNamespaceConnectionString(), destination, RetryPolicy.NoRetry);
+                        sender = new MessageSender(connectionStringBuilder.GetNamespaceConnectionString(), destination);
                     }
                     else
                     {
-                        sender = new MessageSender(connectionStringBuilder.Endpoint, destination, tokenProvider, connectionStringBuilder.TransportType, RetryPolicy.NoRetry);
+                        sender = new MessageSender(connectionStringBuilder.Endpoint, destination, tokenProvider, connectionStringBuilder.TransportType);
                     }
                 }
             }
