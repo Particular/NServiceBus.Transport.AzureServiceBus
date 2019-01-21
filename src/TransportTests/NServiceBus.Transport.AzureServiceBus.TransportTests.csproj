@@ -16,4 +16,8 @@
     <PackageReference Include="NUnit3TestAdapter" Version="3.12.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Force the latest version of the transitive dependencies">
+    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.3.0" />
+  </ItemGroup>
+
 </Project>
