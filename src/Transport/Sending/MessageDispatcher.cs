@@ -21,8 +21,9 @@
         {
             // Assumption: we're not implementing batching as it will be done by ASB client
 
-            transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);
-            transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
+            var receiverConnectionAndPathFound = transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);
+            var partitionKeyFound = transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
+            var shouldSuppressTransaction = !(receiverConnectionAndPathFound && partitionKeyFound);
 
             var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
             var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
@@ -49,7 +50,7 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency))
+                    using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency, shouldSuppressTransaction))
                     {
                         // Invoke sender and immediately return it back to the pool w/o awaiting for completion
                         tasks.Add(sender.SendAsync(message));
@@ -72,7 +73,7 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency))
+                    using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency, shouldSuppressTransaction))
                     {
                         // Invoke sender and immediately return it back to the pool w/o awaiting for completion
                         tasks.Add(sender.SendAsync(message));
@@ -88,9 +89,9 @@
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
         }
 
-        TransactionScope CreateTransactionScope(DispatchConsistency dispatchConsistency)
+        TransactionScope CreateTransactionScope(DispatchConsistency dispatchConsistency, bool shouldSuppressTransaction)
         {
-            return dispatchConsistency == DispatchConsistency.Isolated
+            return dispatchConsistency == DispatchConsistency.Isolated || shouldSuppressTransaction
                 ? new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled)
                 : null;
         }
