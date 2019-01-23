@@ -23,7 +23,7 @@
 
             var receiverConnectionAndPathFound = transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);
             var partitionKeyFound = transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
-            var shouldSuppressTransaction = !(receiverConnectionAndPathFound && partitionKeyFound);
+            var shouldSuppressTransaction = !(receiverConnectionAndPathFound && partitionKeyFound) && Transaction.Current != null;
 
             var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
             var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
