@@ -70,7 +70,7 @@
         /// <param name="prefetchCount">The prefetch count to use.</param>
         public static TransportExtensions<AzureServiceBusTransport> PrefetchCount(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int prefetchCount)
         {
-            Guard.AgainstNegativeAndZero(nameof(prefetchCount), prefetchCount);
+            Guard.AgainstNegative(nameof(prefetchCount), prefetchCount);
 
             transportExtensions.GetSettings().Set(SettingsKeys.PrefetchCount, prefetchCount);
 
