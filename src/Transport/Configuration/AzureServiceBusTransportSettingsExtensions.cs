@@ -78,7 +78,7 @@
         }
 
         /// <summary>
-        /// Overrides the default time to wait before triggering a circuit breaker that initiates the endpoint shutdown procedure when the message pump cannot successfully receieve a message.
+        /// Overrides the default time to wait before triggering a circuit breaker that initiates the endpoint shutdown procedure when the message pump cannot successfully receive a message.
         /// </summary>
         /// <param name="transportExtensions"></param>
         /// <param name="timeToWait">The time to wait before triggering the circuit breaker.</param>
