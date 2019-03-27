@@ -28,6 +28,8 @@
 
             ApplyCorrelationId(message, outgoingMessage.Headers);
 
+            ApplyContentType(message, outgoingMessage.Headers);
+
             SetReplyToAddress(message, outgoingMessage.Headers);
 
             CopyHeaders(message, outgoingMessage.Headers);
@@ -59,6 +61,14 @@
             if (headers.TryGetValue(Headers.CorrelationId, out var correlationId))
             {
                 message.CorrelationId = correlationId;
+            }
+        }
+
+        static void ApplyContentType(Message message, Dictionary<string, string> headers)
+        {
+            if (headers.TryGetValue(Headers.ContentType, out var contentType))
+            {
+                message.ContentType = contentType;
             }
         }
 
