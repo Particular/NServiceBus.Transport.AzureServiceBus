@@ -25,6 +25,7 @@
         Func<ErrorContext, Task<ErrorHandleResult>> onError;
         RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
         PushSettings pushSettings;
+        CriticalError criticalError;
 
         // Start
         Task receiveLoopTask;
@@ -53,6 +54,7 @@
 
             this.onMessage = onMessage;
             this.onError = onError;
+            this.criticalError = criticalError;
             pushSettings = settings;
 
             circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{settings.InputQueue}'", timeToWaitBeforeTriggeringCircuitBreaker, criticalError);
@@ -243,7 +245,7 @@
                 }
                 catch (Exception onErrorException)
                 {
-                    logger.WarnFormat("Recoverability failed for message with ID {0}. The message will be retried. Exception details: {1}", messageId, onErrorException);
+                    criticalError.Raise($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException);
 
                     await receiver.SafeAbandonAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
                 }
