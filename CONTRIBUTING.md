@@ -44,7 +44,6 @@ To execute tests under `NServiceBus.Transport.AzureServiceBus.Tests`, the follow
 
 ## Submitting Changes
 
-* Sign the [Contributor License Agreement](http://www.particular.net/contributors-license-agreement-consent).
 * Push your changes to a feature branch in your fork of the repository.
 * Submit a pull request to the NServiceBus repository
 
