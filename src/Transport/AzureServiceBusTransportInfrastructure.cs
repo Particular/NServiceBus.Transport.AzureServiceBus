@@ -51,7 +51,7 @@
 
         void WriteStartupDiagnostics()
         {
-            settings.AddStartupDiagnosticsSection("Azure Service Bus .NET Standard", new
+            settings.AddStartupDiagnosticsSection("Azure Service Bus transport", new
             {
                 TopicName = settings.TryGet(SettingsKeys.TopicName, out string customTopicName) ? customTopicName : "default",
                 EntityMaximumSize = settings.TryGet(SettingsKeys.MaximumSizeInGB, out int entityMaxSize) ? entityMaxSize.ToString() : "default",
