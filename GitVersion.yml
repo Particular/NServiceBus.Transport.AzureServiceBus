@@ -1,5 +1,10 @@
 assembly-versioning-scheme: Major
 next-version: 1.0
 branches:
-  develop:
+  master:
+    mode: ContinuousDeployment
     tag: alpha
+    increment: Minor
+    tracks-release-branches: true
+  release:
+    tag: ''
