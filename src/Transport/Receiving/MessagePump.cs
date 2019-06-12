@@ -15,7 +15,7 @@
     {
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly int prefetchMultiplier;
-        readonly int overriddenPrefetchCount;
+        readonly int? overriddenPrefetchCount;
         readonly TimeSpan timeToWaitBeforeTriggeringCircuitBreaker;
         readonly ITokenProvider tokenProvider;
         int numberOfExecutingReceives;
@@ -36,7 +36,7 @@
 
         static readonly ILog logger = LogManager.GetLogger<MessagePump>();
 
-        public MessagePump(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, int prefetchMultiplier, int overriddenPrefetchCount, TimeSpan timeToWaitBeforeTriggeringCircuitBreaker)
+        public MessagePump(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, int prefetchMultiplier, int? overriddenPrefetchCount, TimeSpan timeToWaitBeforeTriggeringCircuitBreaker)
         {
             this.connectionStringBuilder = connectionStringBuilder;
             this.tokenProvider = tokenProvider;
@@ -66,11 +66,11 @@
         {
             maxConcurrency = limitations.MaxConcurrency;
 
-            var prefetchCount = overriddenPrefetchCount;
+            var prefetchCount = maxConcurrency * prefetchMultiplier;
 
-            if (prefetchCount == 0)
+            if (overriddenPrefetchCount.HasValue)
             {
-                prefetchCount = maxConcurrency * prefetchMultiplier;
+                prefetchCount = overriddenPrefetchCount.Value;
             }
 
             var receiveMode = pushSettings.RequiredTransactionMode == TransportTransactionMode.None ? ReceiveMode.ReceiveAndDelete : ReceiveMode.PeekLock;
