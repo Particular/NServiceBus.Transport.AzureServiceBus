@@ -36,5 +36,29 @@
                 Console.WriteLine("Subscription already exists, skipping creation");
             }
         }
+
+        public static async Task Subscribe(ManagementClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandOption<int> size, CommandArgument eventType, CommandOption ruleName)
+        {
+            try
+            {
+                await Rule.Create(client, name, topicName, subscriptionName, eventType, ruleName);
+            }
+            catch (MessagingEntityAlreadyExistsException)
+            {
+                Console.WriteLine($"Rule already exists, skipping creation. Verify SQL filter matches '[NServiceBus.EnclosedMessageTypes] LIKE '%{eventType.Value}%'.");
+            }
+        }
+        
+        public static async Task Unsubscribe(ManagementClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandOption<int> size, CommandArgument eventType, CommandOption ruleName)
+        {
+            try
+            {
+                await Rule.Delete(client, name, topicName, subscriptionName, eventType, ruleName);
+            }
+            catch (MessagingEntityAlreadyExistsException)
+            {
+                Console.WriteLine("Rule does not exists, skipping deletion");
+            }
+        }
     }
 }
