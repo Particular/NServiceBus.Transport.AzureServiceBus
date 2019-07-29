@@ -70,7 +70,7 @@
 
                     subscribeCommand.OnExecute(async () =>
                     {
-                        await CommandRunner.Run(connectionString, client => Endpoint.Subscribe(client, name, topicName, subscriptionName, size, eventType, shortenedRuleName));
+                        await CommandRunner.Run(connectionString, client => Endpoint.Subscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
 
                         Console.WriteLine($"Endpoint '{name.Value}' subscription for '{eventType.Value}' is ready.");
                     });
@@ -89,7 +89,7 @@
 
                     unsubscribeCommand.OnExecute(async () =>
                     {
-                        await CommandRunner.Run(connectionString, client => Endpoint.Unsubscribe(client, name, topicName, subscriptionName, size, eventType, shortenedRuleName));
+                        await CommandRunner.Run(connectionString, client => Endpoint.Unsubscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
 
                         Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{eventType.Value}'.");
                     });
