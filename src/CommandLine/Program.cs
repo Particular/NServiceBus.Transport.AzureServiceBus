@@ -59,9 +59,9 @@
 
                 endpointCommand.Command("subscribe", subscribeCommand =>
                 {
-                    subscribeCommand.Description = "Creates required subscription for an endpoint.";
+                    subscribeCommand.Description = "Subscribes an endpoint to an event.";
                     var name = subscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
-                    var eventType = subscribeCommand.Argument("event-type", "Subscribe to event type full name (e.g. MyNamespace.MyMessage) (required)").IsRequired();
+                    var eventType = subscribeCommand.Argument("event-type", "Full name of the event to subscribe to (e.g. MyNamespace.MyMessage) (required)").IsRequired();
 
                     subscribeCommand.Options.Add(connectionString);
                     var topicName = subscribeCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
@@ -72,15 +72,15 @@
                     {
                         await CommandRunner.Run(connectionString, client => Endpoint.Subscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
 
-                        Console.WriteLine($"Endpoint '{name.Value}' subscription for '{eventType.Value}' is ready.");
+                        Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{eventType.Value}'.");
                     });
                 });
 
                 endpointCommand.Command("unsubscribe", unsubscribeCommand =>
                 {
-                    unsubscribeCommand.Description = "Deletes subscription for an endpoint.";
+                    unsubscribeCommand.Description = "Unsubscribes an endpoint from an event.";
                     var name = unsubscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
-                    var eventType = unsubscribeCommand.Argument("event-type", "Subscribe to event type full name (e.g. MyNamespace.MyMessage) (required)").IsRequired();
+                    var eventType = unsubscribeCommand.Argument("event-type", "Full name of the event to unsubscribe from (e.g. MyNamespace.MyMessage) (required)").IsRequired();
 
                     unsubscribeCommand.Options.Add(connectionString);
                     var topicName = unsubscribeCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
