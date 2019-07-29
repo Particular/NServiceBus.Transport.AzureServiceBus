@@ -57,7 +57,7 @@
             }
             catch (MessagingEntityAlreadyExistsException)
             {
-                Console.WriteLine("Rule does not exists, skipping deletion");
+                Console.WriteLine("Rule does not exist, skipping deletion");
             }
         }
     }
