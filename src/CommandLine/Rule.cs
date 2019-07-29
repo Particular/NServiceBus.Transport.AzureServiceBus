@@ -13,8 +13,8 @@
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
             var eventToSubscribeTo = eventType.Value;
             var ruleNameToUse = ruleName.HasValue() ? ruleName.Value() : eventToSubscribeTo;
-
             var description = new RuleDescription(ruleNameToUse, new SqlFilter($"[NServiceBus.EnclosedMessageTypes] LIKE '%{eventToSubscribeTo}%'"));
+
             return client.CreateRuleAsync(topicNameToUse, subscriptionNameToUse, description);
         }
 
@@ -24,7 +24,7 @@
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
             var eventToSubscribeTo = eventType.Value;
             var ruleNameToUse = ruleName.HasValue() ? ruleName.Value() : eventToSubscribeTo;
-            
+
             return client.DeleteRuleAsync(topicNameToUse, subscriptionNameToUse, ruleNameToUse);
         }
     }

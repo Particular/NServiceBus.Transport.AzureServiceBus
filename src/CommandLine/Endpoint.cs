@@ -48,7 +48,7 @@
                 Console.WriteLine($"Rule already exists, skipping creation. Verify SQL filter matches '[NServiceBus.EnclosedMessageTypes] LIKE '%{eventType.Value}%'.");
             }
         }
-        
+
         public static async Task Unsubscribe(ManagementClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandOption<int> size, CommandArgument eventType, CommandOption ruleName)
         {
             try

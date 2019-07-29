@@ -56,18 +56,17 @@
                         Console.WriteLine($"Endpoint '{name.Value}' is ready.");
                     });
                 });
-                
+
                 endpointCommand.Command("subscribe", subscribeCommand =>
                 {
                     subscribeCommand.Description = "Creates required subscription for an endpoint.";
                     var name = subscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
                     var eventType = subscribeCommand.Argument("event-type", "Subscribe to event type full name (e.g. MyNamespace.MyMessage) (required)").IsRequired();
-                    
+
                     subscribeCommand.Options.Add(connectionString);
                     var topicName = subscribeCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                     var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                     var shortenedRuleName = subscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
-                    
 
                     subscribeCommand.OnExecute(async () =>
                     {
@@ -76,18 +75,17 @@
                         Console.WriteLine($"Endpoint '{name.Value}' subscription for '{eventType.Value}' is ready.");
                     });
                 });
-                
+
                 endpointCommand.Command("unsubscribe", unsubscribeCommand =>
                 {
                     unsubscribeCommand.Description = "Deletes subscription for an endpoint.";
                     var name = unsubscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
                     var eventType = unsubscribeCommand.Argument("event-type", "Subscribe to event type full name (e.g. MyNamespace.MyMessage) (required)").IsRequired();
-                    
+
                     unsubscribeCommand.Options.Add(connectionString);
                     var topicName = unsubscribeCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                     var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                     var shortenedRuleName = unsubscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
-                    
 
                     unsubscribeCommand.OnExecute(async () =>
                     {

@@ -40,31 +40,31 @@
             await DeleteTopic(TopicName);
 
             await Execute($"endpoint create {EndpointName} --topic {TopicName}");
-            
+
             await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName}");
             await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
             await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
-            
+
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
             await VerifySubscription(TopicName, SubscriptionName, QueueName);
         }
-        
+
         [Test]
         public async Task Unsubscribe_endpoint()
         {
             await DeleteQueue(QueueName);
             await DeleteTopic(TopicName);
-            
+
             await Execute($"endpoint create {EndpointName} --topic {TopicName}");
             await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName}");
             await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
             await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
-            
+
             await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --topic {TopicName}");
             await Execute($"endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
             await Execute($"endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
-            
+
             await VerifySubscriptionContainsOnlyDefaultRule(TopicName, SubscriptionName);
         }
 
@@ -173,7 +173,7 @@
             Assert.AreEqual("MyNamespace1.MyMessage2", myMessage2WithNamespace.Name);
             Assert.AreEqual(new SqlFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage2%'").SqlExpression, ((SqlFilter)myMessage2WithNamespace.Filter).SqlExpression);
         }
-        
+
         async Task VerifySubscriptionContainsOnlyDefaultRule(string topicName, string subscriptionName)
         {
             // rules
