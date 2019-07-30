@@ -7,8 +7,6 @@
 
     static class CommandRunner
     {
-        public const string EnvironmentVariableName = "AzureServiceBus_ConnectionString";
-
         public static async Task Run(CommandOption connectionString, Func<ManagementClient, Task> func)
         {
             var connectionStringToUse = connectionString.HasValue() ? connectionString.Value() : Environment.GetEnvironmentVariable(EnvironmentVariableName);
@@ -19,5 +17,7 @@
 
             await client.CloseAsync();
         }
+
+        public const string EnvironmentVariableName = "AzureServiceBus_ConnectionString";
     }
 }
