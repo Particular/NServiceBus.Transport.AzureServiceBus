@@ -3,6 +3,7 @@
     using System;
     using System.Threading.Tasks;
     using McMaster.Extensions.CommandLineUtils;
+    using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
 
     static class Endpoint
@@ -55,7 +56,7 @@
             {
                 await Rule.Delete(client, name, topicName, subscriptionName, eventType, ruleName);
             }
-            catch (MessagingEntityAlreadyExistsException)
+            catch (MessagingEntityNotFoundException)
             {
                 Console.WriteLine("Rule does not exist, skipping deletion");
             }
