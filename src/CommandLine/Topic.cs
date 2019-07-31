@@ -6,8 +6,6 @@
 
     static class Topic
     {
-        public const string DefaultTopicName = "bundle-1";
-
         public static Task Create(ManagementClient client, CommandOption topicName, CommandOption<int> size, CommandOption partitioning)
         {
             var topicNameToUse = topicName.HasValue() ? topicName.Value() : DefaultTopicName;
@@ -21,5 +19,7 @@
 
             return client.CreateTopicAsync(topicDescription);
         }
+
+        public const string DefaultTopicName = "bundle-1";
     }
 }

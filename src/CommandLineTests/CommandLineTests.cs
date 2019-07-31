@@ -30,7 +30,42 @@
 
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
+            await VerifySubscriptionContainsOnlyDefaultRule(TopicName, SubscriptionName);
+        }
+
+        [Test]
+        public async Task Subscribe_endpoint()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            await Execute($"endpoint create {EndpointName} --topic {TopicName}");
+
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName}");
+            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
+            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
+
+            await VerifyQueue(QueueName);
+            await VerifyTopic(TopicName);
             await VerifySubscription(TopicName, SubscriptionName, QueueName);
+        }
+
+        [Test]
+        public async Task Unsubscribe_endpoint()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            await Execute($"endpoint create {EndpointName} --topic {TopicName}");
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName}");
+            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
+            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
+
+            await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --topic {TopicName}");
+            await Execute($"endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
+            await Execute($"endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
+
+            await VerifySubscriptionContainsOnlyDefaultRule(TopicName, SubscriptionName);
         }
 
         [Test]
@@ -120,11 +155,34 @@
 
             // rules
             var rules = await client.GetRulesAsync(topicName, subscriptionName);
+            Assert.IsTrue(rules.Count == 4);
+
+            var defaultRule = rules.ElementAt(0);
+            Assert.AreEqual("$default", defaultRule.Name);
+            Assert.AreEqual(new FalseFilter().SqlExpression, ((FalseFilter)defaultRule.Filter).SqlExpression);
+
+            var customRuleNameRule = rules.ElementAt(1);
+            Assert.AreEqual("CustomRuleName", customRuleNameRule.Name);
+            Assert.AreEqual(new SqlFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage3%'").SqlExpression, ((SqlFilter)customRuleNameRule.Filter).SqlExpression);
+
+            var myMessage1Rule = rules.ElementAt(2);
+            Assert.AreEqual("MyMessage1", myMessage1Rule.Name);
+            Assert.AreEqual(new SqlFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyMessage1%'").SqlExpression, ((SqlFilter)myMessage1Rule.Filter).SqlExpression);
+
+            var myMessage2WithNamespace = rules.ElementAt(3);
+            Assert.AreEqual("MyNamespace1.MyMessage2", myMessage2WithNamespace.Name);
+            Assert.AreEqual(new SqlFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage2%'").SqlExpression, ((SqlFilter)myMessage2WithNamespace.Filter).SqlExpression);
+        }
+
+        async Task VerifySubscriptionContainsOnlyDefaultRule(string topicName, string subscriptionName)
+        {
+            // rules
+            var rules = await client.GetRulesAsync(topicName, subscriptionName);
             Assert.IsTrue(rules.Count == 1);
 
-            var rule = rules.First();
-            Assert.AreEqual("$default", rule.Name);
-            Assert.AreEqual(new FalseFilter().SqlExpression, ((FalseFilter)rule.Filter).SqlExpression);
+            var defaultRule = rules.ElementAt(0);
+            Assert.AreEqual("$default", defaultRule.Name);
+            Assert.AreEqual(new FalseFilter().SqlExpression, ((FalseFilter)defaultRule.Filter).SqlExpression);
         }
 
         async Task VerifyQueueExists(bool queueShouldExist)
