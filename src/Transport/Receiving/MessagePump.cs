@@ -243,6 +243,10 @@
                         await receiver.SafeAbandonAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
                     }
                 }
+                catch (Exception onErrorException) when (onErrorException is MessageLockLostException || onErrorException is ServiceBusTimeoutException)
+                {
+                    logger.Debug("Failed to execute recoverability.", onErrorException);
+                }
                 catch (Exception onErrorException)
                 {
                     criticalError.Raise($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException);
