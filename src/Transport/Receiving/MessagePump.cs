@@ -101,23 +101,7 @@
 
                     var receiveTask = receiver.ReceiveAsync();
 
-                    ProcessMessage(receiveTask)
-                        .ContinueWith((t, s) =>
-                        {
-                            try
-                            {
-                                ((SemaphoreSlim)s).Release();
-                            }
-                            catch (ObjectDisposedException)
-                            {
-                                // Can happen during endpoint shutdown
-                            }
-
-                            if (t.Exception != null)
-                            {
-                                logger.Debug($"Exception from {nameof(ProcessMessage)}: ", t.Exception.Flatten());
-                            }
-                        }, semaphore, TaskContinuationOptions.ExecuteSynchronously).Ignore();
+                    ProcessMessage(receiveTask).Ignore();
                 }
             }
             catch (OperationCanceledException)
@@ -126,6 +110,29 @@
         }
 
         async Task ProcessMessage(Task<Message> receiveTask)
+        {
+            try
+            {
+                await InnerProcessMessage(receiveTask).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                logger.Debug($"Exception from {nameof(ProcessMessage)}: ", ex);
+            }
+            finally
+            {
+                try
+                {
+                    semaphore.Release();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Can happen during endpoint shutdown
+                }
+            }
+        }
+
+        async Task InnerProcessMessage(Task<Message> receiveTask)
         {
             Message message = null;
 
