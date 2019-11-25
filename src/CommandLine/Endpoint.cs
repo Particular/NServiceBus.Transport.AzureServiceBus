@@ -16,7 +16,7 @@
             }
             catch (MessagingEntityAlreadyExistsException)
             {
-                Console.WriteLine("Queue already exists, skipping creation");
+                Console.WriteLine($"Queue '{name}' already exists, skipping creation");
             }
 
             try
@@ -25,7 +25,7 @@
             }
             catch (MessagingEntityAlreadyExistsException)
             {
-                Console.WriteLine("Topic already exists, skipping creation");
+                Console.WriteLine($"Topic '{topicName}' already exists, skipping creation");
             }
 
             try
@@ -34,7 +34,7 @@
             }
             catch (MessagingEntityAlreadyExistsException)
             {
-                Console.WriteLine("Subscription already exists, skipping creation");
+                Console.WriteLine($"Subscription '{name}' already exists, skipping creation");
             }
         }
 
@@ -46,7 +46,7 @@
             }
             catch (MessagingEntityAlreadyExistsException)
             {
-                Console.WriteLine($"Rule already exists, skipping creation. Verify SQL filter matches '[NServiceBus.EnclosedMessageTypes] LIKE '%{eventType.Value}%'.");
+                Console.WriteLine($"Rule '{name}' for topic '{topicName}' and subscription '{subscriptionName}' already exists, skipping creation. Verify SQL filter matches '[NServiceBus.EnclosedMessageTypes] LIKE '%{eventType.Value}%'.");
             }
         }
 
@@ -58,7 +58,7 @@
             }
             catch (MessagingEntityNotFoundException)
             {
-                Console.WriteLine("Rule does not exist, skipping deletion");
+                Console.WriteLine($"Rule '{name}' for topic '{topicName}' and subscription '{subscriptionName}' does not exist, skipping deletion");
             }
         }
     }
