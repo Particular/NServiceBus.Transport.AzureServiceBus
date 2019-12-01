@@ -8,7 +8,7 @@
 
     static class MessageExtensions
     {
-        public static Dictionary<string, string> GetNServiceBusHeaders(this Message message)
+        public static Dictionary<string, string> GetRequiredHeaders(this Message message)
         {
             var headers = new Dictionary<string, string>(message.UserProperties.Count);
 
@@ -28,6 +28,8 @@
             {
                 headers[Headers.CorrelationId] = message.CorrelationId;
             }
+
+            headers["ASB.System.LockedUntilUtc"] = message.SystemProperties.LockedUntilUtc.ToString(dateTimeFormat);
 
             return headers;
         }
@@ -51,5 +53,7 @@
 
             return message.Body ?? Array.Empty<byte>();
         }
+
+        const string dateTimeFormat = "yyyy-MM-dd HH:mm:ss:ffffff Z";
     }
 }

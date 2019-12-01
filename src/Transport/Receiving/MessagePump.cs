@@ -180,7 +180,7 @@
             try
             {
                 messageId = message.GetMessageId();
-                headers = message.GetNServiceBusHeaders();
+                headers = message.GetRequiredHeaders();
                 body = message.GetBody();
             }
             catch (Exception exception)
@@ -233,7 +233,7 @@
                     {
                         var transportTransaction = CreateTransportTransaction(message.PartitionKey);
 
-                        var errorContext = new ErrorContext(exception, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount);
+                        var errorContext = new ErrorContext(exception, message.GetRequiredHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount);
 
                         result = await onError(errorContext).ConfigureAwait(false);
 
