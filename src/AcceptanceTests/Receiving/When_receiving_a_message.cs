@@ -5,6 +5,7 @@
     using AcceptanceTesting;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
+    using Pipeline;
 
     public class When_receiving_a_message
     {
@@ -13,24 +14,22 @@
         {
             await Scenario.Define<Context>()
                 .WithEndpoint<Endpoint>(b => b.When(
-                    (session, c) => session.SendLocal(new Message
-                    {
-                        Property = "value"
-                    })))
-                .Done(c => c.LockedUntilUtcHeaderFound)
+                    (session, c) => session.SendLocal(new Message())))
+                .Done(c => c.LockedUntilUtcFromHandler == c.LockedUntilUtcFromBehavior)
                 .Run();
         }
 
         public class Context : ScenarioContext
         {
-            public bool LockedUntilUtcHeaderFound { get; set; }
+            public DateTime LockedUntilUtcFromHandler { get; set; }
+            public DateTime LockedUntilUtcFromBehavior { get; set; }
         }
 
         public class Endpoint : EndpointConfigurationBuilder
         {
             public Endpoint()
             {
-                EndpointSetup<DefaultServer>();
+                EndpointSetup<DefaultServer>(c => c.Pipeline.Register(b => new CheckContextForValidUntilUtc(b.Build<Context>()), "Behavior to validate context bag contains ValidUntilUtc value"));
             }
 
             public class Handler : IHandleMessages<Message>
@@ -39,16 +38,32 @@
 
                 public Task Handle(Message request, IMessageHandlerContext context)
                 {
-                    TestContext.LockedUntilUtcHeaderFound = context.Extensions.TryGet<DateTime>("Message.SystemProperties.LockedUntilUtc", out _);
+                    TestContext.LockedUntilUtcFromHandler = context.Extensions.Get<DateTime>(LockedUntilUtcKey);
 
-                    return Task.FromResult(0);
+                    return Task.CompletedTask;
                 }
             }
+
+            public class CheckContextForValidUntilUtc : Behavior<ITransportReceiveContext>
+            {
+                readonly Context testContext;
+
+                public CheckContextForValidUntilUtc(Context context)
+                {
+                    testContext = context;
+                }
+
+                public override Task Invoke(ITransportReceiveContext context, Func<Task> next)
+                {
+                    testContext.LockedUntilUtcFromBehavior = context.Extensions.Get<DateTime>(LockedUntilUtcKey);
+
+                    return Task.CompletedTask;
+                }
+            }
+
+            const string LockedUntilUtcKey = "Message.SystemProperties.LockedUntilUtc";
         }
 
-        public class Message : IMessage
-        {
-            public string Property { get; set; }
-        }
+        public class Message : IMessage {}
     }
 }
