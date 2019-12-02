@@ -57,7 +57,7 @@
                 {
                     testContext.LockedUntilUtcFromBehavior = context.Extensions.Get<DateTime>(LockedUntilUtcKey);
 
-                    return Task.CompletedTask;
+                    return next();
                 }
             }
 
