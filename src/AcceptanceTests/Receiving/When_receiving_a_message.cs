@@ -29,7 +29,8 @@
         {
             public Endpoint()
             {
-                EndpointSetup<DefaultServer>(c => c.Pipeline.Register(b => new CheckContextForValidUntilUtc(b.Build<Context>()), "Behavior to validate context bag contains the original brokered message"));
+                EndpointSetup<DefaultServer>((c, d) =>
+                    c.Pipeline.Register(b => new CheckContextForValidUntilUtc(d.ScenarioContext as Context), "Behavior to validate context bag contains the original brokered message"));
             }
 
             public class Handler : IHandleMessages<Message>
