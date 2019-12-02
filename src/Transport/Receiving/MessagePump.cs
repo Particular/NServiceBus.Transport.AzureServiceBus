@@ -204,7 +204,7 @@
                     var transportTransaction = CreateTransportTransaction(message.PartitionKey);
 
                     var contextBag = new ContextBag();
-                    contextBag.Set(message.SystemProperties);
+                    contextBag.Set(message);
 
                     var messageContext = new MessageContext(messageId, headers, body, transportTransaction, receiveCancellationTokenSource, contextBag);
 
