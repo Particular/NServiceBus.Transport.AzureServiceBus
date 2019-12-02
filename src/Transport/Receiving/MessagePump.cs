@@ -204,7 +204,7 @@
                     var transportTransaction = CreateTransportTransaction(message.PartitionKey);
 
                     var contextBag = new ContextBag();
-                    contextBag.Set("Message.SystemProperties.LockedUntilUtc", message.SystemProperties.LockedUntilUtc);
+                    contextBag.Set(message.SystemProperties);
 
                     var messageContext = new MessageContext(messageId, headers, body, transportTransaction, receiveCancellationTokenSource, contextBag);
 
