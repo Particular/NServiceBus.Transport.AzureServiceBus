@@ -15,14 +15,13 @@
             await Scenario.Define<Context>()
                 .WithEndpoint<Endpoint>(b => b.When(
                     (session, c) => session.SendLocal(new Message())))
-                .Done(c => c.LockedUntilUtcFromHandler == c.LockedUntilUtcFromBehavior)
+                .Done(c => c.OriginalMessageFound)
                 .Run();
         }
 
         public class Context : ScenarioContext
         {
-            public DateTime LockedUntilUtcFromHandler { get; set; }
-            public DateTime LockedUntilUtcFromBehavior { get; set; }
+            public bool OriginalMessageFound { get; set; }
         }
 
         public class Endpoint : EndpointConfigurationBuilder
@@ -39,7 +38,7 @@
 
                 public Task Handle(Message request, IMessageHandlerContext context)
                 {
-                    TestContext.LockedUntilUtcFromHandler = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>().SystemProperties.LockedUntilUtc;
+                    TestContext.OriginalMessageFound = TestContext.OriginalMessageFound && context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>() != null;
 
                     return Task.CompletedTask;
                 }
@@ -56,7 +55,7 @@
 
                 public override Task Invoke(ITransportReceiveContext context, Func<Task> next)
                 {
-                    testContext.LockedUntilUtcFromBehavior = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>().SystemProperties.LockedUntilUtc;
+                    testContext.OriginalMessageFound = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>() != null;
 
                     return next();
                 }
