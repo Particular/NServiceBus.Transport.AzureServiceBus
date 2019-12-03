@@ -203,7 +203,10 @@
                 {
                     var transportTransaction = CreateTransportTransaction(message.PartitionKey);
 
-                    var messageContext = new MessageContext(messageId, headers, body, transportTransaction, receiveCancellationTokenSource, new ContextBag());
+                    var contextBag = new ContextBag();
+                    contextBag.Set(message);
+
+                    var messageContext = new MessageContext(messageId, headers, body, transportTransaction, receiveCancellationTokenSource, contextBag);
 
                     using (var scope = CreateTransactionScope())
                     {
