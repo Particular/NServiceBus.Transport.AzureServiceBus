@@ -52,8 +52,9 @@
             }
 
             var connectionToUse = sender.OwnsConnection ? null : sender.ServiceBusConnection;
+            var path = sender.OwnsConnection ? sender.Path : sender.TransferDestinationPath;
 
-            if (senders.TryGetValue((sender.Path, (connectionToUse, sender.TransferDestinationPath)), out var sendersForDestination))
+            if (senders.TryGetValue((path, (connectionToUse, sender.ViaEntityPath)), out var sendersForDestination))
             {
                 sendersForDestination.Enqueue(sender);
             }
