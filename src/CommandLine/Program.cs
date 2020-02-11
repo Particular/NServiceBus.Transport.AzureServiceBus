@@ -49,7 +49,7 @@
                     var topicName = createCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                     var subscriptionName = createCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
 
-                    createCommand.OnExecute(async () =>
+                    createCommand.OnExecuteAsync(async ct =>
                     {
                         await CommandRunner.Run(connectionString, client => Endpoint.Create(client, name, topicName, subscriptionName, size, partitioning));
 
@@ -68,7 +68,7 @@
                     var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                     var shortenedRuleName = subscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
 
-                    subscribeCommand.OnExecute(async () =>
+                    subscribeCommand.OnExecuteAsync(async ct =>
                     {
                         await CommandRunner.Run(connectionString, client => Endpoint.Subscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
 
@@ -87,7 +87,7 @@
                     var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                     var shortenedRuleName = unsubscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
 
-                    unsubscribeCommand.OnExecute(async () =>
+                    unsubscribeCommand.OnExecuteAsync(async ct =>
                     {
                         await CommandRunner.Run(connectionString, client => Endpoint.Unsubscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
 
@@ -114,7 +114,7 @@
                     createCommand.Options.Add(size);
                     createCommand.Options.Add(partitioning);
 
-                    createCommand.OnExecute(async () =>
+                    createCommand.OnExecuteAsync(async ct =>
                     {
                         await CommandRunner.Run(connectionString, client => Queue.Create(client, name, size, partitioning));
 
@@ -129,7 +129,7 @@
                     deleteCommand.Description = "Deletes a queue";
                     var name = deleteCommand.Argument("name", "Name of the queue (required)").IsRequired();
 
-                    deleteCommand.OnExecute(async () =>
+                    deleteCommand.OnExecuteAsync(async ct =>
                     {
                         await CommandRunner.Run(connectionString, client => Queue.Delete(client, name));
 
