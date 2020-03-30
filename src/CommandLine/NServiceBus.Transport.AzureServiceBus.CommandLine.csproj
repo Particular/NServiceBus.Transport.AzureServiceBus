@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="2.6.0" />
+    <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="3.0.0" />
     <PackageReference Include="Microsoft.Azure.ServiceBus" Version="4.1.2" />
     <PackageReference Include="Particular.Packaging" Version="0.6.2" PrivateAssets="All" />
   </ItemGroup>
