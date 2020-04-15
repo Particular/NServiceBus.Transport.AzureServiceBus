@@ -13,5 +13,6 @@
         public const string RuleNameShortener = Base + nameof(RuleNameShortener);
         public const string TransportType = Base + nameof(TransportType);
         public const string CustomTokenProvider = Base + nameof(CustomTokenProvider);
+        public const string CustomRetryPolicy = Base + nameof(CustomRetryPolicy);
     }
 }
