@@ -88,7 +88,9 @@
                 timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
             }
 
-            return new MessagePump(connectionStringBuilder, tokenProvider, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker);
+            settings.TryGet(SettingsKeys.CustomRetryPolicy, out RetryPolicy retryPolicy);
+
+            return new MessagePump(connectionStringBuilder, tokenProvider, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker, retryPolicy);
         }
 
         QueueCreator CreateQueueCreator()
@@ -129,7 +131,9 @@
 
         MessageDispatcher CreateMessageDispatcher()
         {
-            messageSenderPool = new MessageSenderPool(connectionStringBuilder, tokenProvider);
+            settings.TryGet(SettingsKeys.CustomRetryPolicy, out RetryPolicy retryPolicy);
+
+            messageSenderPool = new MessageSenderPool(connectionStringBuilder, tokenProvider, retryPolicy);
 
             return new MessageDispatcher(messageSenderPool, topicName);
         }

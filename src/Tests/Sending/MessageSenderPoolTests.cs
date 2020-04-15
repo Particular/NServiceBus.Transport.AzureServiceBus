@@ -10,7 +10,7 @@
         [Test]
         public async Task Should_get_cached_sender_per_destination()
         {
-            var pool = new MessageSenderPool(new ServiceBusConnectionStringBuilder(connectionString), null);
+            var pool = new MessageSenderPool(new ServiceBusConnectionStringBuilder(connectionString), null, null);
 
             try
             {
@@ -37,7 +37,7 @@
         [Test]
         public async Task Should_return_correctly_configured_sender()
         {
-            var pool = new MessageSenderPool(new ServiceBusConnectionStringBuilder(connectionString), null);
+            var pool = new MessageSenderPool(new ServiceBusConnectionStringBuilder(connectionString), null, null);
             var connection = new ServiceBusConnection(connectionString);
 
             try
@@ -66,7 +66,7 @@
         [Test]
         public async Task Should_get_cached_sender_per_destination_for_send_via()
         {
-            var pool = new MessageSenderPool(new ServiceBusConnectionStringBuilder(connectionString), null);
+            var pool = new MessageSenderPool(new ServiceBusConnectionStringBuilder(connectionString), null, null);
             var connection = new ServiceBusConnection(connectionString);
 
             try

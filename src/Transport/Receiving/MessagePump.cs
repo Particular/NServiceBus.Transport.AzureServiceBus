@@ -17,6 +17,7 @@
         readonly int prefetchMultiplier;
         readonly int? overriddenPrefetchCount;
         readonly TimeSpan timeToWaitBeforeTriggeringCircuitBreaker;
+        readonly RetryPolicy retryPolicy;
         readonly ITokenProvider tokenProvider;
         int numberOfExecutingReceives;
 
@@ -36,13 +37,15 @@
 
         static readonly ILog logger = LogManager.GetLogger<MessagePump>();
 
-        public MessagePump(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, int prefetchMultiplier, int? overriddenPrefetchCount, TimeSpan timeToWaitBeforeTriggeringCircuitBreaker)
+        public MessagePump(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, int prefetchMultiplier, int? overriddenPrefetchCount,
+            TimeSpan timeToWaitBeforeTriggeringCircuitBreaker, RetryPolicy retryPolicy)
         {
             this.connectionStringBuilder = connectionStringBuilder;
             this.tokenProvider = tokenProvider;
             this.prefetchMultiplier = prefetchMultiplier;
             this.overriddenPrefetchCount = overriddenPrefetchCount;
             this.timeToWaitBeforeTriggeringCircuitBreaker = timeToWaitBeforeTriggeringCircuitBreaker;
+            this.retryPolicy = retryPolicy;
         }
 
         public Task Init(Func<MessageContext, Task> onMessage, Func<ErrorContext, Task<ErrorHandleResult>> onError, CriticalError criticalError, PushSettings settings)
@@ -77,11 +80,11 @@
 
             if (tokenProvider == null)
             {
-                receiver = new MessageReceiver(connectionStringBuilder.GetNamespaceConnectionString(), pushSettings.InputQueue, receiveMode, retryPolicy: default, prefetchCount);
+                receiver = new MessageReceiver(connectionStringBuilder.GetNamespaceConnectionString(), pushSettings.InputQueue, receiveMode, retryPolicy: retryPolicy, prefetchCount);
             }
             else
             {
-                receiver = new MessageReceiver(connectionStringBuilder.Endpoint, pushSettings.InputQueue, tokenProvider, connectionStringBuilder.TransportType, receiveMode, retryPolicy: default, prefetchCount);
+                receiver = new MessageReceiver(connectionStringBuilder.Endpoint, pushSettings.InputQueue, tokenProvider, connectionStringBuilder.TransportType, receiveMode, retryPolicy: retryPolicy, prefetchCount);
             }
 
             semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
