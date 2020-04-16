@@ -62,7 +62,8 @@
                 PrefetchCount = settings.TryGet(SettingsKeys.PrefetchCount, out int? prefetchCount) ? prefetchCount.ToString() : "default",
                 UseWebSockets = settings.TryGet(SettingsKeys.TransportType, out TransportType _) ? "True" : "default",
                 TimeToWaitBeforeTriggeringCircuitBreaker = settings.TryGet(SettingsKeys.TransportType, out TimeSpan timeToWait) ? timeToWait.ToString() : "default",
-                CustomTokenProvider = settings.TryGet(SettingsKeys.CustomTokenProvider, out ITokenProvider customTokenProvider) ? customTokenProvider.ToString() : "default"
+                CustomTokenProvider = settings.TryGet(SettingsKeys.CustomTokenProvider, out ITokenProvider customTokenProvider) ? customTokenProvider.ToString() : "default",
+                CustomRetryPolicy = settings.TryGet(SettingsKeys.CustomRetryPolicy, out RetryPolicy customRetryPolicy) ? customRetryPolicy.ToString() : "default"
             });
         }
 
@@ -88,7 +89,9 @@
                 timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
             }
 
-            return new MessagePump(connectionStringBuilder, tokenProvider, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker);
+            settings.TryGet(SettingsKeys.CustomRetryPolicy, out RetryPolicy retryPolicy);
+
+            return new MessagePump(connectionStringBuilder, tokenProvider, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker, retryPolicy);
         }
 
         QueueCreator CreateQueueCreator()
@@ -129,7 +132,9 @@
 
         MessageDispatcher CreateMessageDispatcher()
         {
-            messageSenderPool = new MessageSenderPool(connectionStringBuilder, tokenProvider);
+            settings.TryGet(SettingsKeys.CustomRetryPolicy, out RetryPolicy retryPolicy);
+
+            messageSenderPool = new MessageSenderPool(connectionStringBuilder, tokenProvider, retryPolicy);
 
             return new MessageDispatcher(messageSenderPool, topicName);
         }

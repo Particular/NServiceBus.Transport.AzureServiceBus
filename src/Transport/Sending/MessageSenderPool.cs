@@ -9,10 +9,11 @@
 
     class MessageSenderPool
     {
-        public MessageSenderPool(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider)
+        public MessageSenderPool(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, RetryPolicy retryPolicy)
         {
             this.connectionStringBuilder = connectionStringBuilder;
             this.tokenProvider = tokenProvider;
+            this.retryPolicy = retryPolicy;
 
             senders = new ConcurrentDictionary<(string, (ServiceBusConnection, string)), ConcurrentQueue<MessageSender>>();
         }
@@ -26,17 +27,17 @@
                 // Send-Via case
                 if (receiverConnectionAndPath != (null, null))
                 {
-                    sender = new MessageSender(receiverConnectionAndPath.connection, destination, receiverConnectionAndPath.path);
+                    sender = new MessageSender(receiverConnectionAndPath.connection, destination, receiverConnectionAndPath.path, retryPolicy);
                 }
                 else
                 {
                     if (tokenProvider == null)
                     {
-                        sender = new MessageSender(connectionStringBuilder.GetNamespaceConnectionString(), destination);
+                        sender = new MessageSender(connectionStringBuilder.GetNamespaceConnectionString(), destination, retryPolicy);
                     }
                     else
                     {
-                        sender = new MessageSender(connectionStringBuilder.Endpoint, destination, tokenProvider, connectionStringBuilder.TransportType);
+                        sender = new MessageSender(connectionStringBuilder.Endpoint, destination, tokenProvider, connectionStringBuilder.TransportType, retryPolicy);
                     }
                 }
             }
@@ -79,6 +80,7 @@
 
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly ITokenProvider tokenProvider;
+        readonly RetryPolicy retryPolicy;
 
         ConcurrentDictionary<(string destination, (ServiceBusConnection connnection, string incomingQueue)), ConcurrentQueue<MessageSender>> senders;
     }

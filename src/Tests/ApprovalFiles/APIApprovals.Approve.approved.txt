@@ -9,6 +9,7 @@ namespace NServiceBus
     }
     public class static AzureServiceBusTransportSettingsExtensions
     {
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Microsoft.Azure.ServiceBus.RetryPolicy retryPolicy) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenProvider(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Microsoft.Azure.ServiceBus.Primitives.ITokenProvider tokenProvider) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EnablePartitioning(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EntityMaximumSize(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int maximumSizeInGB) { }

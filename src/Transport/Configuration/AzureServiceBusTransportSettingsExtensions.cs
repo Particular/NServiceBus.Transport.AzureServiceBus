@@ -167,5 +167,19 @@
 
             return transportExtensions;
         }
+
+        /// <summary>
+        /// Overrides the default retry policy with a custom implementation.
+        /// </summary>
+        /// <param name="transportExtensions"></param>
+        /// <param name="retryPolicy">A custom retry policy to be used.</param>
+        public static TransportExtensions<AzureServiceBusTransport> CustomRetryPolicy(this TransportExtensions<AzureServiceBusTransport> transportExtensions, RetryPolicy retryPolicy)
+        {
+            Guard.AgainstNull(nameof(retryPolicy), retryPolicy);
+
+            transportExtensions.GetSettings().Set(SettingsKeys.CustomRetryPolicy, retryPolicy);
+
+            return transportExtensions;
+        }
     }
 }
