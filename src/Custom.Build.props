@@ -1,9 +1,0 @@
-<Project>
-
-  <Target Name="SuppressNuGetPathLengthWarning" AfterTargets="GetVersion" BeforeTargets="CoreCompile" Condition="'$(TEAMCITY_VERSION)' != ''">
-    <PropertyGroup Condition="'$(GitVersion_BranchName)' != 'master' And $(GitVersion_BranchName.StartsWith('release-')) == false">
-      <NoWarn>$(NoWarn);NU5123</NoWarn>
-    </PropertyGroup>
-  </Target>
-
-</Project>
