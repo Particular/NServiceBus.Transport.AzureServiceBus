@@ -10,6 +10,8 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
 {
     public TransportConfigurationResult Configure(SettingsHolder settings, TransportTransactionMode transactionMode)
     {
+        CreateStartupDiagnostics(settings);
+
         var result = new TransportConfigurationResult
         {
             PurgeInputQueueOnStartup = false
@@ -34,6 +36,7 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
                         var hex = b.ToString("x2");
                         sb.Append(hex);
                     }
+
                     return sb.ToString();
                 }
             }
@@ -49,4 +52,13 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
     {
         return Task.CompletedTask;
     }
+
+    static void CreateStartupDiagnostics(SettingsHolder settings)
+    {
+        var ctor = hostingSettingsType.GetConstructors()[0];
+        var hostingSettings = ctor.Invoke(new object[] {settings});
+        settings.Set(hostingSettingsType.FullName, hostingSettings);
+    }
+
+    static Type hostingSettingsType = typeof(IEndpointInstance).Assembly.GetType("NServiceBus.HostingComponent+Settings", true);
 }
