@@ -5,22 +5,22 @@ namespace NServiceBus.Transport.AzureServiceBus
     using System.Transactions;
     using Pipeline;
 
-    class TransactionScopeSuppressBehavior : Behavior<IIncomingPhysicalMessageContext>
+    class TransactionScopeSuppressBehavior : IBehavior<IIncomingPhysicalMessageContext, IIncomingPhysicalMessageContext>
     {
-        public override async Task Invoke(IIncomingPhysicalMessageContext context, Func<Task> next)
+        public async Task Invoke(IIncomingPhysicalMessageContext context, Func<IIncomingPhysicalMessageContext, Task> next)
         {
             if (Transaction.Current != null)
             {
                 using (var tx = new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    await next().ConfigureAwait(false);
+                    await next(context).ConfigureAwait(false);
 
                     tx.Complete();
                 }
             }
             else
             {
-                await next().ConfigureAwait(false);
+                await next(context).ConfigureAwait(false);
             }
         }
 
