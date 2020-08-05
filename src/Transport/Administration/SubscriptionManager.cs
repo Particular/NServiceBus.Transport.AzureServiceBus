@@ -62,8 +62,10 @@
                 {
                 }
             }
-
-            await client.CloseAsync().ConfigureAwait(false);
+            finally
+            {
+                await client.CloseAsync().ConfigureAwait(false);
+            }
         }
 
         public async Task Unsubscribe(Type eventType, ContextBag context)
@@ -81,8 +83,10 @@
             catch (MessagingEntityNotFoundException)
             {
             }
-
-            await client.CloseAsync().ConfigureAwait(false);
+            finally
+            {
+                await client.CloseAsync().ConfigureAwait(false);
+            }
         }
 
         async Task CheckForManagePermissions()
