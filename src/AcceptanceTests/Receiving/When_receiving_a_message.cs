@@ -34,11 +34,16 @@
 
             public class Handler : IHandleMessages<Message>
             {
-                public Context TestContext { get; set; }
+                Context testContext;
+
+                public Handler(Context testContext)
+                {
+                    this.testContext = testContext;
+                }
 
                 public Task Handle(Message request, IMessageHandlerContext context)
                 {
-                    TestContext.NativeMessageFound = TestContext.NativeMessageFound && context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>() != null;
+                    testContext.NativeMessageFound = testContext.NativeMessageFound && context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>() != null;
 
                     return Task.CompletedTask;
                 }
