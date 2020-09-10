@@ -2,8 +2,10 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using NServiceBus;
 using NServiceBus.AcceptanceTesting.Support;
+using NServiceBus.MessageMutator;
 using NServiceBus.Transport.AzureServiceBus.AcceptanceTests;
 
 public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestExecution
@@ -19,7 +21,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 
         transport.RuleNameShortener(name => Shorten(name));
 
-        configuration.RegisterComponents(c => c.ConfigureComponent<TestIndependenceMutator>(DependencyLifecycle.SingleInstance));
+        configuration.RegisterComponents(c => c.AddSingleton<IMutateOutgoingTransportMessages, TestIndependenceMutator>());
 
         configuration.Pipeline.Register("TestIndependenceBehavior", typeof(TestIndependenceSkipBehavior), "Skips messages not created during the current test.");
 
