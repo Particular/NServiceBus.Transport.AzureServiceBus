@@ -40,7 +40,6 @@
         static void ApplyDeliveryConstraints(Message message, List<DeliveryConstraint> deliveryConstraints)
         {
             // TODO: review when delaying with TimeSpan is supported https://github.com/Azure/azure-service-bus-dotnet/issues/160
-
             if (deliveryConstraints.TryGet(out DoNotDeliverBefore doNotDeliverBefore))
             {
                 message.ScheduledEnqueueTimeUtc = doNotDeliverBefore.At;

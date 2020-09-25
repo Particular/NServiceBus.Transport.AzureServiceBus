@@ -20,7 +20,6 @@
         public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, ContextBag context)
         {
             // Assumption: we're not implementing batching as it will be done by ASB client
-
             var receiverConnectionAndPathFound = transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);
             var partitionKeyFound = transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
             var shouldSuppressTransaction = !(receiverConnectionAndPathFound && partitionKeyFound) && Transaction.Current != null;
