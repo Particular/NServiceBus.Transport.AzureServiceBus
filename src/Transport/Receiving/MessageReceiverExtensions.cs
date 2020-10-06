@@ -1,28 +1,43 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System.Threading.Tasks;
+    using System.Transactions;
     using Microsoft.Azure.ServiceBus.Core;
 
     static class MessageReceiverExtensions
     {
-        public static Task SafeCompleteAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken)
+        public static async Task SafeCompleteAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, CommittableTransaction committableTransaction = null)
         {
             if (transportTransactionMode != TransportTransactionMode.None)
             {
-                return messageReceiver.CompleteAsync(lockToken);
+                var oldAmbient = Transaction.Current;
+                try
+                {
+                    Transaction.Current = committableTransaction;
+                    await messageReceiver.CompleteAsync(lockToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    Transaction.Current = oldAmbient;
+                }
             }
-
-            return Task.CompletedTask;
         }
 
-        public static Task SafeAbandonAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken)
+        public static async Task SafeAbandonAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, CommittableTransaction committableTransaction = null)
         {
             if (transportTransactionMode != TransportTransactionMode.None)
             {
-                return messageReceiver.AbandonAsync(lockToken);
+                var oldAmbient = Transaction.Current;
+                try
+                {
+                    Transaction.Current = committableTransaction;
+                    await messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    Transaction.Current = oldAmbient;
+                }
             }
-
-            return Task.CompletedTask;
         }
 
         public static Task SafeDeadLetterAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, string deadLetterReason, string deadLetterErrorDescription)

@@ -203,24 +203,24 @@
             try
             {
                 using (var receiveCancellationTokenSource = new CancellationTokenSource())
+                using (var transaction = CreateTransaction())
                 {
-                    var transportTransaction = CreateTransportTransaction(message.PartitionKey);
+                    var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
                     var contextBag = new ContextBag();
                     contextBag.Set(message);
 
-                    var messageContext = new MessageContext(messageId, headers, body, transportTransaction, receiveCancellationTokenSource, contextBag);
+                    var messageContext = new MessageContext(messageId, headers, body, transportTransaction,
+                        receiveCancellationTokenSource, contextBag);
 
-                    using (var scope = CreateTransactionScope())
+                    await onMessage(messageContext).ConfigureAwait(false);
+
+                    if (receiveCancellationTokenSource.IsCancellationRequested == false)
                     {
-                        await onMessage(messageContext).ConfigureAwait(false);
+                        await receiver.SafeCompleteAsync(pushSettings.RequiredTransactionMode, lockToken, transaction)
+                            .ConfigureAwait(false);
 
-                        if (receiveCancellationTokenSource.IsCancellationRequested == false)
-                        {
-                            await receiver.SafeCompleteAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
-
-                            scope?.Complete();
-                        }
+                        transaction?.Commit();
                     }
 
                     if (receiveCancellationTokenSource.IsCancellationRequested)
@@ -235,9 +235,9 @@
                 {
                     ErrorHandleResult result;
 
-                    using (var scope = CreateTransactionScope())
+                    using (var transaction = CreateTransaction())
                     {
-                        var transportTransaction = CreateTransportTransaction(message.PartitionKey);
+                        var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
                         var errorContext = new ErrorContext(exception, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount);
 
@@ -245,10 +245,10 @@
 
                         if (result == ErrorHandleResult.Handled)
                         {
-                            await receiver.SafeCompleteAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                            await receiver.SafeCompleteAsync(pushSettings.RequiredTransactionMode, lockToken, transaction).ConfigureAwait(false);
                         }
 
-                        scope?.Complete();
+                        transaction?.Commit();
                     }
 
                     if (result == ErrorHandleResult.RetryRequired)
@@ -269,18 +269,18 @@
             }
         }
 
-        TransactionScope CreateTransactionScope()
+        CommittableTransaction CreateTransaction()
         {
             return pushSettings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
-                ? new TransactionScope(TransactionScopeOption.RequiresNew, new TransactionOptions
+                ? new CommittableTransaction(new TransactionOptions
                 {
                     IsolationLevel = IsolationLevel.Serializable,
                     Timeout = TransactionManager.MaximumTimeout
-                }, TransactionScopeAsyncFlowOption.Enabled)
+                })
                 : null;
         }
 
-        TransportTransaction CreateTransportTransaction(string incomingQueuePartitionKey)
+        TransportTransaction CreateTransportTransaction(string incomingQueuePartitionKey, CommittableTransaction transaction)
         {
             var transportTransaction = new TransportTransaction();
 
@@ -288,6 +288,7 @@
             {
                 transportTransaction.Set((receiver.ServiceBusConnection, receiver.Path));
                 transportTransaction.Set("IncomingQueue.PartitionKey", incomingQueuePartitionKey);
+                transportTransaction.Set(transaction);
             }
 
             return transportTransaction;

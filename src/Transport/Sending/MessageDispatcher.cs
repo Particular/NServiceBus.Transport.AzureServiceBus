@@ -22,6 +22,7 @@
             // Assumption: we're not implementing batching as it will be done by ASB client
             var receiverConnectionAndPathFound = transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);
             var partitionKeyFound = transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
+            var transactionFound = transaction.TryGet<CommittableTransaction>(out var committableTransaction);
             var shouldSuppressTransaction = !(receiverConnectionAndPathFound && partitionKeyFound) && Transaction.Current != null;
 
             var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
@@ -49,11 +50,20 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency, shouldSuppressTransaction))
+                    var oldAmbient = Transaction.Current;
+                    try
                     {
-                        // Invoke sender and immediately return it back to the pool w/o awaiting for completion
-                        tasks.Add(sender.SendAsync(message));
-                        scope?.Complete();
+                        Transaction.Current = committableTransaction;
+                        using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency, shouldSuppressTransaction))
+                        {
+                            // Invoke sender and immediately return it back to the pool w/o awaiting for completion
+                            tasks.Add(sender.SendAsync(message));
+                            scope?.Complete();
+                        }
+                    }
+                    finally
+                    {
+                        Transaction.Current = oldAmbient;
                     }
                 }
                 finally
@@ -72,11 +82,21 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency, shouldSuppressTransaction))
+
+                    var oldAmbient = Transaction.Current;
+                    try
                     {
-                        // Invoke sender and immediately return it back to the pool w/o awaiting for completion
-                        tasks.Add(sender.SendAsync(message));
-                        scope?.Complete();
+                        Transaction.Current = committableTransaction;
+                        using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency, shouldSuppressTransaction))
+                        {
+                            // Invoke sender and immediately return it back to the pool w/o awaiting for completion
+                            tasks.Add(sender.SendAsync(message));
+                            scope?.Complete();
+                        }
+                    }
+                    finally
+                    {
+                        Transaction.Current = oldAmbient;
                     }
                 }
                 finally
