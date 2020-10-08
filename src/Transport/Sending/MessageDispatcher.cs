@@ -50,16 +50,12 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    var oldAmbient = Transaction.Current;
-                    try
+                    using (var scope = transactionToUse.ToScope())
                     {
-                        Transaction.Current = transactionToUse;
                         // Invoke sender and immediately return it back to the pool w/o awaiting for completion
                         tasks.Add(sender.SendAsync(message));
-                    }
-                    finally
-                    {
-                        Transaction.Current = oldAmbient;
+
+                        scope.Complete();
                     }
                 }
                 finally
@@ -79,17 +75,12 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-
-                    var oldAmbient = Transaction.Current;
-                    try
+                    using (var scope = transactionToUse.ToScope())
                     {
-                        Transaction.Current = transactionToUse;
                         // Invoke sender and immediately return it back to the pool w/o awaiting for completion
                         tasks.Add(sender.SendAsync(message));
-                    }
-                    finally
-                    {
-                        Transaction.Current = oldAmbient;
+
+                        scope.Complete();
                     }
                 }
                 finally

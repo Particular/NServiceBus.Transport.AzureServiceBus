@@ -10,15 +10,11 @@
         {
             if (transportTransactionMode != TransportTransactionMode.None)
             {
-                var oldAmbient = Transaction.Current;
-                try
+                using (var scope = committableTransaction.ToScope())
                 {
-                    Transaction.Current = committableTransaction;
                     await messageReceiver.CompleteAsync(lockToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    Transaction.Current = oldAmbient;
+
+                    scope.Complete();
                 }
             }
         }
@@ -27,15 +23,11 @@
         {
             if (transportTransactionMode != TransportTransactionMode.None)
             {
-                var oldAmbient = Transaction.Current;
-                try
+                using (var scope = committableTransaction.ToScope())
                 {
-                    Transaction.Current = committableTransaction;
                     await messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    Transaction.Current = oldAmbient;
+
+                    scope.Complete();
                 }
             }
         }
