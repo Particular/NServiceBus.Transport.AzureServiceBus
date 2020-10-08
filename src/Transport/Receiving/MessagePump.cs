@@ -226,6 +226,8 @@
                     if (receiveCancellationTokenSource.IsCancellationRequested)
                     {
                         await receiver.SafeAbandonAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+
+                        transaction?.Rollback();
                     }
                 }
             }
