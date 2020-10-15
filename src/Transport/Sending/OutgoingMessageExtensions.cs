@@ -46,7 +46,7 @@
             }
             else if (deliveryConstraints.TryGet(out DelayDeliveryWith delayDeliveryWith))
             {
-                message.ScheduledEnqueueTimeUtc = Time.UtcNow() + delayDeliveryWith.Delay;
+                message.ScheduledEnqueueTimeUtc = (Time.UtcNow() + delayDeliveryWith.Delay).UtcDateTime;
             }
 
             if (deliveryConstraints.TryGet(out DiscardIfNotReceivedBefore discardIfNotReceivedBefore))

@@ -4,6 +4,6 @@
 
     static class Time
     {
-        public static Func<DateTime> UtcNow = () => DateTime.UtcNow;
+        public static Func<DateTimeOffset> UtcNow = () => DateTimeOffset.UtcNow;
     }
 }
