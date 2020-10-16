@@ -16,6 +16,6 @@
 
         public IConfigureEndpointTestExecution CreateTransportConfiguration() => new ConfigureEndpointAzureServiceBusTransport();
 
-        public IConfigureEndpointTestExecution CreatePersistenceConfiguration() => new ConfigureEndpointInMemoryPersistence();
+        public IConfigureEndpointTestExecution CreatePersistenceConfiguration() => new ConfigureEndpointAcceptanceTestingPersistence();
     }
 }
