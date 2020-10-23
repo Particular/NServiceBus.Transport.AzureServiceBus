@@ -42,8 +42,6 @@
                 topicName = defaultTopicName;
             }
 
-            settings.EnableFeatureByDefault<TransactionScopeSuppressFeature>();
-
             namespacePermissions = new NamespacePermissions(connectionStringBuilder, tokenProvider);
 
             WriteStartupDiagnostics();

@@ -20,9 +20,9 @@
         public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, ContextBag context)
         {
             // Assumption: we're not implementing batching as it will be done by ASB client
-            var receiverConnectionAndPathFound = transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);
-            var partitionKeyFound = transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
-            var shouldSuppressTransaction = !(receiverConnectionAndPathFound && partitionKeyFound) && Transaction.Current != null;
+            transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);
+            transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
+            transaction.TryGet<CommittableTransaction>(out var committableTransaction);
 
             var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
             var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
@@ -42,6 +42,7 @@
                 }
 
                 var receiverConnectionAndPathToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? (null, null) : receiverConnectionAndPath;
+                var transactionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : committableTransaction;
 
                 var sender = messageSenderPool.GetMessageSender(destination, receiverConnectionAndPathToUse);
 
@@ -49,11 +50,12 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency, shouldSuppressTransaction))
+                    using (var scope = transactionToUse.ToScope())
                     {
                         // Invoke sender and immediately return it back to the pool w/o awaiting for completion
                         tasks.Add(sender.SendAsync(message));
-                        scope?.Complete();
+
+                        scope.Complete();
                     }
                 }
                 finally
@@ -65,6 +67,7 @@
             foreach (var transportOperation in multicastTransportOperations)
             {
                 var receiverConnectionAndPathToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? (null, null) : receiverConnectionAndPath;
+                var transactionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : committableTransaction;
 
                 var sender = messageSenderPool.GetMessageSender(topicName, receiverConnectionAndPathToUse);
 
@@ -72,11 +75,12 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    using (var scope = CreateTransactionScope(transportOperation.RequiredDispatchConsistency, shouldSuppressTransaction))
+                    using (var scope = transactionToUse.ToScope())
                     {
                         // Invoke sender and immediately return it back to the pool w/o awaiting for completion
                         tasks.Add(sender.SendAsync(message));
-                        scope?.Complete();
+                        //committable tx will not be committed because this scope is not the owner
+                        scope.Complete();
                     }
                 }
                 finally
@@ -86,13 +90,6 @@
             }
 
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
-        }
-
-        TransactionScope CreateTransactionScope(DispatchConsistency dispatchConsistency, bool shouldSuppressTransaction)
-        {
-            return dispatchConsistency == DispatchConsistency.Isolated || shouldSuppressTransaction
-                ? new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled)
-                : null;
         }
     }
 }
