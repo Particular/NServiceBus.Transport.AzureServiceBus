@@ -50,6 +50,8 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
+                    ApplyCustomizationToOutgoingNativeMessage(context, transportOperation, message);
+
                     using (var scope = transactionToUse.ToScope())
                     {
                         // Invoke sender and immediately return it back to the pool w/o awaiting for completion
@@ -75,6 +77,8 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
+                    ApplyCustomizationToOutgoingNativeMessage(context, transportOperation, message);
+
                     using (var scope = transactionToUse.ToScope())
                     {
                         // Invoke sender and immediately return it back to the pool w/o awaiting for completion
@@ -90,6 +94,19 @@
             }
 
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
+        }
+
+        private static void ApplyCustomizationToOutgoingNativeMessage(ContextBag context, IOutgoingTransportOperation transportOperation, Message message)
+        {
+            if (transportOperation.Message.Headers.TryGetValue(CustomizeNativeMessageExtensions.CustomizationHeader, out var customizationId))
+            {
+                if (context.TryGet<CustomizeNativeMessageExtensions.NativeMessageCustomizer>(out var nmc) && nmc.Customizations.Keys.Contains(customizationId))
+                {
+                    nmc.Customizations[customizationId].Invoke(message);
+                }
+
+                transportOperation.Message.Headers.Remove(CustomizeNativeMessageExtensions.CustomizationHeader);
+            }
         }
     }
 }
