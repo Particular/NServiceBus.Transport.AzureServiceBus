@@ -1,0 +1,48 @@
+﻿using System.Collections.Concurrent;
+
+namespace NServiceBus
+{
+    using System;
+    using Microsoft.Azure.ServiceBus;
+    using NServiceBus.Extensibility;
+
+    /// <summary>
+    /// Allows the users to customize outgoing native messages.
+    /// </summary>
+    /// <remarks>
+    /// The behavior of this class is exposed via extension methods.
+    /// </remarks>
+    public static class CustomizeNativeMessageExtensions
+    {
+        internal const string CustomizationHeader = "$ASB.CustomizationId";
+
+        /// <summary>
+        /// Allows customization of the outgoing native message.
+        /// </summary>
+        /// <param name="options">Option being extended.</param>
+        /// <param name="customization">Customization action.</param>
+        public static void CustomizeNativeMessage(this ExtendableOptions options, Action<Message> customization)
+        {
+            if (options.GetHeaders().ContainsKey(CustomizationHeader))
+            {
+                throw new InvalidOperationException("Native outgoing message has already been customized. Do not apply native outgoing message customization more than once per message.");
+            }
+
+            var customizationId = Guid.NewGuid().ToString();
+            options.SetHeader(CustomizationHeader, customizationId);
+
+            var nativePropertiesCustomizer = options.GetExtensions().GetOrCreate<NativeMessageCustomizer>();
+            nativePropertiesCustomizer.Customizations = nativePropertiesCustomizer.Customizations ?? new ConcurrentDictionary<string, Action<Message>>();
+
+            if (!nativePropertiesCustomizer.Customizations.TryAdd(customizationId, customization))
+            {
+                throw new Exception("Failed to apply an outgoing message customization");
+            }
+        }
+
+        internal class NativeMessageCustomizer
+        {
+            public ConcurrentDictionary<string, Action<Message>> Customizations;
+        }
+    }
+}
