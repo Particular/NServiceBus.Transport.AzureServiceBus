@@ -1,6 +1,4 @@
-﻿using System.Collections.Concurrent;
-
-namespace NServiceBus
+﻿namespace NServiceBus
 {
     using System;
     using Microsoft.Azure.ServiceBus;
@@ -32,17 +30,10 @@ namespace NServiceBus
             options.SetHeader(CustomizationHeader, customizationId);
 
             var nativePropertiesCustomizer = options.GetExtensions().GetOrCreate<NativeMessageCustomizer>();
-            nativePropertiesCustomizer.Customizations = nativePropertiesCustomizer.Customizations ?? new ConcurrentDictionary<string, Action<Message>>();
-
             if (!nativePropertiesCustomizer.Customizations.TryAdd(customizationId, customization))
             {
                 throw new Exception("Failed to apply an outgoing message customization");
             }
-        }
-
-        internal class NativeMessageCustomizer
-        {
-            public ConcurrentDictionary<string, Action<Message>> Customizations;
         }
     }
 }

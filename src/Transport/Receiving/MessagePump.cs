@@ -209,6 +209,7 @@
 
                     var contextBag = new ContextBag();
                     contextBag.Set(message);
+                    contextBag.GetOrCreate<NativeMessageCustomizer>();
 
                     var messageContext = new MessageContext(messageId, headers, body, transportTransaction,
                         receiveCancellationTokenSource, contextBag);

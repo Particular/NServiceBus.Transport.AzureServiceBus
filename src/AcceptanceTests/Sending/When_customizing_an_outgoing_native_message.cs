@@ -1,4 +1,4 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending.Receiving
+﻿namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
 {
     using System;
     using System.Threading.Tasks;
@@ -46,8 +46,6 @@
             public Endpoint()
             {
                 EndpointSetup<DefaultServer>();
-                // EndpointSetup<DefaultServer>((c, d) =>
-                //     c.Pipeline.Register(b => new ValidateIncomingNativeMessages((Context)d.ScenarioContext), "Behavior to validate the native messages contain customizations assigned when those native messages were dispatched"));
             }
 
             public class Handler :
