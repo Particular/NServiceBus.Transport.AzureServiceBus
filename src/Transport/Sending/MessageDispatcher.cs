@@ -96,11 +96,11 @@
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
         }
 
-        private static void ApplyCustomizationToOutgoingNativeMessage(ContextBag context, IOutgoingTransportOperation transportOperation, Message message)
+        private static void ApplyCustomizationToOutgoingNativeMessage(ReadOnlyContextBag context, IOutgoingTransportOperation transportOperation, Message message)
         {
             if (transportOperation.Message.Headers.TryGetValue(CustomizeNativeMessageExtensions.CustomizationHeader, out var customizationId))
             {
-                if (context.TryGet<CustomizeNativeMessageExtensions.NativeMessageCustomizer>(out var nmc) && nmc.Customizations.Keys.Contains(customizationId))
+                if (context.TryGet<NativeMessageCustomizer>(out var nmc) && nmc.Customizations.Keys.Contains(customizationId))
                 {
                     nmc.Customizations[customizationId].Invoke(message);
                 }
