@@ -37,10 +37,13 @@
         }
 
         /// <summary>
-        /// Allows customization of the outgoing native message sent using <see cref="IMessageHandlerContext"/>.
+        /// Allows customization of the outgoing native message.
         /// </summary>
+        /// <remarks>
+        /// Messages can be sent using <see cref="IPipelineContext"/> or any of its derived variants such as <see cref="IMessageHandlerContext"/>.
+        /// </remarks>
         /// <param name="options">Option being extended.</param>
-        /// <param name="context"><see cref="IMessageHandlerContext"/> used to dispatch messages in the message handler.</param>
+        /// <param name="context">Context used to dispatch messages in the message handler.</param>
         /// <param name="customization">Customization action.</param>
         public static void CustomizeNativeMessage(this ExtendableOptions options, IPipelineContext context, Action<Message> customization)
         {
