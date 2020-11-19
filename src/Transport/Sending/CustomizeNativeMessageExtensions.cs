@@ -42,7 +42,7 @@
         /// <param name="options">Option being extended.</param>
         /// <param name="context"><see cref="IMessageHandlerContext"/> used to dispatch messages in the message handler.</param>
         /// <param name="customization">Customization action.</param>
-        public static void CustomizeNativeMessage(this ExtendableOptions options, IMessageHandlerContext context, Action<Message> customization)
+        public static void CustomizeNativeMessage(this ExtendableOptions options, IPipelineContext context, Action<Message> customization)
         {
             if (options.GetHeaders().ContainsKey(CustomizationHeader))
             {
