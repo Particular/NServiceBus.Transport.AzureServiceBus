@@ -69,7 +69,7 @@
 
                     var sendOptions = new SendOptions();
                     sendOptions.RouteToThisEndpoint();
-                    sendOptions.CustomizeNativeMessage(m => m.Label = "IMessageHandlerContext.Send");
+                    sendOptions.CustomizeNativeMessage(context, m => m.Label = "IMessageHandlerContext.Send");
 
                     return context.Send(new MessageHandlerContextSentCommand(), sendOptions);
                 }
@@ -81,7 +81,7 @@
                     testContext.MessageSessionPublishedMessageCustomizationReceived = nativeMessage.Label == "IMessageSession.Publish";
 
                     var publishOptions = new PublishOptions();
-                    publishOptions.CustomizeNativeMessage(m => m.Label = "IMessageHandlerContext.Publish");
+                    publishOptions.CustomizeNativeMessage(context, m => m.Label = "IMessageHandlerContext.Publish");
 
                     return context.Publish(new MessageHandlerContextPublishedEvent(), publishOptions);
                 }

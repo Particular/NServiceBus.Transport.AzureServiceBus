@@ -24,5 +24,6 @@ namespace NServiceBus
     public class static CustomizeNativeMessageExtensions
     {
         public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Microsoft.Azure.ServiceBus.Message> customization) { }
+        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IMessageHandlerContext context, System.Action<Microsoft.Azure.ServiceBus.Message> customization) { }
     }
 }
