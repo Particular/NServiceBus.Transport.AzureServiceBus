@@ -3,11 +3,12 @@
     using System;
     using System.Threading.Tasks;
     using AcceptanceTesting;
+    using NServiceBus.AcceptanceTests;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
     using Pipeline;
 
-    public class When_customizing_an_outgoing_native_message
+    public class When_customizing_an_outgoing_native_message : NServiceBusAcceptanceTest
     {
         [Test]
         public async Task Should_dispatch_native_message_with_the_customizations()
@@ -33,23 +34,33 @@
             public bool MessageSessionSentMessageCustomizationReceived { get; set; }
             public bool MessageSessionPublishedMessageCustomizationReceived { get; set; }
             public bool MessageHandlerContextSentMessageCustomizationReceived { get; set; }
+            public bool PhysicalBehaviorMessageSentMessageCustomizationReceived { get; set; }
+            public bool LogicalBehaviorMessageSentMessageCustomizationReceived { get; set; }
             public bool MessageHandlerContextPublishedMessageCustomizationReceived { get; set; }
 
             public bool Completed => MessageSessionSentMessageCustomizationReceived
                                      && MessageSessionPublishedMessageCustomizationReceived
                                      && MessageHandlerContextSentMessageCustomizationReceived
-                                     && MessageHandlerContextPublishedMessageCustomizationReceived;
+                                     && MessageHandlerContextPublishedMessageCustomizationReceived
+                                     && PhysicalBehaviorMessageSentMessageCustomizationReceived
+                                     && LogicalBehaviorMessageSentMessageCustomizationReceived;
         }
 
         public class Endpoint : EndpointConfigurationBuilder
         {
             public Endpoint()
             {
-                EndpointSetup<DefaultServer>();
+                EndpointSetup<DefaultServer>(c=>
+                {
+                    c.Pipeline.Register(typeof(Handler.PhysicalBehavior), "Customizes a native message in a physical behavior");
+                    c.Pipeline.Register(typeof(Handler.LogicalBehavior), "Customizes a native message in a logical behavior");
+                });
             }
 
             public class Handler :
                 IHandleMessages<MessageSessionSentCommand>,
+                IHandleMessages<PhysicalBehaviorSentCommand>,
+                IHandleMessages<LogicalBehaviorSentCommand>,
                 IHandleMessages<MessageSessionPublishedEvent>,
                 IHandleMessages<MessageHandlerContextSentCommand>,
                 IHandleMessages<MessageHandlerContextPublishedEvent>
@@ -59,6 +70,34 @@
                 public Handler(Context testContext)
                 {
                     this.testContext = testContext;
+                }
+
+                public class PhysicalBehavior : Behavior<IIncomingPhysicalMessageContext>
+                {
+                    public override async Task Invoke(IIncomingPhysicalMessageContext context, Func<Task> next)
+                    {
+                        var sendOptions = new SendOptions();
+                        sendOptions.RouteToThisEndpoint();
+                        sendOptions.CustomizeNativeMessage(context, m => m.Label = "PhysicalBehavior.Send");
+
+                        await context.Send(new PhysicalBehaviorSentCommand(), sendOptions);
+
+                        await next();
+                    }
+                }
+
+                public class LogicalBehavior : Behavior<IIncomingLogicalMessageContext>
+                {
+                    public override async Task Invoke(IIncomingLogicalMessageContext context, Func<Task> next)
+                    {
+                        var sendOptions = new SendOptions();
+                        sendOptions.RouteToThisEndpoint();
+                        sendOptions.CustomizeNativeMessage(context, m => m.Label = "LogicalBehavior.Send");
+
+                        await context.Send(new LogicalBehaviorSentCommand(), sendOptions);
+
+                        await next();
+                    }
                 }
 
                 public Task Handle(MessageSessionSentCommand request, IMessageHandlerContext context)
@@ -84,6 +123,24 @@
                     publishOptions.CustomizeNativeMessage(context, m => m.Label = "IMessageHandlerContext.Publish");
 
                     return context.Publish(new MessageHandlerContextPublishedEvent(), publishOptions);
+                }
+
+                public Task Handle(PhysicalBehaviorSentCommand message, IMessageHandlerContext context)
+                {
+                    var nativeMessage = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>();
+
+                    testContext.PhysicalBehaviorMessageSentMessageCustomizationReceived = nativeMessage.Label == "PhysicalBehavior.Send";
+
+                    return Task.CompletedTask;
+                }
+
+                public Task Handle(LogicalBehaviorSentCommand message, IMessageHandlerContext context)
+                {
+                    var nativeMessage = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>();
+
+                    testContext.LogicalBehaviorMessageSentMessageCustomizationReceived = nativeMessage.Label == "LogicalBehavior.Send";
+
+                    return Task.CompletedTask;
                 }
 
                 public Task Handle(MessageHandlerContextSentCommand message, IMessageHandlerContext context)
@@ -124,6 +181,8 @@
         }
 
         public class MessageSessionSentCommand : ICommand {}
+        public class PhysicalBehaviorSentCommand : ICommand {}
+        public class LogicalBehaviorSentCommand : ICommand {}
         public class MessageSessionPublishedEvent : IEvent {}
         public class MessageHandlerContextSentCommand : ICommand { }
         public class MessageHandlerContextPublishedEvent : IEvent { }
