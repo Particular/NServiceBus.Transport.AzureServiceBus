@@ -21,4 +21,9 @@ namespace NServiceBus
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TopicName(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string topicName) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseWebSockets(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
     }
+    public class static CustomizeNativeMessageExtensions
+    {
+        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Microsoft.Azure.ServiceBus.Message> customization) { }
+        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context, System.Action<Microsoft.Azure.ServiceBus.Message> customization) { }
+    }
 }
