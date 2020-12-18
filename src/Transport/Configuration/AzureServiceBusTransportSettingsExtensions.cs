@@ -98,6 +98,17 @@
         /// <param name="subscriptionNameShortener">The callback to apply.</param>
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameShortener)
         {
+            return SubscriptionNameShortener(transportExtensions, subscriptionNameShortener, false);
+        }
+
+        /// <summary>
+        /// Specifies a callback to apply to the subscription name when the endpoint's name is longer than 50 characters.
+        /// </summary>
+        /// <param name="transportExtensions">The transport settings object</param>
+        /// <param name="subscriptionNameShortener">The callback to apply.</param>
+        /// <param name="alwaysShorten">True to apply the shortener always. False to apply the shortener only when the rule name exceeds the maximum length of 50 characters. Defaults to False.</param>
+        public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameShortener, bool alwaysShorten = false)
+        {
             Guard.AgainstNull(nameof(subscriptionNameShortener), subscriptionNameShortener);
 
             Func<string, string> wrappedSubscriptionNameShortener = subsciptionName =>
@@ -112,17 +123,28 @@
                 }
             };
 
-            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionNameShortener, wrappedSubscriptionNameShortener);
+            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionNameShortener, (wrappedSubscriptionNameShortener, alwaysShorten));
 
             return transportExtensions;
         }
 
         /// <summary>
-        /// Specifies a callback to apply to a subscription rule name when a subscribed event's name is longer than 50 characters.
+        /// Specifies a callback to apply to a subscription rule name, based on the subscribed event name.
         /// </summary>
-        /// <param name="transportExtensions">The transport settings object</param>
+        /// <param name="transportExtensions">The transport settings object.</param>
         /// <param name="ruleNameShortener">The callback to apply.</param>
         public static TransportExtensions<AzureServiceBusTransport> RuleNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameShortener)
+        {
+            return RuleNameShortener(transportExtensions, ruleNameShortener, false);
+        }
+
+        /// <summary>
+        /// Specifies a callback to apply to a subscription rule name, based on the subscribed event name.
+        /// </summary>
+        /// <param name="transportExtensions">The transport settings object.</param>
+        /// <param name="ruleNameShortener">The callback to apply.</param>
+        /// <param name="alwaysShorten">True to apply the shortener always. False to apply the shortener only when the rule name exceeds the maximum length of 50 characters. Defaults to False.</param>
+        public static TransportExtensions<AzureServiceBusTransport> RuleNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameShortener, bool alwaysShorten = false)
         {
             Guard.AgainstNull(nameof(ruleNameShortener), ruleNameShortener);
 
@@ -138,7 +160,7 @@
                 }
             };
 
-            transportExtensions.GetSettings().Set(SettingsKeys.RuleNameShortener, wrappedRuleNameShortener);
+            transportExtensions.GetSettings().Set(SettingsKeys.RuleNameShortener, (wrappedRuleNameShortener, alwaysShorten));
 
             return transportExtensions;
         }

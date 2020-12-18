@@ -16,7 +16,7 @@
     class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
         const string defaultTopicName = "bundle-1";
-        static readonly Func<string, string> defaultNameShortener = name => name;
+        private static readonly (Func<string, string>, bool) defaultNameShortener = (name => name, false);
 
         readonly SettingsHolder settings;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
@@ -101,7 +101,7 @@
 
             settings.TryGet(SettingsKeys.EnablePartitioning, out bool enablePartitioning);
 
-            if (!settings.TryGet(SettingsKeys.SubscriptionNameShortener, out Func<string, string> subscriptionNameShortener))
+            if (!settings.TryGet(SettingsKeys.SubscriptionNameShortener, out (Func<string, string>, bool) subscriptionNameShortener))
             {
                 subscriptionNameShortener = defaultNameShortener;
             }
@@ -144,12 +144,12 @@
 
         SubscriptionManager CreateSubscriptionManager()
         {
-            if (!settings.TryGet(SettingsKeys.SubscriptionNameShortener, out Func<string, string> subscriptionNameShortener))
+            if (!settings.TryGet(SettingsKeys.SubscriptionNameShortener, out (Func<string, string>, bool) subscriptionNameShortener))
             {
                 subscriptionNameShortener = defaultNameShortener;
             }
 
-            if (!settings.TryGet(SettingsKeys.RuleNameShortener, out Func<string, string> ruleNameShortener))
+            if (!settings.TryGet(SettingsKeys.RuleNameShortener, out (Func<string, string>, bool) ruleNameShortener))
             {
                 ruleNameShortener = defaultNameShortener;
             }

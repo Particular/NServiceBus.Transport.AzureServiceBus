@@ -18,9 +18,9 @@
         readonly NamespacePermissions namespacePermissions;
         readonly int maxSizeInMB;
         readonly bool enablePartitioning;
-        readonly Func<string, string> subscriptionShortener;
+        readonly (Func<string, string>, bool) subscriptionShortener;
 
-        public QueueCreator(string mainInputQueueName, string topicName, ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, NamespacePermissions namespacePermissions, int maxSizeInMB, bool enablePartitioning, Func<string, string> subscriptionShortener)
+        public QueueCreator(string mainInputQueueName, string topicName, ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, NamespacePermissions namespacePermissions, int maxSizeInMB, bool enablePartitioning, (Func<string, string>, bool) subscriptionShortener)
         {
             this.mainInputQueueName = mainInputQueueName;
             this.topicName = topicName;
@@ -88,7 +88,8 @@
                     }
                 }
 
-                var subscriptionName = mainInputQueueName.Length > maxNameLength ? subscriptionShortener(mainInputQueueName) : mainInputQueueName;
+                var (shortener, alwaysShorten) = subscriptionShortener;
+                var subscriptionName = alwaysShorten || mainInputQueueName.Length > maxNameLength ? shortener(mainInputQueueName) : mainInputQueueName;
                 var subscription = new SubscriptionDescription(topicName, subscriptionName)
                 {
                     LockDuration = TimeSpan.FromMinutes(5),
