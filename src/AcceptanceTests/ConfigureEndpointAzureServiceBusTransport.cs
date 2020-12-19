@@ -17,9 +17,9 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
         transport.ConnectionString(connectionString);
 
-        transport.SubscriptionNameShortener(name => Shorten(name));
+        transport.SubscriptionNameConvention(name => Shorten(name));
 
-        transport.RuleNameShortener(name => Shorten(name));
+        transport.RuleNameConvention(name => Shorten(name));
 
         configuration.RegisterComponents(c => c.AddSingleton<IMutateOutgoingTransportMessages, TestIndependenceMutator>());
 
@@ -30,23 +30,29 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 
     static string Shorten(string name)
     {
-        using (var sha1 = SHA1.Create())
-        {
-            var nameAsBytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(name));
-            return HexStringFromBytes(nameAsBytes);
+         // originally we used to shorten only when the length of the name hax exceeded the maximum length of 50 characters
+         if (name.Length <= 50)
+         {
+             return name;
+         }
 
-            string HexStringFromBytes(byte[] bytes)
-            {
-                var sb = new StringBuilder();
-                foreach (var b in bytes)
-                {
-                    var hex = b.ToString("x2");
-                    sb.Append(hex);
-                }
+         using (var sha1 = SHA1.Create())
+         {
+             var nameAsBytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(name));
+             return HexStringFromBytes(nameAsBytes);
 
-                return sb.ToString();
-            }
-        }
+             string HexStringFromBytes(byte[] bytes)
+             {
+                 var sb = new StringBuilder();
+                 foreach (var b in bytes)
+                 {
+                     var hex = b.ToString("x2");
+                     sb.Append(hex);
+                 }
+
+                 return sb.ToString();
+             }
+         }
     }
 
     public Task Cleanup()
