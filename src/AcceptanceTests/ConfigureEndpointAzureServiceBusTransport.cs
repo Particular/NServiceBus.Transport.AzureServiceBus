@@ -15,9 +15,9 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
         transport.ConnectionString(connectionString);
 
-        transport.SubscriptionNameShortener(name => Shorten(name));
+        transport.SubscriptionNameConvention(name => Shorten(name));
 
-        transport.RuleNameShortener(name => Shorten(name));
+        transport.RuleNameConvention(name => Shorten(name));
 
         configuration.RegisterComponents(c => c.ConfigureComponent<TestIndependenceMutator>(DependencyLifecycle.SingleInstance));
 
@@ -32,6 +32,12 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 
     static string Shorten(string name)
     {
+        // originally we used to shorten only when the length of the name has exceeded the maximum length of 50 characters
+        if (name.Length <= 50)
+        {
+            return name;
+        }
+
         using (var sha1 = SHA1.Create())
         {
             var nameAsBytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(name));

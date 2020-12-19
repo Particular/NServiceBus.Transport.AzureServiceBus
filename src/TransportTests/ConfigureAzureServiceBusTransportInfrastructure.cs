@@ -19,7 +19,7 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
 
         var transportExtensions = new TransportExtensions<AzureServiceBusTransport>(settings);
 
-        transportExtensions.SubscriptionNameShortener(name =>
+        transportExtensions.SubscriptionNameConvention(name =>
         {
             using (var sha1 = SHA1.Create())
             {
