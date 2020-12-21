@@ -94,11 +94,11 @@
         /// <summary>
         /// Specifies a callback to apply to the subscription name when the endpoint's name is longer than 50 characters.
         /// </summary>
-        /// <param name="transportExtensions">The transport settings object</param>
+        /// <param name="transportExtensions"></param>
         /// <param name="subscriptionNameShortener">The callback to apply.</param>
-        [ObsoleteEx(Message = "Use `SubscriptionNamingConvention()` instead.",
-            RemoveInVersion = "3",
-            TreatAsErrorFromVersion = "2")]
+        [ObsoleteEx(ReplacementTypeOrMember = "SubscriptionNamingConvention",
+            TreatAsErrorFromVersion = "2",
+            RemoveInVersion = "3")]
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameShortener)
         {
             Guard.AgainstNull(nameof(subscriptionNameShortener), subscriptionNameShortener);
@@ -123,11 +123,11 @@
         /// <summary>
         /// Specifies a callback to apply to a subscription rule name when a subscribed event's name is longer than 50 characters.
         /// </summary>
-        /// <param name="transportExtensions">The transport settings object</param>
+        /// <param name="transportExtensions"></param>
         /// <param name="ruleNameShortener">The callback to apply.</param>
-        [ObsoleteEx(Message = "Use `SubscriptionRuleNamingConvention()` instead.",
-            RemoveInVersion = "3",
-            TreatAsErrorFromVersion = "2")]
+        [ObsoleteEx(ReplacementTypeOrMember = "SubscriptionRuleNamingConvention",
+            TreatAsErrorFromVersion = "2",
+            RemoveInVersion = "3")]
         public static TransportExtensions<AzureServiceBusTransport> RuleNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameShortener)
         {
             Guard.AgainstNull(nameof(ruleNameShortener), ruleNameShortener);
@@ -150,53 +150,53 @@
         }
 
         /// <summary>
-        /// Specifies a callback to apply to customize the subscription name.
+        /// Specifies a callback to customize subscription names.
         /// </summary>
-        /// <param name="transportExtensions">The transport settings object</param>
-        /// <param name="subscriptionNameConvention">The callback to apply.</param>
-        public static TransportExtensions<AzureServiceBusTransport> SubscriptionNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameConvention)
+        /// <param name="transportExtensions"></param>
+        /// <param name="subscriptionNamingConvention">The callback to apply.</param>
+        public static TransportExtensions<AzureServiceBusTransport> SubscriptionNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNamingConvention)
         {
-            Guard.AgainstNull(nameof(subscriptionNameConvention), subscriptionNameConvention);
+            Guard.AgainstNull(nameof(subscriptionNamingConvention), subscriptionNamingConvention);
 
-            Func<string, string> wrappedSubscriptionNameConvention = subsciptionName =>
+            Func<string, string> wrappedSubscriptionNamingConvention = subsciptionName =>
             {
                 try
                 {
-                    return subscriptionNameConvention(subsciptionName);
+                    return subscriptionNamingConvention(subsciptionName);
                 }
                 catch (Exception exception)
                 {
-                    throw new Exception("Custom subscription name convention threw an exception.", exception);
+                    throw new Exception("Custom subscription naming convention threw an exception.", exception);
                 }
             };
 
-            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionNamingConvention, wrappedSubscriptionNameConvention);
+            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionNamingConvention, wrappedSubscriptionNamingConvention);
 
             return transportExtensions;
         }
 
         /// <summary>
-        /// Specifies a callback to apply to customize a subscription rule name.
+        /// Specifies a callback to customize subscription rule names.
         /// </summary>
-        /// <param name="transportExtensions">The transport settings object</param>
-        /// <param name="ruleNameConvention">The callback to apply.</param>
-        public static TransportExtensions<AzureServiceBusTransport> SubscriptionRuleNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameConvention)
+        /// <param name="transportExtensions"></param>
+        /// <param name="subscriptionRuleNamingConvention">The callback to apply.</param>
+        public static TransportExtensions<AzureServiceBusTransport> SubscriptionRuleNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionRuleNamingConvention)
         {
-            Guard.AgainstNull(nameof(ruleNameConvention), ruleNameConvention);
+            Guard.AgainstNull(nameof(subscriptionRuleNamingConvention), subscriptionRuleNamingConvention);
 
-            Func<string, string> wrappedRuleNameConvention = ruleName =>
+            Func<string, string> wrappedSubscriptionRuleNamingConvention = ruleName =>
             {
                 try
                 {
-                    return ruleNameConvention(ruleName);
+                    return subscriptionRuleNamingConvention(ruleName);
                 }
                 catch (Exception exception)
                 {
-                    throw new Exception("Custom rule name convention threw an exception.", exception);
+                    throw new Exception("Custom subscription rule naming convention threw an exception.", exception);
                 }
             };
 
-            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionRuleNamingConvention, wrappedRuleNameConvention);
+            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionRuleNamingConvention, wrappedSubscriptionRuleNamingConvention);
 
             return transportExtensions;
         }
