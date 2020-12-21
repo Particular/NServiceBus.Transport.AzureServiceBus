@@ -19,8 +19,14 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
 
         var transportExtensions = new TransportExtensions<AzureServiceBusTransport>(settings);
 
-        transportExtensions.SubscriptionNameConvention(name =>
+        transportExtensions.SubscriptionNamingConvention(name =>
         {
+            // originally we used to shorten only when the length of the name has exceeded the maximum length of 50 characters
+            if (name.Length <= 50)
+            {
+                return name;
+            }
+
             using (var sha1 = SHA1.Create())
             {
                 var nameAsBytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(name));
