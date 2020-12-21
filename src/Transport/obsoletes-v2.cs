@@ -13,7 +13,6 @@ namespace NServiceBus
         /// </summary>
         /// <param name="transportExtensions">The transport settings object</param>
         /// <param name="subscriptionNameShortener">The callback to apply.</param>
-        // TODO: remove when cherry-picked into release-1.x
         [ObsoleteEx(Message = "Use `SubscriptionNameConvention()` instead.",
             RemoveInVersion = "3",
             TreatAsErrorFromVersion = "2")]
@@ -43,7 +42,6 @@ namespace NServiceBus
         /// </summary>
         /// <param name="transportExtensions">The transport settings object</param>
         /// <param name="ruleNameShortener">The callback to apply.</param>
-        // TODO: remove when cherry-picked into release-1.x
         [ObsoleteEx(Message = "Use `RuleNameConvention()` instead.",
             RemoveInVersion = "3",
             TreatAsErrorFromVersion = "2")]
