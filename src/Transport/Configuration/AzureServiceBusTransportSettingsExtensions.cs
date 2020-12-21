@@ -158,11 +158,11 @@
         {
             Guard.AgainstNull(nameof(subscriptionNamingConvention), subscriptionNamingConvention);
 
-            Func<string, string> wrappedSubscriptionNamingConvention = subsciptionName =>
+            Func<string, string> wrappedSubscriptionNamingConvention = name =>
             {
                 try
                 {
-                    return subscriptionNamingConvention(subsciptionName);
+                    return subscriptionNamingConvention(name);
                 }
                 catch (Exception exception)
                 {
@@ -176,19 +176,19 @@
         }
 
         /// <summary>
-        /// Specifies a callback to customize subscription rule names.
+        /// Specifies a callback to customize subscription rule names for event types.
         /// </summary>
         /// <param name="transportExtensions"></param>
         /// <param name="subscriptionRuleNamingConvention">The callback to apply.</param>
-        public static TransportExtensions<AzureServiceBusTransport> SubscriptionRuleNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionRuleNamingConvention)
+        public static TransportExtensions<AzureServiceBusTransport> SubscriptionRuleNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<Type, string> subscriptionRuleNamingConvention)
         {
             Guard.AgainstNull(nameof(subscriptionRuleNamingConvention), subscriptionRuleNamingConvention);
 
-            Func<string, string> wrappedSubscriptionRuleNamingConvention = ruleName =>
+            Func<Type, string> wrappedSubscriptionRuleNamingConvention = eventType =>
             {
                 try
                 {
-                    return subscriptionRuleNamingConvention(ruleName);
+                    return subscriptionRuleNamingConvention(eventType);
                 }
                 catch (Exception exception)
                 {

@@ -16,7 +16,7 @@
         readonly ITokenProvider tokenProvider;
         readonly NamespacePermissions namespacePermissions;
         readonly Func<string, string> ruleShortener;
-        readonly Func<string, string> subscriptionRuleNamingConvention;
+        readonly Func<Type, string> subscriptionRuleNamingConvention;
         readonly string subscriptionName;
 
         StartupCheckResult startupCheckResult;
@@ -28,7 +28,7 @@
             Func<string, string> subscriptionShortener,
             Func<string, string> ruleShortener,
             Func<string, string> subscriptionNamingConvention,
-            Func<string, string> subscriptionRuleNamingConvention)
+            Func<Type, string> subscriptionRuleNamingConvention)
         {
             this.topicPath = topicPath;
             this.connectionStringBuilder = connectionStringBuilder;
@@ -45,7 +45,7 @@
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 
-            var ruleName = subscriptionRuleNamingConvention(eventType.FullName);
+            var ruleName = subscriptionRuleNamingConvention(eventType);
             ruleName = ruleName.Length > maxNameLength ? ruleShortener(ruleName) : ruleName;
             var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
             var rule = new RuleDescription(ruleName, new SqlFilter(sqlExpression));
@@ -81,7 +81,7 @@
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 
-            var ruleName = subscriptionRuleNamingConvention(eventType.FullName);
+            var ruleName = subscriptionRuleNamingConvention(eventType);
             ruleName = ruleName.Length > maxNameLength ? ruleShortener(ruleName) : ruleName;
 
             var client = new ManagementClient(connectionStringBuilder, tokenProvider);

@@ -17,7 +17,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 
         transport.SubscriptionNamingConvention(name => Shorten(name));
 
-        transport.SubscriptionRuleNamingConvention(name => Shorten(name));
+        transport.SubscriptionRuleNamingConvention(eventType => Shorten(eventType.FullName));
 
         configuration.RegisterComponents(c => c.ConfigureComponent<TestIndependenceMutator>(DependencyLifecycle.SingleInstance));
 
