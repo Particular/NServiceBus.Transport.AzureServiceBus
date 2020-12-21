@@ -92,11 +92,69 @@
         }
 
         /// <summary>
+        /// Specifies a callback to apply to the subscription name when the endpoint's name is longer than 50 characters.
+        /// </summary>
+        /// <param name="transportExtensions">The transport settings object</param>
+        /// <param name="subscriptionNameShortener">The callback to apply.</param>
+        [ObsoleteEx(Message = "Use `SubscriptionNamingConvention()` instead.",
+            RemoveInVersion = "3",
+            TreatAsErrorFromVersion = "2")]
+        public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameShortener)
+        {
+            Guard.AgainstNull(nameof(subscriptionNameShortener), subscriptionNameShortener);
+
+            Func<string, string> wrappedSubscriptionNameShortener = subsciptionName =>
+            {
+                try
+                {
+                    return subscriptionNameShortener(subsciptionName);
+                }
+                catch (Exception exception)
+                {
+                    throw new Exception("Custom subscription name shortener threw an exception.", exception);
+                }
+            };
+
+            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionNameShortener, wrappedSubscriptionNameShortener);
+
+            return transportExtensions;
+        }
+
+        /// <summary>
+        /// Specifies a callback to apply to a subscription rule name when a subscribed event's name is longer than 50 characters.
+        /// </summary>
+        /// <param name="transportExtensions">The transport settings object</param>
+        /// <param name="ruleNameShortener">The callback to apply.</param>
+        [ObsoleteEx(Message = "Use `SubscriptionRuleNamingConvention()` instead.",
+            RemoveInVersion = "3",
+            TreatAsErrorFromVersion = "2")]
+        public static TransportExtensions<AzureServiceBusTransport> RuleNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameShortener)
+        {
+            Guard.AgainstNull(nameof(ruleNameShortener), ruleNameShortener);
+
+            Func<string, string> wrappedRuleNameShortener = ruleName =>
+            {
+                try
+                {
+                    return ruleNameShortener(ruleName);
+                }
+                catch (Exception exception)
+                {
+                    throw new Exception("Custom rule name shortener threw an exception.", exception);
+                }
+            };
+
+            transportExtensions.GetSettings().Set(SettingsKeys.RuleNameShortener, wrappedRuleNameShortener);
+
+            return transportExtensions;
+        }
+
+        /// <summary>
         /// Specifies a callback to apply to customize the subscription name.
         /// </summary>
         /// <param name="transportExtensions">The transport settings object</param>
         /// <param name="subscriptionNameConvention">The callback to apply.</param>
-        public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameConvention)
+        public static TransportExtensions<AzureServiceBusTransport> SubscriptionNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameConvention)
         {
             Guard.AgainstNull(nameof(subscriptionNameConvention), subscriptionNameConvention);
 
@@ -122,7 +180,7 @@
         /// </summary>
         /// <param name="transportExtensions">The transport settings object</param>
         /// <param name="ruleNameConvention">The callback to apply.</param>
-        public static TransportExtensions<AzureServiceBusTransport> RuleNameConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameConvention)
+        public static TransportExtensions<AzureServiceBusTransport> SubscriptionRuleNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameConvention)
         {
             Guard.AgainstNull(nameof(ruleNameConvention), ruleNameConvention);
 
