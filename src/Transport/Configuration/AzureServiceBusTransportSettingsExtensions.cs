@@ -9,7 +9,7 @@
     /// <summary>
     /// Adds access to the Azure Service Bus transport config to the global Transport object.
     /// </summary>
-    public static partial class AzureServiceBusTransportSettingsExtensions
+    public static class AzureServiceBusTransportSettingsExtensions
     {
         /// <summary>
         /// Overrides the default topic name used to publish events between endpoints.
@@ -170,7 +170,7 @@
                 }
             };
 
-            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionNameConvention, wrappedSubscriptionNameConvention);
+            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionNamingConvention, wrappedSubscriptionNameConvention);
 
             return transportExtensions;
         }
@@ -196,7 +196,7 @@
                 }
             };
 
-            transportExtensions.GetSettings().Set(SettingsKeys.RuleNameConvention, wrappedRuleNameConvention);
+            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionRuleNamingConvention, wrappedRuleNameConvention);
 
             return transportExtensions;
         }

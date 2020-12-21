@@ -16,7 +16,7 @@
     {
         const string defaultTopicName = "bundle-1";
         static readonly Func<string, string> defaultNameShortener = name => name;
-        static readonly Func<string, string> defaultNameConvention = name => name;
+        static readonly Func<string, string> defaultNamingConvention = name => name;
 
         readonly SettingsHolder settings;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
@@ -56,8 +56,8 @@
                 EnablePartitioning = settings.TryGet(SettingsKeys.EnablePartitioning, out bool enablePartitioning) ? enablePartitioning.ToString() : "default",
                 SubscriptionNameShortener = settings.TryGet(SettingsKeys.SubscriptionNameShortener, out Func<string, string> _) ? "configured" : "default",
                 RuleNameShortener = settings.TryGet(SettingsKeys.RuleNameShortener, out Func<string, string> _) ? "configured" : "default",
-                SubscriptionNameConvention = settings.TryGet(SettingsKeys.SubscriptionNameConvention, out Func<string, string> _) ? "configured" : "default",
-                RuleNameConvention = settings.TryGet(SettingsKeys.RuleNameConvention, out Func<string, string> _) ? "configured" : "default",
+                SubscriptionNamingConvention = settings.TryGet(SettingsKeys.SubscriptionNamingConvention, out Func<string, string> _) ? "configured" : "default",
+                SubscriptionRuleNamingConvention = settings.TryGet(SettingsKeys.SubscriptionRuleNamingConvention, out Func<string, string> _) ? "configured" : "default",
                 PrefetchMultiplier = settings.TryGet(SettingsKeys.PrefetchMultiplier, out int prefetchMultiplier) ? prefetchMultiplier.ToString() : "default",
                 PrefetchCount = settings.TryGet(SettingsKeys.PrefetchCount, out int? prefetchCount) ? prefetchCount.ToString() : "default",
                 UseWebSockets = settings.TryGet(SettingsKeys.TransportType, out TransportType _) ? "True" : "default",
@@ -108,9 +108,9 @@
                 subscriptionNameShortener = defaultNameShortener;
             }
 
-            if (!settings.TryGet(SettingsKeys.SubscriptionNameConvention, out Func<string, string> subscriptionNameConvention))
+            if (!settings.TryGet(SettingsKeys.SubscriptionNamingConvention, out Func<string, string> subscriptionNamingConvention))
             {
-                subscriptionNameConvention = defaultNameConvention;
+                subscriptionNamingConvention = defaultNamingConvention;
             }
 
             string localAddress;
@@ -125,7 +125,7 @@
                 localAddress = ToTransportAddress(LogicalAddress.CreateLocalAddress(settings.EndpointName(), new Dictionary<string, string>()));
             }
 
-            return new QueueCreator(localAddress, topicName, connectionStringBuilder, tokenProvider, namespacePermissions, maximumSizeInGB * 1024, enablePartitioning, subscriptionNameShortener, subscriptionNameConvention);
+            return new QueueCreator(localAddress, topicName, connectionStringBuilder, tokenProvider, namespacePermissions, maximumSizeInGB * 1024, enablePartitioning, subscriptionNameShortener, subscriptionNamingConvention);
         }
 
         public override TransportSendInfrastructure ConfigureSendInfrastructure()
@@ -161,17 +161,17 @@
                 ruleNameShortener = defaultNameShortener;
             }
 
-            if (!settings.TryGet(SettingsKeys.SubscriptionNameConvention, out Func<string, string> subscriptionNameConvention))
+            if (!settings.TryGet(SettingsKeys.SubscriptionNamingConvention, out Func<string, string> subscriptionNamingConvention))
             {
-                subscriptionNameConvention = defaultNameConvention;
+                subscriptionNamingConvention = defaultNamingConvention;
             }
 
-            if (!settings.TryGet(SettingsKeys.RuleNameConvention, out Func<string, string> ruleNameConvention))
+            if (!settings.TryGet(SettingsKeys.SubscriptionRuleNamingConvention, out Func<string, string> ruleNamingConvention))
             {
-                ruleNameConvention = defaultNameConvention;
+                ruleNamingConvention = defaultNamingConvention;
             }
 
-            return new SubscriptionManager(settings.LocalAddress(), topicName, connectionStringBuilder, tokenProvider, namespacePermissions, subscriptionNameShortener, ruleNameShortener, subscriptionNameConvention, ruleNameConvention);
+            return new SubscriptionManager(settings.LocalAddress(), topicName, connectionStringBuilder, tokenProvider, namespacePermissions, subscriptionNameShortener, ruleNameShortener, subscriptionNamingConvention, ruleNamingConvention);
         }
 
         public override EndpointInstance BindToLocalEndpoint(EndpointInstance instance) => instance;
