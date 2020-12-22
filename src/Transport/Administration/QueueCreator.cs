@@ -18,9 +18,15 @@
         readonly NamespacePermissions namespacePermissions;
         readonly int maxSizeInMB;
         readonly bool enablePartitioning;
-        readonly Func<string, string> subscriptionShortener;
+        readonly Func<string, string> subscriptionNamingConvention;
 
-        public QueueCreator(string mainInputQueueName, string topicName, ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, NamespacePermissions namespacePermissions, int maxSizeInMB, bool enablePartitioning, Func<string, string> subscriptionShortener)
+        public QueueCreator(string mainInputQueueName, string topicName,
+            ServiceBusConnectionStringBuilder connectionStringBuilder,
+            ITokenProvider tokenProvider,
+            NamespacePermissions namespacePermissions,
+            int maxSizeInMB,
+            bool enablePartitioning,
+            Func<string, string> subscriptionNamingConvention)
         {
             this.mainInputQueueName = mainInputQueueName;
             this.topicName = topicName;
@@ -29,7 +35,7 @@
             this.namespacePermissions = namespacePermissions;
             this.maxSizeInMB = maxSizeInMB;
             this.enablePartitioning = enablePartitioning;
-            this.subscriptionShortener = subscriptionShortener;
+            this.subscriptionNamingConvention = subscriptionNamingConvention;
         }
 
         public async Task CreateQueueIfNecessary(QueueBindings queueBindings, string identity)
@@ -88,7 +94,7 @@
                     }
                 }
 
-                var subscriptionName = mainInputQueueName.Length > maxNameLength ? subscriptionShortener(mainInputQueueName) : mainInputQueueName;
+                var subscriptionName = subscriptionNamingConvention(mainInputQueueName);
                 var subscription = new SubscriptionDescription(topicName, subscriptionName)
                 {
                     LockDuration = TimeSpan.FromMinutes(5),
