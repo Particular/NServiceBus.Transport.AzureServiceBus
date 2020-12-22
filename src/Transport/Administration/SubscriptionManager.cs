@@ -15,7 +15,7 @@
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly ITokenProvider tokenProvider;
         readonly NamespacePermissions namespacePermissions;
-        readonly Func<string, string> ruleNameConvention;
+        readonly Func<Type, string> subscriptionRuleNamingConvention;
         readonly string subscriptionName;
 
         StartupCheckResult startupCheckResult;
@@ -24,23 +24,23 @@
             ServiceBusConnectionStringBuilder connectionStringBuilder,
             ITokenProvider tokenProvider,
             NamespacePermissions namespacePermissions,
-            Func<string, string> subscriptionNameConvention,
-            Func<string, string> ruleNameConvention)
+            Func<string, string> subscriptionNamingConvention,
+            Func<Type, string> subscriptionRuleNamingConvention)
         {
             this.topicPath = topicPath;
             this.connectionStringBuilder = connectionStringBuilder;
             this.tokenProvider = tokenProvider;
             this.namespacePermissions = namespacePermissions;
-            this.ruleNameConvention = ruleNameConvention;
+            this.subscriptionRuleNamingConvention = subscriptionRuleNamingConvention;
 
-            subscriptionName = subscriptionNameConvention(inputQueueName);
+            subscriptionName = subscriptionNamingConvention(inputQueueName);
         }
 
         public async Task Subscribe(Type eventType, ContextBag context)
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 
-            var ruleName = ruleNameConvention(eventType.FullName);
+            var ruleName = subscriptionRuleNamingConvention(eventType);
             var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
             var rule = new RuleDescription(ruleName, new SqlFilter(sqlExpression));
 
@@ -77,7 +77,7 @@
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 
-            var ruleName = ruleNameConvention(eventType.FullName);
+            var ruleName = subscriptionRuleNamingConvention(eventType);
 
             var client = new ManagementClient(connectionStringBuilder, tokenProvider);
 

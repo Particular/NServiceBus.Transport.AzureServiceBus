@@ -11,7 +11,7 @@ namespace NServiceBus
         /// </summary>
         /// <param name="transportExtensions">The transport settings object</param>
         /// <param name="subscriptionNameShortener">The callback to apply.</param>
-        [ObsoleteEx(Message = "Use `SubscriptionNameConvention()` instead.",
+        [ObsoleteEx(Message = "Use `SubscriptionNamingConvention` instead.",
             RemoveInVersion = "3",
             TreatAsErrorFromVersion = "2")]
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameShortener)
@@ -24,7 +24,7 @@ namespace NServiceBus
         /// </summary>
         /// <param name="transportExtensions">The transport settings object</param>
         /// <param name="ruleNameShortener">The callback to apply.</param>
-        [ObsoleteEx(Message = "Use `RuleNameConvention()` instead.",
+        [ObsoleteEx(Message = "Use `SubscriptionRuleNamingConvention` instead.",
             RemoveInVersion = "3",
             TreatAsErrorFromVersion = "2")]
         public static TransportExtensions<AzureServiceBusTransport> RuleNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameShortener)

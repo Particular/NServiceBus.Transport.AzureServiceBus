@@ -96,11 +96,11 @@
         /// </summary>
         /// <param name="transportExtensions">The transport settings object</param>
         /// <param name="subscriptionNameConvention">The callback to apply.</param>
-        public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameConvention)
+        public static TransportExtensions<AzureServiceBusTransport> SubscriptionNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameConvention)
         {
             Guard.AgainstNull(nameof(subscriptionNameConvention), subscriptionNameConvention);
 
-            Func<string, string> wrappedSubscriptionNameConvention = subsciptionName =>
+            Func<string, string> wrappedSubscriptionNamingConvention = subsciptionName =>
             {
                 try
                 {
@@ -112,25 +112,25 @@
                 }
             };
 
-            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionNameConvention, wrappedSubscriptionNameConvention);
+            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionNamingConvention, wrappedSubscriptionNamingConvention);
 
             return transportExtensions;
         }
 
         /// <summary>
-        /// Specifies a callback to apply to customize a subscription rule name.
+        /// Specifies a callback to customize subscription rule names for event types..
         /// </summary>
         /// <param name="transportExtensions">The transport settings object</param>
         /// <param name="ruleNameConvention">The callback to apply.</param>
-        public static TransportExtensions<AzureServiceBusTransport> RuleNameConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameConvention)
+        public static TransportExtensions<AzureServiceBusTransport> SubscriptionRuleNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<Type, string> ruleNameConvention)
         {
             Guard.AgainstNull(nameof(ruleNameConvention), ruleNameConvention);
 
-            Func<string, string> wrappedRuleNameConvention = ruleName =>
+            Func<Type, string> wrappedSubscriptionRuleNamingConvention = eventType =>
             {
                 try
                 {
-                    return ruleNameConvention(ruleName);
+                    return ruleNameConvention(eventType);
                 }
                 catch (Exception exception)
                 {
@@ -138,7 +138,7 @@
                 }
             };
 
-            transportExtensions.GetSettings().Set(SettingsKeys.RuleNameConvention, wrappedRuleNameConvention);
+            transportExtensions.GetSettings().Set(SettingsKeys.SubscriptionRuleNamingConvention, wrappedSubscriptionRuleNamingConvention);
 
             return transportExtensions;
         }
