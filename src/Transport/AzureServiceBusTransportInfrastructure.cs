@@ -144,9 +144,9 @@
 
         SubscriptionManager CreateSubscriptionManager()
         {
-            if (!settings.TryGet(SettingsKeys.SubscriptionNamingConvention, out Func<string, string> subscriptionNameConvention))
+            if (!settings.TryGet(SettingsKeys.SubscriptionNamingConvention, out Func<string, string> subscriptionNamingConvention))
             {
-                subscriptionNameConvention = defaultSubscriptionNamingConvention;
+                subscriptionNamingConvention = defaultSubscriptionNamingConvention;
             }
 
             if (!settings.TryGet(SettingsKeys.SubscriptionRuleNamingConvention, out Func<Type, string> subscriptionRuleNamingConvention))
@@ -154,7 +154,7 @@
                 subscriptionRuleNamingConvention = defaultSubscriptionRuleNamingConvention;
             }
 
-            return new SubscriptionManager(settings.LocalAddress(), topicName, connectionStringBuilder, tokenProvider, namespacePermissions, subscriptionNameConvention, subscriptionRuleNamingConvention);
+            return new SubscriptionManager(settings.LocalAddress(), topicName, connectionStringBuilder, tokenProvider, namespacePermissions, subscriptionNamingConvention, subscriptionRuleNamingConvention);
         }
 
         public override EndpointInstance BindToLocalEndpoint(EndpointInstance instance) => instance;
