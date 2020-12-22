@@ -16,26 +16,37 @@
         readonly ITokenProvider tokenProvider;
         readonly NamespacePermissions namespacePermissions;
         readonly Func<string, string> ruleShortener;
+        readonly Func<Type, string> subscriptionRuleNamingConvention;
         readonly string subscriptionName;
 
         StartupCheckResult startupCheckResult;
 
-        public SubscriptionManager(string inputQueueName, string topicPath, ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, NamespacePermissions namespacePermissions, Func<string, string> subscriptionShortener, Func<string, string> ruleShortener)
+        public SubscriptionManager(string inputQueueName, string topicPath,
+            ServiceBusConnectionStringBuilder connectionStringBuilder,
+            ITokenProvider tokenProvider,
+            NamespacePermissions namespacePermissions,
+            Func<string, string> subscriptionShortener,
+            Func<string, string> ruleShortener,
+            Func<string, string> subscriptionNamingConvention,
+            Func<Type, string> subscriptionRuleNamingConvention)
         {
             this.topicPath = topicPath;
             this.connectionStringBuilder = connectionStringBuilder;
             this.tokenProvider = tokenProvider;
             this.namespacePermissions = namespacePermissions;
             this.ruleShortener = ruleShortener;
+            this.subscriptionRuleNamingConvention = subscriptionRuleNamingConvention;
 
-            subscriptionName = inputQueueName.Length > maxNameLength ? subscriptionShortener(inputQueueName) : inputQueueName;
+            subscriptionName = subscriptionNamingConvention(inputQueueName);
+            subscriptionName = subscriptionName.Length > maxNameLength ? subscriptionShortener(subscriptionName) : subscriptionName;
         }
 
         public async Task Subscribe(Type eventType, ContextBag context)
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 
-            var ruleName = eventType.FullName.Length > maxNameLength ? ruleShortener(eventType.FullName) : eventType.FullName;
+            var ruleName = subscriptionRuleNamingConvention(eventType);
+            ruleName = ruleName.Length > maxNameLength ? ruleShortener(ruleName) : ruleName;
             var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
             var rule = new RuleDescription(ruleName, new SqlFilter(sqlExpression));
 
@@ -70,7 +81,8 @@
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 
-            var ruleName = eventType.FullName.Length > maxNameLength ? ruleShortener(eventType.FullName) : eventType.FullName;
+            var ruleName = subscriptionRuleNamingConvention(eventType);
+            ruleName = ruleName.Length > maxNameLength ? ruleShortener(ruleName) : ruleName;
 
             var client = new ManagementClient(connectionStringBuilder, tokenProvider);
 

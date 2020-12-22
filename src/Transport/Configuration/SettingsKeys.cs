@@ -11,6 +11,8 @@
         public const string TimeToWaitBeforeTriggeringCircuitBreaker = Base + nameof(TimeToWaitBeforeTriggeringCircuitBreaker);
         public const string SubscriptionNameShortener = Base + nameof(SubscriptionNameShortener);
         public const string RuleNameShortener = Base + nameof(RuleNameShortener);
+        public const string SubscriptionNamingConvention = Base + nameof(SubscriptionNamingConvention);
+        public const string SubscriptionRuleNamingConvention = Base + nameof(SubscriptionRuleNamingConvention);
         public const string TransportType = Base + nameof(TransportType);
         public const string CustomTokenProvider = Base + nameof(CustomTokenProvider);
         public const string CustomRetryPolicy = Base + nameof(CustomRetryPolicy);
