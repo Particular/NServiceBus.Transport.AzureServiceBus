@@ -16,7 +16,7 @@
     {
         const string defaultTopicName = "bundle-1";
         static readonly Func<string, string> defaultNameShortener = name => name;
-        static readonly Func<string, string> defaultNamingConvention = name => name;
+        static readonly Func<string, string> defaultSubscriptionNamingConvention = name => name;
         static readonly Func<Type, string> defaultSubscriptionRuleNamingConvention = type => type.FullName;
 
         readonly SettingsHolder settings;
@@ -111,7 +111,7 @@
 
             if (!settings.TryGet(SettingsKeys.SubscriptionNamingConvention, out Func<string, string> subscriptionNamingConvention))
             {
-                subscriptionNamingConvention = defaultNamingConvention;
+                subscriptionNamingConvention = defaultSubscriptionNamingConvention;
             }
 
             string localAddress;
@@ -164,7 +164,7 @@
 
             if (!settings.TryGet(SettingsKeys.SubscriptionNamingConvention, out Func<string, string> subscriptionNamingConvention))
             {
-                subscriptionNamingConvention = defaultNamingConvention;
+                subscriptionNamingConvention = defaultSubscriptionNamingConvention;
             }
 
             if (!settings.TryGet(SettingsKeys.SubscriptionRuleNamingConvention, out Func<Type, string> ruleNamingConvention))
