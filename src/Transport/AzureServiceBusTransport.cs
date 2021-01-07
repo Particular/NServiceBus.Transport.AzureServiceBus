@@ -1,6 +1,11 @@
 ﻿namespace NServiceBus
 {
-    using Settings;
+    using System;
+    using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Microsoft.Azure.ServiceBus;
+    using Microsoft.Azure.ServiceBus.Primitives;
     using Transport;
     using Transport.AzureServiceBus;
 
@@ -8,16 +13,99 @@
     public class AzureServiceBusTransport : TransportDefinition
     {
         /// <summary>
-        /// Initializes all the factories and supported features for the transport.
+        /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        /// <param name="settings">An instance of the current settings.</param>
-        /// <param name="connectionString">The connection string.</param>
-        /// <returns>The supported factories.</returns>
-        public override TransportInfrastructure Initialize(SettingsHolder settings, string connectionString) => new AzureServiceBusTransportInfrastructure(settings, connectionString);
+        public AzureServiceBusTransport() : base(TransportTransactionMode.SendsAtomicWithReceive)
+        {
+        }
+
+        /// <inheritdoc />
+        public override Task<TransportInfrastructure> Initialize(HostSettings hostSettings, ReceiveSettings[] receivers, string[] sendingAddresses,
+            CancellationToken cancellationToken = new CancellationToken())
+        {
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this);
+            return Task.FromResult<TransportInfrastructure>(infrastructure);
+        }
+
+        /// <inheritdoc />
+        public override string ToTransportAddress(QueueAddress address)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        /// <inheritdoc />
+        public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes()
+        {
+            return new[]
+            {
+                TransportTransactionMode.None,
+                TransportTransactionMode.ReceiveOnly,
+                TransportTransactionMode.SendsAtomicWithReceive
+            };
+        }
+
+        /// <inheritdoc />
+        public override bool SupportsDelayedDelivery { get; } = true;
+
+        /// <inheritdoc />
+        public override bool SupportsPublishSubscribe { get; } = true;
+
+        /// <inheritdoc />
+        public override bool SupportsTTBR { get; } = true;
 
         /// <summary>
-        /// Gets an example connection string to use when reporting the lack of a configured connection string to the user.
+        /// Overrides the default topic name used to publish events between endpoints.
         /// </summary>
-        public override string ExampleConnectionStringForErrorMessage { get; } = "Endpoint=sb://[namespace].servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=[secret_key]";
+        public string TopicName { get; set; }
+
+        /// <summary>
+        /// Overrides the default maximum size used when creating queues and topics.
+        /// </summary>
+        public int EntityMaximumSize { get; set; }
+
+        /// <summary>
+        /// Enables entity partitioning when creating queues and topics.
+        /// </summary>
+        public bool EnablePartitioning { get; set; }
+
+        /// <summary>
+        /// Specifies the multiplier to apply to the maximum concurrency value to calculate the prefetch count.
+        /// </summary>
+        public int PrefetchMultiplier { get; set; }
+
+        /// <summary>
+        /// Overrides the default prefetch count calculation with the specified value.
+        /// </summary>
+        public int PrefetchCount { get; set; }
+
+        /// <summary>
+        /// Overrides the default time to wait before triggering a circuit breaker that initiates the endpoint shutdown procedure when the message pump cannot successfully receive a message.
+        /// </summary>
+        public TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
+
+        /// <summary>
+        /// Specifies a callback to customize subscription names.
+        /// </summary>
+        public Func<string, string> SubscriptionNamingConvention { get; set; }
+
+        /// <summary>
+        /// Specifies a callback to customize subscription rule names.
+        /// </summary>
+        public Func<Type, string> SubscriptionRuleNamingConvention { get; set; }
+
+        /// <summary>
+        /// Configures the transport to use AMQP over WebSockets.
+        /// </summary>
+        public bool UseWebSockets { get; set; }
+
+        /// <summary>
+        /// Overrides the default token provider with a custom implementation.
+        /// </summary>
+        public ITokenProvider CustomTokenProvider { get; set; }
+
+        /// <summary>
+        /// Overrides the default retry policy with a custom implementation.
+        /// </summary>
+        public RetryPolicy CustomRetryPolicy { get; set; }
     }
 }
