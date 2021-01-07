@@ -15,8 +15,10 @@
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        public AzureServiceBusTransport() : base(TransportTransactionMode.SendsAtomicWithReceive)
+        public AzureServiceBusTransport(string connectionString) : base(TransportTransactionMode.SendsAtomicWithReceive)
         {
+            Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
+            ConnectionString = connectionString;
         }
 
         /// <inheritdoc />
@@ -54,14 +56,14 @@
         public override bool SupportsTTBR { get; } = true;
 
         /// <summary>
-        /// Overrides the default topic name used to publish events between endpoints.
+        /// The topic name used to publish events between endpoints.
         /// </summary>
-        public string TopicName { get; set; }
+        public string TopicName { get; set; } = "bundle-1";
 
         /// <summary>
         /// Overrides the default maximum size used when creating queues and topics.
         /// </summary>
-        public int EntityMaximumSize { get; set; }
+        public int? EntityMaximumSize { get; set; }
 
         /// <summary>
         /// Enables entity partitioning when creating queues and topics.
@@ -71,17 +73,17 @@
         /// <summary>
         /// Specifies the multiplier to apply to the maximum concurrency value to calculate the prefetch count.
         /// </summary>
-        public int PrefetchMultiplier { get; set; }
+        public int PrefetchMultiplier { get; set; } = 10;
 
         /// <summary>
-        /// Overrides the default prefetch count calculation with the specified value.
+        /// Overrides the default prefetch count calculation with the specified value. 
         /// </summary>
-        public int PrefetchCount { get; set; }
+        public int? PrefetchCount { get; set; }
 
         /// <summary>
         /// Overrides the default time to wait before triggering a circuit breaker that initiates the endpoint shutdown procedure when the message pump cannot successfully receive a message.
         /// </summary>
-        public TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
+        public TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; } = TimeSpan.FromMinutes(2);
 
         /// <summary>
         /// Specifies a callback to customize subscription names.
@@ -107,5 +109,7 @@
         /// Overrides the default retry policy with a custom implementation.
         /// </summary>
         public RetryPolicy CustomRetryPolicy { get; set; }
+
+        internal string ConnectionString { get; private set; }
     }
 }
