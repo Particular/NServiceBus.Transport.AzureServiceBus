@@ -14,185 +14,98 @@
 
     class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
-        const string defaultTopicName = "bundle-1";
-        static readonly Func<string, string> defaultSubscriptionNamingConvention = name => name;
-        static readonly Func<Type, string> defaultSubscriptionRuleNamingConvention = type => type.FullName;
+        private readonly AzureServiceBusTransport transportSettings;
 
-        readonly SettingsHolder settings;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
-        readonly ITokenProvider tokenProvider;
-        readonly string topicName;
         readonly NamespacePermissions namespacePermissions;
         MessageSenderPool messageSenderPool;
 
-        public AzureServiceBusTransportInfrastructure(SettingsHolder settings, string connectionString)
+        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings)
         {
-            this.settings = settings;
-            connectionStringBuilder = new ServiceBusConnectionStringBuilder(connectionString);
+            this.transportSettings = transportSettings;
 
-            if (settings.TryGet(SettingsKeys.TransportType, out TransportType transportType))
-            {
-                connectionStringBuilder.TransportType = transportType;
-            }
+            connectionStringBuilder = new ServiceBusConnectionStringBuilder(transportSettings.ConnectionString);
 
-            settings.TryGet(SettingsKeys.CustomTokenProvider, out tokenProvider);
+            connectionStringBuilder.TransportType =
+                transportSettings.UseWebSockets ? TransportType.AmqpWebSockets : TransportType.Amqp;
 
-            if (!settings.TryGet(SettingsKeys.TopicName, out topicName))
-            {
-                topicName = defaultTopicName;
-            }
+            //TODO verify this is null if no user-defined token prover has been provided
+            namespacePermissions = new NamespacePermissions(connectionStringBuilder, transportSettings.CustomTokenProvider);
 
-            namespacePermissions = new NamespacePermissions(connectionStringBuilder, tokenProvider);
+            messageSenderPool = new MessageSenderPool(connectionStringBuilder, transportSettings.CustomTokenProvider, transportSettings.CustomRetryPolicy);
 
-            WriteStartupDiagnostics();
+            //TODO should those properties really need to be virtual? Makes things more complicated by extracting all assignments into dedicated methods.
+            Dispatcher = new MessageDispatcher(messageSenderPool, transportSettings.TopicName);
+
+
+            WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
         }
 
-        void WriteStartupDiagnostics()
+
+        void WriteStartupDiagnostics(StartupDiagnosticEntries startupDiagnostic)
         {
-            settings.AddStartupDiagnosticsSection("Azure Service Bus transport", new
+            startupDiagnostic.Add("Azure Service Bus transport", new
             {
-                TopicName = settings.TryGet(SettingsKeys.TopicName, out string customTopicName) ? customTopicName : "default",
-                EntityMaximumSize = settings.TryGet(SettingsKeys.MaximumSizeInGB, out int entityMaxSize) ? entityMaxSize.ToString() : "default",
-                EnablePartitioning = settings.TryGet(SettingsKeys.EnablePartitioning, out bool enablePartitioning) ? enablePartitioning.ToString() : "default",
-                SubscriptionNamingConvention = settings.TryGet(SettingsKeys.SubscriptionNamingConvention, out Func<string, string> _) ? "configured" : "default",
-                SubscriptionRuleNamingConvention = settings.TryGet(SettingsKeys.SubscriptionRuleNamingConvention, out Func<Type, string> _) ? "configured" : "default",
-                PrefetchMultiplier = settings.TryGet(SettingsKeys.PrefetchMultiplier, out int prefetchMultiplier) ? prefetchMultiplier.ToString() : "default",
-                PrefetchCount = settings.TryGet(SettingsKeys.PrefetchCount, out int? prefetchCount) ? prefetchCount.ToString() : "default",
-                UseWebSockets = settings.TryGet(SettingsKeys.TransportType, out TransportType _) ? "True" : "default",
-                TimeToWaitBeforeTriggeringCircuitBreaker = settings.TryGet(SettingsKeys.TransportType, out TimeSpan timeToWait) ? timeToWait.ToString() : "default",
-                CustomTokenProvider = settings.TryGet(SettingsKeys.CustomTokenProvider, out ITokenProvider customTokenProvider) ? customTokenProvider.ToString() : "default",
-                CustomRetryPolicy = settings.TryGet(SettingsKeys.CustomRetryPolicy, out RetryPolicy customRetryPolicy) ? customRetryPolicy.ToString() : "default"
+                TopicName = transportSettings.TopicName,
+                EntityMaximumSize = transportSettings.EntityMaximumSize.ToString(),
+                EnablePartitioning = transportSettings.EnablePartitioning.ToString(),
+                PrefetchMultiplier = transportSettings.PrefetchMultiplier.ToString(),
+                PrefetchCount = transportSettings.PrefetchCount?.ToString() ?? "default",
+                UseWebSockets = transportSettings.UseWebSockets.ToString(),
+                TimeToWaitBeforeTriggeringCircuitBreaker = transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker.ToString(),
+                CustomTokenProvider = transportSettings.CustomTokenProvider?.ToString() ?? "default",
+                CustomRetryPolicy = transportSettings.CustomRetryPolicy?.ToString() ?? "default"
             });
         }
 
-        public override TransportReceiveInfrastructure ConfigureReceiveInfrastructure()
+        public MessagePump CreateMessagePump(ReceiveSettings receiveSettings)
         {
-            return new TransportReceiveInfrastructure(
-                () => CreateMessagePump(),
-                () => CreateQueueCreator(),
-                () => namespacePermissions.CanReceive());
+            return new MessagePump(
+                connectionStringBuilder, 
+                transportSettings.CustomTokenProvider, 
+                transportSettings.PrefetchMultiplier, 
+                transportSettings.PrefetchCount, 
+                transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, 
+                transportSettings.CustomRetryPolicy);
         }
 
-        MessagePump CreateMessagePump()
-        {
-            if (!settings.TryGet(SettingsKeys.PrefetchMultiplier, out int prefetchMultiplier))
-            {
-                prefetchMultiplier = 10;
-            }
+        //TODO create queues if necessary during transport.initialize()
+        //QueueCreator CreateQueueCreator()
+        //{
+        //    string localAddress;
 
-            settings.TryGet(SettingsKeys.PrefetchCount, out int? prefetchCount);
+        //    try
+        //    {
+        //        localAddress = settings.LocalAddress();
+        //    }
+        //    catch
+        //    {
+        //        // For TransportTests, LocalAddress() will throw. Construct local address manually.
+        //        localAddress = ToTransportAddress(LogicalAddress.CreateLocalAddress(settings.EndpointName(), new Dictionary<string, string>()));
+        //    }
 
-            if (!settings.TryGet(SettingsKeys.TimeToWaitBeforeTriggeringCircuitBreaker, out TimeSpan timeToWaitBeforeTriggeringCircuitBreaker))
-            {
-                timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
-            }
+        //    return new QueueCreator(localAddress, topicName, connectionStringBuilder, tokenProvider, namespacePermissions, maximumSizeInGB * 1024, enablePartitioning, subscriptionNamingConvention);
+        //}
 
-            settings.TryGet(SettingsKeys.CustomRetryPolicy, out RetryPolicy retryPolicy);
-
-            return new MessagePump(connectionStringBuilder, tokenProvider, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker, retryPolicy);
-        }
-
-        QueueCreator CreateQueueCreator()
-        {
-            if (!settings.TryGet(SettingsKeys.MaximumSizeInGB, out int maximumSizeInGB))
-            {
-                maximumSizeInGB = 5;
-            }
-
-            settings.TryGet(SettingsKeys.EnablePartitioning, out bool enablePartitioning);
-
-            if (!settings.TryGet(SettingsKeys.SubscriptionNamingConvention, out Func<string, string> subscriptionNamingConvention))
-            {
-                subscriptionNamingConvention = defaultSubscriptionNamingConvention;
-            }
-
-            string localAddress;
-
-            try
-            {
-                localAddress = settings.LocalAddress();
-            }
-            catch
-            {
-                // For TransportTests, LocalAddress() will throw. Construct local address manually.
-                localAddress = ToTransportAddress(LogicalAddress.CreateLocalAddress(settings.EndpointName(), new Dictionary<string, string>()));
-            }
-
-            return new QueueCreator(localAddress, topicName, connectionStringBuilder, tokenProvider, namespacePermissions, maximumSizeInGB * 1024, enablePartitioning, subscriptionNamingConvention);
-        }
-
-        public override TransportSendInfrastructure ConfigureSendInfrastructure()
-        {
-            return new TransportSendInfrastructure(
-                () => CreateMessageDispatcher(),
-                () => namespacePermissions.CanSend());
-        }
-
-        MessageDispatcher CreateMessageDispatcher()
-        {
-            settings.TryGet(SettingsKeys.CustomRetryPolicy, out RetryPolicy retryPolicy);
-
-            messageSenderPool = new MessageSenderPool(connectionStringBuilder, tokenProvider, retryPolicy);
-
-            return new MessageDispatcher(messageSenderPool, topicName);
-        }
-
-        public override TransportSubscriptionInfrastructure ConfigureSubscriptionInfrastructure()
-        {
-            return new TransportSubscriptionInfrastructure(() => CreateSubscriptionManager());
-        }
-
+        //TODO move this to the receiver
         SubscriptionManager CreateSubscriptionManager()
         {
-            if (!settings.TryGet(SettingsKeys.SubscriptionNamingConvention, out Func<string, string> subscriptionNamingConvention))
-            {
-                subscriptionNamingConvention = defaultSubscriptionNamingConvention;
-            }
-
-            if (!settings.TryGet(SettingsKeys.SubscriptionRuleNamingConvention, out Func<Type, string> subscriptionRuleNamingConvention))
-            {
-                subscriptionRuleNamingConvention = defaultSubscriptionRuleNamingConvention;
-            }
-
-            return new SubscriptionManager(settings.LocalAddress(), topicName, connectionStringBuilder, tokenProvider, namespacePermissions, subscriptionNamingConvention, subscriptionRuleNamingConvention);
+            return new SubscriptionManager(
+                string.Empty, //TODO provide address
+                transportSettings.TopicName, 
+                connectionStringBuilder,
+                transportSettings.CustomTokenProvider,
+                namespacePermissions,
+                transportSettings.SubscriptionNamingConvention,
+                transportSettings.SubscriptionRuleNamingConvention);
         }
 
-        public override EndpointInstance BindToLocalEndpoint(EndpointInstance instance) => instance;
-
-        public override string ToTransportAddress(LogicalAddress logicalAddress)
-        {
-            var queue = new StringBuilder(logicalAddress.EndpointInstance.Endpoint);
-
-            if (logicalAddress.EndpointInstance.Discriminator != null)
-            {
-                queue.Append($"-{logicalAddress.EndpointInstance.Discriminator}");
-            }
-
-            if (logicalAddress.Qualifier != null)
-            {
-                queue.Append($".{logicalAddress.Qualifier}");
-            }
-
-            return queue.ToString();
-        }
-
-        public override async Task Stop()
+        public override async Task DisposeAsync()
         {
             if (messageSenderPool != null)
             {
                 await messageSenderPool.Close().ConfigureAwait(false);
             }
         }
-
-        public override IEnumerable<Type> DeliveryConstraints => new List<Type>
-        {
-            typeof(DelayDeliveryWith),
-            typeof(DoNotDeliverBefore),
-            typeof(DiscardIfNotReceivedBefore)
-        };
-
-        public override TransportTransactionMode TransactionMode => TransportTransactionMode.SendsAtomicWithReceive;
-
-        public override OutboundRoutingPolicy OutboundRoutingPolicy => new OutboundRoutingPolicy(OutboundRoutingType.Unicast, OutboundRoutingType.Multicast, OutboundRoutingType.Unicast);
     }
 }

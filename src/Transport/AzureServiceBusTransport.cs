@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
@@ -25,14 +26,33 @@
         public override Task<TransportInfrastructure> Initialize(HostSettings hostSettings, ReceiveSettings[] receivers, string[] sendingAddresses,
             CancellationToken cancellationToken = new CancellationToken())
         {
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this);
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings);
+            
+            foreach (var receiver in receivers)
+            {
+                infrastructure.CreateMessagePump(receiver);
+            }
+            
             return Task.FromResult<TransportInfrastructure>(infrastructure);
         }
 
         /// <inheritdoc />
         public override string ToTransportAddress(QueueAddress address)
         {
-            throw new System.NotImplementedException();
+            //TODO is it really worthwhile using a StringBuilder here?
+            var queue = new StringBuilder(address.BaseAddress);
+
+            if (address.Discriminator != null)
+            {
+                queue.Append($"-{address.BaseAddress}");
+            }
+
+            if (address.Qualifier != null)
+            {
+                queue.Append($".{address.Qualifier}");
+            }
+
+            return queue.ToString();
         }
 
         /// <inheritdoc />
@@ -61,9 +81,9 @@
         public string TopicName { get; set; } = "bundle-1";
 
         /// <summary>
-        /// Overrides the default maximum size used when creating queues and topics.
+        /// The maximum size used when creating queues and topics in GB.
         /// </summary>
-        public int? EntityMaximumSize { get; set; }
+        public int EntityMaximumSize { get; set; } = 5;
 
         /// <summary>
         /// Enables entity partitioning when creating queues and topics.
@@ -88,12 +108,12 @@
         /// <summary>
         /// Specifies a callback to customize subscription names.
         /// </summary>
-        public Func<string, string> SubscriptionNamingConvention { get; set; }
+        public Func<string, string> SubscriptionNamingConvention { get; set; } = name => name;
 
         /// <summary>
         /// Specifies a callback to customize subscription rule names.
         /// </summary>
-        public Func<Type, string> SubscriptionRuleNamingConvention { get; set; }
+        public Func<Type, string> SubscriptionRuleNamingConvention { get; set; } = type => type.FullName;
 
         /// <summary>
         /// Configures the transport to use AMQP over WebSockets.

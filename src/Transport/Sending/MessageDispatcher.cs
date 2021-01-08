@@ -1,12 +1,13 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System.Collections.Generic;
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
     using Extensibility;
     using Microsoft.Azure.ServiceBus;
 
-    class MessageDispatcher : IDispatchMessages
+    class MessageDispatcher : IMessageDispatcher
     {
         readonly MessageSenderPool messageSenderPool;
         readonly string topicName;
@@ -107,6 +108,12 @@
 
                 transportOperation.Message.Headers.Remove(CustomizeNativeMessageExtensions.CustomizationHeader);
             }
+        }
+
+        public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction,
+            CancellationToken cancellationToken = new CancellationToken())
+        {
+            throw new System.NotImplementedException();
         }
     }
 }
