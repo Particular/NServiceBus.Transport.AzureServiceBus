@@ -7,6 +7,7 @@
     using Microsoft.Azure.ServiceBus.Management;
     using Microsoft.Azure.ServiceBus.Primitives;
 
+    //TODO: remove/inline queue creation logic into transport infrastructure
     class QueueCreator
     {
         const int maxNameLength = 50;

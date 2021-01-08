@@ -29,6 +29,7 @@
             var customizationId = Guid.NewGuid().ToString();
             options.SetHeader(CustomizationHeader, customizationId);
 
+            //TODO retrieve NativeMessageCustomizer from the message properties instead of the context
             var nativePropertiesCustomizer = options.GetExtensions().GetOrCreate<NativeMessageCustomizer>();
             if (!nativePropertiesCustomizer.Customizations.TryAdd(customizationId, customization))
             {
