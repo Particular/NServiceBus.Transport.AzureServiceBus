@@ -7,7 +7,7 @@
     using Microsoft.Azure.ServiceBus.Management;
     using Microsoft.Azure.ServiceBus.Primitives;
 
-    class QueueCreator : ICreateQueues
+    class QueueCreator
     {
         const int maxNameLength = 50;
 
