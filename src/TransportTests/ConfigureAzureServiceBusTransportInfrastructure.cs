@@ -3,25 +3,19 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using NServiceBus;
-using NServiceBus.Settings;
+using NServiceBus.Transport;
 using NServiceBus.TransportTests;
 
 public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTransportInfrastructure
 {
-    public TransportConfigurationResult Configure(SettingsHolder settings, TransportTransactionMode transactionMode)
+    public async Task<TransportConfigurationResult> Configure(HostSettings hostSettings, string inputQueueName, string errorQueueName,
+        TransportTransactionMode transactionMode)
     {
-        CreateStartupDiagnostics(settings);
+        var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
+        var transport = new AzureServiceBusTransport(connectionString);
 
-        var result = new TransportConfigurationResult
-        {
-            PurgeInputQueueOnStartup = false
-        };
-
-        var transport = new AzureServiceBusTransport();
-
-        var transportExtensions = new TransportExtensions<AzureServiceBusTransport>(settings);
-
-        transportExtensions.SubscriptionNamingConvention(name =>
+        transport.TransportTransactionMode = transactionMode;
+        transport.SubscriptionNamingConvention = name =>
         {
             // originally we used to shorten only when the length of the name has exceeded the maximum length of 50 characters
             if (name.Length <= 50)
@@ -46,25 +40,27 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
                     return sb.ToString();
                 }
             }
-        });
+        };
 
-        var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
-        result.TransportInfrastructure = transport.Initialize(settings, connectionString);
+        var transportInfrastructure = await transport.Initialize(
+            hostSettings, 
+            new[]
+            {
+                new ReceiveSettings(inputQueueName, inputQueueName, true, false, errorQueueName), 
+            }, 
+            new string[0]);
 
-        return result;
+        return new TransportConfigurationResult
+        {
+            PurgeInputQueueOnStartup = false,
+            TransportDefinition = transport,
+            TransportInfrastructure = transportInfrastructure,
+            PushRuntimeSettings = null //TODO
+        };
     }
 
     public Task Cleanup()
     {
         return Task.CompletedTask;
     }
-
-    static void CreateStartupDiagnostics(SettingsHolder settings)
-    {
-        var ctor = hostingSettingsType.GetConstructors()[0];
-        var hostingSettings = ctor.Invoke(new object[] {settings});
-        settings.Set(hostingSettingsType.FullName, hostingSettings);
-    }
-
-    static Type hostingSettingsType = typeof(IEndpointInstance).Assembly.GetType("NServiceBus.HostingComponent+Settings", true);
 }
