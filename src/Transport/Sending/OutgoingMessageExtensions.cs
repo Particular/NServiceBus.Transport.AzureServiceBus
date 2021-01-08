@@ -2,16 +2,12 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using Configuration;
-    using DelayedDelivery;
-    using DeliveryConstraints;
     using Microsoft.Azure.ServiceBus;
-    using Performance.TimeToBeReceived;
 
     static class OutgoingMessageExtensions
     {
-        public static Message ToAzureServiceBusMessage(this OutgoingMessage outgoingMessage, List<DeliveryConstraint> deliveryConstraints, string incomingQueuePartitionKey)
+        public static Message ToAzureServiceBusMessage(this OutgoingMessage outgoingMessage, OperationProperties operationProperties, string incomingQueuePartitionKey)
         {
             var message = new Message(outgoingMessage.Body)
             {
@@ -24,7 +20,7 @@
 
             message.ViaPartitionKey = incomingQueuePartitionKey;
 
-            ApplyDeliveryConstraints(message, deliveryConstraints);
+            ApplyDeliveryConstraints(message, operationProperties);
 
             ApplyCorrelationId(message, outgoingMessage.Headers);
 
@@ -37,21 +33,21 @@
             return message;
         }
 
-        static void ApplyDeliveryConstraints(Message message, List<DeliveryConstraint> deliveryConstraints)
+        static void ApplyDeliveryConstraints(Message message, OperationProperties deliveryConstraints)
         {
             // TODO: review when delaying with TimeSpan is supported https://github.com/Azure/azure-service-bus-dotnet/issues/160
-            if (deliveryConstraints.TryGet(out DoNotDeliverBefore doNotDeliverBefore))
+            if (deliveryConstraints.DoNotDeliverBefore != null)
             {
-                message.ScheduledEnqueueTimeUtc = doNotDeliverBefore.At.UtcDateTime;
-            }
-            else if (deliveryConstraints.TryGet(out DelayDeliveryWith delayDeliveryWith))
+                message.ScheduledEnqueueTimeUtc = deliveryConstraints.DoNotDeliverBefore.At.UtcDateTime;
+            } 
+            else if (deliveryConstraints.DelayDeliveryWith != null)
             {
-                message.ScheduledEnqueueTimeUtc = (Time.UtcNow() + delayDeliveryWith.Delay).UtcDateTime;
+                message.ScheduledEnqueueTimeUtc = (Time.UtcNow() + deliveryConstraints.DelayDeliveryWith.Delay).UtcDateTime;
             }
 
-            if (deliveryConstraints.TryGet(out DiscardIfNotReceivedBefore discardIfNotReceivedBefore))
+            if (deliveryConstraints.DiscardIfNotReceivedBefore != null)
             {
-                message.TimeToLive = discardIfNotReceivedBefore.MaxTime;
+                message.TimeToLive = deliveryConstraints.DiscardIfNotReceivedBefore.MaxTime;
             }
         }
 
@@ -86,7 +82,5 @@
                 outgoingMessage.UserProperties[header.Key] = header.Value;
             }
         }
-
-        static bool TryGet<T>(this List<DeliveryConstraint> list, out T constraint) where T : DeliveryConstraint => (constraint = list.OfType<T>().FirstOrDefault()) != null;
     }
 }
