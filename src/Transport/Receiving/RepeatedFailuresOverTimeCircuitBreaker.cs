@@ -7,7 +7,7 @@
 
     class RepeatedFailuresOverTimeCircuitBreaker
     {
-        public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering, CriticalError criticalError)
+        public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering, Action<string, Exception> criticalError)
         {
             this.name = name;
             this.criticalError = criticalError;

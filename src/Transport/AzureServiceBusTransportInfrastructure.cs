@@ -19,10 +19,12 @@
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly NamespacePermissions namespacePermissions;
         MessageSenderPool messageSenderPool;
+        private HostSettings hostSettings;
 
         public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings)
         {
             this.transportSettings = transportSettings;
+            this.hostSettings = hostSettings;
 
             connectionStringBuilder = new ServiceBusConnectionStringBuilder(transportSettings.ConnectionString);
 
@@ -62,11 +64,9 @@
         {
             return new MessagePump(
                 connectionStringBuilder, 
-                transportSettings.CustomTokenProvider, 
-                transportSettings.PrefetchMultiplier, 
-                transportSettings.PrefetchCount, 
-                transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, 
-                transportSettings.CustomRetryPolicy);
+                transportSettings,
+                receiveSettings,
+                hostSettings.CriticalErrorAction);
         }
 
         //TODO create queues if necessary during transport.initialize()
