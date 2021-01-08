@@ -1,13 +1,15 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
+    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
     using Microsoft.Azure.ServiceBus.Primitives;
-    using NServiceBus.Extensibility;
+    using Extensibility;
+    using Unicast.Messages;
 
-    class SubscriptionManager : IManageSubscriptions
+    class SubscriptionManager : ISubscriptionManager
     {
         const int maxNameLength = 50;
 
@@ -36,12 +38,13 @@
             subscriptionName = subscriptionNamingConvention(inputQueueName);
         }
 
-        public async Task Subscribe(Type eventType, ContextBag context)
+        public async Task Subscribe(MessageMetadata eventType, ContextBag context,
+            CancellationToken cancellationToken = new CancellationToken())
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 
-            var ruleName = subscriptionRuleNamingConvention(eventType);
-            var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
+            var ruleName = subscriptionRuleNamingConvention(eventType.MessageType);
+            var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.MessageType.FullName}%'";
             var rule = new RuleDescription(ruleName, new SqlFilter(sqlExpression));
 
             var client = new ManagementClient(connectionStringBuilder, tokenProvider);
@@ -73,11 +76,12 @@
             }
         }
 
-        public async Task Unsubscribe(Type eventType, ContextBag context)
+        public async Task Unsubscribe(MessageMetadata eventType, ContextBag context,
+            CancellationToken cancellationToken = new CancellationToken())
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 
-            var ruleName = subscriptionRuleNamingConvention(eventType);
+            var ruleName = subscriptionRuleNamingConvention(eventType.MessageType);
 
             var client = new ManagementClient(connectionStringBuilder, tokenProvider);
 
