@@ -40,16 +40,5 @@
 
             return StartupCheckResult.Success;
         }
-        public Task<StartupCheckResult> CanSend()
-        {
-            // TODO: blocked by https://github.com/Azure/azure-service-bus-dotnet/issues/520
-            return Task.FromResult(StartupCheckResult.Success);
-        }
-
-        public Task<StartupCheckResult> CanReceive()
-        {
-            // TODO: blocked by https://github.com/Azure/azure-service-bus-dotnet/issues/520
-            return Task.FromResult(StartupCheckResult.Success);
-        }
     }
 }
