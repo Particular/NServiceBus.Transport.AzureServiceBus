@@ -16,7 +16,7 @@
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString) : base(TransportTransactionMode.SendsAtomicWithReceive)
+        public AzureServiceBusTransport(string connectionString) : base(TransportTransactionMode.SendsAtomicWithReceive, true, true, true)
         {
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
             ConnectionString = connectionString;
@@ -65,15 +65,6 @@
                 TransportTransactionMode.SendsAtomicWithReceive
             };
         }
-
-        /// <inheritdoc />
-        public override bool SupportsDelayedDelivery { get; } = true;
-
-        /// <inheritdoc />
-        public override bool SupportsPublishSubscribe { get; } = true;
-
-        /// <inheritdoc />
-        public override bool SupportsTTBR { get; } = true;
 
         /// <summary>
         /// The topic name used to publish events between endpoints.
