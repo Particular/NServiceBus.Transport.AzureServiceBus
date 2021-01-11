@@ -5,7 +5,6 @@
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
-    using Microsoft.Azure.ServiceBus.Primitives;
     using Extensibility;
     using Unicast.Messages;
 
@@ -13,29 +12,24 @@
     {
         const int maxNameLength = 50;
 
-        readonly string topicPath;
+        private readonly AzureServiceBusTransport transportSettings;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
-        readonly ITokenProvider tokenProvider;
         readonly NamespacePermissions namespacePermissions;
-        readonly Func<Type, string> subscriptionRuleNamingConvention;
         readonly string subscriptionName;
 
         StartupCheckResult startupCheckResult;
 
-        public SubscriptionManager(string inputQueueName, string topicPath,
+        public SubscriptionManager(
+            string inputQueueName,
+            AzureServiceBusTransport transportSettings, 
             ServiceBusConnectionStringBuilder connectionStringBuilder,
-            ITokenProvider tokenProvider,
-            NamespacePermissions namespacePermissions,
-            Func<string, string> subscriptionNamingConvention,
-            Func<Type, string> subscriptionRuleNamingConvention)
+            NamespacePermissions namespacePermissions)
         {
-            this.topicPath = topicPath;
+            this.transportSettings = transportSettings;
             this.connectionStringBuilder = connectionStringBuilder;
-            this.tokenProvider = tokenProvider;
             this.namespacePermissions = namespacePermissions;
-            this.subscriptionRuleNamingConvention = subscriptionRuleNamingConvention;
 
-            subscriptionName = subscriptionNamingConvention(inputQueueName);
+            subscriptionName = transportSettings.SubscriptionNamingConvention(inputQueueName);
         }
 
         public async Task Subscribe(MessageMetadata eventType, ContextBag context,
@@ -43,28 +37,28 @@
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 
-            var ruleName = subscriptionRuleNamingConvention(eventType.MessageType);
+            var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType.MessageType);
             var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.MessageType.FullName}%'";
             var rule = new RuleDescription(ruleName, new SqlFilter(sqlExpression));
 
-            var client = new ManagementClient(connectionStringBuilder, tokenProvider);
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
 
             try
             {
-                var existingRule = await client.GetRuleAsync(topicPath, subscriptionName, rule.Name).ConfigureAwait(false);
+                var existingRule = await client.GetRuleAsync(transportSettings.TopicName, subscriptionName, rule.Name).ConfigureAwait(false);
 
                 if (existingRule.Filter.ToString() != rule.Filter.ToString())
                 {
                     rule.Action = existingRule.Action;
 
-                    await client.UpdateRuleAsync(topicPath, subscriptionName, rule).ConfigureAwait(false);
+                    await client.UpdateRuleAsync(transportSettings.TopicName, subscriptionName, rule).ConfigureAwait(false);
                 }
             }
             catch (MessagingEntityNotFoundException)
             {
                 try
                 {
-                    await client.CreateRuleAsync(topicPath, subscriptionName, rule).ConfigureAwait(false);
+                    await client.CreateRuleAsync(transportSettings.TopicName, subscriptionName, rule).ConfigureAwait(false);
                 }
                 catch (MessagingEntityAlreadyExistsException)
                 {
@@ -81,13 +75,13 @@
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 
-            var ruleName = subscriptionRuleNamingConvention(eventType.MessageType);
+            var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType.MessageType);
 
-            var client = new ManagementClient(connectionStringBuilder, tokenProvider);
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
 
             try
             {
-                await client.DeleteRuleAsync(topicPath, subscriptionName, ruleName).ConfigureAwait(false);
+                await client.DeleteRuleAsync(transportSettings.TopicName, subscriptionName, ruleName).ConfigureAwait(false);
             }
             catch (MessagingEntityNotFoundException)
             {

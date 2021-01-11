@@ -66,7 +66,8 @@
                 connectionStringBuilder, 
                 transportSettings,
                 receiveSettings,
-                hostSettings.CriticalErrorAction);
+                hostSettings.CriticalErrorAction, 
+                namespacePermissions);
         }
 
         //TODO create queues if necessary during transport.initialize()
@@ -86,19 +87,6 @@
 
         //    return new QueueCreator(localAddress, topicName, connectionStringBuilder, tokenProvider, namespacePermissions, maximumSizeInGB * 1024, enablePartitioning, subscriptionNamingConvention);
         //}
-
-        //TODO move this to the receiver
-        SubscriptionManager CreateSubscriptionManager()
-        {
-            return new SubscriptionManager(
-                string.Empty, //TODO provide address
-                transportSettings.TopicName, 
-                connectionStringBuilder,
-                transportSettings.CustomTokenProvider,
-                namespacePermissions,
-                transportSettings.SubscriptionNamingConvention,
-                transportSettings.SubscriptionRuleNamingConvention);
-        }
 
         public override async Task DisposeAsync()
         {

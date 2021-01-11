@@ -36,16 +36,31 @@
         private PushRuntimeSettings limitations;
 
         public MessagePump(ServiceBusConnectionStringBuilder connectionStringBuilder,
-            AzureServiceBusTransport transportSettings, ReceiveSettings receiveSettings,
-            Action<string, Exception> criticalErrorAction)
+            AzureServiceBusTransport transportSettings,
+            ReceiveSettings receiveSettings,
+            Action<string, Exception> criticalErrorAction, 
+            NamespacePermissions namespacePermissions)
         {
             this.connectionStringBuilder = connectionStringBuilder;
             this.transportSettings = transportSettings;
             this.receiveSettings = receiveSettings;
             this.criticalErrorAction = criticalErrorAction;
+
+            if (receiveSettings.UsePublishSubscribe)
+            {
+                Subscriptions = new SubscriptionManager(
+                    receiveSettings.ReceiveAddress,
+                    transportSettings,
+                    connectionStringBuilder,
+                    namespacePermissions);
+            }
         }
 
-        public Task Initialize(PushRuntimeSettings limitations, Func<MessageContext, Task> onMessage, Func<ErrorContext, Task<ErrorHandleResult>> onError, IReadOnlyCollection<MessageMetadata> events,
+        public Task Initialize(
+            PushRuntimeSettings limitations, 
+            Func<MessageContext, Task> onMessage, 
+            Func<ErrorContext, Task<ErrorHandleResult>> onError, 
+            IReadOnlyCollection<MessageMetadata> events,
             CancellationToken cancellationToken = new CancellationToken())
         {
             if (receiveSettings.PurgeOnStartup)
