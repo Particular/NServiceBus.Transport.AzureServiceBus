@@ -1,4 +1,5 @@
 ﻿#pragma warning disable 1591
+#pragma warning disable 618
 
 namespace NServiceBus
 {
@@ -25,3 +26,4 @@ namespace NServiceBus
 }
 
 #pragma warning restore 1591
+#pragma warning restore 618
