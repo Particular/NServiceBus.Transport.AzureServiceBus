@@ -18,7 +18,6 @@
 
   <ItemGroup Label="Force the latest version of the transitive dependencies">
     <PackageReference Include="Microsoft.Azure.ServiceBus" Version="5.1.0" />
-    <PackageReference Include="Particular.CodeRules" Version="0.7.0" PrivateAssets="All" />
   </ItemGroup>
 
 </Project>
