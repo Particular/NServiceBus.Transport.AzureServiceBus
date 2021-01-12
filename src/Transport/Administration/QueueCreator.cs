@@ -9,8 +9,6 @@
 
     class QueueCreator : ICreateQueues
     {
-        const int maxNameLength = 50;
-
         readonly string mainInputQueueName;
         readonly string topicName;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
