@@ -23,17 +23,14 @@
         }
 
         /// <inheritdoc />
-        public override Task<TransportInfrastructure> Initialize(HostSettings hostSettings, ReceiveSettings[] receivers, string[] sendingAddresses,
+        public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings, ReceiveSettings[] receivers, string[] sendingAddresses,
             CancellationToken cancellationToken = new CancellationToken())
         {
             var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings);
+
+            await infrastructure.Initialize(receivers, sendingAddresses).ConfigureAwait(false);
             
-            foreach (var receiver in receivers)
-            {
-                infrastructure.CreateMessagePump(receiver);
-            }
-            
-            return Task.FromResult<TransportInfrastructure>(infrastructure);
+            return infrastructure;
         }
 
         /// <inheritdoc />

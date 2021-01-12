@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
     using DelayedDelivery;
@@ -20,6 +21,7 @@
         readonly NamespacePermissions namespacePermissions;
         MessageSenderPool messageSenderPool;
         private HostSettings hostSettings;
+        private QueueCreator queueCreator;
 
         public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings)
         {
@@ -39,6 +41,7 @@
             //TODO should those properties really need to be virtual? Makes things more complicated by extracting all assignments into dedicated methods.
             Dispatcher = new MessageDispatcher(messageSenderPool, transportSettings.TopicName);
 
+            queueCreator = new QueueCreator(transportSettings, connectionStringBuilder, namespacePermissions);
 
             WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
         }
@@ -60,33 +63,16 @@
             });
         }
 
-        public MessagePump CreateMessagePump(ReceiveSettings receiveSettings)
+        IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings)
         {
             return new MessagePump(
                 connectionStringBuilder, 
                 transportSettings,
                 receiveSettings,
                 hostSettings.CriticalErrorAction, 
-                namespacePermissions);
+                namespacePermissions,
+                queueCreator);
         }
-
-        //TODO create queues if necessary during transport.initialize()
-        //QueueCreator CreateQueueCreator()
-        //{
-        //    string localAddress;
-
-        //    try
-        //    {
-        //        localAddress = settings.LocalAddress();
-        //    }
-        //    catch
-        //    {
-        //        // For TransportTests, LocalAddress() will throw. Construct local address manually.
-        //        localAddress = ToTransportAddress(LogicalAddress.CreateLocalAddress(settings.EndpointName(), new Dictionary<string, string>()));
-        //    }
-
-        //    return new QueueCreator(localAddress, topicName, connectionStringBuilder, tokenProvider, namespacePermissions, maximumSizeInGB * 1024, enablePartitioning, subscriptionNamingConvention);
-        //}
 
         public override async Task DisposeAsync()
         {
@@ -94,6 +80,18 @@
             {
                 await messageSenderPool.Close().ConfigureAwait(false);
             }
+        }
+
+        public async Task Initialize(ReceiveSettings[] receivers, string[] sendingAddresses)
+        {
+            Receivers = Array.AsReadOnly(receivers.Select(CreateMessagePump).ToArray());
+
+            var allQueues = receivers
+                .Select(r => r.ReceiveAddress)
+                .Concat(sendingAddresses)
+                .ToArray();
+
+            await queueCreator.CreateQueues(allQueues).ConfigureAwait(false);
         }
     }
 }

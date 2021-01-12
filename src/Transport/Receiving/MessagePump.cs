@@ -10,13 +10,14 @@
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Core;
     using Unicast.Messages;
-    using IMessageReceiver = Transport.IMessageReceiver;
+    using IMessageReceiver = IMessageReceiver;
 
     class MessagePump : IMessageReceiver
     {
         private readonly AzureServiceBusTransport transportSettings;
         private readonly ReceiveSettings receiveSettings;
         private readonly Action<string, Exception> criticalErrorAction;
+        private readonly QueueCreator queueCreator;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         int numberOfExecutingReceives;
 
@@ -39,12 +40,14 @@
             AzureServiceBusTransport transportSettings,
             ReceiveSettings receiveSettings,
             Action<string, Exception> criticalErrorAction, 
-            NamespacePermissions namespacePermissions)
+            NamespacePermissions namespacePermissions,
+            QueueCreator queueCreator)
         {
             this.connectionStringBuilder = connectionStringBuilder;
             this.transportSettings = transportSettings;
             this.receiveSettings = receiveSettings;
             this.criticalErrorAction = criticalErrorAction;
+            this.queueCreator = queueCreator;
 
             if (receiveSettings.UsePublishSubscribe)
             {
@@ -56,7 +59,7 @@
             }
         }
 
-        public Task Initialize(
+        public async Task Initialize(
             PushRuntimeSettings limitations, 
             Func<MessageContext, Task> onMessage, 
             Func<ErrorContext, Task<ErrorHandleResult>> onError, 
@@ -68,13 +71,16 @@
                 throw new Exception("Azure Service Bus transport doesn't support PurgeOnStartup behavior");
             }
 
+            if (Subscriptions != null)
+            {
+                await queueCreator.CreateSubscription(receiveSettings.ReceiveAddress).ConfigureAwait(false);
+            }
+
             this.limitations = limitations;
             this.onMessage = onMessage;
             this.onError = onError;
 
             circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, criticalErrorAction);
-
-            return Task.CompletedTask;
         }
 
         public Task StartReceive(CancellationToken cancellationToken = new CancellationToken())

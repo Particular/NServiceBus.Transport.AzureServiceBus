@@ -7,39 +7,27 @@
     using Microsoft.Azure.ServiceBus.Management;
     using Microsoft.Azure.ServiceBus.Primitives;
 
-    //TODO: remove/inline queue creation logic into transport infrastructure
     class QueueCreator
     {
         const int maxNameLength = 50;
 
-        readonly string mainInputQueueName;
-        readonly string topicName;
+        private readonly AzureServiceBusTransport transportSettings;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
-        readonly ITokenProvider tokenProvider;
         readonly NamespacePermissions namespacePermissions;
         readonly int maxSizeInMB;
-        readonly bool enablePartitioning;
-        readonly Func<string, string> subscriptionNamingConvention;
 
-        public QueueCreator(string mainInputQueueName, string topicName,
+        public QueueCreator(
+            AzureServiceBusTransport transportSettings,
             ServiceBusConnectionStringBuilder connectionStringBuilder,
-            ITokenProvider tokenProvider,
-            NamespacePermissions namespacePermissions,
-            int maxSizeInMB,
-            bool enablePartitioning,
-            Func<string, string> subscriptionNamingConvention)
+            NamespacePermissions namespacePermissions)
         {
-            this.mainInputQueueName = mainInputQueueName;
-            this.topicName = topicName;
+            this.transportSettings = transportSettings;
             this.connectionStringBuilder = connectionStringBuilder;
-            this.tokenProvider = tokenProvider;
             this.namespacePermissions = namespacePermissions;
-            this.maxSizeInMB = maxSizeInMB;
-            this.enablePartitioning = enablePartitioning;
-            this.subscriptionNamingConvention = subscriptionNamingConvention;
+            this.maxSizeInMB = transportSettings.EntityMaximumSize * 1024;
         }
 
-        public async Task CreateQueueIfNecessary(QueueBindings queueBindings, string identity)
+        public async Task CreateQueues(string[] queues)
         {
             var result = await namespacePermissions.CanManage().ConfigureAwait(false);
 
@@ -48,14 +36,14 @@
                 throw new Exception(result.ErrorMessage);
             }
 
-            var client = new ManagementClient(connectionStringBuilder, tokenProvider);
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
 
             try
             {
-                var topic = new TopicDescription(topicName)
+                var topic = new TopicDescription(transportSettings.TopicName)
                 {
                     EnableBatchedOperations = true,
-                    EnablePartitioning = enablePartitioning,
+                    EnablePartitioning = transportSettings.EnablePartitioning,
                     MaxSizeInMB = maxSizeInMB
                 };
 
@@ -71,7 +59,7 @@
                 {
                 }
 
-                foreach (var address in queueBindings.ReceivingAddresses.Concat(queueBindings.SendingAddresses))
+                foreach (var address in queues)
                 {
                     var queue = new QueueDescription(address)
                     {
@@ -79,7 +67,7 @@
                         LockDuration = TimeSpan.FromMinutes(5),
                         MaxDeliveryCount = int.MaxValue,
                         MaxSizeInMB = maxSizeInMB,
-                        EnablePartitioning = enablePartitioning
+                        EnablePartitioning = transportSettings.EnablePartitioning
                     };
 
                     try
@@ -94,16 +82,35 @@
                     {
                     }
                 }
+            }
+            finally
+            {
+                await client.CloseAsync().ConfigureAwait(false);
+            }
+        }
 
-                var subscriptionName = subscriptionNamingConvention(mainInputQueueName);
-                var subscription = new SubscriptionDescription(topicName, subscriptionName)
+        public async Task CreateSubscription(string subscribingQueue)
+        {
+            var result = await namespacePermissions.CanManage().ConfigureAwait(false);
+
+            if (!result.Succeeded)
+            {
+                throw new Exception(result.ErrorMessage);
+            }
+
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
+
+            try
+            {
+                var subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
+                var subscription = new SubscriptionDescription(transportSettings.TopicName, subscriptionName)
                 {
                     LockDuration = TimeSpan.FromMinutes(5),
-                    ForwardTo = mainInputQueueName,
+                    ForwardTo = subscribingQueue,
                     EnableDeadLetteringOnFilterEvaluationExceptions = false,
                     MaxDeliveryCount = int.MaxValue,
                     EnableBatchedOperations = true,
-                    UserMetadata = mainInputQueueName
+                    UserMetadata = subscribingQueue
                 };
 
                 try
