@@ -4,9 +4,9 @@
     using System.Collections.Concurrent;
     using Microsoft.Azure.ServiceBus;
 
-    internal class NativeMessageCustomizer
+    class NativeMessageCustomizer
     {
-        private ConcurrentDictionary<string, Action<Message>> customizations;
+        ConcurrentDictionary<string, Action<Message>> customizations;
 
         public ConcurrentDictionary<string, Action<Message>> Customizations => customizations ?? (customizations = new ConcurrentDictionary<string, Action<Message>>());
     }
