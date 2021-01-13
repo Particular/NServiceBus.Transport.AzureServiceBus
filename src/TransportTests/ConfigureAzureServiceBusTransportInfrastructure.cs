@@ -62,7 +62,7 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
     static void CreateStartupDiagnostics(SettingsHolder settings)
     {
         var ctor = hostingSettingsType.GetConstructors()[0];
-        var hostingSettings = ctor.Invoke(new object[] {settings});
+        var hostingSettings = ctor.Invoke(new object[] { settings });
         settings.Set(hostingSettingsType.FullName, hostingSettings);
     }
 

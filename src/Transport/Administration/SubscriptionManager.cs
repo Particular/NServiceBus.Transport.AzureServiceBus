@@ -9,8 +9,6 @@
 
     class SubscriptionManager : IManageSubscriptions
     {
-        const int maxNameLength = 50;
-
         readonly string topicPath;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly ITokenProvider tokenProvider;
