@@ -104,7 +104,7 @@
 
                     var receiveTask = receiver.ReceiveAsync();
 
-                    ProcessMessage(receiveTask).Ignore();
+                    _ = ProcessMessage(receiveTask);
                 }
             }
             catch (OperationCanceledException)
