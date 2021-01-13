@@ -10,7 +10,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.ServiceBus" Version="[4.0.0, 5.0.0)" />
     <PackageReference Include="NServiceBus" Version="[7.0.1, 8.0.0)" />
-    <PackageReference Include="Particular.CodeRules" Version="0.2.1" PrivateAssets="All" />
     <PackageReference Include="Particular.Packaging" Version="0.6.2" PrivateAssets="All" />
   </ItemGroup>
 
