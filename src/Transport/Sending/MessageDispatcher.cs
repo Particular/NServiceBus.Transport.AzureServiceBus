@@ -96,7 +96,7 @@
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
         }
 
-        private static void ApplyCustomizationToOutgoingNativeMessage(ReadOnlyContextBag context, IOutgoingTransportOperation transportOperation, Message message)
+        static void ApplyCustomizationToOutgoingNativeMessage(ReadOnlyContextBag context, IOutgoingTransportOperation transportOperation, Message message)
         {
             if (transportOperation.Message.Headers.TryGetValue(CustomizeNativeMessageExtensions.CustomizationHeader, out var customizationId))
             {
