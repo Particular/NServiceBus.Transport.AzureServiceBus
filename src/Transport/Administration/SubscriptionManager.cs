@@ -32,8 +32,7 @@
             subscriptionName = transportSettings.SubscriptionNamingConvention(inputQueueName);
         }
 
-        public async Task Subscribe(MessageMetadata eventType, ContextBag context,
-            CancellationToken cancellationToken = new CancellationToken())
+        public async Task Subscribe(MessageMetadata eventType, ContextBag context)
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 
@@ -70,8 +69,7 @@
             }
         }
 
-        public async Task Unsubscribe(MessageMetadata eventType, ContextBag context,
-            CancellationToken cancellationToken = new CancellationToken())
+        public async Task Unsubscribe(MessageMetadata eventType, ContextBag context)
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 

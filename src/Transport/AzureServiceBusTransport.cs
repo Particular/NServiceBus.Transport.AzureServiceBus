@@ -23,8 +23,7 @@
         }
 
         /// <inheritdoc />
-        public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings, ReceiveSettings[] receivers, string[] sendingAddresses,
-            CancellationToken cancellationToken = new CancellationToken())
+        public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings, ReceiveSettings[] receivers, string[] sendingAddresses)
         {
             var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings);
 

@@ -1,10 +1,8 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System.Collections.Generic;
-    using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
-    using Extensibility;
     using Microsoft.Azure.ServiceBus;
 
     class MessageDispatcher : IMessageDispatcher
@@ -18,8 +16,7 @@
             this.topicName = topicName;
         }
 
-        public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction,
-            CancellationToken cancellationToken = new CancellationToken())
+        public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction)
         {
             // Assumption: we're not implementing batching as it will be done by ASB client
             transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);

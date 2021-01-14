@@ -63,8 +63,7 @@
             PushRuntimeSettings limitations, 
             Func<MessageContext, Task> onMessage, 
             Func<ErrorContext, Task<ErrorHandleResult>> onError, 
-            IReadOnlyCollection<MessageMetadata> events,
-            CancellationToken cancellationToken = new CancellationToken())
+            IReadOnlyCollection<MessageMetadata> events)
         {
             if (receiveSettings.PurgeOnStartup)
             {
@@ -83,7 +82,7 @@
             circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, criticalErrorAction);
         }
 
-        public Task StartReceive(CancellationToken cancellationToken = new CancellationToken())
+        public Task StartReceive()
         {
             maxConcurrency = limitations.MaxConcurrency;
 
@@ -114,7 +113,7 @@
             return Task.CompletedTask;
         }
 
-        public async Task StopReceive(CancellationToken cancellationToken = new CancellationToken())
+        public async Task StopReceive()
         {
             messageProcessing.Cancel();
 
