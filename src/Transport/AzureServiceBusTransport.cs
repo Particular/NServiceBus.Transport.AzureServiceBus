@@ -16,19 +16,21 @@
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString) : base(TransportTransactionMode.SendsAtomicWithReceive, true, true, true)
+        public AzureServiceBusTransport(string connectionString) : base(TransportTransactionMode.SendsAtomicWithReceive,
+            true, true, true)
         {
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
             ConnectionString = connectionString;
         }
 
         /// <inheritdoc />
-        public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings, ReceiveSettings[] receivers, string[] sendingAddresses)
+        public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
+            ReceiveSettings[] receivers, string[] sendingAddresses)
         {
             var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings);
 
             await infrastructure.Initialize(receivers, sendingAddresses).ConfigureAwait(false);
-            
+
             return infrastructure;
         }
 
@@ -65,12 +67,30 @@
         /// <summary>
         /// The topic name used to publish events between endpoints.
         /// </summary>
-        public string TopicName { get; set; } = "bundle-1";
+        public string TopicName
+        {
+            get => topicName;
+            set
+            {
+                Guard.AgainstNullAndEmpty(nameof(TopicName), value);
+                topicName = value;
+            }
+        }
+        private string topicName = "bundle-1";
 
         /// <summary>
         /// The maximum size used when creating queues and topics in GB.
         /// </summary>
-        public int EntityMaximumSize { get; set; } = 5;
+        public int EntityMaximumSize
+        {
+            get => entityMaximumSize;
+            set
+            {
+                Guard.AgainstNegativeAndZero(nameof(EntityMaximumSize), value);
+                entityMaximumSize = value;
+            }
+        }
+        private int entityMaximumSize = 5;
 
         /// <summary>
         /// Enables entity partitioning when creating queues and topics.
@@ -80,27 +100,102 @@
         /// <summary>
         /// Specifies the multiplier to apply to the maximum concurrency value to calculate the prefetch count.
         /// </summary>
-        public int PrefetchMultiplier { get; set; } = 10;
+        public int PrefetchMultiplier 
+        { 
+            get => prefetchMultiplier;
+            set
+            {
+                Guard.AgainstNegativeAndZero(nameof(PrefetchMultiplier), value);
+                prefetchMultiplier = value;
+            }
+        }
+        private int prefetchMultiplier = 10;
 
         /// <summary>
         /// Overrides the default prefetch count calculation with the specified value. 
         /// </summary>
-        public int? PrefetchCount { get; set; }
+        public int? PrefetchCount
+        {
+            get => prefetchCount;
+            set
+            {
+                if (value.HasValue)
+                {
+                    Guard.AgainstNegative(nameof(PrefetchCount), value.Value);
+                }
+
+                prefetchCount = value;
+            }
+
+        }
+        private int? prefetchCount;
 
         /// <summary>
         /// Overrides the default time to wait before triggering a circuit breaker that initiates the endpoint shutdown procedure when the message pump cannot successfully receive a message.
         /// </summary>
-        public TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; } = TimeSpan.FromMinutes(2);
+        public TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker
+        {
+            get => timeToWaitBeforeTriggeringCircuitBreaker;
+            set
+            {
+                Guard.AgainstNegativeAndZero(nameof(TimeToWaitBeforeTriggeringCircuitBreaker), value);
+                timeToWaitBeforeTriggeringCircuitBreaker = value;
+            }
+        }
+        private TimeSpan timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
 
         /// <summary>
         /// Specifies a callback to customize subscription names.
         /// </summary>
-        public Func<string, string> SubscriptionNamingConvention { get; set; } = name => name;
+        public Func<string, string> SubscriptionNamingConvention
+        {
+            get => subscriptionNamingConvention;
+            set
+            {
+                Guard.AgainstNull(nameof(SubscriptionNamingConvention), value);
+
+                // wrap the custom convention:
+                subscriptionNamingConvention = subscriptionName =>
+                {
+                    try
+                    {
+                        return value(subscriptionName);
+                    }
+                    catch (Exception exception)
+                    {
+                        throw new Exception("Custom subscription naming convention threw an exception.", exception);
+                    }
+                };
+
+            }
+        }
+        private Func<string, string> subscriptionNamingConvention = name => name;
 
         /// <summary>
         /// Specifies a callback to customize subscription rule names.
         /// </summary>
-        public Func<Type, string> SubscriptionRuleNamingConvention { get; set; } = type => type.FullName;
+        public Func<Type, string> SubscriptionRuleNamingConvention
+        {
+            get => subscriptionRuleNamingConvention;
+            set
+            {
+                Guard.AgainstNull(nameof(SubscriptionRuleNamingConvention), value);
+
+                // wrap the custom convention:
+                subscriptionRuleNamingConvention = eventType =>
+                {
+                    try
+                    {
+                        return value(eventType);
+                    }
+                    catch (Exception exception)
+                    {
+                        throw new Exception("Custom subscription rule naming convention threw an exception", exception);
+                    }
+                };
+            }
+        }
+        private Func<Type, string> subscriptionRuleNamingConvention = type => type.FullName;
 
         /// <summary>
         /// Configures the transport to use AMQP over WebSockets.
@@ -115,7 +210,16 @@
         /// <summary>
         /// Overrides the default retry policy with a custom implementation.
         /// </summary>
-        public RetryPolicy CustomRetryPolicy { get; set; }
+        public RetryPolicy CustomRetryPolicy
+        {
+            get => customRetryPolicy;
+            set
+            {
+                Guard.AgainstNull(nameof(CustomRetryPolicy), value);
+                customRetryPolicy = value;
+            }
+        }
+        private RetryPolicy customRetryPolicy;
 
         internal string ConnectionString { get; private set; }
     }
