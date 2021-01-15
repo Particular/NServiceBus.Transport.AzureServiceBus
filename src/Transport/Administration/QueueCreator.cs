@@ -9,8 +9,6 @@
 
     class QueueCreator
     {
-        const int maxNameLength = 50;
-
         private readonly AzureServiceBusTransport transportSettings;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly NamespacePermissions namespacePermissions;

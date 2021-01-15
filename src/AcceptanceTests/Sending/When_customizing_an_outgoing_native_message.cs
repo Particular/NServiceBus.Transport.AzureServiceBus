@@ -50,7 +50,7 @@
         {
             public Endpoint()
             {
-                EndpointSetup<DefaultServer>(c=>
+                EndpointSetup<DefaultServer>(c =>
                 {
                     c.Pipeline.Register(typeof(Handler.PhysicalBehavior), "Customizes a native message in a physical behavior");
                     c.Pipeline.Register(typeof(Handler.LogicalBehavior), "Customizes a native message in a logical behavior");
@@ -180,10 +180,10 @@
             }
         }
 
-        public class MessageSessionSentCommand : ICommand {}
-        public class PhysicalBehaviorSentCommand : ICommand {}
-        public class LogicalBehaviorSentCommand : ICommand {}
-        public class MessageSessionPublishedEvent : IEvent {}
+        public class MessageSessionSentCommand : ICommand { }
+        public class PhysicalBehaviorSentCommand : ICommand { }
+        public class LogicalBehaviorSentCommand : ICommand { }
+        public class MessageSessionPublishedEvent : IEvent { }
         public class MessageHandlerContextSentCommand : ICommand { }
         public class MessageHandlerContextPublishedEvent : IEvent { }
     }

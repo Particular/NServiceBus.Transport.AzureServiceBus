@@ -141,7 +141,7 @@
 
                     var receiveTask = receiver.ReceiveAsync();
 
-                    ProcessMessage(receiveTask).Ignore();
+                    _ = ProcessMessage(receiveTask);
                 }
             }
             catch (OperationCanceledException)
@@ -195,7 +195,7 @@
             }
             catch (Exception exception)
             {
-                logger.WarnFormat("Failed to receive a message. Exception: {0}", exception.Message);
+                logger.Warn($"Failed to receive a message. Exception: {exception.Message}", exception);
 
                 await circuitBreaker.Failure(exception).ConfigureAwait(false);
             }
