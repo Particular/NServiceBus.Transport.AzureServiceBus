@@ -1,16 +1,11 @@
-﻿using System;
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Primitives;
-using NServiceBus;
-using NServiceBus.Configuration.AdvancedExtensibility;
-using NServiceBus.Transport.AzureServiceBus;
-
-#pragma warning disable 1591
+﻿#pragma warning disable 1591
 #pragma warning disable 618
 
 namespace NServiceBus
 {
     using System;
+    using Microsoft.Azure.ServiceBus;
+    using Microsoft.Azure.ServiceBus.Primitives;
 
     public static class AzureServiceBusTransportSettingsExtensions
     {

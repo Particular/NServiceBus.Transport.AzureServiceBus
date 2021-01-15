@@ -11,30 +11,32 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
     public TransportDefinition CreateTransportDefinition()
     {
         var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
-        var transport = new AzureServiceBusTransport(connectionString);
-        transport.SubscriptionNamingConvention = name =>
+        var transport = new AzureServiceBusTransport(connectionString)
         {
-            // originally we used to shorten only when the length of the name has exceeded the maximum length of 50 characters
-            if (name.Length <= 50)
+            SubscriptionNamingConvention = name =>
             {
-                return name;
-            }
-
-            using (var sha1 = SHA1.Create())
-            {
-                var nameAsBytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(name));
-                return HexStringFromBytes(nameAsBytes);
-
-                string HexStringFromBytes(byte[] bytes)
+                // originally we used to shorten only when the length of the name has exceeded the maximum length of 50 characters
+                if (name.Length <= 50)
                 {
-                    var sb = new StringBuilder();
-                    foreach (var b in bytes)
-                    {
-                        var hex = b.ToString("x2");
-                        sb.Append(hex);
-                    }
+                    return name;
+                }
 
-                    return sb.ToString();
+                using (var sha1 = SHA1.Create())
+                {
+                    var nameAsBytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(name));
+                    return HexStringFromBytes(nameAsBytes);
+
+                    string HexStringFromBytes(byte[] bytes)
+                    {
+                        var sb = new StringBuilder();
+                        foreach (var b in bytes)
+                        {
+                            var hex = b.ToString("x2");
+                            sb.Append(hex);
+                        }
+
+                        return sb.ToString();
+                    }
                 }
             }
         };

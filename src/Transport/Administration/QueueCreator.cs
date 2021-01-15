@@ -1,18 +1,16 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
-    using System.Linq;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
-    using Microsoft.Azure.ServiceBus.Primitives;
 
     class QueueCreator
     {
-        private readonly AzureServiceBusTransport transportSettings;
+        readonly AzureServiceBusTransport transportSettings;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly NamespacePermissions namespacePermissions;
-        readonly int maxSizeInMB;
+        readonly int maxSizeInMb;
 
         public QueueCreator(
             AzureServiceBusTransport transportSettings,
@@ -22,7 +20,7 @@
             this.transportSettings = transportSettings;
             this.connectionStringBuilder = connectionStringBuilder;
             this.namespacePermissions = namespacePermissions;
-            this.maxSizeInMB = transportSettings.EntityMaximumSize * 1024;
+            maxSizeInMb = transportSettings.EntityMaximumSize * 1024;
         }
 
         public async Task CreateQueues(string[] queues)
@@ -42,7 +40,7 @@
                 {
                     EnableBatchedOperations = true,
                     EnablePartitioning = transportSettings.EnablePartitioning,
-                    MaxSizeInMB = maxSizeInMB
+                    MaxSizeInMB = maxSizeInMb
                 };
 
                 try
@@ -64,7 +62,7 @@
                         EnableBatchedOperations = true,
                         LockDuration = TimeSpan.FromMinutes(5),
                         MaxDeliveryCount = int.MaxValue,
-                        MaxSizeInMB = maxSizeInMB,
+                        MaxSizeInMB = maxSizeInMb,
                         EnablePartitioning = transportSettings.EnablePartitioning
                     };
 

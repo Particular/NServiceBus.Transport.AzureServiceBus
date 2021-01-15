@@ -39,7 +39,7 @@
             if (deliveryConstraints.DoNotDeliverBefore != null)
             {
                 message.ScheduledEnqueueTimeUtc = deliveryConstraints.DoNotDeliverBefore.At.UtcDateTime;
-            } 
+            }
             else if (deliveryConstraints.DelayDeliveryWith != null)
             {
                 message.ScheduledEnqueueTimeUtc = (Time.UtcNow() + deliveryConstraints.DelayDeliveryWith.Delay).UtcDateTime;

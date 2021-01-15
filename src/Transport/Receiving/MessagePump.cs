@@ -14,10 +14,10 @@
 
     class MessagePump : IMessageReceiver
     {
-        private readonly AzureServiceBusTransport transportSettings;
-        private readonly ReceiveSettings receiveSettings;
-        private readonly Action<string, Exception> criticalErrorAction;
-        private readonly QueueCreator queueCreator;
+        readonly AzureServiceBusTransport transportSettings;
+        readonly ReceiveSettings receiveSettings;
+        readonly Action<string, Exception> criticalErrorAction;
+        readonly QueueCreator queueCreator;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         int numberOfExecutingReceives;
 
@@ -32,14 +32,14 @@
         int maxConcurrency;
         MessageReceiver receiver;
 
-        static readonly ILog logger = LogManager.GetLogger<MessagePump>();
-        
-        private PushRuntimeSettings limitations;
+        static readonly ILog Logger = LogManager.GetLogger<MessagePump>();
+
+        PushRuntimeSettings limitations;
 
         public MessagePump(ServiceBusConnectionStringBuilder connectionStringBuilder,
             AzureServiceBusTransport transportSettings,
             ReceiveSettings receiveSettings,
-            Action<string, Exception> criticalErrorAction, 
+            Action<string, Exception> criticalErrorAction,
             NamespacePermissions namespacePermissions,
             QueueCreator queueCreator)
         {
@@ -60,9 +60,9 @@
         }
 
         public async Task Initialize(
-            PushRuntimeSettings limitations, 
-            Func<MessageContext, Task> onMessage, 
-            Func<ErrorContext, Task<ErrorHandleResult>> onError, 
+            PushRuntimeSettings limitations,
+            Func<MessageContext, Task> onMessage,
+            Func<ErrorContext, Task<ErrorHandleResult>> onError,
             IReadOnlyCollection<MessageMetadata> events)
         {
             if (receiveSettings.PurgeOnStartup)
@@ -157,7 +157,7 @@
             }
             catch (Exception ex)
             {
-                logger.Debug($"Exception from {nameof(ProcessMessage)}: ", ex);
+                Logger.Debug($"Exception from {nameof(ProcessMessage)}: ", ex);
             }
             finally
             {
@@ -195,7 +195,7 @@
             }
             catch (Exception exception)
             {
-                logger.Warn($"Failed to receive a message. Exception: {exception.Message}", exception);
+                Logger.Warn($"Failed to receive a message. Exception: {exception.Message}", exception);
 
                 await circuitBreaker.Failure(exception).ConfigureAwait(false);
             }
@@ -243,10 +243,10 @@
                 using (var transaction = CreateTransaction())
                 {
                     var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
+                    transportTransaction.GetOrCreate<NativeMessageCustomizer>();
 
                     var contextBag = new ContextBag();
                     contextBag.Set(message);
-                    contextBag.GetOrCreate<NativeMessageCustomizer>();
 
                     var messageContext = new MessageContext(messageId, headers, body, transportTransaction,
                         receiveCancellationTokenSource, contextBag);
@@ -298,7 +298,7 @@
                 }
                 catch (Exception onErrorException) when (onErrorException is MessageLockLostException || onErrorException is ServiceBusTimeoutException)
                 {
-                    logger.Debug("Failed to execute recoverability.", onErrorException);
+                    Logger.Debug("Failed to execute recoverability.", onErrorException);
                 }
                 catch (Exception onErrorException)
                 {

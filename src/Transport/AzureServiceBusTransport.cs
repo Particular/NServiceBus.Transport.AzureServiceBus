@@ -3,7 +3,6 @@
     using System;
     using System.Collections.Generic;
     using System.Text;
-    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Primitives;
@@ -76,7 +75,7 @@
                 topicName = value;
             }
         }
-        private string topicName = "bundle-1";
+        string topicName = "bundle-1";
 
         /// <summary>
         /// The maximum size used when creating queues and topics in GB.
@@ -90,7 +89,7 @@
                 entityMaximumSize = value;
             }
         }
-        private int entityMaximumSize = 5;
+        int entityMaximumSize = 5;
 
         /// <summary>
         /// Enables entity partitioning when creating queues and topics.
@@ -100,8 +99,8 @@
         /// <summary>
         /// Specifies the multiplier to apply to the maximum concurrency value to calculate the prefetch count.
         /// </summary>
-        public int PrefetchMultiplier 
-        { 
+        public int PrefetchMultiplier
+        {
             get => prefetchMultiplier;
             set
             {
@@ -109,7 +108,7 @@
                 prefetchMultiplier = value;
             }
         }
-        private int prefetchMultiplier = 10;
+        int prefetchMultiplier = 10;
 
         /// <summary>
         /// Overrides the default prefetch count calculation with the specified value. 
@@ -128,7 +127,7 @@
             }
 
         }
-        private int? prefetchCount;
+        int? prefetchCount;
 
         /// <summary>
         /// Overrides the default time to wait before triggering a circuit breaker that initiates the endpoint shutdown procedure when the message pump cannot successfully receive a message.
@@ -142,7 +141,7 @@
                 timeToWaitBeforeTriggeringCircuitBreaker = value;
             }
         }
-        private TimeSpan timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
+        TimeSpan timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
 
         /// <summary>
         /// Specifies a callback to customize subscription names.
@@ -169,7 +168,7 @@
 
             }
         }
-        private Func<string, string> subscriptionNamingConvention = name => name;
+        Func<string, string> subscriptionNamingConvention = name => name;
 
         /// <summary>
         /// Specifies a callback to customize subscription rule names.
@@ -195,7 +194,7 @@
                 };
             }
         }
-        private Func<Type, string> subscriptionRuleNamingConvention = type => type.FullName;
+        Func<Type, string> subscriptionRuleNamingConvention = type => type.FullName;
 
         /// <summary>
         /// Configures the transport to use AMQP over WebSockets.
@@ -219,7 +218,7 @@
                 customRetryPolicy = value;
             }
         }
-        private RetryPolicy customRetryPolicy;
+        RetryPolicy customRetryPolicy;
 
         internal string ConnectionString { get; private set; }
     }

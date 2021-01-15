@@ -1,7 +1,6 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
-    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
@@ -10,7 +9,7 @@
 
     class SubscriptionManager : ISubscriptionManager
     {
-        private readonly AzureServiceBusTransport transportSettings;
+        readonly AzureServiceBusTransport transportSettings;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly NamespacePermissions namespacePermissions;
         readonly string subscriptionName;
@@ -19,7 +18,7 @@
 
         public SubscriptionManager(
             string inputQueueName,
-            AzureServiceBusTransport transportSettings, 
+            AzureServiceBusTransport transportSettings,
             ServiceBusConnectionStringBuilder connectionStringBuilder,
             NamespacePermissions namespacePermissions)
         {

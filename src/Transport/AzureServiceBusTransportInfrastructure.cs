@@ -1,39 +1,32 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
-    using System.Collections.Generic;
     using System.Linq;
-    using System.Text;
     using System.Threading.Tasks;
-    using DelayedDelivery;
     using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Primitives;
-    using Performance.TimeToBeReceived;
-    using Routing;
-    using Settings;
     using Transport;
 
     class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
-        private readonly AzureServiceBusTransport transportSettings;
+        readonly AzureServiceBusTransport transportSettings;
 
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly NamespacePermissions namespacePermissions;
         MessageSenderPool messageSenderPool;
-        private HostSettings hostSettings;
-        private QueueCreator queueCreator;
+        readonly HostSettings hostSettings;
+        readonly QueueCreator queueCreator;
 
         public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings)
         {
             this.transportSettings = transportSettings;
             this.hostSettings = hostSettings;
 
-            connectionStringBuilder = new ServiceBusConnectionStringBuilder(transportSettings.ConnectionString);
+            connectionStringBuilder = new ServiceBusConnectionStringBuilder(transportSettings.ConnectionString)
+            {
+                TransportType =
+                transportSettings.UseWebSockets ? TransportType.AmqpWebSockets : TransportType.Amqp
+            };
 
-            connectionStringBuilder.TransportType =
-                transportSettings.UseWebSockets ? TransportType.AmqpWebSockets : TransportType.Amqp;
-
-            //TODO verify this is null if no user-defined token prover has been provided
             namespacePermissions = new NamespacePermissions(connectionStringBuilder, transportSettings.CustomTokenProvider);
 
             messageSenderPool = new MessageSenderPool(connectionStringBuilder, transportSettings.CustomTokenProvider, transportSettings.CustomRetryPolicy);
@@ -51,7 +44,7 @@
         {
             startupDiagnostic.Add("Azure Service Bus transport", new
             {
-                TopicName = transportSettings.TopicName,
+                transportSettings.TopicName,
                 EntityMaximumSize = transportSettings.EntityMaximumSize.ToString(),
                 EnablePartitioning = transportSettings.EnablePartitioning.ToString(),
                 PrefetchMultiplier = transportSettings.PrefetchMultiplier.ToString(),
@@ -66,10 +59,10 @@
         IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings)
         {
             return new MessagePump(
-                connectionStringBuilder, 
+                connectionStringBuilder,
                 transportSettings,
                 receiveSettings,
-                hostSettings.CriticalErrorAction, 
+                hostSettings.CriticalErrorAction,
                 namespacePermissions,
                 queueCreator);
         }
