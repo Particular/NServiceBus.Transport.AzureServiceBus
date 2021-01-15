@@ -49,7 +49,7 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.Properties, partitionKey);
 
-                    ApplyCustomizationToOutgoingNativeMessage(transportOperation, message);
+                    ApplyCustomizationToOutgoingNativeMessage(transportOperation, message, transaction);
 
                     using (var scope = transactionToUse.ToScope())
                     {
@@ -76,7 +76,7 @@
                 {
                     var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.Properties, partitionKey);
 
-                    ApplyCustomizationToOutgoingNativeMessage(transportOperation, message);
+                    ApplyCustomizationToOutgoingNativeMessage(transportOperation, message, transaction);
 
                     using (var scope = transactionToUse.ToScope())
                     {
@@ -95,16 +95,15 @@
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
         }
 
-        static void ApplyCustomizationToOutgoingNativeMessage(IOutgoingTransportOperation transportOperation, Message message)
+        static void ApplyCustomizationToOutgoingNativeMessage(IOutgoingTransportOperation transportOperation,
+            Message message, TransportTransaction transportTransaction)
         {
             if (transportOperation.Message.Headers.TryGetValue(CustomizeNativeMessageExtensions.CustomizationHeader, out var customizationId))
             {
-
-                //TODO retrieve NativeMessageCustomizer
-                ////if (context.TryGet<NativeMessageCustomizer>(out var nmc) && nmc.Customizations.Keys.Contains(customizationId))
-                ////{
-                ////    nmc.Customizations[customizationId].Invoke(message);
-                ////}
+                if (transportTransaction.TryGet<NativeMessageCustomizer>(out var nmc) && nmc.Customizations.Keys.Contains(customizationId))
+                {
+                    nmc.Customizations[customizationId].Invoke(message);
+                }
 
                 transportOperation.Message.Headers.Remove(CustomizeNativeMessageExtensions.CustomizationHeader);
             }
