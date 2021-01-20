@@ -36,13 +36,15 @@
 
         PushRuntimeSettings limitations;
 
-        public MessagePump(ServiceBusConnectionStringBuilder connectionStringBuilder,
+        public MessagePump(
+            ServiceBusConnectionStringBuilder connectionStringBuilder,
             AzureServiceBusTransport transportSettings,
             ReceiveSettings receiveSettings,
             Action<string, Exception> criticalErrorAction,
             NamespacePermissions namespacePermissions,
             QueueCreator queueCreator)
         {
+            Id = receiveSettings.Id;
             this.connectionStringBuilder = connectionStringBuilder;
             this.transportSettings = transportSettings;
             this.receiveSettings = receiveSettings;
@@ -243,7 +245,6 @@
                 using (var transaction = CreateTransaction())
                 {
                     var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
-                    transportTransaction.GetOrCreate<NativeMessageCustomizer>();
 
                     var contextBag = new ContextBag();
                     contextBag.Set(message);
