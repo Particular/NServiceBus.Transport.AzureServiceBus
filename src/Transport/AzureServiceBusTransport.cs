@@ -36,7 +36,6 @@
         /// <inheritdoc />
         public override string ToTransportAddress(QueueAddress address)
         {
-            //TODO is it really worthwhile using a StringBuilder here?
             var queue = new StringBuilder(address.BaseAddress);
 
             if (address.Discriminator != null)
