@@ -6,7 +6,7 @@
     using Microsoft.Azure.ServiceBus;
     using Transport;
 
-    class AzureServiceBusTransportInfrastructure : TransportInfrastructure
+    sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
         readonly AzureServiceBusTransport transportSettings;
 
