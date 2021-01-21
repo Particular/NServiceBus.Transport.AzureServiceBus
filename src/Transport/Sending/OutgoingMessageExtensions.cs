@@ -7,7 +7,7 @@
 
     static class OutgoingMessageExtensions
     {
-        public static Message ToAzureServiceBusMessage(this OutgoingMessage outgoingMessage, OperationProperties operationProperties, string incomingQueuePartitionKey)
+        public static Message ToAzureServiceBusMessage(this OutgoingMessage outgoingMessage, DispatchProperties dispatchProperties, string incomingQueuePartitionKey)
         {
             var message = new Message(outgoingMessage.Body)
             {
@@ -20,7 +20,7 @@
 
             message.ViaPartitionKey = incomingQueuePartitionKey;
 
-            ApplyDeliveryConstraints(message, operationProperties);
+            ApplyDeliveryConstraints(message, dispatchProperties);
 
             ApplyCorrelationId(message, outgoingMessage.Headers);
 
@@ -33,21 +33,21 @@
             return message;
         }
 
-        static void ApplyDeliveryConstraints(Message message, OperationProperties deliveryConstraints)
+        static void ApplyDeliveryConstraints(Message message, DispatchProperties dispatchProperties)
         {
             // TODO: review when delaying with TimeSpan is supported https://github.com/Azure/azure-service-bus-dotnet/issues/160
-            if (deliveryConstraints.DoNotDeliverBefore != null)
+            if (dispatchProperties.DoNotDeliverBefore != null)
             {
-                message.ScheduledEnqueueTimeUtc = deliveryConstraints.DoNotDeliverBefore.At.UtcDateTime;
+                message.ScheduledEnqueueTimeUtc = dispatchProperties.DoNotDeliverBefore.At.UtcDateTime;
             }
-            else if (deliveryConstraints.DelayDeliveryWith != null)
+            else if (dispatchProperties.DelayDeliveryWith != null)
             {
-                message.ScheduledEnqueueTimeUtc = (Time.UtcNow() + deliveryConstraints.DelayDeliveryWith.Delay).UtcDateTime;
+                message.ScheduledEnqueueTimeUtc = (Time.UtcNow() + dispatchProperties.DelayDeliveryWith.Delay).UtcDateTime;
             }
 
-            if (deliveryConstraints.DiscardIfNotReceivedBefore != null)
+            if (dispatchProperties.DiscardIfNotReceivedBefore != null)
             {
-                message.TimeToLive = deliveryConstraints.DiscardIfNotReceivedBefore.MaxTime;
+                message.TimeToLive = dispatchProperties.DiscardIfNotReceivedBefore.MaxTime;
             }
         }
 
