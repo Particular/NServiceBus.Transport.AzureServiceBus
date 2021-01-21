@@ -3,10 +3,12 @@
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using System.Transactions;
+    using Logging;
     using Microsoft.Azure.ServiceBus;
 
     class MessageDispatcher : IMessageDispatcher
     {
+        static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
         readonly MessageSenderPool messageSenderPool;
         readonly string topicName;
 
@@ -98,15 +100,27 @@
         static void ApplyCustomizationToOutgoingNativeMessage(IOutgoingTransportOperation transportOperation,
             Message message, TransportTransaction transportTransaction)
         {
-            if (transportOperation.Message.Headers.TryGetValue(CustomizeNativeMessageExtensions.CustomizationHeader, out var customizationId))
+            if (!transportOperation.Properties.TryGetValue(NativeMessageCustomizationBehavior.CustomizationKey,
+                out var key))
             {
-                if (transportTransaction.TryGet<NativeMessageCustomizer>(out var nmc) && nmc.Customizations.Keys.Contains(customizationId))
-                {
-                    nmc.Customizations[customizationId].Invoke(message);
-                }
-
-                transportOperation.Message.Headers.Remove(CustomizeNativeMessageExtensions.CustomizationHeader);
+                return;
             }
+
+            if (!transportTransaction.TryGet(out NativeMessageCustomizer messageCustomizer))
+            {
+                Log.Warn(
+                    $"Message {transportOperation.Message.MessageId} was configured with a native message customization but {nameof(NativeMessageCustomizer)} was not present on the {nameof(TransportTransaction)}");
+                return;
+            }
+
+            if (!messageCustomizer.Customizations.TryGetValue(key, out var action))
+            {
+                Log.Warn(
+                    $"Message {transportOperation.Message.MessageId} was configured with a native message customization but the customization was not found in {nameof(NativeMessageCustomizer)}");
+                return;
+            }
+
+            action(message);
         }
     }
 }
