@@ -66,6 +66,5 @@ namespace NServiceBus
     public static class CustomizeNativeMessageExtensions
     {
         public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Microsoft.Azure.ServiceBus.Message> customization) { }
-        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context, System.Action<Microsoft.Azure.ServiceBus.Message> customization) { }
     }
 }
