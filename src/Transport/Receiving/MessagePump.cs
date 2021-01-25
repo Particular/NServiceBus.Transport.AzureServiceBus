@@ -9,7 +9,6 @@
     using Logging;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Core;
-    using Unicast.Messages;
     using IMessageReceiver = IMessageReceiver;
 
     class MessagePump : IMessageReceiver
@@ -64,8 +63,7 @@
         public async Task Initialize(
             PushRuntimeSettings limitations,
             Func<MessageContext, Task> onMessage,
-            Func<ErrorContext, Task<ErrorHandleResult>> onError,
-            IReadOnlyCollection<MessageMetadata> events)
+            Func<ErrorContext, Task<ErrorHandleResult>> onError)
         {
             if (receiveSettings.PurgeOnStartup)
             {
