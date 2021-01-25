@@ -66,6 +66,53 @@
             }
         }
 
+        public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context)
+        {
+            await CheckForManagePermissions().ConfigureAwait(false);
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
+
+            try
+            {
+                foreach (var eventType in eventTypes)
+                {
+                    await SubscribeEvent(client, eventType.MessageType).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                await client.CloseAsync().ConfigureAwait(false);
+            }
+        }
+
+        async Task SubscribeEvent(ManagementClient client, Type eventType)
+        {
+            var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType);
+            var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
+            var rule = new RuleDescription(ruleName, new SqlFilter(sqlExpression));
+
+            try
+            {
+                var existingRule = await client.GetRuleAsync(transportSettings.TopicName, subscriptionName, rule.Name).ConfigureAwait(false);
+
+                if (existingRule.Filter.ToString() != rule.Filter.ToString())
+                {
+                    rule.Action = existingRule.Action;
+
+                    await client.UpdateRuleAsync(transportSettings.TopicName, subscriptionName, rule).ConfigureAwait(false);
+                }
+            }
+            catch (MessagingEntityNotFoundException)
+            {
+                try
+                {
+                    await client.CreateRuleAsync(transportSettings.TopicName, subscriptionName, rule).ConfigureAwait(false);
+                }
+                catch (MessagingEntityAlreadyExistsException)
+                {
+                }
+            }
+        }
+
         public async Task Unsubscribe(MessageMetadata eventType, ContextBag context)
         {
             await CheckForManagePermissions().ConfigureAwait(false);
