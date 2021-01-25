@@ -40,7 +40,7 @@
 
             if (address.Discriminator != null)
             {
-                queue.Append($"-{address.BaseAddress}");
+                queue.Append($"-{address.Discriminator}");
             }
 
             if (address.Qualifier != null)
