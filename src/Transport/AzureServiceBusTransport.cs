@@ -15,8 +15,11 @@
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString) : base(TransportTransactionMode.SendsAtomicWithReceive,
-            true, true, true)
+        public AzureServiceBusTransport(string connectionString) : base(
+            defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
+            supportsDelayedDelivery: true,
+            supportsPublishSubscribe: true,
+            supportsTTBR: true)
         {
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
             ConnectionString = connectionString;
