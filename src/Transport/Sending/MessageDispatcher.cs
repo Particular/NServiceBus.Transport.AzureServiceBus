@@ -106,13 +106,7 @@
                 return;
             }
 
-            if (!transportTransaction.TryGet(out NativeMessageCustomizer messageCustomizer))
-            {
-                Log.Warn(
-                    $"Message {transportOperation.Message.MessageId} was configured with a native message customization but {nameof(NativeMessageCustomizer)} was not present on the {nameof(TransportTransaction)}");
-                return;
-            }
-
+            var messageCustomizer = transportTransaction.Get<NativeMessageCustomizer>();
             if (!messageCustomizer.Customizations.TryGetValue(key, out var action))
             {
                 Log.Warn(
