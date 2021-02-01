@@ -14,8 +14,6 @@
         readonly NamespacePermissions namespacePermissions;
         readonly string subscriptionName;
 
-        StartupCheckResult startupCheckResult;
-
         public SubscriptionManager(
             string inputQueueName,
             AzureServiceBusTransport transportSettings,
@@ -29,7 +27,7 @@
             subscriptionName = transportSettings.SubscriptionNamingConvention(inputQueueName);
         }
 
-        public async Task Subscribe(MessageMetadata eventType, ContextBag context)
+        public async Task Subscribe(MessageMetadata eventType)
         {
             await CheckForManagePermissions().ConfigureAwait(false);
 
@@ -136,15 +134,13 @@
 
         async Task CheckForManagePermissions()
         {
-            if (startupCheckResult == null)
+            if (!verifiedManagePermissions)
             {
-                startupCheckResult = await namespacePermissions.CanManage().ConfigureAwait(false);
-            }
-
-            if (!startupCheckResult.Succeeded)
-            {
-                throw new Exception(startupCheckResult.ErrorMessage);
+                await namespacePermissions.CanManage().ConfigureAwait(false);
+                verifiedManagePermissions = true;
             }
         }
+
+        bool verifiedManagePermissions;
     }
 }

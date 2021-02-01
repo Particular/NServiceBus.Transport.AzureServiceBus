@@ -25,12 +25,7 @@
 
         public async Task CreateQueues(string[] queues)
         {
-            var result = await namespacePermissions.CanManage().ConfigureAwait(false);
-
-            if (!result.Succeeded)
-            {
-                throw new Exception(result.ErrorMessage);
-            }
+            await namespacePermissions.CanManage().ConfigureAwait(false);
 
             var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
 
@@ -87,12 +82,7 @@
 
         public async Task CreateSubscription(string subscribingQueue)
         {
-            var result = await namespacePermissions.CanManage().ConfigureAwait(false);
-
-            if (!result.Succeeded)
-            {
-                throw new Exception(result.ErrorMessage);
-            }
+            await namespacePermissions.CanManage().ConfigureAwait(false);
 
             var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
 

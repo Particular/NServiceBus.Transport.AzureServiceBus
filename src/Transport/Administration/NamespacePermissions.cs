@@ -17,7 +17,7 @@
             this.tokenProvider = tokenProvider;
         }
 
-        public async Task<StartupCheckResult> CanManage()
+        public async Task CanManage()
         {
             var client = new ManagementClient(connectionStringBuilder, tokenProvider);
 
@@ -25,20 +25,14 @@
             {
                 await client.QueueExistsAsync("$nservicebus-verification-queue").ConfigureAwait(false);
             }
-            catch (UnauthorizedException)
+            catch (UnauthorizedException e)
             {
-                return StartupCheckResult.Failed("Management rights are required to run this endpoint. Verify that the SAS policy has the Manage claim.");
-            }
-            catch (Exception exception)
-            {
-                return StartupCheckResult.Failed(exception.Message);
+                throw new Exception("Management rights are required to run this endpoint. Verify that the SAS policy has the Manage claim.", e);
             }
             finally
             {
                 await client.CloseAsync().ConfigureAwait(false);
             }
-
-            return StartupCheckResult.Success;
         }
     }
 }
