@@ -2,9 +2,9 @@
 {
     using Features;
 
-    class NativeCustomizationFeature : Feature
+    class NativeMessageCustomizationFeature : Feature
     {
-        public NativeCustomizationFeature()
+        public NativeMessageCustomizationFeature()
         {
             EnableByDefault();
         }
