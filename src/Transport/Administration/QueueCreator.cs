@@ -79,42 +79,5 @@
                 await client.CloseAsync().ConfigureAwait(false);
             }
         }
-
-        public async Task CreateSubscription(string subscribingQueue)
-        {
-            await namespacePermissions.CanManage().ConfigureAwait(false);
-
-            var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
-
-            try
-            {
-                var subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
-                var subscription = new SubscriptionDescription(transportSettings.TopicName, subscriptionName)
-                {
-                    LockDuration = TimeSpan.FromMinutes(5),
-                    ForwardTo = subscribingQueue,
-                    EnableDeadLetteringOnFilterEvaluationExceptions = false,
-                    MaxDeliveryCount = int.MaxValue,
-                    EnableBatchedOperations = true,
-                    UserMetadata = subscribingQueue
-                };
-
-                try
-                {
-                    await client.CreateSubscriptionAsync(subscription, new RuleDescription("$default", new FalseFilter())).ConfigureAwait(false);
-                }
-                catch (MessagingEntityAlreadyExistsException)
-                {
-                }
-                // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
-                catch (ServiceBusException sbe) when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
-                {
-                }
-            }
-            finally
-            {
-                await client.CloseAsync().ConfigureAwait(false);
-            }
-        }
     }
 }

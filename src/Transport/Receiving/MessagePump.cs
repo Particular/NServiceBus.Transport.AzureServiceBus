@@ -70,9 +70,9 @@
                 throw new Exception("Azure Service Bus transport doesn't support PurgeOnStartup behavior");
             }
 
-            if (Subscriptions != null)
+            if (Subscriptions is SubscriptionManager subscriptionManager)
             {
-                await queueCreator.CreateSubscription(receiveSettings.ReceiveAddress).ConfigureAwait(false);
+                await subscriptionManager.CreateSubscription().ConfigureAwait(false);
             }
 
             this.limitations = limitations;

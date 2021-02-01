@@ -12,19 +12,21 @@
         readonly AzureServiceBusTransport transportSettings;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly NamespacePermissions namespacePermissions;
+        readonly string subscribingQueue;
         readonly string subscriptionName;
 
         public SubscriptionManager(
-            string inputQueueName,
+            string subscribingQueue,
             AzureServiceBusTransport transportSettings,
             ServiceBusConnectionStringBuilder connectionStringBuilder,
             NamespacePermissions namespacePermissions)
         {
+            this.subscribingQueue = subscribingQueue;
             this.transportSettings = transportSettings;
             this.connectionStringBuilder = connectionStringBuilder;
             this.namespacePermissions = namespacePermissions;
 
-            subscriptionName = transportSettings.SubscriptionNamingConvention(inputQueueName);
+            subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
         }
 
         public async Task Subscribe(MessageMetadata eventType)
@@ -125,6 +127,42 @@
             }
             catch (MessagingEntityNotFoundException)
             {
+            }
+            finally
+            {
+                await client.CloseAsync().ConfigureAwait(false);
+            }
+        }
+
+        public async Task CreateSubscription()
+        {
+            await namespacePermissions.CanManage().ConfigureAwait(false);
+
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
+
+            try
+            {
+                var subscription = new SubscriptionDescription(transportSettings.TopicName, subscriptionName)
+                {
+                    LockDuration = TimeSpan.FromMinutes(5),
+                    ForwardTo = subscribingQueue,
+                    EnableDeadLetteringOnFilterEvaluationExceptions = false,
+                    MaxDeliveryCount = int.MaxValue,
+                    EnableBatchedOperations = true,
+                    UserMetadata = subscribingQueue
+                };
+
+                try
+                {
+                    await client.CreateSubscriptionAsync(subscription, new RuleDescription("$default", new FalseFilter())).ConfigureAwait(false);
+                }
+                catch (MessagingEntityAlreadyExistsException)
+                {
+                }
+                // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
+                catch (ServiceBusException sbe) when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
+                {
+                }
             }
             finally
             {
