@@ -29,43 +29,6 @@
             subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
         }
 
-        public async Task Subscribe(MessageMetadata eventType)
-        {
-            await CheckForManagePermissions().ConfigureAwait(false);
-
-            var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType.MessageType);
-            var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.MessageType.FullName}%'";
-            var rule = new RuleDescription(ruleName, new SqlFilter(sqlExpression));
-
-            var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
-
-            try
-            {
-                var existingRule = await client.GetRuleAsync(transportSettings.TopicName, subscriptionName, rule.Name).ConfigureAwait(false);
-
-                if (existingRule.Filter.ToString() != rule.Filter.ToString())
-                {
-                    rule.Action = existingRule.Action;
-
-                    await client.UpdateRuleAsync(transportSettings.TopicName, subscriptionName, rule).ConfigureAwait(false);
-                }
-            }
-            catch (MessagingEntityNotFoundException)
-            {
-                try
-                {
-                    await client.CreateRuleAsync(transportSettings.TopicName, subscriptionName, rule).ConfigureAwait(false);
-                }
-                catch (MessagingEntityAlreadyExistsException)
-                {
-                }
-            }
-            finally
-            {
-                await client.CloseAsync().ConfigureAwait(false);
-            }
-        }
-
         public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context)
         {
             await CheckForManagePermissions().ConfigureAwait(false);
