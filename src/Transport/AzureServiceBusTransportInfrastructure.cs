@@ -62,8 +62,7 @@
                 transportSettings,
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
-                namespacePermissions,
-                queueCreator);
+                namespacePermissions);
         }
 
         public override async Task DisposeAsync()

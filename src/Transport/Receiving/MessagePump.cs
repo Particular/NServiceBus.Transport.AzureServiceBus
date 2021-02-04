@@ -16,7 +16,6 @@
         readonly AzureServiceBusTransport transportSettings;
         readonly ReceiveSettings receiveSettings;
         readonly Action<string, Exception> criticalErrorAction;
-        readonly QueueCreator queueCreator;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         int numberOfExecutingReceives;
 
@@ -40,15 +39,13 @@
             AzureServiceBusTransport transportSettings,
             ReceiveSettings receiveSettings,
             Action<string, Exception> criticalErrorAction,
-            NamespacePermissions namespacePermissions,
-            QueueCreator queueCreator)
+            NamespacePermissions namespacePermissions)
         {
             Id = receiveSettings.Id;
             this.connectionStringBuilder = connectionStringBuilder;
             this.transportSettings = transportSettings;
             this.receiveSettings = receiveSettings;
             this.criticalErrorAction = criticalErrorAction;
-            this.queueCreator = queueCreator;
 
             if (receiveSettings.UsePublishSubscribe)
             {
