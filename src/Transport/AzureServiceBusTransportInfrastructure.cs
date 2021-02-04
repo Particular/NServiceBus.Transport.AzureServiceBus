@@ -27,9 +27,9 @@
                 transportSettings.UseWebSockets ? TransportType.AmqpWebSockets : TransportType.Amqp
             };
 
-            namespacePermissions = new NamespacePermissions(connectionStringBuilder, transportSettings.CustomTokenProvider);
+            namespacePermissions = new NamespacePermissions(connectionStringBuilder, transportSettings.TokenProvider);
 
-            messageSenderPool = new MessageSenderPool(connectionStringBuilder, transportSettings.CustomTokenProvider, transportSettings.CustomRetryPolicy);
+            messageSenderPool = new MessageSenderPool(connectionStringBuilder, transportSettings.TokenProvider, transportSettings.RetryPolicy);
 
             Dispatcher = new MessageDispatcher(messageSenderPool, transportSettings.TopicName);
 
@@ -50,8 +50,8 @@
                 PrefetchCount = transportSettings.PrefetchCount?.ToString() ?? "default",
                 UseWebSockets = transportSettings.UseWebSockets.ToString(),
                 TimeToWaitBeforeTriggeringCircuitBreaker = transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker.ToString(),
-                CustomTokenProvider = transportSettings.CustomTokenProvider?.ToString() ?? "default",
-                CustomRetryPolicy = transportSettings.CustomRetryPolicy?.ToString() ?? "default"
+                CustomTokenProvider = transportSettings.TokenProvider?.ToString() ?? "default",
+                CustomRetryPolicy = transportSettings.RetryPolicy?.ToString() ?? "default"
             });
         }
 

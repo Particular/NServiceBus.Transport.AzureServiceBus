@@ -27,7 +27,7 @@
         {
             await namespacePermissions.CanManage().ConfigureAwait(false);
 
-            var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
 
             try
             {

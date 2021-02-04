@@ -92,13 +92,13 @@
 
             var receiveMode = transportSettings.TransportTransactionMode == TransportTransactionMode.None ? ReceiveMode.ReceiveAndDelete : ReceiveMode.PeekLock;
 
-            if (transportSettings.CustomTokenProvider == null)
+            if (transportSettings.TokenProvider == null)
             {
-                receiver = new MessageReceiver(connectionStringBuilder.GetNamespaceConnectionString(), receiveSettings.ReceiveAddress, receiveMode, retryPolicy: transportSettings.CustomRetryPolicy, prefetchCount);
+                receiver = new MessageReceiver(connectionStringBuilder.GetNamespaceConnectionString(), receiveSettings.ReceiveAddress, receiveMode, retryPolicy: transportSettings.RetryPolicy, prefetchCount);
             }
             else
             {
-                receiver = new MessageReceiver(connectionStringBuilder.Endpoint, receiveSettings.ReceiveAddress, transportSettings.CustomTokenProvider, connectionStringBuilder.TransportType, receiveMode, retryPolicy: transportSettings.CustomRetryPolicy, prefetchCount);
+                receiver = new MessageReceiver(connectionStringBuilder.Endpoint, receiveSettings.ReceiveAddress, transportSettings.TokenProvider, connectionStringBuilder.TransportType, receiveMode, retryPolicy: transportSettings.RetryPolicy, prefetchCount);
             }
 
             semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);

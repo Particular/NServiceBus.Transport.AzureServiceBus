@@ -32,7 +32,7 @@
         public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context)
         {
             await CheckForManagePermissions().ConfigureAwait(false);
-            var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
 
             try
             {
@@ -82,7 +82,7 @@
 
             var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType.MessageType);
 
-            var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
 
             try
             {
@@ -101,7 +101,7 @@
         {
             await namespacePermissions.CanManage().ConfigureAwait(false);
 
-            var client = new ManagementClient(connectionStringBuilder, transportSettings.CustomTokenProvider);
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
 
             try
             {

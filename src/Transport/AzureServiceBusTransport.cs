@@ -204,23 +204,23 @@
         public bool UseWebSockets { get; set; }
 
         /// <summary>
-        /// Overrides the default token provider with a custom implementation.
+        /// Overrides the default token provider.
         /// </summary>
-        public ITokenProvider CustomTokenProvider { get; set; }
+        public ITokenProvider TokenProvider { get; set; }
 
         /// <summary>
-        /// Overrides the default retry policy with a custom implementation.
+        /// Overrides the default retry policy.
         /// </summary>
-        public RetryPolicy CustomRetryPolicy
+        public RetryPolicy RetryPolicy
         {
-            get => customRetryPolicy;
+            get => retryPolicy;
             set
             {
-                Guard.AgainstNull(nameof(CustomRetryPolicy), value);
-                customRetryPolicy = value;
+                Guard.AgainstNull(nameof(RetryPolicy), value);
+                retryPolicy = value;
             }
         }
-        RetryPolicy customRetryPolicy;
+        RetryPolicy retryPolicy;
 
         internal string ConnectionString { get; private set; }
     }

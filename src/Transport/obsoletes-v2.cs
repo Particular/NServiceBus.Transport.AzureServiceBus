@@ -86,13 +86,13 @@ namespace NServiceBus
         public static TransportExtensions<AzureServiceBusTransport> UseWebSockets(this TransportExtensions<AzureServiceBusTransport> transportExtensions) => throw new NotImplementedException();
 
         [ObsoleteEx(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.CustomTokenProvider",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.TokenProvider",
             TreatAsErrorFromVersion = "2",
             RemoveInVersion = "3")]
         public static TransportExtensions<AzureServiceBusTransport> CustomTokenProvider(this TransportExtensions<AzureServiceBusTransport> transportExtensions, ITokenProvider tokenProvider) => throw new NotImplementedException();
 
         [ObsoleteEx(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.CustomRetryPolicy",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.RetryPolicy",
             TreatAsErrorFromVersion = "2",
             RemoveInVersion = "3")]
         public static TransportExtensions<AzureServiceBusTransport> CustomRetryPolicy(this TransportExtensions<AzureServiceBusTransport> transportExtensions, RetryPolicy retryPolicy) => throw new NotImplementedException();
