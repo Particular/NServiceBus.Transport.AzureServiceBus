@@ -31,7 +31,6 @@
 
             messageSenderPool = new MessageSenderPool(connectionStringBuilder, transportSettings.CustomTokenProvider, transportSettings.CustomRetryPolicy);
 
-            //TODO should those properties really need to be virtual? Makes things more complicated by extracting all assignments into dedicated methods.
             Dispatcher = new MessageDispatcher(messageSenderPool, transportSettings.TopicName);
 
             queueCreator = new QueueCreator(transportSettings, connectionStringBuilder, namespacePermissions);
