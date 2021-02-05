@@ -3,68 +3,62 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using NServiceBus;
-using NServiceBus.Settings;
+using NServiceBus.Transport;
 using NServiceBus.TransportTests;
 
 public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTransportInfrastructure
 {
-    public TransportConfigurationResult Configure(SettingsHolder settings, TransportTransactionMode transactionMode)
+    public TransportDefinition CreateTransportDefinition()
     {
-        CreateStartupDiagnostics(settings);
-
-        var result = new TransportConfigurationResult
+        var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
+        var transport = new AzureServiceBusTransport(connectionString)
         {
-            PurgeInputQueueOnStartup = false
-        };
-
-        var transport = new AzureServiceBusTransport();
-
-        var transportExtensions = new TransportExtensions<AzureServiceBusTransport>(settings);
-
-        transportExtensions.SubscriptionNamingConvention(name =>
-        {
-            // originally we used to shorten only when the length of the name has exceeded the maximum length of 50 characters
-            if (name.Length <= 50)
+            SubscriptionNamingConvention = name =>
             {
-                return name;
-            }
-
-            using (var sha1 = SHA1.Create())
-            {
-                var nameAsBytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(name));
-                return HexStringFromBytes(nameAsBytes);
-
-                string HexStringFromBytes(byte[] bytes)
+                // originally we used to shorten only when the length of the name has exceeded the maximum length of 50 characters
+                if (name.Length <= 50)
                 {
-                    var sb = new StringBuilder();
-                    foreach (var b in bytes)
-                    {
-                        var hex = b.ToString("x2");
-                        sb.Append(hex);
-                    }
+                    return name;
+                }
 
-                    return sb.ToString();
+                using (var sha1 = SHA1.Create())
+                {
+                    var nameAsBytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(name));
+                    return HexStringFromBytes(nameAsBytes);
+
+                    string HexStringFromBytes(byte[] bytes)
+                    {
+                        var sb = new StringBuilder();
+                        foreach (var b in bytes)
+                        {
+                            var hex = b.ToString("x2");
+                            sb.Append(hex);
+                        }
+
+                        return sb.ToString();
+                    }
                 }
             }
-        });
+        };
+        return transport;
+    }
 
-        var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
-        result.TransportInfrastructure = transport.Initialize(settings, connectionString);
+    public async Task<TransportInfrastructure> Configure(TransportDefinition transportDefinition, HostSettings hostSettings, string inputQueueName,
+        string errorQueueName)
+    {
+        var transportInfrastructure = await transportDefinition.Initialize(
+            hostSettings,
+            new[]
+            {
+                new ReceiveSettings(inputQueueName, inputQueueName, true, false, errorQueueName),
+            },
+            new string[0]);
 
-        return result;
+        return transportInfrastructure;
     }
 
     public Task Cleanup()
     {
         return Task.CompletedTask;
     }
-
-    static void CreateStartupDiagnostics(SettingsHolder settings)
-    {
-        var ctor = hostingSettingsType.GetConstructors()[0];
-        var hostingSettings = ctor.Invoke(new object[] { settings });
-        settings.Set(hostingSettingsType.FullName, hostingSettings);
-    }
-
-    static Type hostingSettingsType = typeof(IEndpointInstance).Assembly.GetType("NServiceBus.HostingComponent+Settings", true);
 }

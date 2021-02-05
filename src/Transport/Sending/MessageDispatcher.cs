@@ -3,11 +3,12 @@
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using System.Transactions;
-    using Extensibility;
+    using Logging;
     using Microsoft.Azure.ServiceBus;
 
-    class MessageDispatcher : IDispatchMessages
+    class MessageDispatcher : IMessageDispatcher
     {
+        static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
         readonly MessageSenderPool messageSenderPool;
         readonly string topicName;
 
@@ -17,7 +18,7 @@
             this.topicName = topicName;
         }
 
-        public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, ContextBag context)
+        public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction)
         {
             // Assumption: we're not implementing batching as it will be done by ASB client
             transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);
@@ -48,9 +49,9 @@
 
                 try
                 {
-                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
+                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.Properties, partitionKey);
 
-                    ApplyCustomizationToOutgoingNativeMessage(context, transportOperation, message);
+                    ApplyCustomizationToOutgoingNativeMessage(transportOperation, message, transaction);
 
                     using (var scope = transactionToUse.ToScope())
                     {
@@ -75,9 +76,9 @@
 
                 try
                 {
-                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
+                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.Properties, partitionKey);
 
-                    ApplyCustomizationToOutgoingNativeMessage(context, transportOperation, message);
+                    ApplyCustomizationToOutgoingNativeMessage(transportOperation, message, transaction);
 
                     using (var scope = transactionToUse.ToScope())
                     {
@@ -96,17 +97,24 @@
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
         }
 
-        static void ApplyCustomizationToOutgoingNativeMessage(ReadOnlyContextBag context, IOutgoingTransportOperation transportOperation, Message message)
+        static void ApplyCustomizationToOutgoingNativeMessage(IOutgoingTransportOperation transportOperation,
+            Message message, TransportTransaction transportTransaction)
         {
-            if (transportOperation.Message.Headers.TryGetValue(CustomizeNativeMessageExtensions.CustomizationHeader, out var customizationId))
+            if (!transportOperation.Properties.TryGetValue(NativeMessageCustomizationBehavior.CustomizationKey,
+                out var key))
             {
-                if (context.TryGet<NativeMessageCustomizer>(out var nmc) && nmc.Customizations.Keys.Contains(customizationId))
-                {
-                    nmc.Customizations[customizationId].Invoke(message);
-                }
-
-                transportOperation.Message.Headers.Remove(CustomizeNativeMessageExtensions.CustomizationHeader);
+                return;
             }
+
+            var messageCustomizer = transportTransaction.Get<NativeMessageCustomizer>();
+            if (!messageCustomizer.Customizations.TryGetValue(key, out var action))
+            {
+                Log.Warn(
+                    $"Message {transportOperation.Message.MessageId} was configured with a native message customization but the customization was not found in {nameof(NativeMessageCustomizer)}");
+                return;
+            }
+
+            action(message);
         }
     }
 }

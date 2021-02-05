@@ -1,59 +1,41 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
-    using System.Linq;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
-    using Microsoft.Azure.ServiceBus.Primitives;
 
-    class QueueCreator : ICreateQueues
+    class QueueCreator
     {
-        readonly string mainInputQueueName;
-        readonly string topicName;
+        readonly AzureServiceBusTransport transportSettings;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
-        readonly ITokenProvider tokenProvider;
         readonly NamespacePermissions namespacePermissions;
-        readonly int maxSizeInMB;
-        readonly bool enablePartitioning;
-        readonly Func<string, string> subscriptionNamingConvention;
+        readonly int maxSizeInMb;
 
-        public QueueCreator(string mainInputQueueName, string topicName,
+        public QueueCreator(
+            AzureServiceBusTransport transportSettings,
             ServiceBusConnectionStringBuilder connectionStringBuilder,
-            ITokenProvider tokenProvider,
-            NamespacePermissions namespacePermissions,
-            int maxSizeInMB,
-            bool enablePartitioning,
-            Func<string, string> subscriptionNamingConvention)
+            NamespacePermissions namespacePermissions)
         {
-            this.mainInputQueueName = mainInputQueueName;
-            this.topicName = topicName;
+            this.transportSettings = transportSettings;
             this.connectionStringBuilder = connectionStringBuilder;
-            this.tokenProvider = tokenProvider;
             this.namespacePermissions = namespacePermissions;
-            this.maxSizeInMB = maxSizeInMB;
-            this.enablePartitioning = enablePartitioning;
-            this.subscriptionNamingConvention = subscriptionNamingConvention;
+            maxSizeInMb = transportSettings.EntityMaximumSize * 1024;
         }
 
-        public async Task CreateQueueIfNecessary(QueueBindings queueBindings, string identity)
+        public async Task CreateQueues(string[] queues)
         {
-            var result = await namespacePermissions.CanManage().ConfigureAwait(false);
+            await namespacePermissions.CanManage().ConfigureAwait(false);
 
-            if (!result.Succeeded)
-            {
-                throw new Exception(result.ErrorMessage);
-            }
-
-            var client = new ManagementClient(connectionStringBuilder, tokenProvider);
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
 
             try
             {
-                var topic = new TopicDescription(topicName)
+                var topic = new TopicDescription(transportSettings.TopicName)
                 {
                     EnableBatchedOperations = true,
-                    EnablePartitioning = enablePartitioning,
-                    MaxSizeInMB = maxSizeInMB
+                    EnablePartitioning = transportSettings.EnablePartitioning,
+                    MaxSizeInMB = maxSizeInMb
                 };
 
                 try
@@ -68,15 +50,15 @@
                 {
                 }
 
-                foreach (var address in queueBindings.ReceivingAddresses.Concat(queueBindings.SendingAddresses))
+                foreach (var address in queues)
                 {
                     var queue = new QueueDescription(address)
                     {
                         EnableBatchedOperations = true,
                         LockDuration = TimeSpan.FromMinutes(5),
                         MaxDeliveryCount = int.MaxValue,
-                        MaxSizeInMB = maxSizeInMB,
-                        EnablePartitioning = enablePartitioning
+                        MaxSizeInMB = maxSizeInMb,
+                        EnablePartitioning = transportSettings.EnablePartitioning
                     };
 
                     try
@@ -90,29 +72,6 @@
                     catch (ServiceBusException sbe) when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
                     {
                     }
-                }
-
-                var subscriptionName = subscriptionNamingConvention(mainInputQueueName);
-                var subscription = new SubscriptionDescription(topicName, subscriptionName)
-                {
-                    LockDuration = TimeSpan.FromMinutes(5),
-                    ForwardTo = mainInputQueueName,
-                    EnableDeadLetteringOnFilterEvaluationExceptions = false,
-                    MaxDeliveryCount = int.MaxValue,
-                    EnableBatchedOperations = true,
-                    UserMetadata = mainInputQueueName
-                };
-
-                try
-                {
-                    await client.CreateSubscriptionAsync(subscription, new RuleDescription("$default", new FalseFilter())).ConfigureAwait(false);
-                }
-                catch (MessagingEntityAlreadyExistsException)
-                {
-                }
-                // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
-                catch (ServiceBusException sbe) when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
-                {
                 }
             }
             finally

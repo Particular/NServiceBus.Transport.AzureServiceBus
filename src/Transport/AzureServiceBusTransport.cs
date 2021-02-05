@@ -1,6 +1,11 @@
 ﻿namespace NServiceBus
 {
-    using Settings;
+    using System;
+    using System.Collections.Generic;
+    using System.Text;
+    using System.Threading.Tasks;
+    using Microsoft.Azure.ServiceBus;
+    using Microsoft.Azure.ServiceBus.Primitives;
     using Transport;
     using Transport.AzureServiceBus;
 
@@ -8,16 +13,215 @@
     public class AzureServiceBusTransport : TransportDefinition
     {
         /// <summary>
-        /// Initializes all the factories and supported features for the transport.
+        /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        /// <param name="settings">An instance of the current settings.</param>
-        /// <param name="connectionString">The connection string.</param>
-        /// <returns>The supported factories.</returns>
-        public override TransportInfrastructure Initialize(SettingsHolder settings, string connectionString) => new AzureServiceBusTransportInfrastructure(settings, connectionString);
+        public AzureServiceBusTransport(string connectionString) : base(
+            defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
+            supportsDelayedDelivery: true,
+            supportsPublishSubscribe: true,
+            supportsTTBR: true)
+        {
+            Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
+            ConnectionString = connectionString;
+        }
+
+        /// <inheritdoc />
+        public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
+            ReceiveSettings[] receivers, string[] sendingAddresses)
+        {
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings);
+
+            await infrastructure.Initialize(receivers, sendingAddresses).ConfigureAwait(false);
+
+            return infrastructure;
+        }
+
+        /// <inheritdoc />
+        public override string ToTransportAddress(QueueAddress address)
+        {
+            var queue = new StringBuilder(address.BaseAddress);
+
+            if (address.Discriminator != null)
+            {
+                queue.Append($"-{address.Discriminator}");
+            }
+
+            if (address.Qualifier != null)
+            {
+                queue.Append($".{address.Qualifier}");
+            }
+
+            return queue.ToString();
+        }
+
+        /// <inheritdoc />
+        public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes()
+        {
+            return new[]
+            {
+                TransportTransactionMode.None,
+                TransportTransactionMode.ReceiveOnly,
+                TransportTransactionMode.SendsAtomicWithReceive
+            };
+        }
 
         /// <summary>
-        /// Gets an example connection string to use when reporting the lack of a configured connection string to the user.
+        /// The topic name used to publish events between endpoints.
         /// </summary>
-        public override string ExampleConnectionStringForErrorMessage { get; } = "Endpoint=sb://[namespace].servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=[secret_key]";
+        public string TopicName
+        {
+            get => topicName;
+            set
+            {
+                Guard.AgainstNullAndEmpty(nameof(TopicName), value);
+                topicName = value;
+            }
+        }
+        string topicName = "bundle-1";
+
+        /// <summary>
+        /// The maximum size used when creating queues and topics in GB.
+        /// </summary>
+        public int EntityMaximumSize
+        {
+            get => entityMaximumSize;
+            set
+            {
+                Guard.AgainstNegativeAndZero(nameof(EntityMaximumSize), value);
+                entityMaximumSize = value;
+            }
+        }
+        int entityMaximumSize = 5;
+
+        /// <summary>
+        /// Enables entity partitioning when creating queues and topics.
+        /// </summary>
+        public bool EnablePartitioning { get; set; }
+
+        /// <summary>
+        /// Specifies the multiplier to apply to the maximum concurrency value to calculate the prefetch count.
+        /// </summary>
+        public int PrefetchMultiplier
+        {
+            get => prefetchMultiplier;
+            set
+            {
+                Guard.AgainstNegativeAndZero(nameof(PrefetchMultiplier), value);
+                prefetchMultiplier = value;
+            }
+        }
+        int prefetchMultiplier = 10;
+
+        /// <summary>
+        /// Overrides the default prefetch count calculation with the specified value. 
+        /// </summary>
+        public int? PrefetchCount
+        {
+            get => prefetchCount;
+            set
+            {
+                if (value.HasValue)
+                {
+                    Guard.AgainstNegative(nameof(PrefetchCount), value.Value);
+                }
+
+                prefetchCount = value;
+            }
+
+        }
+        int? prefetchCount;
+
+        /// <summary>
+        /// Overrides the default time to wait before triggering a circuit breaker that initiates the endpoint shutdown procedure when the message pump cannot successfully receive a message.
+        /// </summary>
+        public TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker
+        {
+            get => timeToWaitBeforeTriggeringCircuitBreaker;
+            set
+            {
+                Guard.AgainstNegativeAndZero(nameof(TimeToWaitBeforeTriggeringCircuitBreaker), value);
+                timeToWaitBeforeTriggeringCircuitBreaker = value;
+            }
+        }
+        TimeSpan timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
+
+        /// <summary>
+        /// Specifies a callback to customize subscription names.
+        /// </summary>
+        public Func<string, string> SubscriptionNamingConvention
+        {
+            get => subscriptionNamingConvention;
+            set
+            {
+                Guard.AgainstNull(nameof(SubscriptionNamingConvention), value);
+
+                // wrap the custom convention:
+                subscriptionNamingConvention = subscriptionName =>
+                {
+                    try
+                    {
+                        return value(subscriptionName);
+                    }
+                    catch (Exception exception)
+                    {
+                        throw new Exception("Custom subscription naming convention threw an exception.", exception);
+                    }
+                };
+
+            }
+        }
+        Func<string, string> subscriptionNamingConvention = name => name;
+
+        /// <summary>
+        /// Specifies a callback to customize subscription rule names.
+        /// </summary>
+        public Func<Type, string> SubscriptionRuleNamingConvention
+        {
+            get => subscriptionRuleNamingConvention;
+            set
+            {
+                Guard.AgainstNull(nameof(SubscriptionRuleNamingConvention), value);
+
+                // wrap the custom convention:
+                subscriptionRuleNamingConvention = eventType =>
+                {
+                    try
+                    {
+                        return value(eventType);
+                    }
+                    catch (Exception exception)
+                    {
+                        throw new Exception("Custom subscription rule naming convention threw an exception", exception);
+                    }
+                };
+            }
+        }
+        Func<Type, string> subscriptionRuleNamingConvention = type => type.FullName;
+
+        /// <summary>
+        /// Configures the transport to use AMQP over WebSockets.
+        /// </summary>
+        public bool UseWebSockets { get; set; }
+
+        /// <summary>
+        /// Overrides the default token provider.
+        /// </summary>
+        public ITokenProvider TokenProvider { get; set; }
+
+        /// <summary>
+        /// Overrides the default retry policy.
+        /// </summary>
+        public RetryPolicy RetryPolicy
+        {
+            get => retryPolicy;
+            set
+            {
+                Guard.AgainstNull(nameof(RetryPolicy), value);
+                retryPolicy = value;
+            }
+        }
+        RetryPolicy retryPolicy;
+
+        internal string ConnectionString { get; private set; }
     }
 }

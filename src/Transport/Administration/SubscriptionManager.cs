@@ -4,65 +4,41 @@
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
-    using Microsoft.Azure.ServiceBus.Primitives;
-    using NServiceBus.Extensibility;
+    using Extensibility;
+    using Unicast.Messages;
 
-    class SubscriptionManager : IManageSubscriptions
+    class SubscriptionManager : ISubscriptionManager
     {
-        readonly string topicPath;
+        readonly AzureServiceBusTransport transportSettings;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
-        readonly ITokenProvider tokenProvider;
         readonly NamespacePermissions namespacePermissions;
-        readonly Func<Type, string> subscriptionRuleNamingConvention;
+        readonly string subscribingQueue;
         readonly string subscriptionName;
 
-        StartupCheckResult startupCheckResult;
-
-        public SubscriptionManager(string inputQueueName, string topicPath,
+        public SubscriptionManager(
+            string subscribingQueue,
+            AzureServiceBusTransport transportSettings,
             ServiceBusConnectionStringBuilder connectionStringBuilder,
-            ITokenProvider tokenProvider,
-            NamespacePermissions namespacePermissions,
-            Func<string, string> subscriptionNamingConvention,
-            Func<Type, string> subscriptionRuleNamingConvention)
+            NamespacePermissions namespacePermissions)
         {
-            this.topicPath = topicPath;
+            this.subscribingQueue = subscribingQueue;
+            this.transportSettings = transportSettings;
             this.connectionStringBuilder = connectionStringBuilder;
-            this.tokenProvider = tokenProvider;
             this.namespacePermissions = namespacePermissions;
-            this.subscriptionRuleNamingConvention = subscriptionRuleNamingConvention;
 
-            subscriptionName = subscriptionNamingConvention(inputQueueName);
+            subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
         }
 
-        public async Task Subscribe(Type eventType, ContextBag context)
+        public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context)
         {
             await CheckForManagePermissions().ConfigureAwait(false);
-
-            var ruleName = subscriptionRuleNamingConvention(eventType);
-            var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
-            var rule = new RuleDescription(ruleName, new SqlFilter(sqlExpression));
-
-            var client = new ManagementClient(connectionStringBuilder, tokenProvider);
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
 
             try
             {
-                var existingRule = await client.GetRuleAsync(topicPath, subscriptionName, rule.Name).ConfigureAwait(false);
-
-                if (existingRule.Filter.ToString() != rule.Filter.ToString())
+                foreach (var eventType in eventTypes)
                 {
-                    rule.Action = existingRule.Action;
-
-                    await client.UpdateRuleAsync(topicPath, subscriptionName, rule).ConfigureAwait(false);
-                }
-            }
-            catch (MessagingEntityNotFoundException)
-            {
-                try
-                {
-                    await client.CreateRuleAsync(topicPath, subscriptionName, rule).ConfigureAwait(false);
-                }
-                catch (MessagingEntityAlreadyExistsException)
-                {
+                    await SubscribeEvent(client, eventType.MessageType).ConfigureAwait(false);
                 }
             }
             finally
@@ -71,20 +47,85 @@
             }
         }
 
-        public async Task Unsubscribe(Type eventType, ContextBag context)
+        async Task SubscribeEvent(ManagementClient client, Type eventType)
         {
-            await CheckForManagePermissions().ConfigureAwait(false);
-
-            var ruleName = subscriptionRuleNamingConvention(eventType);
-
-            var client = new ManagementClient(connectionStringBuilder, tokenProvider);
+            var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType);
+            var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
+            var rule = new RuleDescription(ruleName, new SqlFilter(sqlExpression));
 
             try
             {
-                await client.DeleteRuleAsync(topicPath, subscriptionName, ruleName).ConfigureAwait(false);
+                var existingRule = await client.GetRuleAsync(transportSettings.TopicName, subscriptionName, rule.Name).ConfigureAwait(false);
+
+                if (existingRule.Filter.ToString() != rule.Filter.ToString())
+                {
+                    rule.Action = existingRule.Action;
+
+                    await client.UpdateRuleAsync(transportSettings.TopicName, subscriptionName, rule).ConfigureAwait(false);
+                }
             }
             catch (MessagingEntityNotFoundException)
             {
+                try
+                {
+                    await client.CreateRuleAsync(transportSettings.TopicName, subscriptionName, rule).ConfigureAwait(false);
+                }
+                catch (MessagingEntityAlreadyExistsException)
+                {
+                }
+            }
+        }
+
+        public async Task Unsubscribe(MessageMetadata eventType, ContextBag context)
+        {
+            await CheckForManagePermissions().ConfigureAwait(false);
+
+            var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType.MessageType);
+
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
+
+            try
+            {
+                await client.DeleteRuleAsync(transportSettings.TopicName, subscriptionName, ruleName).ConfigureAwait(false);
+            }
+            catch (MessagingEntityNotFoundException)
+            {
+            }
+            finally
+            {
+                await client.CloseAsync().ConfigureAwait(false);
+            }
+        }
+
+        public async Task CreateSubscription()
+        {
+            await namespacePermissions.CanManage().ConfigureAwait(false);
+
+            var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
+
+            try
+            {
+                var subscription = new SubscriptionDescription(transportSettings.TopicName, subscriptionName)
+                {
+                    LockDuration = TimeSpan.FromMinutes(5),
+                    ForwardTo = subscribingQueue,
+                    EnableDeadLetteringOnFilterEvaluationExceptions = false,
+                    MaxDeliveryCount = int.MaxValue,
+                    EnableBatchedOperations = true,
+                    UserMetadata = subscribingQueue
+                };
+
+                try
+                {
+                    await client.CreateSubscriptionAsync(subscription, new RuleDescription("$default", new FalseFilter())).ConfigureAwait(false);
+                }
+                catch (MessagingEntityAlreadyExistsException)
+                {
+                }
+                // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
+                catch (ServiceBusException sbe) when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
+                {
+                }
             }
             finally
             {
@@ -94,15 +135,13 @@
 
         async Task CheckForManagePermissions()
         {
-            if (startupCheckResult == null)
+            if (!verifiedManagePermissions)
             {
-                startupCheckResult = await namespacePermissions.CanManage().ConfigureAwait(false);
-            }
-
-            if (!startupCheckResult.Succeeded)
-            {
-                throw new Exception(startupCheckResult.ErrorMessage);
+                await namespacePermissions.CanManage().ConfigureAwait(false);
+                verifiedManagePermissions = true;
             }
         }
+
+        bool verifiedManagePermissions;
     }
 }

@@ -12,14 +12,14 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 {
     public Task Configure(string endpointName, EndpointConfiguration configuration, RunSettings settings, PublisherMetadata publisherMetadata)
     {
-        var transport = configuration.UseTransport<AzureServiceBusTransport>();
-
         var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
-        transport.ConnectionString(connectionString);
+        var transport = new AzureServiceBusTransport(connectionString)
+        {
+            SubscriptionNamingConvention = name => Shorten(name),
+            SubscriptionRuleNamingConvention = eventType => Shorten(eventType.FullName)
+        };
 
-        transport.SubscriptionNamingConvention(name => Shorten(name));
-
-        transport.SubscriptionRuleNamingConvention(eventType => Shorten(eventType.FullName));
+        configuration.UseTransport(transport);
 
         configuration.RegisterComponents(c => c.AddSingleton<IMutateOutgoingTransportMessages, TestIndependenceMutator>());
 

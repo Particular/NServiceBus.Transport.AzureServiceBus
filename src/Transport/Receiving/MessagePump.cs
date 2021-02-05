@@ -9,24 +9,19 @@
     using Logging;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Core;
-    using Microsoft.Azure.ServiceBus.Primitives;
+    using IMessageReceiver = IMessageReceiver;
 
-    class MessagePump : IPushMessages
+    class MessagePump : IMessageReceiver
     {
+        readonly AzureServiceBusTransport transportSettings;
+        readonly ReceiveSettings receiveSettings;
+        readonly Action<string, Exception> criticalErrorAction;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
-        readonly int prefetchMultiplier;
-        readonly int? overriddenPrefetchCount;
-        readonly TimeSpan timeToWaitBeforeTriggeringCircuitBreaker;
-        readonly RetryPolicy retryPolicy;
-        readonly ITokenProvider tokenProvider;
         int numberOfExecutingReceives;
 
-        // Init
         Func<MessageContext, Task> onMessage;
         Func<ErrorContext, Task<ErrorHandleResult>> onError;
         RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
-        PushSettings pushSettings;
-        CriticalError criticalError;
 
         // Start
         Task receiveLoopTask;
@@ -35,56 +30,75 @@
         int maxConcurrency;
         MessageReceiver receiver;
 
-        static readonly ILog logger = LogManager.GetLogger<MessagePump>();
+        static readonly ILog Logger = LogManager.GetLogger<MessagePump>();
 
-        public MessagePump(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, int prefetchMultiplier, int? overriddenPrefetchCount,
-            TimeSpan timeToWaitBeforeTriggeringCircuitBreaker, RetryPolicy retryPolicy)
+        PushRuntimeSettings limitations;
+
+        public MessagePump(
+            ServiceBusConnectionStringBuilder connectionStringBuilder,
+            AzureServiceBusTransport transportSettings,
+            ReceiveSettings receiveSettings,
+            Action<string, Exception> criticalErrorAction,
+            NamespacePermissions namespacePermissions)
         {
+            Id = receiveSettings.Id;
             this.connectionStringBuilder = connectionStringBuilder;
-            this.tokenProvider = tokenProvider;
-            this.prefetchMultiplier = prefetchMultiplier;
-            this.overriddenPrefetchCount = overriddenPrefetchCount;
-            this.timeToWaitBeforeTriggeringCircuitBreaker = timeToWaitBeforeTriggeringCircuitBreaker;
-            this.retryPolicy = retryPolicy;
+            this.transportSettings = transportSettings;
+            this.receiveSettings = receiveSettings;
+            this.criticalErrorAction = criticalErrorAction;
+
+            if (receiveSettings.UsePublishSubscribe)
+            {
+                Subscriptions = new SubscriptionManager(
+                    receiveSettings.ReceiveAddress,
+                    transportSettings,
+                    connectionStringBuilder,
+                    namespacePermissions);
+            }
         }
 
-        public Task Init(Func<MessageContext, Task> onMessage, Func<ErrorContext, Task<ErrorHandleResult>> onError, CriticalError criticalError, PushSettings settings)
+        public async Task Initialize(
+            PushRuntimeSettings limitations,
+            Func<MessageContext, Task> onMessage,
+            Func<ErrorContext, Task<ErrorHandleResult>> onError)
         {
-            if (settings.PurgeOnStartup)
+            if (receiveSettings.PurgeOnStartup)
             {
                 throw new Exception("Azure Service Bus transport doesn't support PurgeOnStartup behavior");
             }
 
+            if (Subscriptions is SubscriptionManager subscriptionManager)
+            {
+                await subscriptionManager.CreateSubscription().ConfigureAwait(false);
+            }
+
+            this.limitations = limitations;
             this.onMessage = onMessage;
             this.onError = onError;
-            this.criticalError = criticalError;
-            pushSettings = settings;
 
-            circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{settings.InputQueue}'", timeToWaitBeforeTriggeringCircuitBreaker, criticalError);
-
-            return Task.CompletedTask;
+            circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, criticalErrorAction);
         }
 
-        public void Start(PushRuntimeSettings limitations)
+        public Task StartReceive()
         {
             maxConcurrency = limitations.MaxConcurrency;
 
-            var prefetchCount = maxConcurrency * prefetchMultiplier;
+            var prefetchCount = maxConcurrency * transportSettings.PrefetchMultiplier;
 
-            if (overriddenPrefetchCount.HasValue)
+            if (transportSettings.PrefetchCount.HasValue)
             {
-                prefetchCount = overriddenPrefetchCount.Value;
+                prefetchCount = transportSettings.PrefetchCount.Value;
             }
 
-            var receiveMode = pushSettings.RequiredTransactionMode == TransportTransactionMode.None ? ReceiveMode.ReceiveAndDelete : ReceiveMode.PeekLock;
+            var receiveMode = transportSettings.TransportTransactionMode == TransportTransactionMode.None ? ReceiveMode.ReceiveAndDelete : ReceiveMode.PeekLock;
 
-            if (tokenProvider == null)
+            if (transportSettings.TokenProvider == null)
             {
-                receiver = new MessageReceiver(connectionStringBuilder.GetNamespaceConnectionString(), pushSettings.InputQueue, receiveMode, retryPolicy: retryPolicy, prefetchCount);
+                receiver = new MessageReceiver(connectionStringBuilder.GetNamespaceConnectionString(), receiveSettings.ReceiveAddress, receiveMode, retryPolicy: transportSettings.RetryPolicy, prefetchCount);
             }
             else
             {
-                receiver = new MessageReceiver(connectionStringBuilder.Endpoint, pushSettings.InputQueue, tokenProvider, connectionStringBuilder.TransportType, receiveMode, retryPolicy: retryPolicy, prefetchCount);
+                receiver = new MessageReceiver(connectionStringBuilder.Endpoint, receiveSettings.ReceiveAddress, transportSettings.TokenProvider, connectionStringBuilder.TransportType, receiveMode, retryPolicy: transportSettings.RetryPolicy, prefetchCount);
             }
 
             semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
@@ -92,6 +106,26 @@
             messageProcessing = new CancellationTokenSource();
 
             receiveLoopTask = Task.Run(() => ReceiveLoop());
+
+            return Task.CompletedTask;
+        }
+
+        public async Task StopReceive()
+        {
+            messageProcessing.Cancel();
+
+            await receiveLoopTask.ConfigureAwait(false);
+
+            while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
+            {
+                await Task.Delay(50).ConfigureAwait(false);
+            }
+
+            await receiver.CloseAsync().ConfigureAwait(false);
+
+            semaphore?.Dispose();
+            messageProcessing?.Dispose();
+            circuitBreaker?.Dispose();
         }
 
         async Task ReceiveLoop()
@@ -120,7 +154,7 @@
             }
             catch (Exception ex)
             {
-                logger.Debug($"Exception from {nameof(ProcessMessage)}: ", ex);
+                Logger.Debug($"Exception from {nameof(ProcessMessage)}: ", ex);
             }
             finally
             {
@@ -158,7 +192,7 @@
             }
             catch (Exception exception)
             {
-                logger.Warn($"Failed to receive a message. Exception: {exception.Message}", exception);
+                Logger.Warn($"Failed to receive a message. Exception: {exception.Message}", exception);
 
                 await circuitBreaker.Failure(exception).ConfigureAwait(false);
             }
@@ -190,7 +224,7 @@
             {
                 try
                 {
-                    await receiver.SafeDeadLetterAsync(pushSettings.RequiredTransactionMode, lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
+                    await receiver.SafeDeadLetterAsync(transportSettings.TransportTransactionMode, lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
                 }
                 catch (Exception)
                 {
@@ -209,7 +243,6 @@
 
                     var contextBag = new ContextBag();
                     contextBag.Set(message);
-                    contextBag.GetOrCreate<NativeMessageCustomizer>();
 
                     var messageContext = new MessageContext(messageId, headers, body, transportTransaction,
                         receiveCancellationTokenSource, contextBag);
@@ -218,7 +251,7 @@
 
                     if (receiveCancellationTokenSource.IsCancellationRequested == false)
                     {
-                        await receiver.SafeCompleteAsync(pushSettings.RequiredTransactionMode, lockToken, transaction)
+                        await receiver.SafeCompleteAsync(transportSettings.TransportTransactionMode, lockToken, transaction)
                             .ConfigureAwait(false);
 
                         transaction?.Commit();
@@ -226,7 +259,7 @@
 
                     if (receiveCancellationTokenSource.IsCancellationRequested)
                     {
-                        await receiver.SafeAbandonAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                        await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken).ConfigureAwait(false);
 
                         transaction?.Rollback();
                     }
@@ -248,7 +281,7 @@
 
                         if (result == ErrorHandleResult.Handled)
                         {
-                            await receiver.SafeCompleteAsync(pushSettings.RequiredTransactionMode, lockToken, transaction).ConfigureAwait(false);
+                            await receiver.SafeCompleteAsync(transportSettings.TransportTransactionMode, lockToken, transaction).ConfigureAwait(false);
                         }
 
                         transaction?.Commit();
@@ -256,25 +289,25 @@
 
                     if (result == ErrorHandleResult.RetryRequired)
                     {
-                        await receiver.SafeAbandonAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                        await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken).ConfigureAwait(false);
                     }
                 }
                 catch (Exception onErrorException) when (onErrorException is MessageLockLostException || onErrorException is ServiceBusTimeoutException)
                 {
-                    logger.Debug("Failed to execute recoverability.", onErrorException);
+                    Logger.Debug("Failed to execute recoverability.", onErrorException);
                 }
                 catch (Exception onErrorException)
                 {
-                    criticalError.Raise($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException);
+                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException);
 
-                    await receiver.SafeAbandonAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                    await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken).ConfigureAwait(false);
                 }
             }
         }
 
         CommittableTransaction CreateTransaction()
         {
-            return pushSettings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
+            return transportSettings.TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
                 ? new CommittableTransaction(new TransactionOptions
                 {
                     IsolationLevel = IsolationLevel.Serializable,
@@ -287,7 +320,7 @@
         {
             var transportTransaction = new TransportTransaction();
 
-            if (pushSettings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive)
+            if (transportSettings.TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive)
             {
                 transportTransaction.Set((receiver.ServiceBusConnection, receiver.Path));
                 transportTransaction.Set("IncomingQueue.PartitionKey", incomingQueuePartitionKey);
@@ -297,22 +330,8 @@
             return transportTransaction;
         }
 
-        public async Task Stop()
-        {
-            messageProcessing.Cancel();
+        public ISubscriptionManager Subscriptions { get; }
 
-            await receiveLoopTask.ConfigureAwait(false);
-
-            while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
-            {
-                await Task.Delay(50).ConfigureAwait(false);
-            }
-
-            await receiver.CloseAsync().ConfigureAwait(false);
-
-            semaphore?.Dispose();
-            messageProcessing?.Dispose();
-            circuitBreaker?.Dispose();
-        }
+        public string Id { get; }
     }
 }
