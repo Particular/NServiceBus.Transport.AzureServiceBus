@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
@@ -29,9 +30,24 @@
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
             ReceiveSettings[] receivers, string[] sendingAddresses)
         {
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings);
+            var connectionStringBuilder = new ServiceBusConnectionStringBuilder(ConnectionString)
+            {
+                TransportType = UseWebSockets ? TransportType.AmqpWebSockets : TransportType.Amqp
+            };
+            var namespacePermissions = new NamespacePermissions(connectionStringBuilder, TokenProvider);
 
-            await infrastructure.Initialize(receivers, sendingAddresses).ConfigureAwait(false);
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receivers, connectionStringBuilder, namespacePermissions);
+
+            if (hostSettings.SetupInfrastructure)
+            {
+                var queueCreator = new QueueCreator(this, connectionStringBuilder, namespacePermissions);
+                var allQueues = receivers
+                    .Select(r => r.ReceiveAddress)
+                    .Concat(sendingAddresses)
+                    .ToArray();
+
+                await queueCreator.CreateQueues(allQueues).ConfigureAwait(false);
+            }
 
             return infrastructure;
         }

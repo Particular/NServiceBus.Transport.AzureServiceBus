@@ -12,28 +12,20 @@
 
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly NamespacePermissions namespacePermissions;
-        MessageSenderPool messageSenderPool;
+        readonly MessageSenderPool messageSenderPool;
         readonly HostSettings hostSettings;
-        readonly QueueCreator queueCreator;
 
-        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings)
+        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, ReceiveSettings[] receivers, ServiceBusConnectionStringBuilder connectionStringBuilder, NamespacePermissions namespacePermissions)
         {
             this.transportSettings = transportSettings;
             this.hostSettings = hostSettings;
-
-            connectionStringBuilder = new ServiceBusConnectionStringBuilder(transportSettings.ConnectionString)
-            {
-                TransportType =
-                transportSettings.UseWebSockets ? TransportType.AmqpWebSockets : TransportType.Amqp
-            };
-
-            namespacePermissions = new NamespacePermissions(connectionStringBuilder, transportSettings.TokenProvider);
+            this.connectionStringBuilder = connectionStringBuilder;
+            this.namespacePermissions = namespacePermissions;
 
             messageSenderPool = new MessageSenderPool(connectionStringBuilder, transportSettings.TokenProvider, transportSettings.RetryPolicy);
 
             Dispatcher = new MessageDispatcher(messageSenderPool, transportSettings.TopicName);
-
-            queueCreator = new QueueCreator(transportSettings, connectionStringBuilder, namespacePermissions);
+            Receivers = Array.AsReadOnly(receivers.Select(CreateMessagePump).ToArray());
 
             WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
         }
@@ -71,18 +63,6 @@
             {
                 await messageSenderPool.Close().ConfigureAwait(false);
             }
-        }
-
-        public async Task Initialize(ReceiveSettings[] receivers, string[] sendingAddresses)
-        {
-            Receivers = Array.AsReadOnly(receivers.Select(CreateMessagePump).ToArray());
-
-            var allQueues = receivers
-                .Select(r => r.ReceiveAddress)
-                .Concat(sendingAddresses)
-                .ToArray();
-
-            await queueCreator.CreateQueues(allQueues).ConfigureAwait(false);
         }
     }
 }
