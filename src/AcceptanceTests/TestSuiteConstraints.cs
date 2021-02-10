@@ -14,6 +14,8 @@
 
         public bool SupportsOutbox => true;
 
+        public bool SupportsPurgeOnStartup => false;
+
         public IConfigureEndpointTestExecution CreateTransportConfiguration() => new ConfigureEndpointAzureServiceBusTransport();
 
         public IConfigureEndpointTestExecution CreatePersistenceConfiguration() => new ConfigureEndpointAcceptanceTestingPersistence();
