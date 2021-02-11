@@ -19,8 +19,8 @@
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         int numberOfExecutingReceives;
 
-        Func<MessageContext, Task> onMessage;
-        Func<ErrorContext, Task<ErrorHandleResult>> onError;
+        OnMessage onMessage;
+        OnError onError;
         RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
 
         // Start
@@ -59,8 +59,8 @@
 
         public async Task Initialize(
             PushRuntimeSettings limitations,
-            Func<MessageContext, Task> onMessage,
-            Func<ErrorContext, Task<ErrorHandleResult>> onError)
+            OnMessage onMessage,
+            OnError onError)
         {
             if (receiveSettings.PurgeOnStartup)
             {
@@ -236,7 +236,6 @@
 
             try
             {
-                using (var receiveCancellationTokenSource = new CancellationTokenSource())
                 using (var transaction = CreateTransaction())
                 {
                     var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
@@ -244,25 +243,14 @@
                     var contextBag = new ContextBag();
                     contextBag.Set(message);
 
-                    var messageContext = new MessageContext(messageId, headers, body, transportTransaction,
-                        receiveCancellationTokenSource, contextBag);
+                    var messageContext = new MessageContext(messageId, headers, body, transportTransaction, contextBag);
 
                     await onMessage(messageContext).ConfigureAwait(false);
 
-                    if (receiveCancellationTokenSource.IsCancellationRequested == false)
-                    {
-                        await receiver.SafeCompleteAsync(transportSettings.TransportTransactionMode, lockToken, transaction)
-                            .ConfigureAwait(false);
+                    await receiver.SafeCompleteAsync(transportSettings.TransportTransactionMode, lockToken, transaction)
+                        .ConfigureAwait(false);
 
-                        transaction?.Commit();
-                    }
-
-                    if (receiveCancellationTokenSource.IsCancellationRequested)
-                    {
-                        await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken).ConfigureAwait(false);
-
-                        transaction?.Rollback();
-                    }
+                    transaction?.Commit();
                 }
             }
             catch (Exception exception)
