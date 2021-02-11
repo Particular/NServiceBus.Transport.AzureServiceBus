@@ -10,7 +10,7 @@
     /// <remarks>
     /// The behavior of this class is exposed via extension methods.
     /// </remarks>
-    public static class CustomizeNativeMessageExtensions
+    public static partial class CustomizeNativeMessageExtensions
     {
         /// <summary>
         /// Allows customization of the outgoing native message sent using <see cref="IMessageSession"/>.

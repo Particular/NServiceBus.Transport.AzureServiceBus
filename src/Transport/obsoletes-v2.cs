@@ -99,5 +99,22 @@ namespace NServiceBus
     }
 }
 
+namespace NServiceBus
+{
+    using System;
+    using Microsoft.Azure.ServiceBus;
+    using Extensibility;
+
+    public static partial class CustomizeNativeMessageExtensions
+    {
+        [ObsoleteEx(
+            ReplacementTypeOrMember = "CustomizeNativeMessage(this ExtendableOptions options, Action<Message> customization)",
+            TreatAsErrorFromVersion = "2",
+            RemoveInVersion = "3")]
+        public static void CustomizeNativeMessage(this ExtendableOptions options, IPipelineContext context,
+            Action<Message> customization) => throw new NotImplementedException();
+    }
+}
+
 #pragma warning restore 1591
 #pragma warning restore 618
