@@ -1,6 +1,5 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
-    using System;
     using System.Linq;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
@@ -25,7 +24,7 @@
             messageSenderPool = new MessageSenderPool(connectionStringBuilder, transportSettings.TokenProvider, transportSettings.RetryPolicy);
 
             Dispatcher = new MessageDispatcher(messageSenderPool, transportSettings.TopicName);
-            Receivers = Array.AsReadOnly(receivers.Select(CreateMessagePump).ToArray());
+            Receivers = receivers.ToDictionary(s => s.Id, s => CreateMessagePump(s));
 
             WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
         }
@@ -57,7 +56,7 @@
                 namespacePermissions);
         }
 
-        public override async Task DisposeAsync()
+        public override async Task Shutdown()
         {
             if (messageSenderPool != null)
             {
