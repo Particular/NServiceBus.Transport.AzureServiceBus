@@ -2,6 +2,7 @@
 {
     using System;
     using McMaster.Extensions.CommandLineUtils;
+    using Microsoft.Azure.ServiceBus.Management;
 
     class Program
     {
@@ -116,9 +117,15 @@
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, client => Queue.Create(client, name, size, partitioning));
-
-                        Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
+                        try
+                        {
+                            await CommandRunner.Run(connectionString, client => Queue.Create(client, name, size, partitioning));
+                            Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
+                        }
+                        catch (MessagingEntityAlreadyExistsException)
+                        {
+                            Console.WriteLine($"Queue '{name.Value}' already exists, skipping creation");
+                        }
                     });
                 });
 
