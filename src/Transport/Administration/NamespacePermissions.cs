@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
+    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
@@ -11,13 +12,19 @@
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly ITokenProvider tokenProvider;
 
+        readonly Lazy<Task> manageCheck;
+
         public NamespacePermissions(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider)
         {
             this.connectionStringBuilder = connectionStringBuilder;
             this.tokenProvider = tokenProvider;
+
+            manageCheck = new Lazy<Task>(() => CheckPermission(), LazyThreadSafetyMode.ExecutionAndPublication);
         }
 
-        public async Task CanManage()
+        public Task CanManage() => manageCheck.Value;
+
+        async Task CheckPermission()
         {
             var client = new ManagementClient(connectionStringBuilder, tokenProvider);
 

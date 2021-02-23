@@ -31,7 +31,7 @@
 
         public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context)
         {
-            await CheckForManagePermissions().ConfigureAwait(false);
+            await namespacePermissions.CanManage().ConfigureAwait(false);
             var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
 
             try
@@ -78,7 +78,7 @@
 
         public async Task Unsubscribe(MessageMetadata eventType, ContextBag context)
         {
-            await CheckForManagePermissions().ConfigureAwait(false);
+            await namespacePermissions.CanManage().ConfigureAwait(false);
 
             var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType.MessageType);
 
@@ -132,16 +132,5 @@
                 await client.CloseAsync().ConfigureAwait(false);
             }
         }
-
-        async Task CheckForManagePermissions()
-        {
-            if (!verifiedManagePermissions)
-            {
-                await namespacePermissions.CanManage().ConfigureAwait(false);
-                verifiedManagePermissions = true;
-            }
-        }
-
-        bool verifiedManagePermissions;
     }
 }
