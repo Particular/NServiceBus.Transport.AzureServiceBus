@@ -56,7 +56,7 @@
             options.SetHeader(CustomizationHeader, customizationId);
 
             // Assumption: NativeMessageCustomizer is added to the context bag associated with each incoming message handled in IMessageHandlerContext and should not be re-created
-            var nativePropertiesCustomizer = context.Extensions.Get<NativeMessageCustomizer>();
+            var nativePropertiesCustomizer = context.Extensions.GetOrCreate<NativeMessageCustomizer>();
             if (!nativePropertiesCustomizer.Customizations.TryAdd(customizationId, customization))
             {
                 throw new Exception("Failed to apply an outgoing message customization");
