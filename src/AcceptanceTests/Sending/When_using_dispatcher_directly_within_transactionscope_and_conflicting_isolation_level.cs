@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 using System.Transactions;
 using NServiceBus;
 using NServiceBus.AcceptanceTesting;
@@ -52,17 +53,17 @@ class When_sending_message_outside_of_a_handler_with_incorrect_transaction_scope
 
         class StartupTask : FeatureStartupTask
         {
-            protected override async Task OnStart(IMessageSession session)
+            protected override async Task OnStart(IMessageSession session, CancellationToken cancellationToken)
             {
                 using (var tx = new TransactionScope(TransactionScopeOption.RequiresNew, new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted }, TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    await session.SendLocal(new MyMessage());
+                    await session.SendLocal(new MyMessage(), cancellationToken);
 
                     tx.Complete();
                 }
             }
 
-            protected override Task OnStop(IMessageSession session)
+            protected override Task OnStop(IMessageSession session, CancellationToken cancellationToken)
             {
                 return Task.CompletedTask;
             }

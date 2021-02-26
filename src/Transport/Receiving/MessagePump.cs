@@ -15,7 +15,7 @@
     {
         readonly AzureServiceBusTransport transportSettings;
         readonly ReceiveSettings receiveSettings;
-        readonly Action<string, Exception> criticalErrorAction;
+        readonly Action<string, Exception, CancellationToken> criticalErrorAction;
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         int numberOfExecutingReceives;
 
@@ -38,7 +38,7 @@
             ServiceBusConnectionStringBuilder connectionStringBuilder,
             AzureServiceBusTransport transportSettings,
             ReceiveSettings receiveSettings,
-            Action<string, Exception> criticalErrorAction,
+            Action<string, Exception, CancellationToken> criticalErrorAction,
             NamespacePermissions namespacePermissions)
         {
             Id = receiveSettings.Id;
@@ -60,7 +60,8 @@
         public async Task Initialize(
             PushRuntimeSettings limitations,
             OnMessage onMessage,
-            OnError onError)
+            OnError onError,
+            CancellationToken cancellationToken)
         {
             if (receiveSettings.PurgeOnStartup)
             {
@@ -79,7 +80,7 @@
             circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, criticalErrorAction);
         }
 
-        public Task StartReceive()
+        public Task StartReceive(CancellationToken cancellationToken)
         {
             maxConcurrency = limitations.MaxConcurrency;
 
@@ -105,12 +106,12 @@
 
             messageProcessing = new CancellationTokenSource();
 
-            receiveLoopTask = Task.Run(() => ReceiveLoop());
+            receiveLoopTask = Task.Run(() => ReceiveLoop(), CancellationToken.None);
 
             return Task.CompletedTask;
         }
 
-        public async Task StopReceive()
+        public async Task StopReceive(CancellationToken cancellationToken)
         {
             messageProcessing.Cancel();
 
@@ -118,7 +119,7 @@
 
             while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
             {
-                await Task.Delay(50).ConfigureAwait(false);
+                await Task.Delay(50, CancellationToken.None).ConfigureAwait(false);
             }
 
             await receiver.CloseAsync().ConfigureAwait(false);
@@ -245,7 +246,7 @@
 
                     var messageContext = new MessageContext(messageId, headers, body, transportTransaction, contextBag);
 
-                    await onMessage(messageContext).ConfigureAwait(false);
+                    await onMessage(messageContext, CancellationToken.None).ConfigureAwait(false);
 
                     await receiver.SafeCompleteAsync(transportSettings.TransportTransactionMode, lockToken, transaction)
                         .ConfigureAwait(false);
@@ -265,7 +266,7 @@
 
                         var errorContext = new ErrorContext(exception, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount);
 
-                        result = await onError(errorContext).ConfigureAwait(false);
+                        result = await onError(errorContext, CancellationToken.None).ConfigureAwait(false);
 
                         if (result == ErrorHandleResult.Handled)
                         {
@@ -286,7 +287,7 @@
                 }
                 catch (Exception onErrorException)
                 {
-                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException);
+                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException, CancellationToken.None);
 
                     await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken).ConfigureAwait(false);
                 }

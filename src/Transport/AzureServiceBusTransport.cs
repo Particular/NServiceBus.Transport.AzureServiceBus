@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Text;
+    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Primitives;
@@ -28,7 +29,7 @@
 
         /// <inheritdoc />
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
-            ReceiveSettings[] receivers, string[] sendingAddresses)
+            ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken)
         {
             var connectionStringBuilder = new ServiceBusConnectionStringBuilder(ConnectionString)
             {

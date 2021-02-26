@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Transport;
@@ -56,7 +57,7 @@
                 namespacePermissions);
         }
 
-        public override async Task Shutdown()
+        public override async Task Shutdown(CancellationToken cancellationToken)
         {
             if (messageSenderPool != null)
             {

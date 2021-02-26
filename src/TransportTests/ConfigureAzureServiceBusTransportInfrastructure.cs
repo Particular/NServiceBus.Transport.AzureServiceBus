@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using NServiceBus;
 using NServiceBus.Transport;
@@ -43,8 +44,7 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
         return transport;
     }
 
-    public async Task<TransportInfrastructure> Configure(TransportDefinition transportDefinition, HostSettings hostSettings, string inputQueueName,
-        string errorQueueName)
+    public async Task<TransportInfrastructure> Configure(TransportDefinition transportDefinition, HostSettings hostSettings, string inputQueueName, string errorQueueName, CancellationToken cancellationToken)
     {
         var transportInfrastructure = await transportDefinition.Initialize(
             hostSettings,
@@ -52,12 +52,13 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
             {
                 new ReceiveSettings(inputQueueName, inputQueueName, true, false, errorQueueName),
             },
-            new string[0]);
+            new string[0],
+            cancellationToken);
 
         return transportInfrastructure;
     }
 
-    public Task Cleanup()
+    public Task Cleanup(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
     }
