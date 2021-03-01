@@ -21,7 +21,7 @@
             var firstInvocation = true;
 
             await StartPump(
-                context =>
+                (context, ct) =>
                 {
                     if (firstInvocation)
                     {
@@ -31,12 +31,12 @@
 
                     return Task.CompletedTask;
                 },
-                context =>
+                (context, ct) =>
                 {
                     throw new MessageLockLostException("from onError");
                 },
                 transactionMode,
-                (message, exception) =>
+                (message, exception, ct) =>
                 {
                     criticalErrorCalled = true;
                     criticalErrorInvoked.SetResult(true);

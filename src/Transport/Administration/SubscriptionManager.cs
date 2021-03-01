@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
+    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
@@ -29,7 +30,7 @@
             subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
         }
 
-        public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context)
+        public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken)
         {
             await namespacePermissions.CanManage().ConfigureAwait(false);
             var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
@@ -76,7 +77,7 @@
             }
         }
 
-        public async Task Unsubscribe(MessageMetadata eventType, ContextBag context)
+        public async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken)
         {
             await namespacePermissions.CanManage().ConfigureAwait(false);
 
@@ -86,7 +87,7 @@
 
             try
             {
-                await client.DeleteRuleAsync(transportSettings.TopicName, subscriptionName, ruleName).ConfigureAwait(false);
+                await client.DeleteRuleAsync(transportSettings.TopicName, subscriptionName, ruleName, cancellationToken).ConfigureAwait(false);
             }
             catch (MessagingEntityNotFoundException)
             {

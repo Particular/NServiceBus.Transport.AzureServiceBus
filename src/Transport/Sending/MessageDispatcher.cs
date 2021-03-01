@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System.Collections.Generic;
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
     using Logging;
@@ -18,7 +19,7 @@
             this.topicName = topicName;
         }
 
-        public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction)
+        public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken)
         {
             // Assumption: we're not implementing batching as it will be done by ASB client
             transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);
