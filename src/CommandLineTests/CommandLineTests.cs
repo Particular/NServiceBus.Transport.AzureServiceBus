@@ -83,15 +83,16 @@
         }
 
         [Test]
-        public async Task Create_queue_when_it_exists_should_throw()
+        public async Task Create_queue_when_it_exists_should_skip()
         {
             await DeleteQueue(QueueName);
             await Execute($"queue create {QueueName}");
 
-            var (_, error, exitCode) = await Execute($"queue create {QueueName}");
+            var (output, error, exitCode) = await Execute($"queue create {QueueName}");
 
-            Assert.AreEqual(1, exitCode);
-            Assert.IsTrue(error.Contains(nameof(MessagingEntityAlreadyExistsException)));
+            Assert.AreEqual(0, exitCode);
+            Assert.IsTrue(error == string.Empty);
+            Assert.IsTrue(output.Contains("skipping"));
 
             await VerifyQueue(QueueName);
         }
@@ -237,17 +238,6 @@
             try
             {
                 await client.DeleteTopicAsync(topicName);
-            }
-            catch (MessagingEntityNotFoundException)
-            {
-            }
-        }
-
-        async Task DeleteSubscription(string topicName, string subscriptionName)
-        {
-            try
-            {
-                await client.DeleteSubscriptionAsync(topicName, subscriptionName);
             }
             catch (MessagingEntityNotFoundException)
             {
