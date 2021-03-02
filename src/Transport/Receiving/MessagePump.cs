@@ -61,6 +61,7 @@
             PushRuntimeSettings limitations,
             OnMessage onMessage,
             OnError onError,
+            OnCompleted onCompleted,
             CancellationToken cancellationToken)
         {
             if (receiveSettings.PurgeOnStartup)
@@ -235,13 +236,13 @@
                 return;
             }
 
+            var contextBag = new ContextBag();
             try
             {
                 using (var transaction = CreateTransaction())
                 {
                     var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
-                    var contextBag = new ContextBag();
                     contextBag.Set(message);
 
                     var messageContext = new MessageContext(messageId, headers, body, transportTransaction, contextBag);
@@ -264,7 +265,7 @@
                     {
                         var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
-                        var errorContext = new ErrorContext(exception, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount);
+                        var errorContext = new ErrorContext(exception, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount, contextBag);
 
                         result = await onError(errorContext, CancellationToken.None).ConfigureAwait(false);
 

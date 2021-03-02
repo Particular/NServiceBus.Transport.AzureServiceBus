@@ -35,6 +35,7 @@
                 {
                     throw new MessageLockLostException("from onError");
                 },
+                (context, token) => Task.CompletedTask,
                 transactionMode,
                 (message, exception, ct) =>
                 {
