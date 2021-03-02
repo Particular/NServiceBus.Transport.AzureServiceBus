@@ -316,7 +316,7 @@
                 }
                 catch (Exception onErrorException)
                 {
-                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException, CancellationToken.None);
+                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException, messageProcessingCancellationTokenSource.Token);
 
                     await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken).ConfigureAwait(false);
                 }
