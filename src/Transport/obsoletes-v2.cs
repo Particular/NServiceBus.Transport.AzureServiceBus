@@ -28,7 +28,7 @@ namespace NServiceBus
         }
 
         [ObsoleteEx(
-            ReplacementTypeOrMember = "TransportDefinition.TopicName",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.TopicName",
             TreatAsErrorFromVersion = "2",
             RemoveInVersion = "3")]
         public static TransportExtensions<AzureServiceBusTransport> TopicName(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string topicName) => throw new NotImplementedException();
