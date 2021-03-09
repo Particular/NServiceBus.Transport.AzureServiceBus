@@ -3,6 +3,7 @@
 namespace NServiceBus.Transport.AzureServiceBus.Tests
 {
     using System;
+    using System.Threading;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Primitives;
     using NServiceBus.Configuration.AdvancedExtensibility;
@@ -75,6 +76,22 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             Assert.IsTrue(configuredTransport.UseWebSockets);
             Assert.AreEqual(nameof(settings.SubscriptionNamingConvention), configuredTransport.SubscriptionNamingConvention(nameof(MigrationApiTests)));
             Assert.AreEqual(nameof(settings.SubscriptionRuleNamingConvention), configuredTransport.SubscriptionRuleNamingConvention(typeof(MigrationApiTests)));
+        }
+
+        [Test]
+        public void Should_throw_when_no_connection_string_provided()
+        {
+            var endpointConfiguration = new EndpointConfiguration(nameof(MigrationApiTests));
+            endpointConfiguration.UseTransport<AzureServiceBusTransport>();
+
+            var configuredTransport = (AzureServiceBusTransport)endpointConfiguration.GetSettings().Get<TransportDefinition>();
+
+            var ex = Assert.ThrowsAsync<Exception>(() => configuredTransport.Initialize(
+                new HostSettings("test", "test", new StartupDiagnosticEntries(), (_, __, ___) => { }, false),
+                new ReceiveSettings[0],
+                new string[0],
+                CancellationToken.None));
+            StringAssert.Contains("No transport connection string has been configured via the 'ConnectionString' method. Provide a connection string using endpointConfig.UseTransport<AzureServiceBusTransport>().ConnectionString(connectionString)", ex.Message);
         }
     }
 }
