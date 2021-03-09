@@ -17,20 +17,26 @@
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString) : base(
+        public AzureServiceBusTransport(string connectionString) : this()
+        {
+            Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
+            ConnectionString = connectionString;
+        }
+
+        // Used by the shim API to enable easier migration from the existing API
+        internal AzureServiceBusTransport() : base(
             defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
             supportsDelayedDelivery: true,
             supportsPublishSubscribe: true,
             supportsTTBR: true)
         {
-            Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
-            ConnectionString = connectionString;
         }
 
         /// <inheritdoc />
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
             ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken)
         {
+            //TODO throw exception when connection string not set
             var connectionStringBuilder = new ServiceBusConnectionStringBuilder(ConnectionString)
             {
                 TransportType = UseWebSockets ? TransportType.AmqpWebSockets : TransportType.Amqp
@@ -239,6 +245,6 @@
         }
         RetryPolicy retryPolicy;
 
-        internal string ConnectionString { get; private set; }
+        internal string ConnectionString { get; set; }
     }
 }

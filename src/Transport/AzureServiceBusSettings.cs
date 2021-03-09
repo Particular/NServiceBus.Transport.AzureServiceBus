@@ -3,6 +3,7 @@
     using System;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Primitives;
+    using Transport.AzureServiceBus;
 
     /// <summary>
     /// Provides a backwards-compatible configuration API for <see cref="AzureServiceBusTransport"/>.
@@ -12,6 +13,42 @@
         internal AzureServiceBusSettings(AzureServiceBusTransport transport, RoutingSettings<AzureServiceBusTransport> routing) : base(transport, routing)
         {
         }
+
+        /// <summary>
+        /// Configures the transport to use the connection string with the given name.
+        /// </summary>
+        [ObsoleteEx(
+            Message = "Provide the connection string to the AzureServiceBusTransport constructor",
+            TreatAsErrorFromVersion = "3",
+            RemoveInVersion = "4")]
+        public AzureServiceBusSettings ConnectionString(string connectionString)
+        {
+            Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
+            Transport.ConnectionString = connectionString;
+            return this;
+        }
+
+        /// <summary>
+        /// Configures the transport to use the connection string with the given name.
+        /// </summary>
+        [ObsoleteEx(
+            Message =
+                "The ability to used named connection strings has been removed. Instead, load the connection string in your code and pass the value to TransportExtensions.ConnectionString(connectionString)",
+            ReplacementTypeOrMember = "TransportExtensions.ConnectionString(connectionString)",
+            TreatAsErrorFromVersion = "2",
+            RemoveInVersion = "3")]
+        public AzureServiceBusSettings ConnectionStringName(string name) => throw new NotImplementedException();
+
+        /// <summary>
+        /// Configures the transport to use the given func as the connection string.
+        /// </summary>
+        [ObsoleteEx(
+            Message =
+                "Setting connection string at the endpoint level is no longer supported. Transport specific configuration options should be used instead",
+            TreatAsErrorFromVersion = "2",
+            RemoveInVersion = "3")]
+        public AzureServiceBusSettings ConnectionString(Func<string> connectionString) =>
+            throw new NotImplementedException();
 
         /// <summary>
         /// Specifies a callback to apply to the subscription name when the endpoint's name is longer than 50 characters.

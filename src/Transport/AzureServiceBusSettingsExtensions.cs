@@ -12,10 +12,10 @@
             ReplacementTypeOrMember = "EndpointConfiguration.UseTransport(TransportDefinition)",
             TreatAsErrorFromVersion = "3",
             RemoveInVersion = "4")]
-        public static AzureServiceBusSettings UseTransport<TTransport>(this EndpointConfiguration endpointConfiguration, string connectionString)
+        public static AzureServiceBusSettings UseTransport<TTransport>(this EndpointConfiguration endpointConfiguration)
             where TTransport : AzureServiceBusTransport // scope this extension method to AzureServiceBusTransport
         {
-            var transportSettings = new AzureServiceBusTransport(connectionString);
+            var transportSettings = new AzureServiceBusTransport();
             var routing = endpointConfiguration.UseTransport(transportSettings);
             return new AzureServiceBusSettings(transportSettings, routing);
         }

@@ -16,9 +16,10 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
         {
             var defaultSettings = new AzureServiceBusTransport("ConnectionString");
             var endpointConfiguration = new EndpointConfiguration(nameof(MigrationApiTests));
-            endpointConfiguration.UseTransport<AzureServiceBusTransport>("ConnectionString");
+            endpointConfiguration.UseTransport<AzureServiceBusTransport>();
 
             var configuredTransport = (AzureServiceBusTransport)endpointConfiguration.GetSettings().Get<TransportDefinition>();
+            Assert.IsNull(configuredTransport.ConnectionString);
             Assert.AreEqual(defaultSettings.EnablePartitioning, configuredTransport.EnablePartitioning);
             Assert.AreEqual(defaultSettings.PrefetchCount, configuredTransport.PrefetchCount);
             Assert.AreEqual(defaultSettings.PrefetchMultiplier, configuredTransport.PrefetchMultiplier);
@@ -26,7 +27,6 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             Assert.AreEqual(defaultSettings.TimeToWaitBeforeTriggeringCircuitBreaker, configuredTransport.TimeToWaitBeforeTriggeringCircuitBreaker);
             Assert.AreEqual(defaultSettings.TokenProvider, configuredTransport.TokenProvider);
             Assert.AreEqual(defaultSettings.UseWebSockets, configuredTransport.UseWebSockets);
-            Assert.AreEqual(defaultSettings.ConnectionString, configuredTransport.ConnectionString);
             Assert.AreEqual(defaultSettings.EntityMaximumSize, configuredTransport.EntityMaximumSize);
             Assert.AreEqual(defaultSettings.TopicName, configuredTransport.TopicName);
             Assert.AreEqual(defaultSettings.TransportTransactionMode, configuredTransport.TransportTransactionMode);
@@ -43,8 +43,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
         {
             var endpointConfiguration = new EndpointConfiguration(nameof(MigrationApiTests));
 
-            var settings = endpointConfiguration.UseTransport<AzureServiceBusTransport>("ConnectionString");
+            var settings = endpointConfiguration.UseTransport<AzureServiceBusTransport>();
 
+            settings.ConnectionString("ConnectionString");
             settings.EnablePartitioning();
             RetryPolicy customRetryPolicy = RetryPolicy.NoRetry;
             settings.CustomRetryPolicy(customRetryPolicy);
