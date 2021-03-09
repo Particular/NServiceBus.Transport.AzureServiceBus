@@ -3,6 +3,15 @@ namespace NServiceBus
 {
     public class AzureServiceBusSettings : NServiceBus.TransportSettings<NServiceBus.AzureServiceBusTransport>
     {
+        [System.Obsolete("Setting connection string at the endpoint level is no longer supported. Transport" +
+            " specific configuration options should be used instead. The member currently thr" +
+            "ows a NotImplementedException. Will be removed in version 3.0.0.", true)]
+        public NServiceBus.AzureServiceBusSettings ConnectionString(System.Func<string> connectionString) { }
+        [System.Obsolete("Provide the connection string to the AzureServiceBusTransport constructor. Will b" +
+            "e treated as an error from version 3.0.0. Will be removed in version 4.0.0.", false)]
+        public NServiceBus.AzureServiceBusSettings ConnectionString(string connectionString) { }
+        [System.Obsolete(@"The ability to used named connection strings has been removed. Instead, load the connection string in your code and pass the value to TransportExtensions.ConnectionString(connectionString). Use `TransportExtensions.ConnectionString(connectionString)` instead. The member currently throws a NotImplementedException. Will be removed in version 3.0.0.", true)]
+        public NServiceBus.AzureServiceBusSettings ConnectionStringName(string name) { }
         [System.Obsolete("Use `AzureServiceBusTransport.RetryPolicy` instead. Will be treated as an error f" +
             "rom version 3.0.0. Will be removed in version 4.0.0.", false)]
         public NServiceBus.AzureServiceBusSettings CustomRetryPolicy(Microsoft.Azure.ServiceBus.RetryPolicy retryPolicy) { }
@@ -49,7 +58,7 @@ namespace NServiceBus
     {
         [System.Obsolete("Use `EndpointConfiguration.UseTransport(TransportDefinition)` instead. Will be tr" +
             "eated as an error from version 3.0.0. Will be removed in version 4.0.0.", false)]
-        public static NServiceBus.AzureServiceBusSettings UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration, string connectionString)
+        public static NServiceBus.AzureServiceBusSettings UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration)
             where TTransport : NServiceBus.AzureServiceBusTransport { }
     }
     public class AzureServiceBusTransport : NServiceBus.Transport.TransportDefinition
