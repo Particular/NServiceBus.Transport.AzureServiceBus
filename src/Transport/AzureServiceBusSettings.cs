@@ -17,7 +17,7 @@
         /// Specifies a callback to apply to the subscription name when the endpoint's name is longer than 50 characters.
         /// </summary>
         [ObsoleteEx(
-            ReplacementTypeOrMember = "SubscriptionNamingConvention",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionNamingConvention",
             TreatAsErrorFromVersion = "2",
             RemoveInVersion = "3")]
         public AzureServiceBusSettings SubscriptionNameShortener(Func<string, string> subscriptionNameShortener) =>
@@ -27,7 +27,7 @@
         /// Specifies a callback to apply to a subscription rule name when a subscribed event's name is longer than 50 characters.
         /// </summary>
         [ObsoleteEx(
-            ReplacementTypeOrMember = "SubscriptionNamingConvention",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionRuleNamingConvention",
             TreatAsErrorFromVersion = "2",
             RemoveInVersion = "3")]
         public AzureServiceBusSettings RuleNameShortener(Func<string, string> ruleNameShortener) =>

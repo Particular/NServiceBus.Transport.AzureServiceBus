@@ -21,11 +21,12 @@ namespace NServiceBus
         [System.Obsolete("Use `AzureServiceBusTransport.PrefetchMultiplier` instead. Will be treated as an " +
             "error from version 3.0.0. Will be removed in version 4.0.0.", false)]
         public NServiceBus.AzureServiceBusSettings PrefetchMultiplier(int prefetchMultiplier) { }
-        [System.Obsolete("Use `SubscriptionNamingConvention` instead. The member currently throws a NotImpl" +
-            "ementedException. Will be removed in version 3.0.0.", true)]
+        [System.Obsolete("Use `AzureServiceBusTransport.SubscriptionRuleNamingConvention` instead. The memb" +
+            "er currently throws a NotImplementedException. Will be removed in version 3.0.0." +
+            "", true)]
         public NServiceBus.AzureServiceBusSettings RuleNameShortener(System.Func<string, string> ruleNameShortener) { }
-        [System.Obsolete("Use `SubscriptionNamingConvention` instead. The member currently throws a NotImpl" +
-            "ementedException. Will be removed in version 3.0.0.", true)]
+        [System.Obsolete("Use `AzureServiceBusTransport.SubscriptionNamingConvention` instead. The member c" +
+            "urrently throws a NotImplementedException. Will be removed in version 3.0.0.", true)]
         public NServiceBus.AzureServiceBusSettings SubscriptionNameShortener(System.Func<string, string> subscriptionNameShortener) { }
         [System.Obsolete("Use `AzureServiceBusTransport.SubscriptionNamingConvention` instead. Will be trea" +
             "ted as an error from version 3.0.0. Will be removed in version 4.0.0.", false)]
