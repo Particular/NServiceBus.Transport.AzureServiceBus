@@ -10,7 +10,7 @@ namespace NServiceBus
     public static class AzureServiceBusTransportSettingsExtensions
     {
         [ObsoleteEx(
-            ReplacementTypeOrMember = "SubscriptionNamingConvention",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionNamingConvention",
             TreatAsErrorFromVersion = "2",
             RemoveInVersion = "3")]
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameShortener)
@@ -19,7 +19,7 @@ namespace NServiceBus
         }
 
         [ObsoleteEx(
-            ReplacementTypeOrMember = "SubscriptionRuleNamingConvention",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionRuleNamingConvention",
             TreatAsErrorFromVersion = "2",
             RemoveInVersion = "3")]
         public static TransportExtensions<AzureServiceBusTransport> RuleNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameShortener)
