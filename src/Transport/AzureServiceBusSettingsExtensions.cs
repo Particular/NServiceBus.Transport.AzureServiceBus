@@ -1,4 +1,4 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus
+﻿namespace NServiceBus
 {
     /// <summary>
     /// Provides configuration extension methods for API backwards compatibility.
