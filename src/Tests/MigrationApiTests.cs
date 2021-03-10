@@ -91,7 +91,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
                 new ReceiveSettings[0],
                 new string[0],
                 CancellationToken.None));
-            StringAssert.Contains("No transport connection string has been configured via the 'ConnectionString' method. Provide a connection string using endpointConfig.UseTransport<AzureServiceBusTransport>().ConnectionString(connectionString)", ex.Message);
+            StringAssert.Contains("No transport connection string has been configured via the 'ConnectionString' method. Provide a connection string using 'endpointConfig.UseTransport<AzureServiceBusTransport>().ConnectionString(connectionString)'.", ex.Message);
         }
     }
 }
