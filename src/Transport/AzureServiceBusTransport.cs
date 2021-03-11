@@ -11,8 +11,10 @@
     using Transport;
     using Transport.AzureServiceBus;
 
-    /// <summary>Transport definition for Azure Service Bus.</summary>
-    public class AzureServiceBusTransport : TransportDefinition
+    /// <summary>
+    /// Transport definition for Azure Service Bus.
+    /// </summary>
+    public partial class AzureServiceBusTransport : TransportDefinition
     {
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
@@ -21,15 +23,6 @@
         {
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
             ConnectionString = connectionString;
-        }
-
-        // Used by the shim API to enable easier migration from the existing API
-        internal AzureServiceBusTransport() : base(
-            defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
-            supportsDelayedDelivery: true,
-            supportsPublishSubscribe: true,
-            supportsTTBR: true)
-        {
         }
 
         /// <inheritdoc />

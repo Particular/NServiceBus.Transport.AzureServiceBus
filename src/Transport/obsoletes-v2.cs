@@ -116,5 +116,21 @@ namespace NServiceBus
     }
 }
 
+namespace NServiceBus
+{
+    public partial class AzureServiceBusTransport
+    {
+
+        // Used by the shim API to enable easier migration from the existing API
+        internal AzureServiceBusTransport() : base(
+            defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
+            supportsDelayedDelivery: true,
+            supportsPublishSubscribe: true,
+            supportsTTBR: true)
+        {
+        }
+    }
+}
+
 #pragma warning restore 1591
 #pragma warning restore 618
