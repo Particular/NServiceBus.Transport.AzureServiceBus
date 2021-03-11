@@ -29,12 +29,7 @@
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
             ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken)
         {
-            // Check if a connection string has been provided when using the shim configuration API.
-            if (string.IsNullOrWhiteSpace(ConnectionString))
-            {
-                throw new Exception(
-                    "No transport connection string has been configured via the 'ConnectionString' method. Provide a connection string using 'endpointConfig.UseTransport<AzureServiceBusTransport>().ConnectionString(connectionString)'.");
-            }
+            CheckConnectionStringHasBeenConfigured();
 
             var connectionStringBuilder = new ServiceBusConnectionStringBuilder(ConnectionString)
             {
