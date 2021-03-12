@@ -11,17 +11,15 @@
     using Transport;
     using Transport.AzureServiceBus;
 
-    /// <summary>Transport definition for Azure Service Bus.</summary>
-    public class AzureServiceBusTransport : TransportDefinition
+    /// <summary>
+    /// Transport definition for Azure Service Bus.
+    /// </summary>
+    public partial class AzureServiceBusTransport : TransportDefinition
     {
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString) : base(
-            defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
-            supportsDelayedDelivery: true,
-            supportsPublishSubscribe: true,
-            supportsTTBR: true)
+        public AzureServiceBusTransport(string connectionString) : this()
         {
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
             ConnectionString = connectionString;
@@ -31,6 +29,8 @@
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
             ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken)
         {
+            CheckConnectionStringHasBeenConfigured();
+
             var connectionStringBuilder = new ServiceBusConnectionStringBuilder(ConnectionString)
             {
                 TransportType = UseWebSockets ? TransportType.AmqpWebSockets : TransportType.Amqp
@@ -239,6 +239,6 @@
         }
         RetryPolicy retryPolicy;
 
-        internal string ConnectionString { get; private set; }
+        internal string ConnectionString { get; set; }
     }
 }

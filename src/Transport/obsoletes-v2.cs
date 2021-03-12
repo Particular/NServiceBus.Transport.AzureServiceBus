@@ -10,7 +10,7 @@ namespace NServiceBus
     public static class AzureServiceBusTransportSettingsExtensions
     {
         [ObsoleteEx(
-            ReplacementTypeOrMember = "SubscriptionNamingConvention",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionNamingConvention",
             TreatAsErrorFromVersion = "2",
             RemoveInVersion = "3")]
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameShortener)
@@ -19,7 +19,7 @@ namespace NServiceBus
         }
 
         [ObsoleteEx(
-            ReplacementTypeOrMember = "SubscriptionRuleNamingConvention",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionRuleNamingConvention",
             TreatAsErrorFromVersion = "2",
             RemoveInVersion = "3")]
         public static TransportExtensions<AzureServiceBusTransport> RuleNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameShortener)
@@ -28,7 +28,7 @@ namespace NServiceBus
         }
 
         [ObsoleteEx(
-            ReplacementTypeOrMember = "TransportDefinition.TopicName",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.TopicName",
             TreatAsErrorFromVersion = "2",
             RemoveInVersion = "3")]
         public static TransportExtensions<AzureServiceBusTransport> TopicName(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string topicName) => throw new NotImplementedException();
@@ -113,6 +113,34 @@ namespace NServiceBus
             RemoveInVersion = "3")]
         public static void CustomizeNativeMessage(this ExtendableOptions options, IPipelineContext context,
             Action<Message> customization) => throw new NotImplementedException();
+    }
+}
+
+namespace NServiceBus
+{
+    using System;
+
+    public partial class AzureServiceBusTransport
+    {
+
+        // Used by the shim API to enable easier migration from the existing API
+        internal AzureServiceBusTransport() : base(
+            defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
+            supportsDelayedDelivery: true,
+            supportsPublishSubscribe: true,
+            supportsTTBR: true)
+        {
+        }
+
+        void CheckConnectionStringHasBeenConfigured()
+        {
+            // Check if a connection string has been provided when using the shim configuration API.
+            if (string.IsNullOrWhiteSpace(ConnectionString))
+            {
+                throw new Exception(
+                    "No transport connection string has been configured via the 'ConnectionString' method. Provide a connection string using 'endpointConfig.UseTransport<AzureServiceBusTransport>().ConnectionString(connectionString)'.");
+            }
+        }
     }
 }
 
