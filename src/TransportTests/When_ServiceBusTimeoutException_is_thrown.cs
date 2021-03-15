@@ -21,7 +21,7 @@
             var firstInvocation = true;
 
             await StartPump(
-                (context, ct) =>
+                (_, __) =>
                 {
                     if (firstInvocation)
                     {
@@ -31,12 +31,12 @@
 
                     return Task.CompletedTask;
                 },
-                (context, ct) =>
+                (_, __) =>
                 {
                     throw new ServiceBusTimeoutException("from onError");
                 },
                 transactionMode,
-                (message, exception, ct) =>
+                (_, __, ___) =>
                 {
                     criticalErrorCalled = true;
                     criticalErrorInvoked.SetResult(true);

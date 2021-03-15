@@ -27,7 +27,7 @@
 
         /// <inheritdoc />
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
-            ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken)
+            ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)
         {
             CheckConnectionStringHasBeenConfigured();
 

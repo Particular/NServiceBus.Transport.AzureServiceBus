@@ -53,7 +53,7 @@ class When_sending_message_outside_of_a_handler_with_incorrect_transaction_scope
 
         class StartupTask : FeatureStartupTask
         {
-            protected override async Task OnStart(IMessageSession session, CancellationToken cancellationToken)
+            protected override async Task OnStart(IMessageSession session, CancellationToken cancellationToken = default)
             {
                 using (var tx = new TransactionScope(TransactionScopeOption.RequiresNew, new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted }, TransactionScopeAsyncFlowOption.Enabled))
                 {
@@ -63,7 +63,7 @@ class When_sending_message_outside_of_a_handler_with_incorrect_transaction_scope
                 }
             }
 
-            protected override Task OnStop(IMessageSession session, CancellationToken cancellationToken)
+            protected override Task OnStop(IMessageSession session, CancellationToken cancellationToken = default)
             {
                 return Task.CompletedTask;
             }

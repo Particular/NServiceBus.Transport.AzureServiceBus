@@ -62,7 +62,7 @@
             PushRuntimeSettings limitations,
             OnMessage onMessage,
             OnError onError,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken = default)
         {
             if (receiveSettings.PurgeOnStartup)
             {
@@ -71,20 +71,15 @@
 
             if (Subscriptions is SubscriptionManager subscriptionManager)
             {
-                await subscriptionManager.CreateSubscription().ConfigureAwait(false);
+                await subscriptionManager.CreateSubscription(cancellationToken).ConfigureAwait(false);
             }
 
             this.limitations = limitations;
             this.onMessage = onMessage;
             this.onError = onError;
-
-            messagePumpCancellationTokenSource = new CancellationTokenSource();
-            messageProcessingCancellationTokenSource = new CancellationTokenSource();
-
-            circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, criticalErrorAction, messageProcessingCancellationTokenSource.Token);
         }
 
-        public Task StartReceive(CancellationToken cancellationToken)
+        public Task StartReceive(CancellationToken cancellationToken = default)
         {
             maxConcurrency = limitations.MaxConcurrency;
 
@@ -108,30 +103,37 @@
 
             semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
+            messagePumpCancellationTokenSource = new CancellationTokenSource();
+            messageProcessingCancellationTokenSource = new CancellationTokenSource();
+
+            circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex => criticalErrorAction("Failed to receive message from Azure Service Bus.", ex, messageProcessingCancellationTokenSource.Token));
+
             receiveLoopTask = Task.Run(() => ReceiveLoop(), cancellationToken);
 
             return Task.CompletedTask;
         }
 
-        public async Task StopReceive(CancellationToken cancellationToken)
+        public async Task StopReceive(CancellationToken cancellationToken = default)
         {
-            messagePumpCancellationTokenSource.Cancel();
+            messagePumpCancellationTokenSource?.Cancel();
 
-            cancellationToken.Register(() => messageProcessingCancellationTokenSource?.Cancel());
-
-            await receiveLoopTask.ConfigureAwait(false);
-
-            while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
+            using (cancellationToken.Register(() => messageProcessingCancellationTokenSource?.Cancel()))
             {
-                // Do not forward cancellationToken here so that pump has ability to exit gracefully
-                // Individual message processing pipelines will be cancelled instead
-                await Task.Delay(50, CancellationToken.None).ConfigureAwait(false);
-            }
+                await receiveLoopTask.ConfigureAwait(false);
 
-            await receiver.CloseAsync().ConfigureAwait(false);
+                while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
+                {
+                    // Do not forward cancellationToken here so that pump has ability to exit gracefully
+                    // Individual message processing pipelines will be cancelled instead
+                    await Task.Delay(50, CancellationToken.None).ConfigureAwait(false);
+                }
+
+                await receiver.CloseAsync().ConfigureAwait(false);
+            }
 
             semaphore?.Dispose();
             messagePumpCancellationTokenSource?.Dispose();
+            messageProcessingCancellationTokenSource?.Dispose();
             circuitBreaker?.Dispose();
         }
 
@@ -301,7 +303,7 @@
                 }
                 catch (Exception onErrorException)
                 {
-                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException, CancellationToken.None);
+                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException, messageProcessingCancellationTokenSource.Token);
 
                     await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken).ConfigureAwait(false);
                 }

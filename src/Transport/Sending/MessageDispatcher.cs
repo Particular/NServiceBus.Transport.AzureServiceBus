@@ -19,7 +19,7 @@
             this.topicName = topicName;
         }
 
-        public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken)
+        public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
         {
             // Assumption: we're not implementing batching as it will be done by ASB client
             transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);

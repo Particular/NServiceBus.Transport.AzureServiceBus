@@ -57,7 +57,7 @@
                 namespacePermissions);
         }
 
-        public override async Task Shutdown(CancellationToken cancellationToken)
+        public override async Task Shutdown(CancellationToken cancellationToken = default)
         {
             if (messageSenderPool != null)
             {
