@@ -7,12 +7,11 @@
 
     class RepeatedFailuresOverTimeCircuitBreaker
     {
-        public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering, Action<string, Exception, CancellationToken> criticalError, CancellationToken messageProcessingCancellationToken)
+        public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering, Action<Exception> triggerAction)
         {
             this.name = name;
-            this.criticalError = criticalError;
+            this.triggerAction = triggerAction;
             this.timeToWaitBeforeTriggering = timeToWaitBeforeTriggering;
-            this.messageProcessingCancellationToken = messageProcessingCancellationToken;
 
             timer = new Timer(CircuitBreakerTriggered);
         }
@@ -54,7 +53,7 @@
             if (Interlocked.Read(ref failureCount) > 0)
             {
                 Logger.WarnFormat("The circuit breaker for {0} will now be triggered", name);
-                criticalError("Failed to receive message from Azure Service Bus.", lastException, messageProcessingCancellationToken);
+                triggerAction(lastException);
             }
         }
 
@@ -64,8 +63,7 @@
         readonly string name;
         readonly Timer timer;
         readonly TimeSpan timeToWaitBeforeTriggering;
-        readonly Action<string, Exception, CancellationToken> criticalError;
-        readonly CancellationToken messageProcessingCancellationToken;
+        readonly Action<Exception> triggerAction;
 
         static readonly TimeSpan NoPeriodicTriggering = TimeSpan.FromMilliseconds(-1);
         static readonly ILog Logger = LogManager.GetLogger<RepeatedFailuresOverTimeCircuitBreaker>();

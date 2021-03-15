@@ -89,8 +89,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             var ex = Assert.ThrowsAsync<Exception>(() => configuredTransport.Initialize(
                 new HostSettings("test", "test", new StartupDiagnosticEntries(), (_, __, ___) => { }, false),
                 new ReceiveSettings[0],
-                new string[0],
-                CancellationToken.None));
+                new string[0]));
             StringAssert.Contains("No transport connection string has been configured via the 'ConnectionString' method. Provide a connection string using 'endpointConfig.UseTransport<AzureServiceBusTransport>().ConnectionString(connectionString)'.", ex.Message);
         }
     }

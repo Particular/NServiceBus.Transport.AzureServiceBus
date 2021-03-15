@@ -44,7 +44,7 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
         return transport;
     }
 
-    public async Task<TransportInfrastructure> Configure(TransportDefinition transportDefinition, HostSettings hostSettings, string inputQueueName, string errorQueueName, CancellationToken cancellationToken)
+    public async Task<TransportInfrastructure> Configure(TransportDefinition transportDefinition, HostSettings hostSettings, string inputQueueName, string errorQueueName, CancellationToken cancellationToken = default)
     {
         var transportInfrastructure = await transportDefinition.Initialize(
             hostSettings,
@@ -58,7 +58,7 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
         return transportInfrastructure;
     }
 
-    public Task Cleanup(CancellationToken cancellationToken)
+    public Task Cleanup(CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
     }

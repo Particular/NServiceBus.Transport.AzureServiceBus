@@ -30,7 +30,7 @@
             subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
         }
 
-        public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken)
+        public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken = default)
         {
             await namespacePermissions.CanManage().ConfigureAwait(false);
             var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
@@ -39,7 +39,7 @@
             {
                 foreach (var eventType in eventTypes)
                 {
-                    await SubscribeEvent(client, eventType.MessageType).ConfigureAwait(false);
+                    await SubscribeEvent(client, eventType.MessageType, cancellationToken).ConfigureAwait(false);
                 }
             }
             finally
@@ -48,7 +48,7 @@
             }
         }
 
-        async Task SubscribeEvent(ManagementClient client, Type eventType)
+        async Task SubscribeEvent(ManagementClient client, Type eventType, CancellationToken cancellationToken)
         {
             var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType);
             var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
@@ -56,20 +56,20 @@
 
             try
             {
-                var existingRule = await client.GetRuleAsync(transportSettings.TopicName, subscriptionName, rule.Name).ConfigureAwait(false);
+                var existingRule = await client.GetRuleAsync(transportSettings.TopicName, subscriptionName, rule.Name, cancellationToken).ConfigureAwait(false);
 
                 if (existingRule.Filter.ToString() != rule.Filter.ToString())
                 {
                     rule.Action = existingRule.Action;
 
-                    await client.UpdateRuleAsync(transportSettings.TopicName, subscriptionName, rule).ConfigureAwait(false);
+                    await client.UpdateRuleAsync(transportSettings.TopicName, subscriptionName, rule, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (MessagingEntityNotFoundException)
             {
                 try
                 {
-                    await client.CreateRuleAsync(transportSettings.TopicName, subscriptionName, rule).ConfigureAwait(false);
+                    await client.CreateRuleAsync(transportSettings.TopicName, subscriptionName, rule, cancellationToken).ConfigureAwait(false);
                 }
                 catch (MessagingEntityAlreadyExistsException)
                 {
@@ -77,7 +77,7 @@
             }
         }
 
-        public async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken)
+        public async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
         {
             await namespacePermissions.CanManage().ConfigureAwait(false);
 
@@ -98,7 +98,7 @@
             }
         }
 
-        public async Task CreateSubscription()
+        public async Task CreateSubscription(CancellationToken cancellationToken = default)
         {
             await namespacePermissions.CanManage().ConfigureAwait(false);
 
@@ -118,7 +118,7 @@
 
                 try
                 {
-                    await client.CreateSubscriptionAsync(subscription, new RuleDescription("$default", new FalseFilter())).ConfigureAwait(false);
+                    await client.CreateSubscriptionAsync(subscription, new RuleDescription("$default", new FalseFilter()), cancellationToken).ConfigureAwait(false);
                 }
                 catch (MessagingEntityAlreadyExistsException)
                 {
