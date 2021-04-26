@@ -11,26 +11,43 @@
     {
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly ITokenProvider tokenProvider;
+        readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
 
-        readonly Lazy<Task> manageCheck;
+        Task manageTask;
 
         public NamespacePermissions(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider)
         {
             this.connectionStringBuilder = connectionStringBuilder;
             this.tokenProvider = tokenProvider;
-
-            manageCheck = new Lazy<Task>(() => CheckPermission(), LazyThreadSafetyMode.ExecutionAndPublication);
         }
 
-        public Task CanManage() => manageCheck.Value;
+        public async Task CanManage(CancellationToken cancellationToken = default)
+        {
+            if (manageTask == null)
+            {
+                await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    if (manageTask == null)
+                    {
+                        manageTask = CheckPermission(cancellationToken);
+                    }
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            }
+            await manageTask.ConfigureAwait(false);
+        }
 
-        async Task CheckPermission()
+        async Task CheckPermission(CancellationToken cancellationToken)
         {
             var client = new ManagementClient(connectionStringBuilder, tokenProvider);
 
             try
             {
-                await client.QueueExistsAsync("$nservicebus-verification-queue").ConfigureAwait(false);
+                await client.QueueExistsAsync("$nservicebus-verification-queue", cancellationToken).ConfigureAwait(false);
             }
             catch (UnauthorizedException e)
             {

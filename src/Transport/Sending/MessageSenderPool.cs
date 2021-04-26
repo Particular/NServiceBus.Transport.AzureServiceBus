@@ -2,6 +2,7 @@
 {
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Core;
@@ -61,7 +62,7 @@
             }
         }
 
-        public Task Close()
+        public Task Close(CancellationToken cancellationToken = default)
         {
             var tasks = new List<Task>();
 

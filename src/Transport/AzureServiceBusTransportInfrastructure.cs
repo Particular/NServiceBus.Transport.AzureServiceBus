@@ -61,7 +61,7 @@
         {
             if (messageSenderPool != null)
             {
-                await messageSenderPool.Close().ConfigureAwait(false);
+                await messageSenderPool.Close(cancellationToken).ConfigureAwait(false);
             }
         }
     }

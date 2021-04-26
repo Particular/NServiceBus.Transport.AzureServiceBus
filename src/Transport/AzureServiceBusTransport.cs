@@ -47,7 +47,7 @@
                     .Concat(sendingAddresses)
                     .ToArray();
 
-                await queueCreator.CreateQueues(allQueues).ConfigureAwait(false);
+                await queueCreator.CreateQueues(allQueues, cancellationToken).ConfigureAwait(false);
             }
 
             return infrastructure;

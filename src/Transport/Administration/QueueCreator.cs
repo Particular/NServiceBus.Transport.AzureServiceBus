@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
+    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
@@ -23,9 +24,9 @@
             maxSizeInMb = transportSettings.EntityMaximumSize * 1024;
         }
 
-        public async Task CreateQueues(string[] queues)
+        public async Task CreateQueues(string[] queues, CancellationToken cancellationToken = default)
         {
-            await namespacePermissions.CanManage().ConfigureAwait(false);
+            await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
 
             var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
 
@@ -40,7 +41,7 @@
 
                 try
                 {
-                    await client.CreateTopicAsync(topic).ConfigureAwait(false);
+                    await client.CreateTopicAsync(topic, cancellationToken).ConfigureAwait(false);
                 }
                 catch (MessagingEntityAlreadyExistsException)
                 {
@@ -63,7 +64,7 @@
 
                     try
                     {
-                        await client.CreateQueueAsync(queue).ConfigureAwait(false);
+                        await client.CreateQueueAsync(queue, cancellationToken).ConfigureAwait(false);
                     }
                     catch (MessagingEntityAlreadyExistsException)
                     {
