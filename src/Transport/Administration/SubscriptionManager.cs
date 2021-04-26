@@ -3,9 +3,9 @@
     using System;
     using System.Threading;
     using System.Threading.Tasks;
+    using Extensibility;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Management;
-    using Extensibility;
     using Unicast.Messages;
 
     class SubscriptionManager : ISubscriptionManager
@@ -32,7 +32,7 @@
 
         public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken = default)
         {
-            await namespacePermissions.CanManage().ConfigureAwait(false);
+            await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
             var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
 
             try
@@ -79,7 +79,7 @@
 
         public async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
         {
-            await namespacePermissions.CanManage().ConfigureAwait(false);
+            await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
 
             var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType.MessageType);
 
@@ -100,7 +100,7 @@
 
         public async Task CreateSubscription(CancellationToken cancellationToken = default)
         {
-            await namespacePermissions.CanManage().ConfigureAwait(false);
+            await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
 
             var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
 

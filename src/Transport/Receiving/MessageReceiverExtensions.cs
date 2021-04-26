@@ -1,12 +1,13 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
     using Microsoft.Azure.ServiceBus.Core;
 
     static class MessageReceiverExtensions
     {
-        public static async Task SafeCompleteAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, Transaction committableTransaction = null)
+        public static async Task SafeCompleteAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, Transaction committableTransaction = null, CancellationToken cancellationToken = default)
         {
             if (transportTransactionMode != TransportTransactionMode.None)
             {
@@ -19,7 +20,7 @@
             }
         }
 
-        public static async Task SafeAbandonAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, Transaction committableTransaction = null)
+        public static async Task SafeAbandonAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, Transaction committableTransaction = null, CancellationToken cancellationToken = default)
         {
             if (transportTransactionMode != TransportTransactionMode.None)
             {
@@ -32,7 +33,7 @@
             }
         }
 
-        public static Task SafeDeadLetterAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, string deadLetterReason, string deadLetterErrorDescription)
+        public static Task SafeDeadLetterAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, string deadLetterReason, string deadLetterErrorDescription, CancellationToken cancellationToken = default)
         {
             if (transportTransactionMode != TransportTransactionMode.None)
             {
