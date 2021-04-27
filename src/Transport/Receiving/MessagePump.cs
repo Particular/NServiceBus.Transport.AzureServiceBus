@@ -24,9 +24,9 @@
         RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
 
         // Start
-        Task receiveLoopTask;
+        Task messageReceivingTask;
         SemaphoreSlim semaphore;
-        CancellationTokenSource messagePumpCancellationTokenSource;
+        CancellationTokenSource messageReceivingCancellationTokenSource;
         CancellationTokenSource messageProcessingCancellationTokenSource;
         int maxConcurrency;
         MessageReceiver receiver;
@@ -103,23 +103,23 @@
 
             semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
-            messagePumpCancellationTokenSource = new CancellationTokenSource();
+            messageReceivingCancellationTokenSource = new CancellationTokenSource();
             messageProcessingCancellationTokenSource = new CancellationTokenSource();
 
             circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex => criticalErrorAction("Failed to receive message from Azure Service Bus.", ex, messageProcessingCancellationTokenSource.Token));
 
-            receiveLoopTask = Task.Run(() => ReceiveLoop(messagePumpCancellationTokenSource.Token), cancellationToken);
+            messageReceivingTask = Task.Run(() => ReceiveMessages(messageReceivingCancellationTokenSource.Token), cancellationToken);
 
             return Task.CompletedTask;
         }
 
         public async Task StopReceive(CancellationToken cancellationToken = default)
         {
-            messagePumpCancellationTokenSource?.Cancel();
+            messageReceivingCancellationTokenSource?.Cancel();
 
             using (cancellationToken.Register(() => messageProcessingCancellationTokenSource?.Cancel()))
             {
-                await receiveLoopTask.ConfigureAwait(false);
+                await messageReceivingTask.ConfigureAwait(false);
 
                 while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
                 {
@@ -132,22 +132,22 @@
             }
 
             semaphore?.Dispose();
-            messagePumpCancellationTokenSource?.Dispose();
+            messageReceivingCancellationTokenSource?.Dispose();
             messageProcessingCancellationTokenSource?.Dispose();
             circuitBreaker?.Dispose();
         }
 
-        async Task ReceiveLoop(CancellationToken messagePumpCancellationToken)
+        async Task ReceiveMessages(CancellationToken messageReceivingCancellationToken)
         {
             try
             {
-                while (!messagePumpCancellationToken.IsCancellationRequested)
+                while (!messageReceivingCancellationToken.IsCancellationRequested)
                 {
-                    await semaphore.WaitAsync(messagePumpCancellationToken).ConfigureAwait(false);
+                    await semaphore.WaitAsync(messageReceivingCancellationToken).ConfigureAwait(false);
 
                     var receiveTask = receiver.ReceiveAsync();
 
-                    _ = ProcessMessage(receiveTask, messagePumpCancellationToken);
+                    _ = ReceiveMessage(receiveTask, messageReceivingCancellationToken);
                 }
             }
             catch (OperationCanceledException)
@@ -155,15 +155,15 @@
             }
         }
 
-        async Task ProcessMessage(Task<Message> receiveTask, CancellationToken messagePumpCancellationToken)
+        async Task ReceiveMessage(Task<Message> receiveTask, CancellationToken messageReceivingCancellationToken)
         {
             try
             {
-                await InnerProcessMessage(receiveTask, messagePumpCancellationToken).ConfigureAwait(false);
+                await InnerReceiveMessage(receiveTask, messageReceivingCancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                Logger.Debug($"Exception from {nameof(ProcessMessage)}: ", ex);
+                Logger.Debug($"Exception from {nameof(ReceiveMessage)}: ", ex);
             }
             finally
             {
@@ -178,7 +178,7 @@
             }
         }
 
-        async Task InnerProcessMessage(Task<Message> receiveTask, CancellationToken messagePumpCancellationToken)
+        async Task InnerReceiveMessage(Task<Message> receiveTask, CancellationToken messageReceivingCancellationToken)
         {
             Message message = null;
 
@@ -203,7 +203,7 @@
             {
                 Logger.Warn($"Failed to receive a message. Exception: {exception.Message}", exception);
 
-                await circuitBreaker.Failure(exception, messagePumpCancellationToken).ConfigureAwait(false);
+                await circuitBreaker.Failure(exception, messageReceivingCancellationToken).ConfigureAwait(false);
             }
             finally
             {
@@ -212,7 +212,7 @@
             }
 
             // By default, ASB client long polls for a minute and returns null if it times out
-            if (message == null || messagePumpCancellationToken.IsCancellationRequested)
+            if (message == null || messageReceivingCancellationToken.IsCancellationRequested)
             {
                 return;
             }
@@ -233,7 +233,7 @@
             {
                 try
                 {
-                    await receiver.SafeDeadLetterAsync(transportSettings.TransportTransactionMode, lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message, cancellationToken: messagePumpCancellationToken).ConfigureAwait(false);
+                    await receiver.SafeDeadLetterAsync(transportSettings.TransportTransactionMode, lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message, cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception)
                 {
@@ -243,8 +243,13 @@
                 return;
             }
 
+            await ProcessMessage(message, lockToken, messageId, headers, body, messageProcessingCancellationTokenSource.Token).ConfigureAwait(false);
+        }
+
+        async Task ProcessMessage(Message message, string lockToken, string messageId, Dictionary<string, string> headers, byte[] body, CancellationToken messageProcessingCancellationToken)
+        {
             var contextBag = new ContextBag();
-            var messageProcessingCancellationToken = messageProcessingCancellationTokenSource.Token;
+
             try
             {
                 using (var transaction = CreateTransaction())
