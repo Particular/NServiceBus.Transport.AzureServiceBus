@@ -93,6 +93,7 @@ jobs:
         run: dotnet test src --configuration Release --no-build --framework netcoreapp3.1 --logger "GitHubActions;report-warnings=false"
       - name: Teardown infrastructure
         if: ${{ always() }}
+        continue-on-error: true
         shell: pwsh
         run: |
           $ignore = az servicebus namespace delete --resource-group GitHubActions-RG --name ${{ steps.infra.outputs.name }}
