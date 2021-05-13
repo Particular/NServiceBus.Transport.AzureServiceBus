@@ -108,7 +108,7 @@
 
             circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex => criticalErrorAction("Failed to receive message from Azure Service Bus.", ex, messageProcessingCancellationTokenSource.Token));
 
-            messageReceivingTask = Task.Run(() => ReceiveMessages(messageReceivingCancellationTokenSource.Token), cancellationToken);
+            messageReceivingTask = Task.Run(() => ReceiveMessages(messageReceivingCancellationTokenSource.Token), CancellationToken.None);
 
             return Task.CompletedTask;
         }
@@ -150,8 +150,16 @@
                     _ = ReceiveMessage(receiveTask, messageReceivingCancellationToken);
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
+                if (messageReceivingCancellationToken.IsCancellationRequested)
+                {
+                    Logger.Debug("Message receiving cancelled.", ex);
+                }
+                else
+                {
+                    Logger.Warn("OperationCanceledException thrown.", ex);
+                }
             }
         }
 
@@ -268,9 +276,16 @@
                     transaction?.Commit();
                 }
             }
-            catch (OperationCanceledException) when (messageProcessingCancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException ex)
             {
-                // Shut down gracefully
+                if (messageProcessingCancellationToken.IsCancellationRequested)
+                {
+                    Logger.Debug("Message processing cancelled.", ex);
+                }
+                else
+                {
+                    Logger.Warn("OperationCanceledException thrown.", ex);
+                }
             }
             catch (Exception exception)
             {
@@ -299,9 +314,16 @@
                         await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                     }
                 }
-                catch (OperationCanceledException) when (messageProcessingCancellationToken.IsCancellationRequested)
+                catch (OperationCanceledException ex)
                 {
-                    // Shut down gracefully
+                    if (messageProcessingCancellationToken.IsCancellationRequested)
+                    {
+                        Logger.Debug("Message processing cancelled.", ex);
+                    }
+                    else
+                    {
+                        Logger.Warn("OperationCanceledException thrown.", ex);
+                    }
                 }
                 catch (Exception onErrorException) when (onErrorException is MessageLockLostException || onErrorException is ServiceBusTimeoutException)
                 {
