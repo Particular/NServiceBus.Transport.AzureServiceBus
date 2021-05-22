@@ -108,30 +108,8 @@
 
             circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex => criticalErrorAction("Failed to receive message from Azure Service Bus.", ex, messageProcessingCancellationTokenSource.Token));
 
-            messageReceivingTask = Task.Run(
-                async () =>
-                {
-                    try
-                    {
-                        await ReceiveMessages(messageReceivingCancellationTokenSource.Token).ConfigureAwait(false);
-                    }
-                    catch (OperationCanceledException ex)
-                    {
-                        if (messageReceivingCancellationTokenSource.IsCancellationRequested)
-                        {
-                            Logger.Debug("Message receiving canceled.", ex);
-                        }
-                        else
-                        {
-                            Logger.Warn("OperationCanceledException thrown.", ex);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error("Error receiving messages.", ex);
-                    }
-                },
-                CancellationToken.None);
+            // Task.Run() so the call returns immediately instead of waiting for the first await or return down the call stack
+            messageReceivingTask = Task.Run(() => ReceiveMessagesAndSwallowExceptions(messageReceivingCancellationTokenSource.Token), CancellationToken.None);
 
             return Task.CompletedTask;
         }
@@ -160,55 +138,70 @@
             circuitBreaker?.Dispose();
         }
 
-        async Task ReceiveMessages(CancellationToken messageReceivingCancellationToken)
+        async Task ReceiveMessagesAndSwallowExceptions(CancellationToken messageReceivingCancellationToken)
         {
-            while (true)
+            try
             {
-                messageReceivingCancellationToken.ThrowIfCancellationRequested();
+                while (true)
+                {
+                    await semaphore.WaitAsync(messageReceivingCancellationToken).ConfigureAwait(false);
 
-                await semaphore.WaitAsync(messageReceivingCancellationToken).ConfigureAwait(false);
-
-                var receiveTask = receiver.ReceiveAsync();
-
-                _ = Task.Run(
-                    async () =>
-                    {
-                        try
-                        {
-                            await ReceiveMessage(receiveTask, messageReceivingCancellationToken).ConfigureAwait(false);
-                        }
-                        catch (OperationCanceledException ex)
-                        {
-                            if (messageReceivingCancellationToken.IsCancellationRequested)
-                            {
-                                Logger.Debug("Message receiving canceled.", ex);
-                            }
-                            else
-                            {
-                                Logger.Warn("OperationCanceledException thrown.", ex);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Error("Error receiving messages.", ex);
-                        }
-                        finally
-                        {
-                            try
-                            {
-                                _ = semaphore.Release();
-                            }
-                            catch (ObjectDisposedException)
-                            {
-                                // Can happen during endpoint shutdown
-                            }
-                        }
-                    },
-                    CancellationToken.None);
+                    // no Task.Run() here to avoid a closure
+                    _ = ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(messageReceivingCancellationToken);
+                }
+            }
+            catch (OperationCanceledException ex)
+            {
+                if (messageReceivingCancellationToken.IsCancellationRequested)
+                {
+                    Logger.Debug("Message receiving canceled.", ex);
+                }
+                else
+                {
+                    Logger.Warn("OperationCanceledException thrown.", ex);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Error receiving messages.", ex);
             }
         }
 
-        async Task ReceiveMessage(Task<Message> receiveTask, CancellationToken messageReceivingCancellationToken)
+        async Task ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(CancellationToken messageReceivingCancellationToken)
+        {
+            try
+            {
+                await ReceiveMessage(messageReceivingCancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException ex)
+            {
+                if (messageReceivingCancellationToken.IsCancellationRequested)
+                {
+                    Logger.Debug("Message receiving canceled.", ex);
+                }
+                else
+                {
+                    Logger.Warn("OperationCanceledException thrown.", ex);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Error receiving messages.", ex);
+            }
+            finally
+            {
+                try
+                {
+                    _ = semaphore.Release();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Can happen during endpoint shutdown
+                }
+            }
+        }
+
+        async Task ReceiveMessage(CancellationToken messageReceivingCancellationToken)
         {
             Message message = null;
 
@@ -218,7 +211,7 @@
                 // We want to track how many receives are waiting and could be ignored when endpoint is stopping.
                 // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
                 _ = Interlocked.Increment(ref numberOfExecutingReceives);
-                message = await receiveTask.ConfigureAwait(false);
+                message = await receiver.ReceiveAsync().ConfigureAwait(false);
 
                 circuitBreaker.Success();
             }
@@ -343,7 +336,9 @@
                         await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                     }
                 }
+#pragma warning disable PS0019 // Do not catch Exception without considering OperationCanceledException - the catch is constrained to only two exception types
                 catch (Exception onErrorEx) when (onErrorEx is MessageLockLostException || onErrorEx is ServiceBusTimeoutException)
+#pragma warning restore PS0019 // Do not catch Exception without considering OperationCanceledException
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
                 }
