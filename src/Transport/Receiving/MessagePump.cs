@@ -108,8 +108,8 @@
 
             circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex => criticalErrorAction("Failed to receive message from Azure Service Bus.", ex, messageProcessingCancellationTokenSource.Token));
 
-            // Task.Run() so the call returns immediately instead of waiting for the first await or return down the call stack
-            messageReceivingTask = Task.Run(() => ReceiveMessagesAndSwallowExceptions(messageReceivingCancellationTokenSource.Token), CancellationToken.None);
+            // no Task.Run() here because ReceiveMessagesAndSwallowExceptions immediately yields with an await
+            messageReceivingTask = ReceiveMessagesAndSwallowExceptions(messageReceivingCancellationTokenSource.Token);
 
             return Task.CompletedTask;
         }
@@ -140,30 +140,20 @@
 
         async Task ReceiveMessagesAndSwallowExceptions(CancellationToken messageReceivingCancellationToken)
         {
-            try
+            while (true)
             {
-                while (true)
+                try
                 {
                     await semaphore.WaitAsync(messageReceivingCancellationToken).ConfigureAwait(false);
 
                     // no Task.Run() here to avoid a closure
                     _ = ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(messageReceivingCancellationToken);
                 }
-            }
-            catch (OperationCanceledException ex)
-            {
-                if (messageReceivingCancellationToken.IsCancellationRequested)
+                catch (Exception ex) when (ex.IsCausedBy(messageReceivingCancellationToken))
                 {
                     Logger.Debug("Message receiving canceled.", ex);
+                    break;
                 }
-                else
-                {
-                    Logger.Warn("OperationCanceledException thrown.", ex);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error("Error receiving messages.", ex);
             }
         }
 
@@ -173,16 +163,9 @@
             {
                 await ReceiveMessage(messageReceivingCancellationToken).ConfigureAwait(false);
             }
-            catch (OperationCanceledException ex)
+            catch (Exception ex) when (ex.IsCausedBy(messageReceivingCancellationToken))
             {
-                if (messageReceivingCancellationToken.IsCancellationRequested)
-                {
-                    Logger.Debug("Message receiving canceled.", ex);
-                }
-                else
-                {
-                    Logger.Warn("OperationCanceledException thrown.", ex);
-                }
+                Logger.Debug("Message receiving canceled.", ex);
             }
             catch (Exception ex)
             {
@@ -222,7 +205,7 @@
             {
                 // Can happen during endpoint shutdown
             }
-            catch (Exception ex) when (!(ex is OperationCanceledException))
+            catch (Exception ex) when (!ex.IsCausedBy(messageReceivingCancellationToken))
             {
                 Logger.Warn($"Failed to receive a message. Exception: {ex.Message}", ex);
 
@@ -260,7 +243,7 @@
                 {
                     await receiver.SafeDeadLetterAsync(transportSettings.TransportTransactionMode, lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: ex.Message, cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception deadLetterEx) when (!(deadLetterEx is OperationCanceledException))
+                catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(messageReceivingCancellationToken))
                 {
                     // nothing we can do about it, message will be retried
                     Logger.Debug("Error dead lettering poisoned message.", deadLetterEx);
@@ -274,16 +257,9 @@
             {
                 await ProcessMessage(message, lockToken, messageId, headers, body, messageProcessingCancellationTokenSource.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException ex)
+            catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource.Token))
             {
-                if (messageProcessingCancellationTokenSource.IsCancellationRequested)
-                {
-                    Logger.Debug("Message processing canceled.", ex);
-                }
-                else
-                {
-                    Logger.Warn("OperationCanceledException thrown.", ex);
-                }
+                Logger.Debug("Message processing canceled.", ex);
             }
         }
 
@@ -309,7 +285,7 @@
                     transaction?.Commit();
                 }
             }
-            catch (Exception ex) when (!(ex is OperationCanceledException))
+            catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationToken))
             {
                 try
                 {
@@ -336,13 +312,15 @@
                         await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                     }
                 }
-#pragma warning disable PS0019 // Do not catch Exception without considering OperationCanceledException - the catch is constrained to only two exception types
+                catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(messageProcessingCancellationToken))
+                {
+                    throw;
+                }
                 catch (Exception onErrorEx) when (onErrorEx is MessageLockLostException || onErrorEx is ServiceBusTimeoutException)
-#pragma warning restore PS0019 // Do not catch Exception without considering OperationCanceledException
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
                 }
-                catch (Exception onErrorEx) when (!(onErrorEx is OperationCanceledException))
+                catch (Exception onErrorEx)
                 {
                     criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
 
