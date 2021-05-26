@@ -140,20 +140,20 @@
 
         async Task ReceiveMessagesAndSwallowExceptions(CancellationToken messageReceivingCancellationToken)
         {
-            while (true)
+            while (!messageReceivingCancellationToken.IsCancellationRequested)
             {
                 try
                 {
                     await semaphore.WaitAsync(messageReceivingCancellationToken).ConfigureAwait(false);
-
-                    // no Task.Run() here to avoid a closure
-                    _ = ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(messageReceivingCancellationToken);
                 }
                 catch (Exception ex) when (ex.IsCausedBy(messageReceivingCancellationToken))
                 {
-                    Logger.Debug("Message receiving canceled.", ex);
+                    // private token, pump is being stopped, don't log exception because WaitAsync stack trace is not useful
                     break;
                 }
+
+                // no Task.Run() here to avoid a closure
+                _ = ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(messageReceivingCancellationToken);
             }
         }
 
@@ -165,7 +165,8 @@
             }
             catch (Exception ex) when (ex.IsCausedBy(messageReceivingCancellationToken))
             {
-                Logger.Debug("Message receiving canceled.", ex);
+                // private token, pump is being stopped, log the exception in case the stack trace is ever needed for debugging
+                Logger.Debug("Operation canceled while stopping message pump.", ex);
             }
             catch (Exception ex)
             {
