@@ -108,7 +108,8 @@
 
             circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex => criticalErrorAction("Failed to receive message from Azure Service Bus.", ex, messageProcessingCancellationTokenSource.Token));
 
-            messageReceivingTask = Task.Run(() => ReceiveMessages(messageReceivingCancellationTokenSource.Token), cancellationToken);
+            // no Task.Run() here because ReceiveMessagesAndSwallowExceptions immediately yields with an await
+            messageReceivingTask = ReceiveMessagesAndSwallowExceptions(messageReceivingCancellationTokenSource.Token);
 
             return Task.CompletedTask;
         }
@@ -124,7 +125,7 @@
                 while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
                 {
                     // Do not forward cancellationToken here so that pump has ability to exit gracefully
-                    // Individual message processing pipelines will be cancelled instead
+                    // Individual message processing pipelines will be canceled instead
                     await Task.Delay(50, CancellationToken.None).ConfigureAwait(false);
                 }
 
@@ -137,39 +138,45 @@
             circuitBreaker?.Dispose();
         }
 
-        async Task ReceiveMessages(CancellationToken messageReceivingCancellationToken)
+        async Task ReceiveMessagesAndSwallowExceptions(CancellationToken messageReceivingCancellationToken)
         {
-            try
+            while (!messageReceivingCancellationToken.IsCancellationRequested)
             {
-                while (!messageReceivingCancellationToken.IsCancellationRequested)
+                try
                 {
                     await semaphore.WaitAsync(messageReceivingCancellationToken).ConfigureAwait(false);
-
-                    var receiveTask = receiver.ReceiveAsync();
-
-                    _ = ReceiveMessage(receiveTask, messageReceivingCancellationToken);
                 }
-            }
-            catch (OperationCanceledException)
-            {
+                catch (Exception ex) when (ex.IsCausedBy(messageReceivingCancellationToken))
+                {
+                    // private token, pump is being stopped, don't log exception because WaitAsync stack trace is not useful
+                    break;
+                }
+
+                // no Task.Run() here to avoid a closure
+                _ = ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(messageReceivingCancellationToken);
             }
         }
 
-        async Task ReceiveMessage(Task<Message> receiveTask, CancellationToken messageReceivingCancellationToken)
+        async Task ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(CancellationToken messageReceivingCancellationToken)
         {
             try
             {
-                await InnerReceiveMessage(receiveTask, messageReceivingCancellationToken).ConfigureAwait(false);
+                await ReceiveMessage(messageReceivingCancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex.IsCausedBy(messageReceivingCancellationToken))
+            {
+                // private token, pump is being stopped, log the exception in case the stack trace is ever needed for debugging
+                Logger.Debug("Operation canceled while stopping message pump.", ex);
             }
             catch (Exception ex)
             {
-                Logger.Debug($"Exception from {nameof(ReceiveMessage)}: ", ex);
+                Logger.Error("Error receiving messages.", ex);
             }
             finally
             {
                 try
                 {
-                    semaphore.Release();
+                    _ = semaphore.Release();
                 }
                 catch (ObjectDisposedException)
                 {
@@ -178,7 +185,7 @@
             }
         }
 
-        async Task InnerReceiveMessage(Task<Message> receiveTask, CancellationToken messageReceivingCancellationToken)
+        async Task ReceiveMessage(CancellationToken messageReceivingCancellationToken)
         {
             Message message = null;
 
@@ -187,35 +194,37 @@
                 // Workaround for ASB MessageReceiver.Receive() that has a timeout and doesn't take a CancellationToken.
                 // We want to track how many receives are waiting and could be ignored when endpoint is stopping.
                 // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
-                Interlocked.Increment(ref numberOfExecutingReceives);
-                message = await receiveTask.ConfigureAwait(false);
+                _ = Interlocked.Increment(ref numberOfExecutingReceives);
+                message = await receiver.ReceiveAsync().ConfigureAwait(false);
 
                 circuitBreaker.Success();
             }
-            catch (ServiceBusException sbe) when (sbe.IsTransient)
+            catch (ServiceBusException ex) when (ex.IsTransient)
             {
             }
             catch (ObjectDisposedException)
             {
                 // Can happen during endpoint shutdown
             }
-            catch (Exception exception)
+            catch (Exception ex) when (!ex.IsCausedBy(messageReceivingCancellationToken))
             {
-                Logger.Warn($"Failed to receive a message. Exception: {exception.Message}", exception);
+                Logger.Warn($"Failed to receive a message. Exception: {ex.Message}", ex);
 
-                await circuitBreaker.Failure(exception, messageReceivingCancellationToken).ConfigureAwait(false);
+                await circuitBreaker.Failure(ex, messageReceivingCancellationToken).ConfigureAwait(false);
             }
             finally
             {
                 // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
-                Interlocked.Decrement(ref numberOfExecutingReceives);
+                _ = Interlocked.Decrement(ref numberOfExecutingReceives);
             }
 
             // By default, ASB client long polls for a minute and returns null if it times out
-            if (message == null || messageReceivingCancellationToken.IsCancellationRequested)
+            if (message == null)
             {
                 return;
             }
+
+            messageReceivingCancellationToken.ThrowIfCancellationRequested();
 
             var lockToken = message.SystemProperties.LockToken;
 
@@ -229,21 +238,30 @@
                 headers = message.GetNServiceBusHeaders();
                 body = message.GetBody();
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
                 try
                 {
-                    await receiver.SafeDeadLetterAsync(transportSettings.TransportTransactionMode, lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message, cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
+                    await receiver.SafeDeadLetterAsync(transportSettings.TransportTransactionMode, lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: ex.Message, cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception)
+                catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(messageReceivingCancellationToken))
                 {
                     // nothing we can do about it, message will be retried
+                    Logger.Debug("Error dead lettering poisoned message.", deadLetterEx);
                 }
 
                 return;
             }
 
-            await ProcessMessage(message, lockToken, messageId, headers, body, messageProcessingCancellationTokenSource.Token).ConfigureAwait(false);
+            // need to catch OCE here because we are switching token
+            try
+            {
+                await ProcessMessage(message, lockToken, messageId, headers, body, messageProcessingCancellationTokenSource.Token).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource.Token))
+            {
+                Logger.Debug("Message processing canceled.", ex);
+            }
         }
 
         async Task ProcessMessage(Message message, string lockToken, string messageId, Dictionary<string, string> headers, byte[] body, CancellationToken messageProcessingCancellationToken)
@@ -268,11 +286,7 @@
                     transaction?.Commit();
                 }
             }
-            catch (OperationCanceledException) when (messageProcessingCancellationToken.IsCancellationRequested)
-            {
-                // Shut down gracefully
-            }
-            catch (Exception exception)
+            catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationToken))
             {
                 try
                 {
@@ -282,7 +296,7 @@
                     {
                         var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
-                        var errorContext = new ErrorContext(exception, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount, contextBag);
+                        var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount, contextBag);
 
                         result = await onError(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
@@ -299,17 +313,17 @@
                         await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                     }
                 }
-                catch (OperationCanceledException) when (messageProcessingCancellationToken.IsCancellationRequested)
+                catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(messageProcessingCancellationToken))
                 {
-                    // Shut down gracefully
+                    throw;
                 }
-                catch (Exception onErrorException) when (onErrorException is MessageLockLostException || onErrorException is ServiceBusTimeoutException)
+                catch (Exception onErrorEx) when (onErrorEx is MessageLockLostException || onErrorEx is ServiceBusTimeoutException)
                 {
-                    Logger.Debug("Failed to execute recoverability.", onErrorException);
+                    Logger.Debug("Failed to execute recoverability.", onErrorEx);
                 }
-                catch (Exception onErrorException)
+                catch (Exception onErrorEx)
                 {
-                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException, messageProcessingCancellationToken);
+                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
 
                     await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                 }
