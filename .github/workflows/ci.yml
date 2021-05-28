@@ -90,7 +90,10 @@ jobs:
         run: dotnet test src --configuration Release --no-build --logger "GitHubActions;report-warnings=false"
       - name: Run Linux tests
         if: runner.os == 'Linux'
-        run: dotnet test src --configuration Release --no-build --framework netcoreapp3.1 --logger "GitHubActions;report-warnings=false"
+        # -m:1 parameter prevents test projects from being run in parallel, which causes Gateway port conflicts between System/Microsoft data client tests
+        run: |
+          dotnet test src --configuration Release --no-build --framework netcoreapp3.1 --logger "GitHubActions;report-warnings=false"
+          dotnet test src --configuration Release --no-build --framework netcoreapp3.1 --logger "GitHubActions;report-warnings=false"
       - name: Teardown infrastructure
         if: ${{ always() }}
         continue-on-error: true
