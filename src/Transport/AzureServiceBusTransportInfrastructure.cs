@@ -37,6 +37,7 @@
             {
                 transportSettings.TopicName,
                 EntityMaximumSize = transportSettings.EntityMaximumSize.ToString(),
+                AutoDeleteOnIdle = transportSettings.AutoDeleteOnIdle.ToString(),
                 EnablePartitioning = transportSettings.EnablePartitioning.ToString(),
                 PrefetchMultiplier = transportSettings.PrefetchMultiplier.ToString(),
                 PrefetchCount = transportSettings.PrefetchCount?.ToString() ?? "default",

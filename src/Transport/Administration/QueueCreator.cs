@@ -12,6 +12,7 @@
         readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
         readonly NamespacePermissions namespacePermissions;
         readonly int maxSizeInMb;
+        readonly TimeSpan autoDeleteOnIdle;
 
         public QueueCreator(
             AzureServiceBusTransport transportSettings,
@@ -22,6 +23,7 @@
             this.connectionStringBuilder = connectionStringBuilder;
             this.namespacePermissions = namespacePermissions;
             maxSizeInMb = transportSettings.EntityMaximumSize * 1024;
+            autoDeleteOnIdle = transportSettings.AutoDeleteOnIdle;
         }
 
         public async Task CreateQueues(string[] queues, CancellationToken cancellationToken = default)
@@ -36,7 +38,8 @@
                 {
                     EnableBatchedOperations = true,
                     EnablePartitioning = transportSettings.EnablePartitioning,
-                    MaxSizeInMB = maxSizeInMb
+                    MaxSizeInMB = maxSizeInMb,
+                    AutoDeleteOnIdle = autoDeleteOnIdle
                 };
 
                 try
@@ -59,6 +62,7 @@
                         LockDuration = TimeSpan.FromMinutes(5),
                         MaxDeliveryCount = int.MaxValue,
                         MaxSizeInMB = maxSizeInMb,
+                        AutoDeleteOnIdle = autoDeleteOnIdle,
                         EnablePartitioning = transportSettings.EnablePartitioning
                     };
 
