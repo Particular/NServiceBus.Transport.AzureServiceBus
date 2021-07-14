@@ -111,6 +111,27 @@
         int entityMaximumSize = 5;
 
         /// <summary>
+        /// The <see cref="TimeSpan"/> idle interval after which topics and queues are automatically deleted.
+        /// </summary>
+        /// <remarks>The minimum duration is 5 minutes. Default value is <see cref="TimeSpan.MaxValue"/>.</remarks>
+        public TimeSpan AutoDeleteOnIdle
+        {
+            get => autoDeleteOnIdle;
+            set
+            {
+                // minimum duration is 5 minutes: https://docs.microsoft.com/en-us/dotnet/api/microsoft.servicebus.messaging.subscriptiondescription.autodeleteonidle
+                if (value < TimeSpan.FromMinutes(5))
+                {
+                    throw new ArgumentOutOfRangeException(nameof(AutoDeleteOnIdle),
+                        $"The value must be greater than {TimeSpan.FromMinutes(5)}");
+                }
+
+                autoDeleteOnIdle = value;
+            }
+        }
+        TimeSpan autoDeleteOnIdle = TimeSpan.MaxValue;
+
+        /// <summary>
         /// Enables entity partitioning when creating queues and topics.
         /// </summary>
         public bool EnablePartitioning { get; set; }
