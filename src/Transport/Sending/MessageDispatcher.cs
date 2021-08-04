@@ -58,7 +58,7 @@
                     {
                         // Invoke sender and immediately return it back to the pool w/o awaiting for completion
                         tasks.Add(sender.SendAsync(message));
-
+                        //committable tx will not be committed because this scope is not the owner
                         scope.Complete();
                     }
                 }
