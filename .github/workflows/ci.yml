@@ -59,7 +59,7 @@ jobs:
         run: dotnet build src --configuration Release
       - name: Upload packages
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v2.2.2
+        uses: actions/upload-artifact@v2.2.4
         with:
           name: NuGet packages
           path: nugets/
