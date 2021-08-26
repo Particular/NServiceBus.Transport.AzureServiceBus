@@ -239,6 +239,9 @@
         }
         RetryPolicy retryPolicy;
 
-        internal string ConnectionString { get; set; }
+        /// <summary>
+        /// Configures the Service Bus connection string.
+        /// </summary>
+        protected internal string ConnectionString { get; set; }
     }
 }

@@ -63,7 +63,9 @@ namespace NServiceBus
     }
     public class AzureServiceBusTransport : NServiceBus.Transport.TransportDefinition
     {
+        protected AzureServiceBusTransport() { }
         public AzureServiceBusTransport(string connectionString) { }
+        protected string ConnectionString { get; set; }
         public bool EnablePartitioning { get; set; }
         public int EntityMaximumSize { get; set; }
         public int? PrefetchCount { get; set; }

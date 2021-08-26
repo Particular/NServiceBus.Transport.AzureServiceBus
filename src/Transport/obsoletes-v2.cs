@@ -124,7 +124,7 @@ namespace NServiceBus
     {
 
         // Used by the shim API to enable easier migration from the existing API
-        internal AzureServiceBusTransport() : base(
+        protected internal AzureServiceBusTransport() : base(
             defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
             supportsDelayedDelivery: true,
             supportsPublishSubscribe: true,
