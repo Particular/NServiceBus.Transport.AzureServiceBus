@@ -9,7 +9,7 @@
     {
         public static Message ToAzureServiceBusMessage(this OutgoingMessage outgoingMessage, DispatchProperties dispatchProperties, string incomingQueuePartitionKey)
         {
-            var message = new Message(outgoingMessage.Body)
+            var message = new Message(outgoingMessage.Body.ToArray())
             {
                 // Cannot re-use MessageId to be compatible with ASB transport that could have native de-dup enabled
                 MessageId = Guid.NewGuid().ToString()
