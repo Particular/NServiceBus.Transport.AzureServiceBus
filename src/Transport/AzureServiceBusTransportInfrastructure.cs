@@ -3,26 +3,29 @@
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
+    using Azure.Messaging.ServiceBus;
     using Transport;
 
     sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
         readonly AzureServiceBusTransport transportSettings;
 
-        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
+        readonly string connectionString;
+        readonly ServiceBusClientOptions serviceBusClientOptions;
         readonly NamespacePermissions namespacePermissions;
         readonly MessageSenderPool messageSenderPool;
         readonly HostSettings hostSettings;
 
-        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, ReceiveSettings[] receivers, ServiceBusConnectionStringBuilder connectionStringBuilder, NamespacePermissions namespacePermissions)
+        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, ReceiveSettings[] receivers, string connectionString, ServiceBusClientOptions serviceBusClientOptions, NamespacePermissions namespacePermissions)
         {
             this.transportSettings = transportSettings;
+
             this.hostSettings = hostSettings;
-            this.connectionStringBuilder = connectionStringBuilder;
+            this.connectionString = connectionString;
+            this.serviceBusClientOptions = serviceBusClientOptions;
             this.namespacePermissions = namespacePermissions;
 
-            messageSenderPool = new MessageSenderPool(connectionStringBuilder, transportSettings.TokenProvider, transportSettings.RetryPolicy);
+            messageSenderPool = new MessageSenderPool(connectionString, serviceBusClientOptions, transportSettings.TokenCredential, transportSettings.RetryPolicyOptions);
 
             Dispatcher = new MessageDispatcher(messageSenderPool, transportSettings.TopicName);
             Receivers = receivers.ToDictionary(s => s.Id, s => CreateMessagePump(s));
@@ -42,15 +45,16 @@
                 PrefetchCount = transportSettings.PrefetchCount?.ToString() ?? "default",
                 UseWebSockets = transportSettings.UseWebSockets.ToString(),
                 TimeToWaitBeforeTriggeringCircuitBreaker = transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker.ToString(),
-                CustomTokenProvider = transportSettings.TokenProvider?.ToString() ?? "default",
-                CustomRetryPolicy = transportSettings.RetryPolicy?.ToString() ?? "default"
+                CustomTokenProvider = transportSettings.TokenCredential?.ToString() ?? "default",
+                CustomRetryPolicy = transportSettings.RetryPolicyOptions?.ToString() ?? "default"
             });
         }
 
         IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings)
         {
             return new MessagePump(
-                connectionStringBuilder,
+                connectionString,
+                serviceBusClientOptions,
                 transportSettings,
                 receiveSettings,
                 hostSettings.CriticalErrorAction,

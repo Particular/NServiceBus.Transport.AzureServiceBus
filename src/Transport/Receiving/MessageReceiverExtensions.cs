@@ -3,41 +3,41 @@
     using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
-    using Microsoft.Azure.ServiceBus.Core;
+    using Azure.Messaging.ServiceBus;
 
     static class MessageReceiverExtensions
     {
-        public static async Task SafeCompleteAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, Transaction committableTransaction = null, CancellationToken cancellationToken = default)
+        public static async Task SafeCompleteAsync(this ServiceBusReceiver messageReceiver, TransportTransactionMode transportTransactionMode, ServiceBusReceivedMessage message, Transaction committableTransaction = null, CancellationToken cancellationToken = default)
         {
             if (transportTransactionMode != TransportTransactionMode.None)
             {
                 using (var scope = committableTransaction.ToScope())
                 {
-                    await messageReceiver.CompleteAsync(lockToken).ConfigureAwait(false);
+                    await messageReceiver.CompleteMessageAsync(message, cancellationToken).ConfigureAwait(false);
 
                     scope.Complete();
                 }
             }
         }
 
-        public static async Task SafeAbandonAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, Transaction committableTransaction = null, CancellationToken cancellationToken = default)
+        public static async Task SafeAbandonAsync(this ServiceBusReceiver messageReceiver, TransportTransactionMode transportTransactionMode, ServiceBusReceivedMessage message, Transaction committableTransaction = null, CancellationToken cancellationToken = default)
         {
             if (transportTransactionMode != TransportTransactionMode.None)
             {
                 using (var scope = committableTransaction.ToScope())
                 {
-                    await messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false);
+                    await messageReceiver.AbandonMessageAsync(message, cancellationToken: cancellationToken).ConfigureAwait(false);
 
                     scope.Complete();
                 }
             }
         }
 
-        public static Task SafeDeadLetterAsync(this MessageReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, string deadLetterReason, string deadLetterErrorDescription, CancellationToken cancellationToken = default)
+        public static Task SafeDeadLetterAsync(this ServiceBusReceiver messageReceiver, TransportTransactionMode transportTransactionMode, ServiceBusReceivedMessage message, string deadLetterReason, string deadLetterErrorDescription, CancellationToken cancellationToken = default)
         {
             if (transportTransactionMode != TransportTransactionMode.None)
             {
-                return messageReceiver.DeadLetterAsync(lockToken, deadLetterReason, deadLetterErrorDescription);
+                return messageReceiver.DeadLetterMessageAsync(message, deadLetterReason, deadLetterErrorDescription, cancellationToken);
             }
 
             return Task.CompletedTask;

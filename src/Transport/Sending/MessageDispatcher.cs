@@ -4,8 +4,8 @@
     using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
+    using Azure.Messaging.ServiceBus;
     using Logging;
-    using Microsoft.Azure.ServiceBus;
 
     class MessageDispatcher : IMessageDispatcher
     {
@@ -22,7 +22,7 @@
         public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
         {
             // Assumption: we're not implementing batching as it will be done by ASB client
-            transaction.TryGet<(ServiceBusConnection, string)>(out var receiverConnectionAndPath);
+            transaction.TryGet<(string, string)>(out var receiverConnectionAndPath);
             transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
             transaction.TryGet<CommittableTransaction>(out var committableTransaction);
 
@@ -57,7 +57,7 @@
                     using (var scope = transactionToUse.ToScope())
                     {
                         // Invoke sender and immediately return it back to the pool w/o awaiting for completion
-                        tasks.Add(sender.SendAsync(message));
+                        tasks.Add(sender.SendMessageAsync(message, cancellationToken));
                         //committable tx will not be committed because this scope is not the owner
                         scope.Complete();
                     }
@@ -84,7 +84,7 @@
                     using (var scope = transactionToUse.ToScope())
                     {
                         // Invoke sender and immediately return it back to the pool w/o awaiting for completion
-                        tasks.Add(sender.SendAsync(message));
+                        tasks.Add(sender.SendMessageAsync(message, cancellationToken));
                         //committable tx will not be committed because this scope is not the owner
                         scope.Complete();
                     }
@@ -99,7 +99,7 @@
         }
 
         static void ApplyCustomizationToOutgoingNativeMessage(IOutgoingTransportOperation transportOperation,
-            Message message, TransportTransaction transportTransaction)
+            ServiceBusMessage message, TransportTransaction transportTransaction)
         {
             if (!transportOperation.Properties.TryGetValue(NativeMessageCustomizationBehavior.CustomizationKey,
                 out var key))

@@ -1,8 +1,7 @@
 ﻿namespace NServiceBus
 {
     using System;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Primitives;
+    using Azure.Messaging.ServiceBus;
     using Transport.AzureServiceBus;
 
     /// <summary>
@@ -187,18 +186,19 @@
             return this;
         }
 
-        /// <summary>
-        /// Overrides the default token provider with a custom implementation.
-        /// </summary>
-        [ObsoleteEx(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.TokenProvider",
-            TreatAsErrorFromVersion = "3",
-            RemoveInVersion = "4")]
-        public AzureServiceBusSettings CustomTokenProvider(ITokenProvider tokenProvider)
-        {
-            Transport.TokenProvider = tokenProvider;
-            return this;
-        }
+        //TODO: Missing Type ITokenProvider
+        // /// <summary>
+        // /// Overrides the default token provider with a custom implementation.
+        // /// </summary>
+        // [ObsoleteEx(
+        //     ReplacementTypeOrMember = "AzureServiceBusTransport.TokenProvider",
+        //     TreatAsErrorFromVersion = "3",
+        //     RemoveInVersion = "4")]
+        // public AzureServiceBusSettings CustomTokenProvider(ITokenProvider tokenProvider)
+        // {
+        //     Transport.TokenProvider = tokenProvider;
+        //     return this;
+        // }
 
         /// <summary>
         /// Overrides the default retry policy with a custom implementation.
@@ -207,9 +207,9 @@
             ReplacementTypeOrMember = "AzureServiceBusTransport.RetryPolicy",
             TreatAsErrorFromVersion = "3",
             RemoveInVersion = "4")]
-        public AzureServiceBusSettings CustomRetryPolicy(RetryPolicy retryPolicy)
+        public AzureServiceBusSettings CustomRetryPolicy(ServiceBusRetryOptions retryPolicy)
         {
-            Transport.RetryPolicy = retryPolicy;
+            Transport.RetryPolicyOptions = retryPolicy;
             return this;
         }
     }

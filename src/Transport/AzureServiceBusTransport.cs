@@ -6,8 +6,8 @@
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Primitives;
+    using Azure.Core;
+    using Azure.Messaging.ServiceBus;
     using Transport;
     using Transport.AzureServiceBus;
 
@@ -31,17 +31,18 @@
         {
             CheckConnectionStringHasBeenConfigured();
 
-            var connectionStringBuilder = new ServiceBusConnectionStringBuilder(ConnectionString)
+            var serviceBusClientOptions = new ServiceBusClientOptions()
             {
-                TransportType = UseWebSockets ? TransportType.AmqpWebSockets : TransportType.Amqp
+                TransportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp
             };
-            var namespacePermissions = new NamespacePermissions(connectionStringBuilder, TokenProvider);
 
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receivers, connectionStringBuilder, namespacePermissions);
+            var namespacePermissions = new NamespacePermissions(ConnectionString, TokenCredential);
+
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receivers, ConnectionString, serviceBusClientOptions, namespacePermissions);
 
             if (hostSettings.SetupInfrastructure)
             {
-                var queueCreator = new QueueCreator(this, connectionStringBuilder, namespacePermissions);
+                var queueCreator = new QueueCreator(this, ConnectionString, namespacePermissions);
                 var allQueues = receivers
                     .Select(r => r.ReceiveAddress)
                     .Concat(sendingAddresses)
@@ -130,7 +131,7 @@
         int prefetchMultiplier = 10;
 
         /// <summary>
-        /// Overrides the default prefetch count calculation with the specified value. 
+        /// Overrides the default prefetch count calculation with the specified value.
         /// </summary>
         public int? PrefetchCount
         {
@@ -223,21 +224,36 @@
         /// <summary>
         /// Overrides the default token provider.
         /// </summary>
-        public ITokenProvider TokenProvider { get; set; }
+        public TokenCredential TokenCredential { get; set; }
 
         /// <summary>
         /// Overrides the default retry policy.
         /// </summary>
-        public RetryPolicy RetryPolicy
+        public ServiceBusRetryOptions RetryPolicyOptions
         {
             get => retryPolicy;
             set
             {
-                Guard.AgainstNull(nameof(RetryPolicy), value);
+                Guard.AgainstNull(nameof(RetryPolicyOptions), value);
                 retryPolicy = value;
             }
         }
-        RetryPolicy retryPolicy;
+        ServiceBusRetryOptions retryPolicy;
+        //TODO: old API needs to be deprecated
+        // public ITokenProvider TokenProvider { get; set; }
+        //
+        // /// <summary>
+        // /// Overrides the default retry policy.
+        // /// </summary>
+        // public RetryPolicy RetryPolicy
+        // {
+        //     get => retryPolicy;
+        //     set
+        //     {
+        //         Guard.AgainstNull(nameof(RetryPolicy), value);
+        //         retryPolicy = value;
+        //     }
+        // }
 
         /// <summary>
         /// Configures the Service Bus connection string.

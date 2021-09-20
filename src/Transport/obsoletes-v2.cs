@@ -4,8 +4,6 @@
 namespace NServiceBus
 {
     using System;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Primitives;
 
     public static class AzureServiceBusTransportSettingsExtensions
     {
@@ -85,34 +83,32 @@ namespace NServiceBus
             RemoveInVersion = "3")]
         public static TransportExtensions<AzureServiceBusTransport> UseWebSockets(this TransportExtensions<AzureServiceBusTransport> transportExtensions) => throw new NotImplementedException();
 
-        [ObsoleteEx(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.TokenProvider",
-            TreatAsErrorFromVersion = "2",
-            RemoveInVersion = "3")]
-        public static TransportExtensions<AzureServiceBusTransport> CustomTokenProvider(this TransportExtensions<AzureServiceBusTransport> transportExtensions, ITokenProvider tokenProvider) => throw new NotImplementedException();
-
-        [ObsoleteEx(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.RetryPolicy",
-            TreatAsErrorFromVersion = "2",
-            RemoveInVersion = "3")]
-        public static TransportExtensions<AzureServiceBusTransport> CustomRetryPolicy(this TransportExtensions<AzureServiceBusTransport> transportExtensions, RetryPolicy retryPolicy) => throw new NotImplementedException();
+        //TODO: Missing types ITokenProvider and RetryPolicy
+        // [ObsoleteEx(
+        //     ReplacementTypeOrMember = "AzureServiceBusTransport.TokenProvider",
+        //     TreatAsErrorFromVersion = "2",
+        //     RemoveInVersion = "3")]
+        // public static TransportExtensions<AzureServiceBusTransport> CustomTokenProvider(this TransportExtensions<AzureServiceBusTransport> transportExtensions, ITokenProvider tokenProvider) => throw new NotImplementedException();
+        //
+        // [ObsoleteEx(
+        //     ReplacementTypeOrMember = "AzureServiceBusTransport.RetryPolicy",
+        //     TreatAsErrorFromVersion = "2",
+        //     RemoveInVersion = "3")]
+        // public static TransportExtensions<AzureServiceBusTransport> CustomRetryPolicy(this TransportExtensions<AzureServiceBusTransport> transportExtensions, RetryPolicy retryPolicy) => throw new NotImplementedException();
     }
 }
 
 namespace NServiceBus
 {
-    using System;
-    using Microsoft.Azure.ServiceBus;
-    using Extensibility;
-
     public static partial class CustomizeNativeMessageExtensions
     {
-        [ObsoleteEx(
-            ReplacementTypeOrMember = "CustomizeNativeMessage(this ExtendableOptions options, Action<Message> customization)",
-            TreatAsErrorFromVersion = "2",
-            RemoveInVersion = "3")]
-        public static void CustomizeNativeMessage(this ExtendableOptions options, IPipelineContext context,
-            Action<Message> customization) => throw new NotImplementedException();
+        //TODO: Missing type Message
+        // [ObsoleteEx(
+        //     ReplacementTypeOrMember = "CustomizeNativeMessage(this ExtendableOptions options, Action<Message> customization)",
+        //     TreatAsErrorFromVersion = "2",
+        //     RemoveInVersion = "3")]
+        // public static void CustomizeNativeMessage(this ExtendableOptions options, IPipelineContext context,
+        //     Action<Message> customization) => throw new NotImplementedException();
     }
 }
 

@@ -4,41 +4,52 @@
     using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Core;
-    using Microsoft.Azure.ServiceBus.Primitives;
+    using Azure.Core;
+    using Azure.Messaging.ServiceBus;
 
     class MessageSenderPool
     {
-        public MessageSenderPool(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, RetryPolicy retryPolicy)
+        public MessageSenderPool(string connectionString, ServiceBusClientOptions serviceBusClientOptions, TokenCredential tokenCredential, ServiceBusRetryOptions retryPolicy)
         {
-            this.connectionStringBuilder = connectionStringBuilder;
-            this.tokenProvider = tokenProvider;
-            this.retryPolicy = retryPolicy;
+            this.connectionString = connectionString;
+            this.serviceBusClientOptions = serviceBusClientOptions;
+            serviceBusClientOptions.RetryOptions = retryPolicy;
+            this.tokenCredential = tokenCredential;
+            //TODO: delete this
+            //this.retryPolicy = retryPolicy;
 
-            senders = new ConcurrentDictionary<(string, (ServiceBusConnection, string)), ConcurrentQueue<MessageSender>>();
+            senders = new ConcurrentDictionary<(string, (string, string)), ConcurrentQueue<ServiceBusSender>>();
         }
 
-        public MessageSender GetMessageSender(string destination, (ServiceBusConnection connection, string path) receiverConnectionAndPath)
+        public ServiceBusSender GetMessageSender(string destination, (string connection, string path) receiverConnectionAndPath)
         {
-            var sendersForDestination = senders.GetOrAdd((destination, receiverConnectionAndPath), _ => new ConcurrentQueue<MessageSender>());
+            var sendersForDestination = senders.GetOrAdd((destination, receiverConnectionAndPath), _ => new ConcurrentQueue<ServiceBusSender>());
 
-            if (!sendersForDestination.TryDequeue(out var sender) || sender.IsClosedOrClosing)
+            if (!sendersForDestination.TryDequeue(out var sender) || sender.IsClosed)
             {
                 // Send-Via case
+                // TODO: should have ServiceBusClientOptions { EnableCrossEntityTransactions = true }
                 if (receiverConnectionAndPath != (null, null))
                 {
-                    sender = new MessageSender(receiverConnectionAndPath.connection, destination, receiverConnectionAndPath.path, retryPolicy);
+                    var client = new ServiceBusClient(connectionString, tokenCredential, serviceBusClientOptions);
+
+                    sender = client.CreateSender(destination);
                 }
                 else
                 {
-                    if (tokenProvider == null)
+                    if (tokenCredential == null)
                     {
-                        sender = new MessageSender(connectionStringBuilder.GetNamespaceConnectionString(), destination, retryPolicy);
+                        //sender = new MessageSender(connectionStringBuilder.GetNamespaceConnectionString(), destination, retryPolicy);
+                        var client = new ServiceBusClient(connectionString, serviceBusClientOptions);
+
+                        sender = client.CreateSender(destination);
                     }
                     else
                     {
-                        sender = new MessageSender(connectionStringBuilder.Endpoint, destination, tokenProvider, connectionStringBuilder.TransportType, retryPolicy);
+                        var client = new ServiceBusClient(connectionString, tokenCredential, serviceBusClientOptions);
+
+                        sender = client.CreateSender(destination);
+                        //sender = new MessageSender(connectionStringBuilder.Endpoint, destination, tokenProvider, connectionStringBuilder.TransportType, retryPolicy);
                     }
                 }
             }
@@ -46,17 +57,22 @@
             return sender;
         }
 
-        public void ReturnMessageSender(MessageSender sender)
+        public void ReturnMessageSender(ServiceBusSender sender)
         {
-            if (sender.IsClosedOrClosing)
+            if (sender.IsClosed)
             {
                 return;
             }
 
-            var connectionToUse = sender.OwnsConnection ? null : sender.ServiceBusConnection;
-            var path = sender.OwnsConnection ? sender.Path : sender.TransferDestinationPath;
-
-            if (senders.TryGetValue((path, (connectionToUse, sender.ViaEntityPath)), out var sendersForDestination))
+            // var connectionToUse = sender.FullyQualifiedNamespace.OwnsConnection ? null : sender.ServiceBusConnection;
+            // var path = sender.OwnsConnection ? sender.Path : sender.TransferDestinationPath;
+            //
+            // if (senders.TryGetValue((path, (connectionToUse, sender.ViaEntityPath)), out var sendersForDestination))
+            // {
+            //     sendersForDestination.Enqueue(sender);
+            // }
+            //TODO: this tuple is wrong, what should be in destination vs ViaEntityPath
+            if (senders.TryGetValue((sender.EntityPath, (sender.FullyQualifiedNamespace, sender.EntityPath)), out var sendersForDestination))
             {
                 sendersForDestination.Enqueue(sender);
             }
@@ -72,17 +88,17 @@
 
                 foreach (var sender in queue)
                 {
-                    tasks.Add(sender.CloseAsync());
+                    tasks.Add(sender.CloseAsync(cancellationToken));
                 }
             }
 
             return Task.WhenAll(tasks);
         }
 
-        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
-        readonly ITokenProvider tokenProvider;
-        readonly RetryPolicy retryPolicy;
+        readonly ServiceBusClientOptions serviceBusClientOptions;
+        readonly string connectionString;
+        readonly TokenCredential tokenCredential;
 
-        ConcurrentDictionary<(string destination, (ServiceBusConnection connnection, string incomingQueue)), ConcurrentQueue<MessageSender>> senders;
+        ConcurrentDictionary<(string destination, (string connnection, string incomingQueue)), ConcurrentQueue<ServiceBusSender>> senders;
     }
 }

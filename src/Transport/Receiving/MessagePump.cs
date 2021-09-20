@@ -5,10 +5,9 @@
     using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
+    using Azure.Messaging.ServiceBus;
     using Extensibility;
     using Logging;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Core;
     using IMessageReceiver = IMessageReceiver;
 
     class MessagePump : IMessageReceiver
@@ -16,7 +15,8 @@
         readonly AzureServiceBusTransport transportSettings;
         readonly ReceiveSettings receiveSettings;
         readonly Action<string, Exception, CancellationToken> criticalErrorAction;
-        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
+        readonly string connectionString;
+        readonly ServiceBusClientOptions serviceBusClientOptions;
         int numberOfExecutingReceives;
 
         OnMessage onMessage;
@@ -29,21 +29,23 @@
         CancellationTokenSource messageReceivingCancellationTokenSource;
         CancellationTokenSource messageProcessingCancellationTokenSource;
         int maxConcurrency;
-        MessageReceiver receiver;
+        ServiceBusReceiver receiver;
 
         static readonly ILog Logger = LogManager.GetLogger<MessagePump>();
 
         PushRuntimeSettings limitations;
 
         public MessagePump(
-            ServiceBusConnectionStringBuilder connectionStringBuilder,
+            string connectionString,
+            ServiceBusClientOptions serviceBusClientOptions,
             AzureServiceBusTransport transportSettings,
             ReceiveSettings receiveSettings,
             Action<string, Exception, CancellationToken> criticalErrorAction,
             NamespacePermissions namespacePermissions)
         {
             Id = receiveSettings.Id;
-            this.connectionStringBuilder = connectionStringBuilder;
+            this.connectionString = connectionString;
+            this.serviceBusClientOptions = serviceBusClientOptions;
             this.transportSettings = transportSettings;
             this.receiveSettings = receiveSettings;
             this.criticalErrorAction = criticalErrorAction;
@@ -53,7 +55,7 @@
                 Subscriptions = new SubscriptionManager(
                     receiveSettings.ReceiveAddress,
                     transportSettings,
-                    connectionStringBuilder,
+                    connectionString,
                     namespacePermissions);
             }
         }
@@ -90,16 +92,26 @@
                 prefetchCount = transportSettings.PrefetchCount.Value;
             }
 
-            var receiveMode = transportSettings.TransportTransactionMode == TransportTransactionMode.None ? ReceiveMode.ReceiveAndDelete : ReceiveMode.PeekLock;
-
-            if (transportSettings.TokenProvider == null)
+            var receiveOptions = new ServiceBusReceiverOptions()
             {
-                receiver = new MessageReceiver(connectionStringBuilder.GetNamespaceConnectionString(), receiveSettings.ReceiveAddress, receiveMode, retryPolicy: transportSettings.RetryPolicy, prefetchCount);
+                PrefetchCount = prefetchCount,
+                //SubQueue = receiveSettings.ReceiveAddress,
+                ReceiveMode = transportSettings.TransportTransactionMode == TransportTransactionMode.None
+                    ? ServiceBusReceiveMode.ReceiveAndDelete
+                    : ServiceBusReceiveMode.PeekLock
+            };
+            ServiceBusClient client = null;
+
+            if (transportSettings.TokenCredential == null)
+            {
+                client = new ServiceBusClient(connectionString, serviceBusClientOptions);
             }
             else
             {
-                receiver = new MessageReceiver(connectionStringBuilder.Endpoint, receiveSettings.ReceiveAddress, transportSettings.TokenProvider, connectionStringBuilder.TransportType, receiveMode, retryPolicy: transportSettings.RetryPolicy, prefetchCount);
+                client = new ServiceBusClient(connectionString, transportSettings.TokenCredential, serviceBusClientOptions);
             }
+
+            receiver = client.CreateReceiver(receiveSettings.ReceiveAddress, receiveOptions);
 
             semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
@@ -129,7 +141,7 @@
                     await Task.Delay(50, CancellationToken.None).ConfigureAwait(false);
                 }
 
-                await receiver.CloseAsync().ConfigureAwait(false);
+                await receiver.CloseAsync(cancellationToken).ConfigureAwait(false);
             }
 
             semaphore?.Dispose();
@@ -187,7 +199,7 @@
 
         async Task ReceiveMessage(CancellationToken messageReceivingCancellationToken)
         {
-            Message message = null;
+            ServiceBusReceivedMessage message = null;
 
             try
             {
@@ -195,7 +207,7 @@
                 // We want to track how many receives are waiting and could be ignored when endpoint is stopping.
                 // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
                 _ = Interlocked.Increment(ref numberOfExecutingReceives);
-                message = await receiver.ReceiveAsync().ConfigureAwait(false);
+                message = await receiver.ReceiveMessageAsync(cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
 
                 circuitBreaker.Success();
             }
@@ -226,23 +238,24 @@
 
             messageReceivingCancellationToken.ThrowIfCancellationRequested();
 
-            var lockToken = message.SystemProperties.LockToken;
+            //TODO: locktoken
+            //var lockToken = message.LockToken;
 
             string messageId;
             Dictionary<string, string> headers;
-            byte[] body;
+            BinaryData body;
 
             try
             {
                 messageId = message.GetMessageId();
                 headers = message.GetNServiceBusHeaders();
-                body = message.GetBody();
+                body = message.Body;
             }
             catch (Exception ex)
             {
                 try
                 {
-                    await receiver.SafeDeadLetterAsync(transportSettings.TransportTransactionMode, lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: ex.Message, cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
+                    await receiver.DeadLetterMessageAsync(message, deadLetterReason: "Poisoned message", deadLetterErrorDescription: ex.Message, cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(messageReceivingCancellationToken))
                 {
@@ -256,7 +269,7 @@
             // need to catch OCE here because we are switching token
             try
             {
-                await ProcessMessage(message, lockToken, messageId, headers, body, messageProcessingCancellationTokenSource.Token).ConfigureAwait(false);
+                await ProcessMessage(message, messageId, headers, body, messageProcessingCancellationTokenSource.Token).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource.Token))
             {
@@ -264,7 +277,7 @@
             }
         }
 
-        async Task ProcessMessage(Message message, string lockToken, string messageId, Dictionary<string, string> headers, byte[] body, CancellationToken messageProcessingCancellationToken)
+        async Task ProcessMessage(ServiceBusReceivedMessage message, string messageId, Dictionary<string, string> headers, BinaryData body, CancellationToken messageProcessingCancellationToken)
         {
             var contextBag = new ContextBag();
 
@@ -280,8 +293,7 @@
 
                     await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
-                    await receiver.SafeCompleteAsync(transportSettings.TransportTransactionMode, lockToken, transaction, messageProcessingCancellationToken)
-                        .ConfigureAwait(false);
+                    await receiver.CompleteMessageAsync(message, messageProcessingCancellationToken).ConfigureAwait(false);
 
                     transaction?.Commit();
                 }
@@ -296,13 +308,13 @@
                     {
                         var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
-                        var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount, contextBag);
+                        var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.DeliveryCount, contextBag);
 
                         result = await onError(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
                         if (result == ErrorHandleResult.Handled)
                         {
-                            await receiver.SafeCompleteAsync(transportSettings.TransportTransactionMode, lockToken, transaction, messageProcessingCancellationToken).ConfigureAwait(false);
+                            await receiver.CompleteMessageAsync(message, messageProcessingCancellationToken).ConfigureAwait(false);
                         }
 
                         transaction?.Commit();
@@ -310,22 +322,22 @@
 
                     if (result == ErrorHandleResult.RetryRequired)
                     {
-                        await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                        await receiver.AbandonMessageAsync(message, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                     }
+                }
+                catch (ServiceBusException onErrorEx) when (onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost || onErrorEx.Reason == ServiceBusFailureReason.ServiceTimeout)
+                {
+                    Logger.Debug("Failed to execute recoverability.", onErrorEx);
                 }
                 catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(messageProcessingCancellationToken))
                 {
                     throw;
                 }
-                catch (Exception onErrorEx) when (onErrorEx is MessageLockLostException || onErrorEx is ServiceBusTimeoutException)
-                {
-                    Logger.Debug("Failed to execute recoverability.", onErrorEx);
-                }
                 catch (Exception onErrorEx)
                 {
                     criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
 
-                    await receiver.SafeAbandonAsync(transportSettings.TransportTransactionMode, lockToken, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                    await receiver.AbandonMessageAsync(message, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                 }
             }
         }
@@ -347,7 +359,7 @@
 
             if (transportSettings.TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive)
             {
-                transportTransaction.Set((receiver.ServiceBusConnection, receiver.Path));
+                transportTransaction.Set((connectionString, receiver.EntityPath));
                 transportTransaction.Set("IncomingQueue.PartitionKey", incomingQueuePartitionKey);
                 transportTransaction.Set(transaction);
             }

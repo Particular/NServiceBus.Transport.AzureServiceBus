@@ -24,9 +24,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             Assert.AreEqual(defaultSettings.EnablePartitioning, configuredTransport.EnablePartitioning);
             Assert.AreEqual(defaultSettings.PrefetchCount, configuredTransport.PrefetchCount);
             Assert.AreEqual(defaultSettings.PrefetchMultiplier, configuredTransport.PrefetchMultiplier);
-            Assert.AreEqual(defaultSettings.RetryPolicy, configuredTransport.RetryPolicy);
+            Assert.AreEqual(defaultSettings.RetryPolicyOptions, configuredTransport.RetryPolicyOptions);
             Assert.AreEqual(defaultSettings.TimeToWaitBeforeTriggeringCircuitBreaker, configuredTransport.TimeToWaitBeforeTriggeringCircuitBreaker);
-            Assert.AreEqual(defaultSettings.TokenProvider, configuredTransport.TokenProvider);
+            Assert.AreEqual(defaultSettings.TokenCredential, configuredTransport.TokenCredential);
             Assert.AreEqual(defaultSettings.UseWebSockets, configuredTransport.UseWebSockets);
             Assert.AreEqual(defaultSettings.EntityMaximumSize, configuredTransport.EntityMaximumSize);
             Assert.AreEqual(defaultSettings.TopicName, configuredTransport.TopicName);
@@ -65,8 +65,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             var configuredTransport = (AzureServiceBusTransport)endpointConfiguration.GetSettings().Get<TransportDefinition>();
 
             Assert.IsTrue(configuredTransport.EnablePartitioning);
-            Assert.AreEqual(customRetryPolicy, configuredTransport.RetryPolicy);
-            Assert.AreEqual(customTokenProvider, configuredTransport.TokenProvider);
+            Assert.AreEqual(customRetryPolicy, configuredTransport.RetryPolicyOptions);
+            Assert.AreEqual(customTokenProvider, configuredTransport.TokenCredential);
             Assert.IsTrue(configuredTransport.EnablePartitioning);
             Assert.AreEqual(42, configuredTransport.EntityMaximumSize);
             Assert.AreEqual(21, configuredTransport.PrefetchCount);
