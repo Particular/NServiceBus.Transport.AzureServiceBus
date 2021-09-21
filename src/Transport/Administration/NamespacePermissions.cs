@@ -42,7 +42,7 @@
 
         async Task CheckPermission(CancellationToken cancellationToken)
         {
-            var client = new ServiceBusAdministrationClient(connectionString, tokenCredential);
+            var client = tokenCredential != null ? new ServiceBusAdministrationClient(connectionString, tokenCredential) : new ServiceBusAdministrationClient(connectionString);
 
             try
             {

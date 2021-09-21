@@ -25,7 +25,7 @@
             this.serviceBusClientOptions = serviceBusClientOptions;
             this.namespacePermissions = namespacePermissions;
 
-            messageSenderPool = new MessageSenderPool(connectionString, serviceBusClientOptions, transportSettings.TokenCredential, transportSettings.RetryPolicyOptions);
+            messageSenderPool = new MessageSenderPool(connectionString, serviceBusClientOptions, transportSettings.TokenCredential);
 
             Dispatcher = new MessageDispatcher(messageSenderPool, transportSettings.TopicName);
             Receivers = receivers.ToDictionary(s => s.Id, s => CreateMessagePump(s));

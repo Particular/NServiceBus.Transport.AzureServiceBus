@@ -36,6 +36,11 @@
                 TransportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp
             };
 
+            if (RetryPolicyOptions != null)
+            {
+                serviceBusClientOptions.RetryOptions = RetryPolicyOptions;
+            }
+
             var namespacePermissions = new NamespacePermissions(ConnectionString, TokenCredential);
 
             var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receivers, ConnectionString, serviceBusClientOptions, namespacePermissions);

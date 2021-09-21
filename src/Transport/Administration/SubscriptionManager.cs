@@ -33,7 +33,7 @@
         public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken = default)
         {
             await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
-            var client = new ServiceBusAdministrationClient(connectionString, transportSettings.TokenCredential);
+            var client = transportSettings.TokenCredential != null ? new ServiceBusAdministrationClient(connectionString, transportSettings.TokenCredential) : new ServiceBusAdministrationClient(connectionString);
 
             foreach (var eventType in eventTypes)
             {

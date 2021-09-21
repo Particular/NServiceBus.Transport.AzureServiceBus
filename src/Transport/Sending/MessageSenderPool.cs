@@ -9,14 +9,11 @@
 
     class MessageSenderPool
     {
-        public MessageSenderPool(string connectionString, ServiceBusClientOptions serviceBusClientOptions, TokenCredential tokenCredential, ServiceBusRetryOptions retryPolicy)
+        public MessageSenderPool(string connectionString, ServiceBusClientOptions serviceBusClientOptions, TokenCredential tokenCredential)
         {
             this.connectionString = connectionString;
             this.serviceBusClientOptions = serviceBusClientOptions;
-            serviceBusClientOptions.RetryOptions = retryPolicy;
             this.tokenCredential = tokenCredential;
-            //TODO: delete this
-            //this.retryPolicy = retryPolicy;
 
             senders = new ConcurrentDictionary<(string, (string, string)), ConcurrentQueue<ServiceBusSender>>();
         }
@@ -28,7 +25,7 @@
             if (!sendersForDestination.TryDequeue(out var sender) || sender.IsClosed)
             {
                 // Send-Via case
-                // TODO: should have ServiceBusClientOptions { EnableCrossEntityTransactions = true }
+                // TODO: should set the ServiceBusClientOptions { EnableCrossEntityTransactions = true }
                 if (receiverConnectionAndPath != (null, null))
                 {
                     var client = new ServiceBusClient(connectionString, tokenCredential, serviceBusClientOptions);
