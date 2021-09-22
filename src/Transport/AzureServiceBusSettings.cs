@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus
 {
     using System;
+    using Azure.Core;
     using Azure.Messaging.ServiceBus;
     using Transport.AzureServiceBus;
 
@@ -199,6 +200,21 @@
         //     Transport.TokenProvider = tokenProvider;
         //     return this;
         // }
+
+        /// <summary>
+        /// Sets the token to use
+        /// </summary>
+        /// <param name="tokenCredential"></param>
+        /// <returns></returns>
+        [ObsoleteEx(
+            ReplacementTypeOrMember = "AzureServiceBusTransport.TokenCredential",
+            TreatAsErrorFromVersion = "3",
+            RemoveInVersion = "4")]
+        public AzureServiceBusSettings TokenCredential(TokenCredential tokenCredential)
+        {
+            Transport.TokenCredential = tokenCredential;
+            return this;
+        }
 
         /// <summary>
         /// Overrides the default retry policy with a custom implementation.
