@@ -148,6 +148,7 @@
                 catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
                 {
                     //anything to log here?
+                    Logger.Debug($"Operation canceled while stopping the receiver {receiver.EntityPath}.", ex);
                 }
             }
 
