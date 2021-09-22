@@ -18,8 +18,6 @@
             // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
             message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
 
-            //TODO: ViaPartitionKey
-            //message.ViaPartitionKey = incomingQueuePartitionKey;
             message.TransactionPartitionKey = incomingQueuePartitionKey;
 
             ApplyDeliveryConstraints(message, dispatchProperties);
