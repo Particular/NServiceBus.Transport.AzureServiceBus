@@ -40,15 +40,17 @@
 
             return message.MessageId;
         }
-        //TODO: Body???
-        // public static ReadOnlyMemory<Byte> GetBody(this ServiceBusReceivedMessage message)
-        // {
-        //     if (message.ApplicationProperties.TryGetValue(TransportMessageHeaders.TransportEncoding, out var value) && value.Equals("wcf/byte-array"))
-        //     {
-        //         return !message.Body.ToMemory().IsEmpty ? message.Body : ReadOnlyMemory<byte>.Empty;
-        //     }
-        //
-        //     return message.Body ?? Array.Empty<byte>();
-        // }
+
+
+        //TODO: verify if the new SDK supports sending & receiving "wcf/byte-array"
+        public static ReadOnlyMemory<byte> GetBody(this ServiceBusReceivedMessage message)
+        {
+            if (message.ApplicationProperties.TryGetValue(TransportMessageHeaders.TransportEncoding, out var value) && value.Equals("wcf/byte-array"))
+            {
+                return !message.Body.ToMemory().IsEmpty ? message.Body : ReadOnlyMemory<byte>.Empty;
+            }
+
+            return message.Body ?? ReadOnlyMemory<byte>.Empty;
+        }
     }
 }
