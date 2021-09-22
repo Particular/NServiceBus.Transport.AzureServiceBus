@@ -11,7 +11,7 @@
     class SubscriptionManager : ISubscriptionManager
     {
         readonly AzureServiceBusTransport transportSettings;
-        readonly string connectionString;
+        readonly ServiceBusAdministrationClient administrativeClient;
         readonly NamespacePermissions namespacePermissions;
         readonly string subscribingQueue;
         readonly string subscriptionName;
@@ -19,12 +19,12 @@
         public SubscriptionManager(
             string subscribingQueue,
             AzureServiceBusTransport transportSettings,
-            string connectionString,
+            ServiceBusAdministrationClient administrativeClient,
             NamespacePermissions namespacePermissions)
         {
             this.subscribingQueue = subscribingQueue;
             this.transportSettings = transportSettings;
-            this.connectionString = connectionString;
+            this.administrativeClient = administrativeClient;
             this.namespacePermissions = namespacePermissions;
 
             subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
@@ -33,11 +33,10 @@
         public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken = default)
         {
             await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
-            var client = transportSettings.TokenCredential != null ? new ServiceBusAdministrationClient(connectionString, transportSettings.TokenCredential) : new ServiceBusAdministrationClient(connectionString);
 
             foreach (var eventType in eventTypes)
             {
-                await SubscribeEvent(client, eventType.MessageType, cancellationToken).ConfigureAwait(false);
+                await SubscribeEvent(administrativeClient, eventType.MessageType, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -76,11 +75,9 @@
 
             var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType.MessageType);
 
-            var client = new ServiceBusAdministrationClient(connectionString, transportSettings.TokenCredential);
-
             try
             {
-                await client.DeleteRuleAsync(transportSettings.TopicName, subscriptionName, ruleName, cancellationToken).ConfigureAwait(false);
+                await administrativeClient.DeleteRuleAsync(transportSettings.TopicName, subscriptionName, ruleName, cancellationToken).ConfigureAwait(false);
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
@@ -90,8 +87,6 @@
         public async Task CreateSubscription(CancellationToken cancellationToken = default)
         {
             await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
-
-            var client = transportSettings.TokenCredential != null ? new ServiceBusAdministrationClient(connectionString, transportSettings.TokenCredential) : new ServiceBusAdministrationClient(connectionString);
 
             var subscription = new CreateSubscriptionOptions(transportSettings.TopicName, subscriptionName)
             {
@@ -105,7 +100,7 @@
 
             try
             {
-                await client.CreateSubscriptionAsync(subscription,
+                await administrativeClient.CreateSubscriptionAsync(subscription,
                     new CreateRuleOptions("$default", new FalseRuleFilter()), cancellationToken).ConfigureAwait(false);
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)

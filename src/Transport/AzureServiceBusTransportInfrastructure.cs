@@ -4,28 +4,29 @@
     using System.Threading;
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using Transport;
 
     sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
         readonly AzureServiceBusTransport transportSettings;
 
-        readonly string connectionString;
-        readonly ServiceBusClientOptions serviceBusClientOptions;
+        readonly ServiceBusClient serviceBusClient;
+        readonly ServiceBusAdministrationClient administrationClient;
         readonly NamespacePermissions namespacePermissions;
         readonly MessageSenderPool messageSenderPool;
         readonly HostSettings hostSettings;
 
-        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, ReceiveSettings[] receivers, string connectionString, ServiceBusClientOptions serviceBusClientOptions, NamespacePermissions namespacePermissions)
+        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, ReceiveSettings[] receivers, ServiceBusClient serviceBusClient, ServiceBusAdministrationClient administrationClient, NamespacePermissions namespacePermissions)
         {
             this.transportSettings = transportSettings;
 
             this.hostSettings = hostSettings;
-            this.connectionString = connectionString;
-            this.serviceBusClientOptions = serviceBusClientOptions;
+            this.serviceBusClient = serviceBusClient;
+            this.administrationClient = administrationClient;
             this.namespacePermissions = namespacePermissions;
 
-            messageSenderPool = new MessageSenderPool(connectionString, serviceBusClientOptions, transportSettings.TokenCredential);
+            messageSenderPool = new MessageSenderPool(serviceBusClient);
 
             Dispatcher = new MessageDispatcher(messageSenderPool, transportSettings.TopicName);
             Receivers = receivers.ToDictionary(s => s.Id, s => CreateMessagePump(s));
@@ -53,8 +54,8 @@
         IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings)
         {
             return new MessagePump(
-                connectionString,
-                serviceBusClientOptions,
+                serviceBusClient,
+                administrationClient,
                 transportSettings,
                 receiveSettings,
                 hostSettings.CriticalErrorAction,

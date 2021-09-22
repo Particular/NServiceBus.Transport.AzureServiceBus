@@ -6,6 +6,7 @@
     using System.Threading.Tasks;
     using System.Transactions;
     using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using Extensibility;
     using Logging;
     using IMessageReceiver = IMessageReceiver;
@@ -15,8 +16,7 @@
         readonly AzureServiceBusTransport transportSettings;
         readonly ReceiveSettings receiveSettings;
         readonly Action<string, Exception, CancellationToken> criticalErrorAction;
-        readonly string connectionString;
-        readonly ServiceBusClientOptions serviceBusClientOptions;
+        readonly ServiceBusClient serviceBusClient;
         int numberOfExecutingReceives;
 
         OnMessage onMessage;
@@ -36,16 +36,15 @@
         PushRuntimeSettings limitations;
 
         public MessagePump(
-            string connectionString,
-            ServiceBusClientOptions serviceBusClientOptions,
+            ServiceBusClient serviceBusClient,
+            ServiceBusAdministrationClient administrativeClient,
             AzureServiceBusTransport transportSettings,
             ReceiveSettings receiveSettings,
             Action<string, Exception, CancellationToken> criticalErrorAction,
             NamespacePermissions namespacePermissions)
         {
             Id = receiveSettings.Id;
-            this.connectionString = connectionString;
-            this.serviceBusClientOptions = serviceBusClientOptions;
+            this.serviceBusClient = serviceBusClient;
             this.transportSettings = transportSettings;
             this.receiveSettings = receiveSettings;
             this.criticalErrorAction = criticalErrorAction;
@@ -55,7 +54,7 @@
                 Subscriptions = new SubscriptionManager(
                     receiveSettings.ReceiveAddress,
                     transportSettings,
-                    connectionString,
+                    administrativeClient,
                     namespacePermissions);
             }
         }
@@ -95,23 +94,12 @@
             var receiveOptions = new ServiceBusReceiverOptions()
             {
                 PrefetchCount = prefetchCount,
-                //SubQueue = receiveSettings.ReceiveAddress,
                 ReceiveMode = transportSettings.TransportTransactionMode == TransportTransactionMode.None
                     ? ServiceBusReceiveMode.ReceiveAndDelete
                     : ServiceBusReceiveMode.PeekLock
             };
-            ServiceBusClient client = null;
 
-            if (transportSettings.TokenCredential == null)
-            {
-                client = new ServiceBusClient(connectionString, serviceBusClientOptions);
-            }
-            else
-            {
-                client = new ServiceBusClient(connectionString, transportSettings.TokenCredential, serviceBusClientOptions);
-            }
-
-            receiver = client.CreateReceiver(receiveSettings.ReceiveAddress, receiveOptions);
+            receiver = serviceBusClient.CreateReceiver(receiveSettings.ReceiveAddress, receiveOptions);
 
             semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
@@ -367,7 +355,6 @@
 
             if (transportSettings.TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive)
             {
-                transportTransaction.Set((connectionString, receiver.EntityPath));
                 transportTransaction.Set("IncomingQueue.PartitionKey", incomingQueuePartitionKey);
                 transportTransaction.Set(transaction);
             }

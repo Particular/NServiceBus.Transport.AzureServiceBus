@@ -11,7 +11,7 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
 {
     public TransportDefinition CreateTransportDefinition()
     {
-        var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
+        var connectionString = @"Endpoint=sb://michalw.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=i91CFUC8uX16/fsMUwblBgyw+ivhLwsb7UcXkNtI5NM=";
         var transport = new AzureServiceBusTransport(connectionString)
         {
             SubscriptionNamingConvention = name =>

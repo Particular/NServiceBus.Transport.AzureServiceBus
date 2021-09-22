@@ -9,17 +9,17 @@
     class QueueCreator
     {
         readonly AzureServiceBusTransport transportSettings;
-        readonly string connectionString;
+        readonly ServiceBusAdministrationClient administrativeClient;
         readonly NamespacePermissions namespacePermissions;
         readonly int maxSizeInMb;
 
         public QueueCreator(
             AzureServiceBusTransport transportSettings,
-            string connectionString,
+            ServiceBusAdministrationClient administrativeClient,
             NamespacePermissions namespacePermissions)
         {
             this.transportSettings = transportSettings;
-            this.connectionString = connectionString;
+            this.administrativeClient = administrativeClient;
             this.namespacePermissions = namespacePermissions;
             maxSizeInMb = transportSettings.EntityMaximumSize * 1024;
         }
@@ -28,7 +28,6 @@
         {
             await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
 
-            var client = transportSettings.TokenCredential != null ? new ServiceBusAdministrationClient(connectionString, transportSettings.TokenCredential) : new ServiceBusAdministrationClient(connectionString);
             var topic = new CreateTopicOptions(transportSettings.TopicName)
             {
                 EnableBatchedOperations = true,
@@ -38,7 +37,7 @@
 
             try
             {
-                await client.CreateTopicAsync(topic, cancellationToken).ConfigureAwait(false);
+                await administrativeClient.CreateTopicAsync(topic, cancellationToken).ConfigureAwait(false);
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
@@ -62,7 +61,7 @@
 
                 try
                 {
-                    await client.CreateQueueAsync(queue, cancellationToken).ConfigureAwait(false);
+                    await administrativeClient.CreateQueueAsync(queue, cancellationToken).ConfigureAwait(false);
                 }
                 catch (ServiceBusException sbe) when (sbe.Reason ==
                                                       ServiceBusFailureReason.MessagingEntityAlreadyExists)

@@ -8,6 +8,7 @@
     using System.Threading.Tasks;
     using Azure.Core;
     using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using Transport;
     using Transport.AzureServiceBus;
 
@@ -41,13 +42,19 @@
                 serviceBusClientOptions.RetryOptions = RetryPolicyOptions;
             }
 
-            var namespacePermissions = new NamespacePermissions(ConnectionString, TokenCredential);
+            var client = TokenCredential != null
+                ? new ServiceBusClient(ConnectionString, TokenCredential, serviceBusClientOptions)
+                : new ServiceBusClient(ConnectionString, serviceBusClientOptions);
 
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receivers, ConnectionString, serviceBusClientOptions, namespacePermissions);
+            var administrativeClient = TokenCredential != null ? new ServiceBusAdministrationClient(ConnectionString, TokenCredential) : new ServiceBusAdministrationClient(ConnectionString);
+
+            var namespacePermissions = new NamespacePermissions(administrativeClient);
+
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receivers, client, administrativeClient, namespacePermissions);
 
             if (hostSettings.SetupInfrastructure)
             {
-                var queueCreator = new QueueCreator(this, ConnectionString, namespacePermissions);
+                var queueCreator = new QueueCreator(this, administrativeClient, namespacePermissions);
                 var allQueues = receivers
                     .Select(r => r.ReceiveAddress)
                     .Concat(sendingAddresses)

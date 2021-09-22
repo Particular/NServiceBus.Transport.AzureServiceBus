@@ -3,21 +3,18 @@
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Azure.Core;
     using Azure.Messaging.ServiceBus.Administration;
 
     class NamespacePermissions
     {
-        readonly string connectionString;
-        readonly TokenCredential tokenCredential;
+        readonly ServiceBusAdministrationClient administrativeClient;
         readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
 
         Task manageTask;
 
-        public NamespacePermissions(string connectionString, TokenCredential tokenCredential)
+        public NamespacePermissions(ServiceBusAdministrationClient administrativeClient)
         {
-            this.connectionString = connectionString;
-            this.tokenCredential = tokenCredential;
+            this.administrativeClient = administrativeClient;
         }
 
         public async Task CanManage(CancellationToken cancellationToken = default)
@@ -42,11 +39,9 @@
 
         async Task CheckPermission(CancellationToken cancellationToken)
         {
-            var client = tokenCredential != null ? new ServiceBusAdministrationClient(connectionString, tokenCredential) : new ServiceBusAdministrationClient(connectionString);
-
             try
             {
-                await client.QueueExistsAsync("$nservicebus-verification-queue", cancellationToken).ConfigureAwait(false);
+                await administrativeClient.QueueExistsAsync("$nservicebus-verification-queue", cancellationToken).ConfigureAwait(false);
             }
             catch (UnauthorizedAccessException e)
             {
