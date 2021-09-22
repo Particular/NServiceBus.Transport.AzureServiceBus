@@ -141,7 +141,14 @@
                     await Task.Delay(50, CancellationToken.None).ConfigureAwait(false);
                 }
 
-                await receiver.CloseAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await receiver.CloseAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
+                {
+                    //anything to log here?
+                }
             }
 
             semaphore?.Dispose();
