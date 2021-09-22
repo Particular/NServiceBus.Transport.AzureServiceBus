@@ -4,6 +4,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
 {
     using System;
     using System.Threading;
+    using System.Threading.Tasks;
+    using Azure.Core;
+    using Azure.Messaging.ServiceBus;
     using Microsoft.Azure.ServiceBus;
     using Microsoft.Azure.ServiceBus.Primitives;
     using NServiceBus.Configuration.AdvancedExtensibility;
@@ -48,10 +51,10 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
 
             settings.ConnectionString("ConnectionString");
             settings.EnablePartitioning();
-            RetryPolicy customRetryPolicy = RetryPolicy.NoRetry;
-            settings.CustomRetryPolicy(customRetryPolicy);
-            var customTokenProvider = new ManagedIdentityTokenProvider(null);
-            settings.CustomTokenProvider(customTokenProvider);
+            var retryPolicy = new ServiceBusRetryOptions() { MaxRetries = 0 };
+            settings.CustomRetryPolicy(retryPolicy);
+            var tokenCredential = new TokenCredentialMock();
+            settings.TokenCredential(tokenCredential);
             settings.EnablePartitioning();
             settings.EntityMaximumSize(42);
             settings.PrefetchCount(21);
@@ -65,8 +68,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             var configuredTransport = (AzureServiceBusTransport)endpointConfiguration.GetSettings().Get<TransportDefinition>();
 
             Assert.IsTrue(configuredTransport.EnablePartitioning);
-            Assert.AreEqual(customRetryPolicy, configuredTransport.RetryPolicyOptions);
-            Assert.AreEqual(customTokenProvider, configuredTransport.TokenCredential);
+            Assert.AreEqual(retryPolicy, configuredTransport.RetryPolicyOptions);
+            Assert.AreEqual(tokenCredential, configuredTransport.TokenCredential);
             Assert.IsTrue(configuredTransport.EnablePartitioning);
             Assert.AreEqual(42, configuredTransport.EntityMaximumSize);
             Assert.AreEqual(21, configuredTransport.PrefetchCount);
@@ -92,6 +95,12 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
                 new string[0]));
             StringAssert.Contains("No transport connection string has been configured via the 'ConnectionString' method. Provide a connection string using 'endpointConfig.UseTransport<AzureServiceBusTransport>().ConnectionString(connectionString)'.", ex.Message);
         }
+    }
+
+    class TokenCredentialMock : TokenCredential
+    {
+        public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public override ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken) => throw new NotImplementedException();
     }
 }
 #pragma warning restore CS0618
