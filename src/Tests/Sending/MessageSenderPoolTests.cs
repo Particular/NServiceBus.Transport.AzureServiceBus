@@ -2,7 +2,6 @@
 {
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
-    using Microsoft.Azure.ServiceBus;
     using NUnit.Framework;
 
     [TestFixture]

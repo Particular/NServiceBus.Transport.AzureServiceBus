@@ -7,8 +7,6 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
     using System.Threading.Tasks;
     using Azure.Core;
     using Azure.Messaging.ServiceBus;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Primitives;
     using NServiceBus.Configuration.AdvancedExtensibility;
     using NUnit.Framework;
 
