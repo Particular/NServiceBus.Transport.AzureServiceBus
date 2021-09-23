@@ -44,7 +44,7 @@
 
                 public Task Handle(Message request, IMessageHandlerContext context)
                 {
-                    testContext.NativeMessageFound = testContext.NativeMessageFound && context.Extensions.Get<ServiceBusMessage>() != null;
+                    testContext.NativeMessageFound = testContext.NativeMessageFound && context.Extensions.Get<ServiceBusReceivedMessage>() != null;
 
                     return Task.CompletedTask;
                 }
@@ -61,7 +61,7 @@
 
                 public override Task Invoke(ITransportReceiveContext context, Func<Task> next)
                 {
-                    testContext.NativeMessageFound = context.Extensions.Get<ServiceBusMessage>() != null;
+                    testContext.NativeMessageFound = context.Extensions.Get<ServiceBusReceivedMessage>() != null;
 
                     return next();
                 }

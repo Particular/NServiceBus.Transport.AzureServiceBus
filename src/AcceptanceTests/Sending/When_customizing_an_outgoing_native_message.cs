@@ -103,7 +103,7 @@
 
                 public Task Handle(MessageSessionSentCommand request, IMessageHandlerContext context)
                 {
-                    var nativeMessage = context.Extensions.Get<ServiceBusMessage>();
+                    var nativeMessage = context.Extensions.Get<ServiceBusReceivedMessage>();
 
                     testContext.MessageSessionSentMessageCustomizationReceived = nativeMessage.Subject == "IMessageSession.Send";
 
@@ -116,7 +116,7 @@
 
                 public Task Handle(MessageSessionPublishedEvent message, IMessageHandlerContext context)
                 {
-                    var nativeMessage = context.Extensions.Get<ServiceBusMessage>();
+                    var nativeMessage = context.Extensions.Get<ServiceBusReceivedMessage>();
 
                     testContext.MessageSessionPublishedMessageCustomizationReceived = nativeMessage.Subject == "IMessageSession.Publish";
 
@@ -128,7 +128,7 @@
 
                 public Task Handle(PhysicalBehaviorSentCommand message, IMessageHandlerContext context)
                 {
-                    var nativeMessage = context.Extensions.Get<ServiceBusMessage>();
+                    var nativeMessage = context.Extensions.Get<ServiceBusReceivedMessage>();
 
                     testContext.PhysicalBehaviorMessageSentMessageCustomizationReceived = nativeMessage.Subject == "PhysicalBehavior.Send";
 
@@ -137,7 +137,7 @@
 
                 public Task Handle(LogicalBehaviorSentCommand message, IMessageHandlerContext context)
                 {
-                    var nativeMessage = context.Extensions.Get<ServiceBusMessage>();
+                    var nativeMessage = context.Extensions.Get<ServiceBusReceivedMessage>();
 
                     testContext.LogicalBehaviorMessageSentMessageCustomizationReceived = nativeMessage.Subject == "LogicalBehavior.Send";
 
@@ -146,7 +146,7 @@
 
                 public Task Handle(MessageHandlerContextSentCommand message, IMessageHandlerContext context)
                 {
-                    var nativeMessage = context.Extensions.Get<ServiceBusMessage>();
+                    var nativeMessage = context.Extensions.Get<ServiceBusReceivedMessage>();
 
                     testContext.MessageHandlerContextSentMessageCustomizationReceived = nativeMessage.Subject == "IMessageHandlerContext.Send";
 
@@ -155,7 +155,7 @@
 
                 public Task Handle(MessageHandlerContextPublishedEvent message, IMessageHandlerContext context)
                 {
-                    var nativeMessage = context.Extensions.Get<ServiceBusMessage>();
+                    var nativeMessage = context.Extensions.Get<ServiceBusReceivedMessage>();
 
                     testContext.MessageHandlerContextPublishedMessageCustomizationReceived = nativeMessage.Subject == "IMessageHandlerContext.Publish";
 
