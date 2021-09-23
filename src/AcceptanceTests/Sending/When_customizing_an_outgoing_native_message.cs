@@ -3,6 +3,7 @@
     using System;
     using System.Threading.Tasks;
     using AcceptanceTesting;
+    using Azure.Messaging.ServiceBus;
     using NServiceBus.AcceptanceTests;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
@@ -102,9 +103,9 @@
 
                 public Task Handle(MessageSessionSentCommand request, IMessageHandlerContext context)
                 {
-                    var nativeMessage = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>();
+                    var nativeMessage = context.Extensions.Get<ServiceBusMessage>();
 
-                    testContext.MessageSessionSentMessageCustomizationReceived = nativeMessage.Label == "IMessageSession.Send";
+                    testContext.MessageSessionSentMessageCustomizationReceived = nativeMessage.Subject == "IMessageSession.Send";
 
                     var sendOptions = new SendOptions();
                     sendOptions.RouteToThisEndpoint();
@@ -115,9 +116,9 @@
 
                 public Task Handle(MessageSessionPublishedEvent message, IMessageHandlerContext context)
                 {
-                    var nativeMessage = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>();
+                    var nativeMessage = context.Extensions.Get<ServiceBusMessage>();
 
-                    testContext.MessageSessionPublishedMessageCustomizationReceived = nativeMessage.Label == "IMessageSession.Publish";
+                    testContext.MessageSessionPublishedMessageCustomizationReceived = nativeMessage.Subject == "IMessageSession.Publish";
 
                     var publishOptions = new PublishOptions();
                     publishOptions.CustomizeNativeMessage(m => m.Subject = "IMessageHandlerContext.Publish");
@@ -127,36 +128,36 @@
 
                 public Task Handle(PhysicalBehaviorSentCommand message, IMessageHandlerContext context)
                 {
-                    var nativeMessage = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>();
+                    var nativeMessage = context.Extensions.Get<ServiceBusMessage>();
 
-                    testContext.PhysicalBehaviorMessageSentMessageCustomizationReceived = nativeMessage.Label == "PhysicalBehavior.Send";
+                    testContext.PhysicalBehaviorMessageSentMessageCustomizationReceived = nativeMessage.Subject == "PhysicalBehavior.Send";
 
                     return Task.CompletedTask;
                 }
 
                 public Task Handle(LogicalBehaviorSentCommand message, IMessageHandlerContext context)
                 {
-                    var nativeMessage = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>();
+                    var nativeMessage = context.Extensions.Get<ServiceBusMessage>();
 
-                    testContext.LogicalBehaviorMessageSentMessageCustomizationReceived = nativeMessage.Label == "LogicalBehavior.Send";
+                    testContext.LogicalBehaviorMessageSentMessageCustomizationReceived = nativeMessage.Subject == "LogicalBehavior.Send";
 
                     return Task.CompletedTask;
                 }
 
                 public Task Handle(MessageHandlerContextSentCommand message, IMessageHandlerContext context)
                 {
-                    var nativeMessage = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>();
+                    var nativeMessage = context.Extensions.Get<ServiceBusMessage>();
 
-                    testContext.MessageHandlerContextSentMessageCustomizationReceived = nativeMessage.Label == "IMessageHandlerContext.Send";
+                    testContext.MessageHandlerContextSentMessageCustomizationReceived = nativeMessage.Subject == "IMessageHandlerContext.Send";
 
                     return Task.CompletedTask;
                 }
 
                 public Task Handle(MessageHandlerContextPublishedEvent message, IMessageHandlerContext context)
                 {
-                    var nativeMessage = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>();
+                    var nativeMessage = context.Extensions.Get<ServiceBusMessage>();
 
-                    testContext.MessageHandlerContextPublishedMessageCustomizationReceived = nativeMessage.Label == "IMessageHandlerContext.Publish";
+                    testContext.MessageHandlerContextPublishedMessageCustomizationReceived = nativeMessage.Subject == "IMessageHandlerContext.Publish";
 
                     return Task.CompletedTask;
                 }
@@ -173,7 +174,7 @@
 
                 public override Task Invoke(ITransportReceiveContext context, Func<Task> next)
                 {
-                    testContext.MessageSessionSentMessageCustomizationReceived = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>() != null;
+                    testContext.MessageSessionSentMessageCustomizationReceived = context.Extensions.Get<ServiceBusMessage>() != null;
 
                     return next();
                 }
