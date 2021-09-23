@@ -183,7 +183,7 @@
 
         async Task VerifyQueueExists(bool queueShouldExist)
         {
-            var queueExists = await client.QueueExistsAsync(QueueName);
+            var queueExists = (await client.QueueExistsAsync(QueueName)).Value;
             Assert.AreEqual(queueShouldExist, queueExists);
         }
 
