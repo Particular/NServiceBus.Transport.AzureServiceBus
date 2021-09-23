@@ -34,7 +34,8 @@
 
             var serviceBusClientOptions = new ServiceBusClientOptions()
             {
-                TransportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp
+                TransportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp,
+                EnableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
             };
 
             if (RetryPolicyOptions != null)
