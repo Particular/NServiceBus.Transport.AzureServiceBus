@@ -18,11 +18,11 @@
                     {
                         var sendOptions = new SendOptions();
                         sendOptions.RouteToThisEndpoint();
-                        sendOptions.CustomizeNativeMessage(m => m.Label = "IMessageSession.Send");
+                        sendOptions.CustomizeNativeMessage(m => m.Subject = "IMessageSession.Send");
                         await session.Send(new MessageSessionSentCommand(), sendOptions);
 
                         var publishOptions = new PublishOptions();
-                        publishOptions.CustomizeNativeMessage(m => m.Label = "IMessageSession.Publish");
+                        publishOptions.CustomizeNativeMessage(m => m.Subject = "IMessageSession.Publish");
                         await session.Publish(new MessageSessionPublishedEvent(), publishOptions);
                     }))
                 .Done(c => c.Completed)
@@ -78,7 +78,7 @@
                     {
                         var sendOptions = new SendOptions();
                         sendOptions.RouteToThisEndpoint();
-                        sendOptions.CustomizeNativeMessage(m => m.Label = "PhysicalBehavior.Send");
+                        sendOptions.CustomizeNativeMessage(m => m.Subject = "PhysicalBehavior.Send");
 
                         await context.Send(new PhysicalBehaviorSentCommand(), sendOptions);
 
@@ -92,7 +92,7 @@
                     {
                         var sendOptions = new SendOptions();
                         sendOptions.RouteToThisEndpoint();
-                        sendOptions.CustomizeNativeMessage(m => m.Label = "LogicalBehavior.Send");
+                        sendOptions.CustomizeNativeMessage(m => m.Subject = "LogicalBehavior.Send");
 
                         await context.Send(new LogicalBehaviorSentCommand(), sendOptions);
 
@@ -108,7 +108,7 @@
 
                     var sendOptions = new SendOptions();
                     sendOptions.RouteToThisEndpoint();
-                    sendOptions.CustomizeNativeMessage(m => m.Label = "IMessageHandlerContext.Send");
+                    sendOptions.CustomizeNativeMessage(m => m.Subject = "IMessageHandlerContext.Send");
 
                     return context.Send(new MessageHandlerContextSentCommand(), sendOptions);
                 }
@@ -120,7 +120,7 @@
                     testContext.MessageSessionPublishedMessageCustomizationReceived = nativeMessage.Label == "IMessageSession.Publish";
 
                     var publishOptions = new PublishOptions();
-                    publishOptions.CustomizeNativeMessage(m => m.Label = "IMessageHandlerContext.Publish");
+                    publishOptions.CustomizeNativeMessage(m => m.Subject = "IMessageHandlerContext.Publish");
 
                     return context.Publish(new MessageHandlerContextPublishedEvent(), publishOptions);
                 }

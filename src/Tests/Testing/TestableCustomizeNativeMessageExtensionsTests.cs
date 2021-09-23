@@ -2,7 +2,7 @@
 {
     using System.Linq;
     using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
+    using Azure.Messaging.ServiceBus;
     using NServiceBus.Testing;
     using NUnit.Framework;
 
@@ -21,10 +21,10 @@
             var publishedMessage = testableContext.PublishedMessages.Single();
             var customization = publishedMessage.Options.GetNativeMessageCustomization();
 
-            var nativeMessage = new Message();
+            var nativeMessage = new ServiceBusMessage();
             customization(nativeMessage);
 
-            Assert.AreEqual("abc", nativeMessage.Label);
+            Assert.AreEqual("abc", nativeMessage.Subject);
         }
 
         [Test]
@@ -47,7 +47,7 @@
             public async Task Handle(MyMessage message, IMessageHandlerContext context)
             {
                 var options = new PublishOptions();
-                options.CustomizeNativeMessage(m => m.Label = "abc");
+                options.CustomizeNativeMessage(m => m.Subject = "abc");
                 await context.Publish(message, options);
             }
         }

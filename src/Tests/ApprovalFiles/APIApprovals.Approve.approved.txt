@@ -14,10 +14,7 @@ namespace NServiceBus
         public NServiceBus.AzureServiceBusSettings ConnectionStringName(string name) { }
         [System.Obsolete("Use `AzureServiceBusTransport.RetryPolicy` instead. Will be treated as an error f" +
             "rom version 3.0.0. Will be removed in version 4.0.0.", false)]
-        public NServiceBus.AzureServiceBusSettings CustomRetryPolicy(Microsoft.Azure.ServiceBus.RetryPolicy retryPolicy) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.TokenProvider` instead. Will be treated as an error" +
-            " from version 3.0.0. Will be removed in version 4.0.0.", false)]
-        public NServiceBus.AzureServiceBusSettings CustomTokenProvider(Microsoft.Azure.ServiceBus.Primitives.ITokenProvider tokenProvider) { }
+        public NServiceBus.AzureServiceBusSettings CustomRetryPolicy(Azure.Messaging.ServiceBus.ServiceBusRetryOptions retryPolicy) { }
         [System.Obsolete("Use `AzureServiceBusTransport.EnablePartitioning` instead. Will be treated as an " +
             "error from version 3.0.0. Will be removed in version 4.0.0.", false)]
         public NServiceBus.AzureServiceBusSettings EnablePartitioning() { }
@@ -47,6 +44,9 @@ namespace NServiceBus
             "Will be treated as an error from version 3.0.0. Will be removed in version 4.0.0" +
             ".", false)]
         public NServiceBus.AzureServiceBusSettings TimeToWaitBeforeTriggeringCircuitBreaker(System.TimeSpan timeToWait) { }
+        [System.Obsolete("Use `AzureServiceBusTransport.TokenCredential` instead. Will be treated as an err" +
+            "or from version 3.0.0. Will be removed in version 4.0.0.", false)]
+        public NServiceBus.AzureServiceBusSettings TokenCredential(Azure.Core.TokenCredential tokenCredential) { }
         [System.Obsolete("Use `AzureServiceBusTransport.TopicName` instead. Will be treated as an error fro" +
             "m version 3.0.0. Will be removed in version 4.0.0.", false)]
         public NServiceBus.AzureServiceBusSettings TopicName(string topicName) { }
@@ -70,11 +70,11 @@ namespace NServiceBus
         public int EntityMaximumSize { get; set; }
         public int? PrefetchCount { get; set; }
         public int PrefetchMultiplier { get; set; }
-        public Microsoft.Azure.ServiceBus.RetryPolicy RetryPolicy { get; set; }
+        public Azure.Messaging.ServiceBus.ServiceBusRetryOptions RetryPolicyOptions { get; set; }
         public System.Func<string, string> SubscriptionNamingConvention { get; set; }
         public System.Func<System.Type, string> SubscriptionRuleNamingConvention { get; set; }
         public System.TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
-        public Microsoft.Azure.ServiceBus.Primitives.ITokenProvider TokenProvider { get; set; }
+        public Azure.Core.TokenCredential TokenCredential { get; set; }
         public string TopicName { get; set; }
         public bool UseWebSockets { get; set; }
         public override System.Collections.Generic.IReadOnlyCollection<NServiceBus.TransportTransactionMode> GetSupportedTransactionModes() { }
@@ -83,12 +83,6 @@ namespace NServiceBus
     }
     public static class AzureServiceBusTransportSettingsExtensions
     {
-        [System.Obsolete("Use `AzureServiceBusTransport.RetryPolicy` instead. The member currently throws a" +
-            " NotImplementedException. Will be removed in version 3.0.0.", true)]
-        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Microsoft.Azure.ServiceBus.RetryPolicy retryPolicy) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.TokenProvider` instead. The member currently throws" +
-            " a NotImplementedException. Will be removed in version 3.0.0.", true)]
-        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenProvider(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Microsoft.Azure.ServiceBus.Primitives.ITokenProvider tokenProvider) { }
         [System.Obsolete("Use `AzureServiceBusTransport.EnablePartitioning` instead. The member currently t" +
             "hrows a NotImplementedException. Will be removed in version 3.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EnablePartitioning(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
@@ -128,17 +122,13 @@ namespace NServiceBus
     }
     public static class CustomizeNativeMessageExtensions
     {
-        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Microsoft.Azure.ServiceBus.Message> customization) { }
-        [System.Obsolete("Use `CustomizeNativeMessage(this ExtendableOptions options, Action<Message> custo" +
-            "mization)` instead. The member currently throws a NotImplementedException. Will " +
-            "be removed in version 3.0.0.", true)]
-        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context, System.Action<Microsoft.Azure.ServiceBus.Message> customization) { }
+        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
     }
 }
 namespace NServiceBus.Testing
 {
     public static class TestableCustomizeNativeMessageExtensions
     {
-        public static System.Action<Microsoft.Azure.ServiceBus.Message> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options) { }
+        public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options) { }
     }
 }

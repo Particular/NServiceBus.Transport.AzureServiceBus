@@ -97,8 +97,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
 
     class TokenCredentialMock : TokenCredential
     {
-        public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public override ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public override ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 }
 #pragma warning restore CS0618
