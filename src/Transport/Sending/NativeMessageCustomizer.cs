@@ -8,6 +8,6 @@
     {
         ConcurrentDictionary<string, Action<Message>> customizations;
 
-        public ConcurrentDictionary<string, Action<Message>> Customizations => customizations ?? (customizations = new ConcurrentDictionary<string, Action<Message>>());
+        public ConcurrentDictionary<string, Action<Message>> Customizations => customizations ??= new ConcurrentDictionary<string, Action<Message>>();
     }
 }
