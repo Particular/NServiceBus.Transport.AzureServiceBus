@@ -14,14 +14,14 @@
 
             try
             {
-                var firstMessageSenderDest1 = pool.GetMessageSender("dest1");
-                pool.ReturnMessageSender(firstMessageSenderDest1);
+                var firstMessageSenderDest1 = pool.GetMessageSender("dest1", null);
+                pool.ReturnMessageSender(firstMessageSenderDest1, null);
 
-                var firstMessageSenderDest2 = pool.GetMessageSender("dest2");
-                pool.ReturnMessageSender(firstMessageSenderDest2);
+                var firstMessageSenderDest2 = pool.GetMessageSender("dest2", null);
+                pool.ReturnMessageSender(firstMessageSenderDest2, null);
 
-                var secondMessageSenderDest1 = pool.GetMessageSender("dest1");
-                var secondMessageSenderDest2 = pool.GetMessageSender("dest2");
+                var secondMessageSenderDest1 = pool.GetMessageSender("dest1", null);
+                var secondMessageSenderDest2 = pool.GetMessageSender("dest2", null);
 
                 Assert.AreSame(firstMessageSenderDest1, secondMessageSenderDest1);
                 Assert.AreSame(firstMessageSenderDest2, secondMessageSenderDest2);

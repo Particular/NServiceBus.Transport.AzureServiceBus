@@ -43,7 +43,15 @@
                 serviceBusClientOptions.RetryOptions = RetryPolicyOptions;
             }
 
-            var client = TokenCredential != null
+            var recieveClientTuple = receivers.Select(receiver =>
+            {
+                var client = TokenCredential != null
+                    ? new ServiceBusClient(ConnectionString, TokenCredential, serviceBusClientOptions)
+                    : new ServiceBusClient(ConnectionString, serviceBusClientOptions);
+                return (receiver, client);
+            }).ToArray();
+
+            var defaultClient = TokenCredential != null
                 ? new ServiceBusClient(ConnectionString, TokenCredential, serviceBusClientOptions)
                 : new ServiceBusClient(ConnectionString, serviceBusClientOptions);
 
@@ -51,7 +59,7 @@
 
             var namespacePermissions = new NamespacePermissions(administrativeClient);
 
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receivers, client, administrativeClient, namespacePermissions);
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, recieveClientTuple, defaultClient, administrativeClient, namespacePermissions);
 
             if (hostSettings.SetupInfrastructure)
             {

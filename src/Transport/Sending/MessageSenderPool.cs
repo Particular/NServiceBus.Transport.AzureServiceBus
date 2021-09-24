@@ -8,33 +8,33 @@
 
     class MessageSenderPool
     {
-        public MessageSenderPool(ServiceBusClient serviceBusClient)
+        public MessageSenderPool(ServiceBusClient client)
         {
-            this.serviceBusClient = serviceBusClient;
+            defaultClient = client;
 
-            senders = new ConcurrentDictionary<string, ConcurrentQueue<ServiceBusSender>>();
+            senders = new ConcurrentDictionary<(string, ServiceBusClient), ConcurrentQueue<ServiceBusSender>>();
         }
 
-        public ServiceBusSender GetMessageSender(string destination)
+        public ServiceBusSender GetMessageSender(string destination, ServiceBusClient client)
         {
-            var sendersForDestination = senders.GetOrAdd(destination, _ => new ConcurrentQueue<ServiceBusSender>());
+            var sendersForDestination = senders.GetOrAdd((destination, client ?? defaultClient), _ => new ConcurrentQueue<ServiceBusSender>());
 
             if (!sendersForDestination.TryDequeue(out var sender) || sender.IsClosed)
             {
-                sender = serviceBusClient.CreateSender(destination);
+                sender = (client ?? defaultClient).CreateSender(destination);
             }
 
             return sender;
         }
 
-        public void ReturnMessageSender(ServiceBusSender sender)
+        public void ReturnMessageSender(ServiceBusSender sender, ServiceBusClient client)
         {
             if (sender.IsClosed)
             {
                 return;
             }
 
-            if (senders.TryGetValue(sender.EntityPath, out var sendersForDestination))
+            if (senders.TryGetValue((sender.EntityPath, client ?? defaultClient), out var sendersForDestination))
             {
                 sendersForDestination.Enqueue(sender);
             }
@@ -57,8 +57,7 @@
             return Task.WhenAll(tasks);
         }
 
-        readonly ServiceBusClient serviceBusClient;
-
-        ConcurrentDictionary<string, ConcurrentQueue<ServiceBusSender>> senders;
+        readonly ServiceBusClient defaultClient;
+        ConcurrentDictionary<(string destination, ServiceBusClient client), ConcurrentQueue<ServiceBusSender>> senders;
     }
 }

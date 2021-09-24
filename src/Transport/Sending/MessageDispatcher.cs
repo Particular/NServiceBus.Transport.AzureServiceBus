@@ -22,6 +22,7 @@
         public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
         {
             // Assumption: we're not implementing batching as it will be done by ASB client
+            transaction.TryGet<ServiceBusClient>(out var client);
             transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
             transaction.TryGet<CommittableTransaction>(out var committableTransaction);
 
@@ -42,7 +43,7 @@
                     destination = destination.Substring(0, index);
                 }
 
-                var sender = messageSenderPool.GetMessageSender(destination);
+                var sender = messageSenderPool.GetMessageSender(destination, client);
 
                 try
                 {
@@ -61,13 +62,13 @@
                 }
                 finally
                 {
-                    messageSenderPool.ReturnMessageSender(sender);
+                    messageSenderPool.ReturnMessageSender(sender, client);
                 }
             }
 
             foreach (var transportOperation in multicastTransportOperations)
             {
-                var sender = messageSenderPool.GetMessageSender(topicName);
+                var sender = messageSenderPool.GetMessageSender(topicName, client);
 
                 try
                 {
@@ -86,7 +87,7 @@
                 }
                 finally
                 {
-                    messageSenderPool.ReturnMessageSender(sender);
+                    messageSenderPool.ReturnMessageSender(sender, client);
                 }
             }
 

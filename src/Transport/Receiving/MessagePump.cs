@@ -355,6 +355,7 @@
 
             if (transportSettings.TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive)
             {
+                transportTransaction.Set(serviceBusClient);
                 transportTransaction.Set("IncomingQueue.PartitionKey", incomingQueuePartitionKey);
                 transportTransaction.Set(transaction);
             }

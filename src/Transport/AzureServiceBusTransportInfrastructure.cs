@@ -11,25 +11,23 @@
     {
         readonly AzureServiceBusTransport transportSettings;
 
-        readonly ServiceBusClient serviceBusClient;
         readonly ServiceBusAdministrationClient administrationClient;
         readonly NamespacePermissions namespacePermissions;
         readonly MessageSenderPool messageSenderPool;
         readonly HostSettings hostSettings;
 
-        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, ReceiveSettings[] receivers, ServiceBusClient serviceBusClient, ServiceBusAdministrationClient administrationClient, NamespacePermissions namespacePermissions)
+        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, (ReceiveSettings receiveSettings, ServiceBusClient client)[] receivers, ServiceBusClient defaultClient, ServiceBusAdministrationClient administrationClient, NamespacePermissions namespacePermissions)
         {
             this.transportSettings = transportSettings;
 
             this.hostSettings = hostSettings;
-            this.serviceBusClient = serviceBusClient;
             this.administrationClient = administrationClient;
             this.namespacePermissions = namespacePermissions;
 
-            messageSenderPool = new MessageSenderPool(serviceBusClient);
+            messageSenderPool = new MessageSenderPool(defaultClient);
 
             Dispatcher = new MessageDispatcher(messageSenderPool, transportSettings.TopicName);
-            Receivers = receivers.ToDictionary(s => s.Id, s => CreateMessagePump(s));
+            Receivers = receivers.ToDictionary(s => s.receiveSettings.Id, s => CreateMessagePump(s.receiveSettings, s.client));
 
             WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
         }
@@ -51,10 +49,10 @@
             });
         }
 
-        IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings)
+        IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient client)
         {
             return new MessagePump(
-                serviceBusClient,
+                client,
                 administrationClient,
                 transportSettings,
                 receiveSettings,
