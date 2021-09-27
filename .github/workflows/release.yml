@@ -21,7 +21,7 @@ jobs:
           echo "PARTICULAR_REPO_NAME=$RepoName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         shell: pwsh
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v1.8.1
+        uses: actions/setup-dotnet@v1.8.2
         with:
           dotnet-version: 5.0.x
       - name: Build
@@ -47,7 +47,7 @@ jobs:
           path: nugets/*
           retention-days: 1
       - name: Install Octopus CLI
-        uses: OctopusDeploy/install-octopus-cli-action@v1.1.6
+        uses: OctopusDeploy/install-octopus-cli-action@v1.1.7
         with:
           version: latest
       - name: Create Octopus Package
@@ -81,13 +81,13 @@ jobs:
           path: octopus-package/*
           retention-days: 1
       - name: Push package to Octopus Deploy
-        uses: OctopusDeploy/push-package-action@v1.0.2
+        uses: OctopusDeploy/push-package-action@v1.1.1
         with:
           server: https://deploy.particular.net
           api_key: ${{ secrets.OCTOPUS_DEPLOY_API_KEY }}
           packages: octopus-package/${{env.PARTICULAR_REPO_NAME}}.Deploy.${{env.GitVersion_SemVer}}.nupkg
       - name: Create Octopus Deploy release
-        uses: OctopusDeploy/create-release-action@v1.0.6
+        uses: OctopusDeploy/create-release-action@v1.1.1
         with:
           server: https://deploy.particular.net
           api_key: ${{ secrets.OCTOPUS_DEPLOY_API_KEY }}
