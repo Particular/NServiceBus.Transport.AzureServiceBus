@@ -245,6 +245,7 @@
             {
                 messageId = message.GetMessageId();
                 headers = message.GetNServiceBusHeaders();
+                //TODO: verify it message.GetBody() is still needed
                 body = message.Body;
             }
             catch (Exception ex)
