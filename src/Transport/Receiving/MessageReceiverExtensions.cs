@@ -5,6 +5,7 @@
     using System.Transactions;
     using Azure.Messaging.ServiceBus;
 
+    //TODO: does this need to be used by the pump?
     static class MessageReceiverExtensions
     {
         public static async Task SafeCompleteAsync(this ServiceBusReceiver messageReceiver, TransportTransactionMode transportTransactionMode, ServiceBusReceivedMessage message, Transaction committableTransaction = null, CancellationToken cancellationToken = default)
