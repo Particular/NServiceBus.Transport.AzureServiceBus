@@ -2,19 +2,19 @@
 {
     using System;
     using System.Threading.Tasks;
+    using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using McMaster.Extensions.CommandLineUtils;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Management;
 
     static class Endpoint
     {
-        public static async Task Create(ManagementClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning)
+        public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning)
         {
             try
             {
                 await Queue.Create(client, name, size, partitioning);
             }
-            catch (MessagingEntityAlreadyExistsException)
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
                 Console.WriteLine($"Queue '{name.Value}' already exists, skipping creation");
             }
@@ -23,7 +23,7 @@
             {
                 await Topic.Create(client, topicName, size, partitioning);
             }
-            catch (MessagingEntityAlreadyExistsException)
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
                 Console.WriteLine($"Topic '{topicName.Value()}' already exists, skipping creation");
             }
@@ -32,31 +32,31 @@
             {
                 await Subscription.Create(client, name, topicName, subscriptionName);
             }
-            catch (MessagingEntityAlreadyExistsException)
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
                 Console.WriteLine($"Subscription '{name.Value}' already exists, skipping creation");
             }
         }
 
-        public static async Task Subscribe(ManagementClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName)
+        public static async Task Subscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName)
         {
             try
             {
                 await Rule.Create(client, name, topicName, subscriptionName, eventType, ruleName);
             }
-            catch (MessagingEntityAlreadyExistsException)
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
                 Console.WriteLine($"Rule '{name}' for topic '{topicName.Value()}' and subscription '{subscriptionName.Value()}' already exists, skipping creation. Verify SQL filter matches '[NServiceBus.EnclosedMessageTypes] LIKE '%{eventType.Value}%'.");
             }
         }
 
-        public static async Task Unsubscribe(ManagementClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName)
+        public static async Task Unsubscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName)
         {
             try
             {
                 await Rule.Delete(client, name, topicName, subscriptionName, eventType, ruleName);
             }
-            catch (MessagingEntityNotFoundException)
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
                 Console.WriteLine($"Rule '{name}' for topic '{topicName.Value()}' and subscription '{subscriptionName.Value()}' does not exist, skipping deletion");
             }

@@ -2,18 +2,17 @@
 {
     using System;
     using System.Threading.Tasks;
+    using Azure.Messaging.ServiceBus.Administration;
     using McMaster.Extensions.CommandLineUtils;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Management;
 
     static class Subscription
     {
-        public static Task Create(ManagementClient client, CommandArgument endpointName, CommandOption topicName, CommandOption subscriptionName)
+        public static Task Create(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandOption topicName, CommandOption subscriptionName)
         {
             var topicNameToUse = topicName.HasValue() ? topicName.Value() : Topic.DefaultTopicName;
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
 
-            var subscriptionDescription = new SubscriptionDescription(topicNameToUse, subscriptionNameToUse)
+            var options = new CreateSubscriptionOptions(topicNameToUse, subscriptionNameToUse)
             {
                 LockDuration = TimeSpan.FromMinutes(5),
                 ForwardTo = endpointName.Value,
@@ -23,7 +22,7 @@
                 UserMetadata = endpointName.Value
             };
 
-            return client.CreateSubscriptionAsync(subscriptionDescription, new RuleDescription("$default", new FalseFilter()));
+            return client.CreateSubscriptionAsync(options, new CreateRuleOptions("$default", new FalseRuleFilter()));
         }
     }
 }
