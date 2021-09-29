@@ -9,8 +9,8 @@ namespace NServiceBus
     }
     public static class AzureServiceBusTransportSettingsExtensions
     {
-        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Microsoft.Azure.ServiceBus.RetryPolicy retryPolicy) { }
-        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenProvider(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Microsoft.Azure.ServiceBus.Primitives.ITokenProvider tokenProvider) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Messaging.ServiceBus.ServiceBusRetryOptions retryPolicy) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenCredential(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Core.TokenCredential tokenCredential) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EnablePartitioning(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EntityMaximumSize(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int maximumSizeInGB) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }
@@ -29,15 +29,15 @@ namespace NServiceBus
     }
     public static class CustomizeNativeMessageExtensions
     {
-        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Microsoft.Azure.ServiceBus.Message> customization) { }
-        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context, System.Action<Microsoft.Azure.ServiceBus.Message> customization) { }
+        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
+        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context, System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
     }
 }
 namespace NServiceBus.Testing
 {
     public static class TestableCustomizeNativeMessageExtensions
     {
-        public static System.Action<Microsoft.Azure.ServiceBus.Message> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options) { }
-        public static System.Action<Microsoft.Azure.ServiceBus.Message> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context) { }
+        public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options) { }
+        public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context) { }
     }
 }
