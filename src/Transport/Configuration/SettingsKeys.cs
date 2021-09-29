@@ -13,8 +13,8 @@
         public const string RuleNameShortener = Base + nameof(RuleNameShortener);
         public const string SubscriptionNamingConvention = Base + nameof(SubscriptionNamingConvention);
         public const string SubscriptionRuleNamingConvention = Base + nameof(SubscriptionRuleNamingConvention);
-        public const string TransportType = Base + nameof(TransportType);
-        public const string CustomTokenProvider = Base + nameof(CustomTokenProvider);
+        public const string ServiceBusTransportType = Base + nameof(ServiceBusTransportType);
+        public const string CustomTokenCredential = Base + nameof(CustomTokenCredential);
         public const string CustomRetryPolicy = Base + nameof(CustomRetryPolicy);
     }
 }

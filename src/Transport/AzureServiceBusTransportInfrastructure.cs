@@ -4,9 +4,10 @@
     using System.Collections.Generic;
     using System.Text;
     using System.Threading.Tasks;
+    using Azure.Core;
+    using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using DelayedDelivery;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Primitives;
     using Performance.TimeToBeReceived;
     using Routing;
     using Settings;
@@ -20,32 +21,62 @@
         static readonly Func<Type, string> defaultSubscriptionRuleNamingConvention = type => type.FullName;
 
         readonly SettingsHolder settings;
-        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
-        readonly ITokenProvider tokenProvider;
+        readonly ServiceBusAdministrationClient administrationClient;
+        readonly string connectionString;
         readonly string topicName;
         readonly NamespacePermissions namespacePermissions;
+        readonly ServiceBusTransportType transportType = ServiceBusTransportType.AmqpTcp;
+        readonly TokenCredential tokenCredential;
+        readonly ServiceBusRetryOptions retryOptions;
         MessageSenderPool messageSenderPool;
 
         public AzureServiceBusTransportInfrastructure(SettingsHolder settings, string connectionString)
         {
             this.settings = settings;
-            connectionStringBuilder = new ServiceBusConnectionStringBuilder(connectionString);
-
-            if (settings.TryGet(SettingsKeys.TransportType, out TransportType transportType))
-            {
-                connectionStringBuilder.TransportType = transportType;
-            }
-
-            settings.TryGet(SettingsKeys.CustomTokenProvider, out tokenProvider);
+            this.connectionString = connectionString;
 
             if (!settings.TryGet(SettingsKeys.TopicName, out topicName))
             {
                 topicName = defaultTopicName;
             }
 
-            namespacePermissions = new NamespacePermissions(connectionStringBuilder, tokenProvider);
+            _ = settings.TryGet(SettingsKeys.ServiceBusTransportType, out ServiceBusTransportType tt);
+            transportType = tt;
+
+            _ = settings.TryGet(SettingsKeys.CustomRetryPolicy, out ServiceBusRetryOptions ro);
+            retryOptions = ro;
+
+            _ = settings.TryGet(SettingsKeys.CustomTokenCredential, out TokenCredential tc);
+            tokenCredential = tc;
+
+            administrationClient = tokenCredential != null
+                ? new ServiceBusAdministrationClient(connectionString, tokenCredential)
+                : new ServiceBusAdministrationClient(connectionString);
+
+            namespacePermissions = new NamespacePermissions(administrationClient);
 
             WriteStartupDiagnostics();
+        }
+
+        //hack
+        TransportTransactionMode GetRequiredTransactionMode(SettingsHolder settings)
+        {
+            var transportTransactionSupport = TransactionMode;
+
+            //if user haven't asked for a explicit level use what the transport supports
+            if (!settings.HasSetting<TransportTransactionMode>())
+            {
+                return transportTransactionSupport;
+            }
+
+            var requestedTransportTransactionMode = settings.Get<TransportTransactionMode>();
+
+            if (requestedTransportTransactionMode > transportTransactionSupport)
+            {
+                throw new Exception($"Requested transaction mode `{requestedTransportTransactionMode}` can't be satisfied since the transport only supports `{transportTransactionSupport}`");
+            }
+
+            return requestedTransportTransactionMode;
         }
 
         void WriteStartupDiagnostics()
@@ -61,10 +92,10 @@
                 SubscriptionRuleNamingConvention = settings.TryGet(SettingsKeys.SubscriptionRuleNamingConvention, out Func<string, string> _) ? "configured" : "default",
                 PrefetchMultiplier = settings.TryGet(SettingsKeys.PrefetchMultiplier, out int prefetchMultiplier) ? prefetchMultiplier.ToString() : "default",
                 PrefetchCount = settings.TryGet(SettingsKeys.PrefetchCount, out int? prefetchCount) ? prefetchCount.ToString() : "default",
-                UseWebSockets = settings.TryGet(SettingsKeys.TransportType, out TransportType _) ? "True" : "default",
-                TimeToWaitBeforeTriggeringCircuitBreaker = settings.TryGet(SettingsKeys.TransportType, out TimeSpan timeToWait) ? timeToWait.ToString() : "default",
-                CustomTokenProvider = settings.TryGet(SettingsKeys.CustomTokenProvider, out ITokenProvider customTokenProvider) ? customTokenProvider.ToString() : "default",
-                CustomRetryPolicy = settings.TryGet(SettingsKeys.CustomRetryPolicy, out RetryPolicy customRetryPolicy) ? customRetryPolicy.ToString() : "default"
+                UseWebSockets = settings.TryGet(SettingsKeys.ServiceBusTransportType, out ServiceBusTransportType _) ? "True" : "default",
+                TimeToWaitBeforeTriggeringCircuitBreaker = settings.TryGet(SettingsKeys.TimeToWaitBeforeTriggeringCircuitBreaker, out TimeSpan timeToWait) ? timeToWait.ToString() : "default",
+                CustomTokenProvider = settings.TryGet(SettingsKeys.CustomTokenCredential, out TokenCredential customTokenCredential) ? customTokenCredential.ToString() : "default",
+                CustomRetryPolicy = settings.TryGet(SettingsKeys.CustomRetryPolicy, out ServiceBusRetryOptions customRetryPolicy) ? customRetryPolicy.ToString() : "default"
             });
         }
 
@@ -90,9 +121,7 @@
                 timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
             }
 
-            settings.TryGet(SettingsKeys.CustomRetryPolicy, out RetryPolicy retryPolicy);
-
-            return new MessagePump(connectionStringBuilder, tokenProvider, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker, retryPolicy);
+            return new MessagePump(connectionString, tokenCredential, prefetchMultiplier, prefetchCount, timeToWaitBeforeTriggeringCircuitBreaker, retryOptions, transportType);
         }
 
         QueueCreator CreateQueueCreator()
@@ -126,7 +155,7 @@
                 localAddress = ToTransportAddress(LogicalAddress.CreateLocalAddress(settings.EndpointName(), new Dictionary<string, string>()));
             }
 
-            return new QueueCreator(localAddress, topicName, connectionStringBuilder, tokenProvider, namespacePermissions, maximumSizeInGB * 1024, enablePartitioning, subscriptionNameShortener, subscriptionNamingConvention);
+            return new QueueCreator(localAddress, topicName, administrationClient, namespacePermissions, maximumSizeInGB * 1024, enablePartitioning, subscriptionNameShortener, subscriptionNamingConvention);
         }
 
         public override TransportSendInfrastructure ConfigureSendInfrastructure()
@@ -138,9 +167,8 @@
 
         MessageDispatcher CreateMessageDispatcher()
         {
-            settings.TryGet(SettingsKeys.CustomRetryPolicy, out RetryPolicy retryPolicy);
-
-            messageSenderPool = new MessageSenderPool(connectionStringBuilder, tokenProvider, retryPolicy);
+            var transactionMode = GetRequiredTransactionMode(settings);
+            messageSenderPool = new MessageSenderPool(connectionString, tokenCredential, retryOptions, transportType, transactionMode);
 
             return new MessageDispatcher(messageSenderPool, topicName);
         }
@@ -172,7 +200,7 @@
                 ruleNamingConvention = defaultSubscriptionRuleNamingConvention;
             }
 
-            return new SubscriptionManager(settings.LocalAddress(), topicName, connectionStringBuilder, tokenProvider, namespacePermissions, subscriptionNameShortener, ruleNameShortener, subscriptionNamingConvention, ruleNamingConvention);
+            return new SubscriptionManager(settings.LocalAddress(), topicName, administrationClient, namespacePermissions, subscriptionNameShortener, ruleNameShortener, subscriptionNamingConvention, ruleNamingConvention);
         }
 
         public override EndpointInstance BindToLocalEndpoint(EndpointInstance instance) => instance;

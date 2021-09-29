@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="[5.0.0, 6.0.0)" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="[7.3.0, 8)" />
     <PackageReference Include="NServiceBus" Version="[7.0.1, 8.0.0)" />
     <PackageReference Include="Particular.Packaging" Version="1.2.1" PrivateAssets="All" />
   </ItemGroup>

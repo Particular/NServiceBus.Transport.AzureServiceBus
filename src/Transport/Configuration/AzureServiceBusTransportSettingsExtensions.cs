@@ -1,9 +1,9 @@
 ﻿namespace NServiceBus
 {
     using System;
+    using Azure.Core;
+    using Azure.Messaging.ServiceBus;
     using Configuration.AdvancedExtensibility;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Primitives;
     using Transport.AzureServiceBus;
 
     /// <summary>
@@ -208,19 +208,19 @@
         /// <param name="transportExtensions"></param>
         public static TransportExtensions<AzureServiceBusTransport> UseWebSockets(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
         {
-            transportExtensions.GetSettings().Set(SettingsKeys.TransportType, TransportType.AmqpWebSockets);
+            transportExtensions.GetSettings().Set(SettingsKeys.ServiceBusTransportType, ServiceBusTransportType.AmqpWebSockets);
 
             return transportExtensions;
         }
 
         /// <summary>
-        /// Overrides the default token provider with a custom implementation.
+        /// Overrides the default token credential with a custom one.
         /// </summary>
         /// <param name="transportExtensions"></param>
-        /// <param name="tokenProvider">The token provider to be used.</param>
-        public static TransportExtensions<AzureServiceBusTransport> CustomTokenProvider(this TransportExtensions<AzureServiceBusTransport> transportExtensions, ITokenProvider tokenProvider)
+        /// <param name="tokenCredential">The token credential to be used.</param>
+        public static TransportExtensions<AzureServiceBusTransport> CustomTokenCredential(this TransportExtensions<AzureServiceBusTransport> transportExtensions, TokenCredential tokenCredential)
         {
-            transportExtensions.GetSettings().Set(SettingsKeys.CustomTokenProvider, tokenProvider);
+            transportExtensions.GetSettings().Set(SettingsKeys.CustomTokenCredential, tokenCredential);
 
             return transportExtensions;
         }
@@ -230,7 +230,7 @@
         /// </summary>
         /// <param name="transportExtensions"></param>
         /// <param name="retryPolicy">A custom retry policy to be used.</param>
-        public static TransportExtensions<AzureServiceBusTransport> CustomRetryPolicy(this TransportExtensions<AzureServiceBusTransport> transportExtensions, RetryPolicy retryPolicy)
+        public static TransportExtensions<AzureServiceBusTransport> CustomRetryPolicy(this TransportExtensions<AzureServiceBusTransport> transportExtensions, ServiceBusRetryOptions retryPolicy)
         {
             Guard.AgainstNull(nameof(retryPolicy), retryPolicy);
 
