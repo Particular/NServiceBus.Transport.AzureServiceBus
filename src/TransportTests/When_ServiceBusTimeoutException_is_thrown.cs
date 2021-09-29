@@ -1,7 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.TransportTests
 {
     using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
+    using Azure.Messaging.ServiceBus;
     using NServiceBus.TransportTests;
     using NUnit.Framework;
 
@@ -26,14 +26,15 @@
                     if (firstInvocation)
                     {
                         firstInvocation = false;
-                        throw new ServiceBusTimeoutException("from onMessage");
+                        throw new ServiceBusException("from onMessage", ServiceBusFailureReason.ServiceTimeout);
                     }
 
                     return Task.CompletedTask;
                 },
                 context =>
                 {
-                    throw new ServiceBusTimeoutException("from onError");
+                    throw new ServiceBusException("from onError", ServiceBusFailureReason.ServiceTimeout);
+                    ;
                 },
                 transactionMode,
                 (message, exception) =>
@@ -47,7 +48,7 @@
 
             await criticalErrorInvoked.Task;
 
-            Assert.IsFalse(criticalErrorCalled, $"Should not invoke critical error for {nameof(ServiceBusTimeoutException)}");
+            Assert.IsFalse(criticalErrorCalled, $"Should not invoke critical error for {nameof(ServiceBusException)}");
             Assert.IsFalse(criticalErrorInvoked.Task.Result);
         }
     }
