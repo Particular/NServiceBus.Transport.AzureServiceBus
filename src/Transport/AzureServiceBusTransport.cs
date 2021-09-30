@@ -15,12 +15,16 @@
     /// <summary>
     /// Transport definition for Azure Service Bus.
     /// </summary>
-    public partial class AzureServiceBusTransport : TransportDefinition
+    public class AzureServiceBusTransport : TransportDefinition
     {
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString) : this()
+        public AzureServiceBusTransport(string connectionString) : base(
+            defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
+            supportsDelayedDelivery: true,
+            supportsPublishSubscribe: true,
+            supportsTTBR: true)
         {
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
             ConnectionString = connectionString;
@@ -30,8 +34,6 @@
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
             ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)
         {
-            CheckConnectionStringHasBeenConfigured();
-
             var serviceBusClientOptions = new ServiceBusClientOptions()
             {
                 TransportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp,
