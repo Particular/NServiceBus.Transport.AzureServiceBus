@@ -121,7 +121,7 @@
             {
                 await messageReceivingTask.ConfigureAwait(false);
 
-                while (semaphore.CurrentCount != maxConcurrency)
+                while (semaphore.CurrentCount > 0)
                 {
                     // Do not forward cancellationToken here so that pump has ability to exit gracefully
                     // Individual message processing pipelines will be canceled instead
