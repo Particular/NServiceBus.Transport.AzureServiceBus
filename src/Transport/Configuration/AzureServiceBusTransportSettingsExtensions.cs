@@ -97,8 +97,8 @@
         /// <param name="transportExtensions"></param>
         /// <param name="subscriptionNameShortener">The callback to apply.</param>
         [ObsoleteEx(ReplacementTypeOrMember = "SubscriptionNamingConvention",
-            TreatAsErrorFromVersion = "2",
-            RemoveInVersion = "3")]
+            TreatAsErrorFromVersion = "3",
+            RemoveInVersion = "4")]
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNameShortener)
         {
             Guard.AgainstNull(nameof(subscriptionNameShortener), subscriptionNameShortener);
@@ -126,8 +126,8 @@
         /// <param name="transportExtensions"></param>
         /// <param name="ruleNameShortener">The callback to apply.</param>
         [ObsoleteEx(ReplacementTypeOrMember = "SubscriptionRuleNamingConvention",
-            TreatAsErrorFromVersion = "2",
-            RemoveInVersion = "3")]
+            TreatAsErrorFromVersion = "3",
+            RemoveInVersion = "4")]
         public static TransportExtensions<AzureServiceBusTransport> RuleNameShortener(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> ruleNameShortener)
         {
             Guard.AgainstNull(nameof(ruleNameShortener), ruleNameShortener);

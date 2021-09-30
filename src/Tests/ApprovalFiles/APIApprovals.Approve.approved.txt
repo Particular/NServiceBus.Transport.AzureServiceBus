@@ -16,10 +16,10 @@ namespace NServiceBus
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchMultiplier(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchMultiplier) { }
         [System.Obsolete("Use `SubscriptionRuleNamingConvention` instead. Will be treated as an error from " +
-            "version 2.0.0. Will be removed in version 3.0.0.", false)]
+            "version 3.0.0. Will be removed in version 4.0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> RuleNameShortener(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> ruleNameShortener) { }
         [System.Obsolete("Use `SubscriptionNamingConvention` instead. Will be treated as an error from vers" +
-            "ion 2.0.0. Will be removed in version 3.0.0.", false)]
+            "ion 3.0.0. Will be removed in version 4.0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionNameShortener(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> subscriptionNameShortener) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> subscriptionNamingConvention) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionRuleNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<System.Type, string> subscriptionRuleNamingConvention) { }
