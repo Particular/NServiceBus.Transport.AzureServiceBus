@@ -6,10 +6,13 @@
     using Azure.Messaging.ServiceBus;
     using Azure.Messaging.ServiceBus.Administration;
     using Extensibility;
+    using NServiceBus.Logging;
     using Unicast.Messages;
 
     class SubscriptionManager : ISubscriptionManager
     {
+        static readonly ILog Logger = LogManager.GetLogger<SubscriptionManager>();
+
         readonly AzureServiceBusTransport transportSettings;
         readonly ServiceBusAdministrationClient administrativeClient;
         readonly NamespacePermissions namespacePermissions;
@@ -105,11 +108,11 @@
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
+                Logger.Debug($"Default subscription rule for topic {subscription.TopicName} already exists");
             }
-            // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
-            catch (ServiceBusException sbe) when (
-                sbe.IsTransient) //when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
+            catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
             {
+                Logger.Info($"Default subscription rule for topic {subscription.TopicName} is already in progress");
             }
 
         }
