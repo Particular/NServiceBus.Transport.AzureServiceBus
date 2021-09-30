@@ -159,9 +159,9 @@
 
             try
             {
-                // Workaround for ASB MessageReceiver.Receive() that has a timeout and doesn't take a CancellationToken.
-                // We want to track how many receives are waiting and could be ignored when endpoint is stopping.
-                // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
+                // Workaround for Core v7 not having CancellationToken support. The Azure.Messaging.ServiceBus
+                // receivers support cancellation tokens, hoever given that Core doesn't we want to track how
+                // many receives are waiting and could be ignored when endpoint is stopping.
                 Interlocked.Increment(ref numberOfExecutingReceives);
                 message = await receiveTask.ConfigureAwait(false);
 
@@ -182,7 +182,9 @@
             }
             finally
             {
-                // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
+                // Workaround for Core v7 not having CancellationToken support. The Azure.Messaging.ServiceBus
+                // receivers support cancellation tokens, hoever given that Core doesn't we want to track how
+                // many receives are waiting and could be ignored when endpoint is stopping.
                 Interlocked.Decrement(ref numberOfExecutingReceives);
             }
 
@@ -327,6 +329,9 @@
 
             await receiveLoopTask.ConfigureAwait(false);
 
+            // Workaround for Core v7 not having CancellationToken support. The Azure.Messaging.ServiceBus
+            // receivers support cancellation tokens, hoever given that Core doesn't we want to track how
+            // many receives are waiting and could be ignored when endpoint is stopping.
             while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
             {
                 await Task.Delay(50).ConfigureAwait(false);
