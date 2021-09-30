@@ -5,9 +5,12 @@
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
     using Azure.Messaging.ServiceBus.Administration;
+    using NServiceBus.Logging;
 
     class QueueCreator
     {
+        static readonly ILog Logger = LogManager.GetLogger<QueueCreator>();
+
         readonly AzureServiceBusTransport transportSettings;
         readonly ServiceBusAdministrationClient administrativeClient;
         readonly NamespacePermissions namespacePermissions;
@@ -41,11 +44,11 @@
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
+                Logger.Info($"Topic {topic.Name} already exists");
             }
-            // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
-            catch (ServiceBusException sbe) when (
-                sbe.IsTransient) //when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
+            catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
             {
+                Logger.Info($"Topic creation for {topic.Name} is already in progress");
             }
 
             foreach (var address in queues)
@@ -63,17 +66,15 @@
                 {
                     await administrativeClient.CreateQueueAsync(queue, cancellationToken).ConfigureAwait(false);
                 }
-                catch (ServiceBusException sbe) when (sbe.Reason ==
-                                                      ServiceBusFailureReason.MessagingEntityAlreadyExists)
+                catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
+                    Logger.Debug($"Queue {queue.Name} already exists");
                 }
-                // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
-                catch (ServiceBusException sbe) when (
-                    sbe.IsTransient) //when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
+                catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
                 {
+                    Logger.Info($"Queue creation for {queue.Name} is already in progress");
                 }
             }
-
         }
     }
 }
