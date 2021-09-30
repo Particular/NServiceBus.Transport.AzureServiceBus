@@ -61,6 +61,7 @@
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
+                logger.Debug($"Topic {topicName} already exists.");
             }
             catch (ServiceBusException sbe) when (sbe.IsTransient)
             {
@@ -82,9 +83,9 @@
                 {
                     await administrativeClient.CreateQueueAsync(queue).ConfigureAwait(false);
                 }
-                catch (ServiceBusException sbe) when (sbe.Reason ==
-                                                      ServiceBusFailureReason.MessagingEntityAlreadyExists)
+                catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
+                    logger.Debug($"Queue {address} already exists.");
                 }
                 catch (ServiceBusException sbe) when (sbe.IsTransient)
                 {
@@ -111,6 +112,7 @@
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
+                logger.Debug($"Subscription already exists.");
             }
             catch (ServiceBusException sbe) when (sbe.IsTransient)
             {
