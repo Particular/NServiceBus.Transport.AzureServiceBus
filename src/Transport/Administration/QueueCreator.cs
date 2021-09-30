@@ -5,6 +5,7 @@
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
     using Azure.Messaging.ServiceBus.Administration;
+    using NServiceBus.Logging;
 
     class QueueCreator : ICreateQueues
     {
@@ -18,6 +19,7 @@
         readonly bool enablePartitioning;
         readonly Func<string, string> subscriptionShortener;
         readonly Func<string, string> subscriptionNamingConvention;
+        static readonly ILog logger = LogManager.GetLogger<QueueCreator>();
 
         public QueueCreator(string mainInputQueueName, string topicName,
             ServiceBusAdministrationClient administrativeClient,
@@ -60,9 +62,9 @@
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
             }
-            // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
-            catch (ServiceBusException sbe) when (sbe.IsTransient) //when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
+            catch (ServiceBusException sbe) when (sbe.IsTransient)
             {
+                logger.Info($"Topic {topicName} creation already in progress.");
             }
 
             foreach (var address in queueBindings.ReceivingAddresses.Concat(queueBindings.SendingAddresses))
@@ -84,9 +86,9 @@
                                                       ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
                 }
-                // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
-                catch (ServiceBusException sbe) when (sbe.IsTransient) //when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
+                catch (ServiceBusException sbe) when (sbe.IsTransient)
                 {
+                    logger.Info($"Queue {address} creation already in progress.");
                 }
             }
 
@@ -110,9 +112,9 @@
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
             }
-            // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
-            catch (ServiceBusException sbe) when (sbe.IsTransient) //when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
+            catch (ServiceBusException sbe) when (sbe.IsTransient)
             {
+                logger.Info($"Subscription creation already in progress.");
             }
         }
     }
