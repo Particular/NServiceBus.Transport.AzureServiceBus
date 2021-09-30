@@ -56,7 +56,7 @@
             {
                 await Rule.Delete(client, name, topicName, subscriptionName, eventType, ruleName);
             }
-            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
                 Console.WriteLine($"Rule '{name}' for topic '{topicName.Value()}' and subscription '{subscriptionName.Value()}' does not exist, skipping deletion");
             }
