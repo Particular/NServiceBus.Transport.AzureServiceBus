@@ -17,7 +17,6 @@
         readonly ReceiveSettings receiveSettings;
         readonly Action<string, Exception, CancellationToken> criticalErrorAction;
         readonly ServiceBusClient serviceBusClient;
-        int numberOfExecutingReceives;
 
         OnMessage onMessage;
         OnError onError;
@@ -122,7 +121,7 @@
             {
                 await messageReceivingTask.ConfigureAwait(false);
 
-                while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
+                while (semaphore.CurrentCount != maxConcurrency)
                 {
                     // Do not forward cancellationToken here so that pump has ability to exit gracefully
                     // Individual message processing pipelines will be canceled instead
@@ -135,7 +134,6 @@
                 }
                 catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
                 {
-                    //anything to log here?
                     Logger.Debug($"Operation canceled while stopping the receiver {receiver.EntityPath}.", ex);
                 }
             }
@@ -199,10 +197,6 @@
 
             try
             {
-                // Workaround for ASB MessageReceiver.Receive() that has a timeout and doesn't take a CancellationToken.
-                // We want to track how many receives are waiting and could be ignored when endpoint is stopping.
-                // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
-                _ = Interlocked.Increment(ref numberOfExecutingReceives);
                 message = await receiver.ReceiveMessageAsync(cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
 
                 circuitBreaker.Success();
@@ -220,11 +214,6 @@
 
                 await circuitBreaker.Failure(ex, messageReceivingCancellationToken).ConfigureAwait(false);
             }
-            finally
-            {
-                // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
-                _ = Interlocked.Decrement(ref numberOfExecutingReceives);
-            }
 
             // By default, ASB client long polls for a minute and returns null if it times out
             if (message == null)
@@ -234,9 +223,6 @@
 
             messageReceivingCancellationToken.ThrowIfCancellationRequested();
 
-            //TODO: locktoken
-            //var lockToken = message.LockToken;
-
             string messageId;
             Dictionary<string, string> headers;
             BinaryData body;
@@ -245,7 +231,6 @@
             {
                 messageId = message.GetMessageId();
                 headers = message.GetNServiceBusHeaders();
-                //TODO: verify it message.GetBody() is still needed
                 body = message.Body;
             }
             catch (Exception ex)
