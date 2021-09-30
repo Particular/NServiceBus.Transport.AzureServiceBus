@@ -260,21 +260,6 @@
             }
         }
         ServiceBusRetryOptions retryPolicy;
-        //TODO: old API needs to be deprecated
-        // public ITokenProvider TokenProvider { get; set; }
-        //
-        // /// <summary>
-        // /// Overrides the default retry policy.
-        // /// </summary>
-        // public RetryPolicy RetryPolicy
-        // {
-        //     get => retryPolicy;
-        //     set
-        //     {
-        //         Guard.AgainstNull(nameof(RetryPolicy), value);
-        //         retryPolicy = value;
-        //     }
-        // }
 
         /// <summary>
         /// Configures the Service Bus connection string.

@@ -187,20 +187,6 @@
             return this;
         }
 
-        //TODO: Missing Type ITokenProvider
-        // /// <summary>
-        // /// Overrides the default token provider with a custom implementation.
-        // /// </summary>
-        // [ObsoleteEx(
-        //     ReplacementTypeOrMember = "AzureServiceBusTransport.TokenProvider",
-        //     TreatAsErrorFromVersion = "3",
-        //     RemoveInVersion = "4")]
-        // public AzureServiceBusSettings CustomTokenProvider(ITokenProvider tokenProvider)
-        // {
-        //     Transport.TokenProvider = tokenProvider;
-        //     return this;
-        // }
-
         /// <summary>
         /// Sets the token to use
         /// </summary>

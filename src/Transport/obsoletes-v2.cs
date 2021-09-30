@@ -82,33 +82,6 @@ namespace NServiceBus
             TreatAsErrorFromVersion = "2",
             RemoveInVersion = "3")]
         public static TransportExtensions<AzureServiceBusTransport> UseWebSockets(this TransportExtensions<AzureServiceBusTransport> transportExtensions) => throw new NotImplementedException();
-
-        //TODO: Missing types ITokenProvider and RetryPolicy
-        // [ObsoleteEx(
-        //     ReplacementTypeOrMember = "AzureServiceBusTransport.TokenProvider",
-        //     TreatAsErrorFromVersion = "2",
-        //     RemoveInVersion = "3")]
-        // public static TransportExtensions<AzureServiceBusTransport> CustomTokenProvider(this TransportExtensions<AzureServiceBusTransport> transportExtensions, ITokenProvider tokenProvider) => throw new NotImplementedException();
-        //
-        // [ObsoleteEx(
-        //     ReplacementTypeOrMember = "AzureServiceBusTransport.RetryPolicy",
-        //     TreatAsErrorFromVersion = "2",
-        //     RemoveInVersion = "3")]
-        // public static TransportExtensions<AzureServiceBusTransport> CustomRetryPolicy(this TransportExtensions<AzureServiceBusTransport> transportExtensions, RetryPolicy retryPolicy) => throw new NotImplementedException();
-    }
-}
-
-namespace NServiceBus
-{
-    public static partial class CustomizeNativeMessageExtensions
-    {
-        //TODO: Missing type Message
-        // [ObsoleteEx(
-        //     ReplacementTypeOrMember = "CustomizeNativeMessage(this ExtendableOptions options, Action<Message> customization)",
-        //     TreatAsErrorFromVersion = "2",
-        //     RemoveInVersion = "3")]
-        // public static void CustomizeNativeMessage(this ExtendableOptions options, IPipelineContext context,
-        //     Action<Message> customization) => throw new NotImplementedException();
     }
 }
 
@@ -118,7 +91,6 @@ namespace NServiceBus
 
     public partial class AzureServiceBusTransport
     {
-
         // Used by the shim API to enable easier migration from the existing API
         protected internal AzureServiceBusTransport() : base(
             defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
