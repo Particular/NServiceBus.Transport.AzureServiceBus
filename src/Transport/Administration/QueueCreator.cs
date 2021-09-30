@@ -112,11 +112,11 @@
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
-                logger.Debug($"Subscription already exists.");
+                logger.Debug($"Default subscription for topic {topicName} already exists.");
             }
             catch (ServiceBusException sbe) when (sbe.IsTransient)
             {
-                logger.Info($"Subscription creation already in progress.");
+                logger.Info($"Default subscription for topic {topicName} creation already in progress.");
             }
         }
     }
