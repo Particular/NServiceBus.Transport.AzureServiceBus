@@ -39,7 +39,7 @@
 
         static void ApplyDeliveryConstraints(ServiceBusMessage message, List<DeliveryConstraint> deliveryConstraints)
         {
-            // TODO: review when delaying with TimeSpan is supported https://github.com/Azure/azure-service-bus-dotnet/issues/160
+            // TODO: review if delaying with TimeSpan will be supported
 
             if (deliveryConstraints.TryGet(out DoNotDeliverBefore doNotDeliverBefore))
             {
