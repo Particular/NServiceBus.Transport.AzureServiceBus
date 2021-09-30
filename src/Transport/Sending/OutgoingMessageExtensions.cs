@@ -35,19 +35,14 @@
 
         static void ApplyDeliveryConstraints(ServiceBusMessage message, DispatchProperties dispatchProperties)
         {
-            // TODO: review when delaying with TimeSpan is supported https://github.com/Azure/azure-service-bus-dotnet/issues/160
             if (dispatchProperties.DoNotDeliverBefore != null)
             {
-                //TODO: datetime -> datetimeOffset
-#pragma warning disable PS0022
-                message.ScheduledEnqueueTime = dispatchProperties.DoNotDeliverBefore.At.UtcDateTime;
-#pragma warning restore PS0022
+                message.ScheduledEnqueueTime = dispatchProperties.DoNotDeliverBefore.At;
             }
             else if (dispatchProperties.DelayDeliveryWith != null)
             {
-#pragma warning disable PS0022
-                message.ScheduledEnqueueTime = (Time.UtcNow() + dispatchProperties.DelayDeliveryWith.Delay).UtcDateTime;
-#pragma warning restore PS0022
+                // Delaying with TimeSpan is currently not supported, see https://github.com/Azure/azure-service-bus-dotnet/issues/160
+                message.ScheduledEnqueueTime = DateTimeOffset.UtcNow + dispatchProperties.DelayDeliveryWith.Delay;
             }
 
             if (dispatchProperties.DiscardIfNotReceivedBefore != null)
