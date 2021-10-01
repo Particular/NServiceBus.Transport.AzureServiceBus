@@ -58,7 +58,7 @@
             WriteStartupDiagnostics();
         }
 
-        //Hack: MessageSenderPool needs a default client instance, toc reate one the endpoint transaction mode is needed.
+        //Hack: MessageSenderPool needs a default client instance, to reate one the endpoint transaction mode is needed.
         //In Core v7 endpoint transaction mode is available only at message pump Init time. The following code performs
         //the same steps Core v7 does to get the required transaction mode
         TransportTransactionMode GetRequiredTransactionMode(SettingsHolder settings)
