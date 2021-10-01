@@ -209,13 +209,16 @@
             }
             catch (Exception exception)
             {
-                try
+                if (pushSettings.RequiredTransactionMode != TransportTransactionMode.None)
                 {
-                    await receiver.DeadLetterMessageAsync(message, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
-                }
-                catch (Exception)
-                {
-                    // nothing we can do about it, message will be retried
+                    try
+                    {
+                        await receiver.DeadLetterMessageAsync(message, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
+                    }
+                    catch (Exception)
+                    {
+                        // nothing we can do about it, message will be retried
+                    }
                 }
 
                 return;

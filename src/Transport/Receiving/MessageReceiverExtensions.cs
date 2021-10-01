@@ -32,15 +32,5 @@
         //        }
         //    }
         //}
-
-        //public static Task SafeDeadLetterAsync(this ServiceBusReceiver messageReceiver, TransportTransactionMode transportTransactionMode, string lockToken, string deadLetterReason, string deadLetterErrorDescription)
-        //{
-        //    if (transportTransactionMode != TransportTransactionMode.None)
-        //    {
-        //        return messageReceiver.DeadLetterAsync(lockToken, deadLetterReason, deadLetterErrorDescription);
-        //    }
-
-        //    return Task.CompletedTask;
-        //}
     }
 }
