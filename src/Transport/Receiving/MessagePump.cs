@@ -194,9 +194,6 @@
                 return;
             }
 
-            //TODO: locktoken
-            //var lockToken = message.SystemProperties.LockToken;
-
             string messageId;
             Dictionary<string, string> headers;
             BinaryData body;
@@ -242,8 +239,7 @@
 
                     if (receiveCancellationTokenSource.IsCancellationRequested == false)
                     {
-                        //TODO: lock token
-                        await receiver.CompleteMessageAsync(message/*, lockToken */)
+                        await receiver.CompleteMessageAsync(message)
                             .ConfigureAwait(false);
 
                         transaction?.Commit();
@@ -251,8 +247,7 @@
 
                     if (receiveCancellationTokenSource.IsCancellationRequested)
                     {
-                        //TODO: lock token
-                        await receiver.AbandonMessageAsync(message/*, lockToken*/).ConfigureAwait(false);
+                        await receiver.AbandonMessageAsync(message).ConfigureAwait(false);
 
                         transaction?.Rollback();
                     }
@@ -274,8 +269,7 @@
 
                         if (result == ErrorHandleResult.Handled)
                         {
-                            //TODO: lock token
-                            await receiver.CompleteMessageAsync(message/*, lockToken*/).ConfigureAwait(false);
+                            await receiver.CompleteMessageAsync(message).ConfigureAwait(false);
                         }
 
                         transaction?.Commit();
@@ -283,8 +277,7 @@
 
                     if (result == ErrorHandleResult.RetryRequired)
                     {
-                        //TODO: lock token
-                        await receiver.AbandonMessageAsync(message/*, lockToken*/).ConfigureAwait(false);
+                        await receiver.AbandonMessageAsync(message).ConfigureAwait(false);
                     }
                 }
                 catch (ServiceBusException onErrorException) when (onErrorException.Reason == ServiceBusFailureReason.MessageLockLost || onErrorException.Reason == ServiceBusFailureReason.ServiceTimeout)
@@ -295,8 +288,7 @@
                 {
                     criticalError.Raise($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException);
 
-                    //TODO: lock token
-                    await receiver.AbandonMessageAsync(message/*, lockToken*/).ConfigureAwait(false);
+                    await receiver.AbandonMessageAsync(message).ConfigureAwait(false);
                 }
             }
         }
