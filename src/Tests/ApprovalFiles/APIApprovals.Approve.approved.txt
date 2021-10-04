@@ -8,10 +8,6 @@ namespace NServiceBus
             "e treated as an error from version 3.0.0. The member currently throws a NotImple" +
             "mentedException. Will be removed in version 4.0.0.", false)]
         public NServiceBus.AzureServiceBusSettings ConnectionString(string connectionString) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.RetryPolicy` instead. Will be treated as an error f" +
-            "rom version 3.0.0. The member currently throws a NotImplementedException. Will b" +
-            "e removed in version 4.0.0.", false)]
-        public NServiceBus.AzureServiceBusSettings CustomRetryPolicy(Azure.Messaging.ServiceBus.ServiceBusRetryOptions retryPolicy) { }
         [System.Obsolete("Use `AzureServiceBusTransport.EnablePartitioning` instead. Will be treated as an " +
             "error from version 3.0.0. The member currently throws a NotImplementedException." +
             " Will be removed in version 4.0.0.", false)]
@@ -40,10 +36,6 @@ namespace NServiceBus
             "Will be treated as an error from version 3.0.0. The member currently throws a No" +
             "tImplementedException. Will be removed in version 4.0.0.", false)]
         public NServiceBus.AzureServiceBusSettings TimeToWaitBeforeTriggeringCircuitBreaker(System.TimeSpan timeToWait) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.TokenCredential` instead. Will be treated as an err" +
-            "or from version 3.0.0. The member currently throws a NotImplementedException. Wi" +
-            "ll be removed in version 4.0.0.", false)]
-        public NServiceBus.AzureServiceBusSettings TokenCredential(Azure.Core.TokenCredential tokenCredential) { }
         [System.Obsolete("Use `AzureServiceBusTransport.TopicName` instead. Will be treated as an error fro" +
             "m version 3.0.0. The member currently throws a NotImplementedException. Will be " +
             "removed in version 4.0.0.", false)]

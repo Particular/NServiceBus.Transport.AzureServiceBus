@@ -19,8 +19,6 @@ namespace NServiceBus
 namespace NServiceBus
 {
     using System;
-    using Azure.Core;
-    using Azure.Messaging.ServiceBus;
 
     public class AzureServiceBusSettings
     {
@@ -110,24 +108,6 @@ namespace NServiceBus
             TreatAsErrorFromVersion = "3",
             RemoveInVersion = "4")]
         public AzureServiceBusSettings UseWebSockets()
-        {
-            throw new NotImplementedException();
-        }
-
-        [ObsoleteEx(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.TokenCredential",
-            TreatAsErrorFromVersion = "3",
-            RemoveInVersion = "4")]
-        public AzureServiceBusSettings TokenCredential(TokenCredential tokenCredential)
-        {
-            throw new NotImplementedException();
-        }
-
-        [ObsoleteEx(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.RetryPolicy",
-            TreatAsErrorFromVersion = "3",
-            RemoveInVersion = "4")]
-        public AzureServiceBusSettings CustomRetryPolicy(ServiceBusRetryOptions retryPolicy)
         {
             throw new NotImplementedException();
         }
