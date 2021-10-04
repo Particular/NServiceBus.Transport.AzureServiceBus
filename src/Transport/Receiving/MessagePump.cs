@@ -310,6 +310,8 @@
                 catch (ServiceBusException onErrorEx) when (onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost || onErrorEx.Reason == ServiceBusFailureReason.ServiceTimeout)
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
+
+                    await receiver.AbandonMessageAsync(message, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(messageProcessingCancellationToken))
                 {

@@ -1,54 +1,46 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.TransportTests
 {
+    using System;
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
     using NServiceBus.TransportTests;
     using NUnit.Framework;
 
     [TestFixture]
-    public class When_ServiceBusTimeoutException_is_thrown : NServiceBusTransportTest
+    public class When_ServiceBusTimeoutException_is_thrown_from_on_error : NServiceBusTransportTest
     {
         [TestCase(TransportTransactionMode.None)]
         [TestCase(TransportTransactionMode.ReceiveOnly)]
         [TestCase(TransportTransactionMode.SendsAtomicWithReceive)]
         public async Task Should_not_raise_critical_error(TransportTransactionMode transactionMode)
         {
-            var criticalErrorInvoked = new TaskCompletionSource<bool>();
+            var onErrorCalled = new TaskCompletionSource<bool>();
             var criticalErrorCalled = false;
-
-            OnTestTimeout(() => criticalErrorInvoked.SetResult(false));
-
-            var firstInvocation = true;
 
             await StartPump(
                 (_, __) =>
                 {
-                    if (firstInvocation)
-                    {
-                        firstInvocation = false;
-                        throw new ServiceBusException("from onMessage", ServiceBusFailureReason.ServiceTimeout);
-                    }
-
-                    return Task.CompletedTask;
+                    throw new Exception("from onMessage");
                 },
                 (_, __) =>
                 {
+                    onErrorCalled.SetResult(true);
                     throw new ServiceBusException("from onError", ServiceBusFailureReason.ServiceTimeout);
                 },
                 transactionMode,
                 (_, __, ___) =>
                 {
                     criticalErrorCalled = true;
-                    criticalErrorInvoked.SetResult(true);
                 }
             );
 
             await SendMessage(InputQueueName);
 
-            await criticalErrorInvoked.Task;
+            await onErrorCalled.Task;
 
-            Assert.IsFalse(criticalErrorCalled, $"Should not invoke critical error for {nameof(ServiceBusException)}"); //TODO: check reason for timeout
-            Assert.IsFalse(criticalErrorInvoked.Task.Result);
+            await StopPump();
+
+            Assert.IsFalse(criticalErrorCalled, $"Should not invoke critical error for {nameof(ServiceBusException)}");
         }
     }
 }
