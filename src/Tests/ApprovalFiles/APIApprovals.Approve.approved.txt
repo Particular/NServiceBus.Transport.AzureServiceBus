@@ -4,52 +4,44 @@ namespace NServiceBus
     public class AzureServiceBusSettings
     {
         public AzureServiceBusSettings() { }
-        [System.Obsolete("Provide the connection string to the AzureServiceBusTransport constructor. Will b" +
-            "e treated as an error from version 3.0.0. The member currently throws a NotImple" +
-            "mentedException. Will be removed in version 4.0.0.", false)]
+        [System.Obsolete("Provide the connection string to the AzureServiceBusTransport constructor. The me" +
+            "mber currently throws a NotImplementedException. Will be removed in version 4.0." +
+            "0.", true)]
         public NServiceBus.AzureServiceBusSettings ConnectionString(string connectionString) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.EnablePartitioning` instead. Will be treated as an " +
-            "error from version 3.0.0. The member currently throws a NotImplementedException." +
-            " Will be removed in version 4.0.0.", false)]
+        [System.Obsolete("Use `AzureServiceBusTransport.EnablePartitioning` instead. The member currently t" +
+            "hrows a NotImplementedException. Will be removed in version 4.0.0.", true)]
         public NServiceBus.AzureServiceBusSettings EnablePartitioning() { }
-        [System.Obsolete("Use `AzureServiceBusTransport.EntityMaximumSize` instead. Will be treated as an e" +
-            "rror from version 3.0.0. The member currently throws a NotImplementedException. " +
-            "Will be removed in version 4.0.0.", false)]
+        [System.Obsolete("Use `AzureServiceBusTransport.EntityMaximumSize` instead. The member currently th" +
+            "rows a NotImplementedException. Will be removed in version 4.0.0.", true)]
         public NServiceBus.AzureServiceBusSettings EntityMaximumSize(int maximumSizeInGB) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.PrefetchCount` instead. Will be treated as an error" +
-            " from version 3.0.0. The member currently throws a NotImplementedException. Will" +
-            " be removed in version 4.0.0.", false)]
+        [System.Obsolete("Use `AzureServiceBusTransport.PrefetchCount` instead. The member currently throws" +
+            " a NotImplementedException. Will be removed in version 4.0.0.", true)]
         public NServiceBus.AzureServiceBusSettings PrefetchCount(int prefetchCount) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.PrefetchMultiplier` instead. Will be treated as an " +
-            "error from version 3.0.0. The member currently throws a NotImplementedException." +
-            " Will be removed in version 4.0.0.", false)]
+        [System.Obsolete("Use `AzureServiceBusTransport.PrefetchMultiplier` instead. The member currently t" +
+            "hrows a NotImplementedException. Will be removed in version 4.0.0.", true)]
         public NServiceBus.AzureServiceBusSettings PrefetchMultiplier(int prefetchMultiplier) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.SubscriptionNamingConvention` instead. Will be trea" +
-            "ted as an error from version 3.0.0. The member currently throws a NotImplemented" +
-            "Exception. Will be removed in version 4.0.0.", false)]
+        [System.Obsolete("Use `AzureServiceBusTransport.SubscriptionNamingConvention` instead. The member c" +
+            "urrently throws a NotImplementedException. Will be removed in version 4.0.0.", true)]
         public NServiceBus.AzureServiceBusSettings SubscriptionNamingConvention(System.Func<string, string> subscriptionNamingConvention) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.SubscriptionRuleNamingConvention` instead. Will be " +
-            "treated as an error from version 3.0.0. The member currently throws a NotImpleme" +
-            "ntedException. Will be removed in version 4.0.0.", false)]
+        [System.Obsolete("Use `AzureServiceBusTransport.SubscriptionRuleNamingConvention` instead. The memb" +
+            "er currently throws a NotImplementedException. Will be removed in version 4.0.0." +
+            "", true)]
         public NServiceBus.AzureServiceBusSettings SubscriptionRuleNamingConvention(System.Func<System.Type, string> subscriptionRuleNamingConvention) { }
         [System.Obsolete("Use `AzureServiceBusTransport.TimeToWaitBeforeTriggeringCircuitBreaker` instead. " +
-            "Will be treated as an error from version 3.0.0. The member currently throws a No" +
-            "tImplementedException. Will be removed in version 4.0.0.", false)]
+            "The member currently throws a NotImplementedException. Will be removed in versio" +
+            "n 4.0.0.", true)]
         public NServiceBus.AzureServiceBusSettings TimeToWaitBeforeTriggeringCircuitBreaker(System.TimeSpan timeToWait) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.TopicName` instead. Will be treated as an error fro" +
-            "m version 3.0.0. The member currently throws a NotImplementedException. Will be " +
-            "removed in version 4.0.0.", false)]
+        [System.Obsolete("Use `AzureServiceBusTransport.TopicName` instead. The member currently throws a N" +
+            "otImplementedException. Will be removed in version 4.0.0.", true)]
         public NServiceBus.AzureServiceBusSettings TopicName(string topicName) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.UseWebSockets` instead. Will be treated as an error" +
-            " from version 3.0.0. The member currently throws a NotImplementedException. Will" +
-            " be removed in version 4.0.0.", false)]
+        [System.Obsolete("Use `AzureServiceBusTransport.UseWebSockets` instead. The member currently throws" +
+            " a NotImplementedException. Will be removed in version 4.0.0.", true)]
         public NServiceBus.AzureServiceBusSettings UseWebSockets() { }
     }
     public static class AzureServiceBusSettingsExtensions
     {
-        [System.Obsolete("Use `EndpointConfiguration.UseTransport(TransportDefinition)` instead. Will be tr" +
-            "eated as an error from version 3.0.0. The member currently throws a NotImplement" +
-            "edException. Will be removed in version 4.0.0.", false)]
+        [System.Obsolete("Use `EndpointConfiguration.UseTransport(TransportDefinition)` instead. The member" +
+            " currently throws a NotImplementedException. Will be removed in version 4.0.0.", true)]
         public static NServiceBus.AzureServiceBusSettings UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration) { }
     }
     public class AzureServiceBusTransport : NServiceBus.Transport.TransportDefinition
