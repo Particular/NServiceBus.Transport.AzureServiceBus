@@ -17,6 +17,7 @@
         readonly ReceiveSettings receiveSettings;
         readonly Action<string, Exception, CancellationToken> criticalErrorAction;
         readonly ServiceBusClient serviceBusClient;
+        int numberOfExecutingReceives;
 
         OnMessage onMessage;
         OnError onError;
@@ -121,7 +122,7 @@
             {
                 await messageReceivingTask.ConfigureAwait(false);
 
-                while (semaphore.CurrentCount > 0)
+                while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
                 {
                     // Do not forward cancellationToken here so that pump has ability to exit gracefully
                     // Individual message processing pipelines will be canceled instead
@@ -197,6 +198,8 @@
 
             try
             {
+                //TODO: It shouldn't be needed to track outstanding receives but it seems like the SDK isn't honoring the cancellation token so we'll have to keep tracking it until we figure out what's wrong
+                _ = Interlocked.Increment(ref numberOfExecutingReceives);
                 message = await receiver.ReceiveMessageAsync(cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
 
                 circuitBreaker.Success();
@@ -213,6 +216,10 @@
                 Logger.Warn($"Failed to receive a message. Exception: {ex.Message}", ex);
 
                 await circuitBreaker.Failure(ex, messageReceivingCancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _ = Interlocked.Decrement(ref numberOfExecutingReceives);
             }
 
             // By default, ASB client long polls for a minute and returns null if it times out
