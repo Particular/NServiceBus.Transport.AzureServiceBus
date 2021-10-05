@@ -199,6 +199,7 @@
             try
             {
                 //TODO: It shouldn't be needed to track outstanding receives but it seems like the SDK isn't honoring the cancellation token so we'll have to keep tracking it until we figure out what's wrong
+                // see https://github.com/Azure/azure-sdk-for-net/pull/24215
                 _ = Interlocked.Increment(ref numberOfExecutingReceives);
                 message = await receiver.ReceiveMessageAsync(cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
 
