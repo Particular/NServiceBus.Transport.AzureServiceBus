@@ -2,12 +2,11 @@
 {
     using System;
     using System.Collections.Concurrent;
-    using Microsoft.Azure.ServiceBus;
+    using Azure.Messaging.ServiceBus;
 
     class NativeMessageCustomizer
     {
-        ConcurrentDictionary<string, Action<Message>> customizations;
-
-        public ConcurrentDictionary<string, Action<Message>> Customizations => customizations ??= new ConcurrentDictionary<string, Action<Message>>();
+        ConcurrentDictionary<string, Action<ServiceBusMessage>> customizations;
+        public ConcurrentDictionary<string, Action<ServiceBusMessage>> Customizations => customizations ??= new ConcurrentDictionary<string, Action<ServiceBusMessage>>();
     }
 }

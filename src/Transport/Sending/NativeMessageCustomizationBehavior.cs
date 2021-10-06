@@ -2,7 +2,7 @@
 {
     using System;
     using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
+    using Azure.Messaging.ServiceBus;
     using Pipeline;
     using Transport;
 
@@ -19,7 +19,7 @@
 
         public override Task Invoke(IRoutingContext context, Func<Task> next)
         {
-            if (!context.Extensions.TryGet(CustomizationKey, out Action<Message> customization))
+            if (!context.Extensions.TryGet(CustomizationKey, out Action<ServiceBusMessage> customization))
             {
                 return next();
             }

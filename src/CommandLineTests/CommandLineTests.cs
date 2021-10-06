@@ -4,8 +4,8 @@
     using System.Diagnostics;
     using System.Linq;
     using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Management;
+    using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using NUnit.Framework;
 
     [TestFixture]
@@ -114,38 +114,32 @@
         [SetUp]
         public void Setup()
         {
-            client = new ManagementClient(Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
-        }
-
-        [TearDown]
-        public Task TearDown()
-        {
-            return client.CloseAsync();
+            client = new ServiceBusAdministrationClient(Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
         }
 
         async Task VerifyQueue(string queueName, bool enablePartitioning = false, int size = 5 * 1024)
         {
-            var actual = await client.GetQueueAsync(queueName);
+            var actual = (await client.GetQueueAsync(queueName)).Value;
 
             Assert.AreEqual(int.MaxValue, actual.MaxDeliveryCount);
             Assert.AreEqual(TimeSpan.FromMinutes(5), actual.LockDuration);
             Assert.AreEqual(true, actual.EnableBatchedOperations);
             Assert.AreEqual(enablePartitioning, actual.EnablePartitioning);
-            Assert.AreEqual(size, actual.MaxSizeInMB);
+            Assert.AreEqual(size, actual.MaxSizeInMegabytes);
         }
 
         async Task VerifyTopic(string topicName, bool enablePartitioning = false, int size = 5 * 1024)
         {
-            var actual = await client.GetTopicAsync(topicName);
+            var actual = (await client.GetTopicAsync(topicName)).Value;
 
             Assert.AreEqual(true, actual.EnableBatchedOperations);
             Assert.AreEqual(enablePartitioning, actual.EnablePartitioning);
-            Assert.AreEqual(size, actual.MaxSizeInMB);
+            Assert.AreEqual(size, actual.MaxSizeInMegabytes);
         }
 
         async Task VerifySubscription(string topicName, string subscriptionName, string queueName)
         {
-            var actual = await client.GetSubscriptionAsync(topicName, subscriptionName);
+            var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
 
             Assert.AreEqual(TimeSpan.FromMinutes(5), actual.LockDuration);
             Assert.IsTrue(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal));
@@ -155,40 +149,41 @@
             Assert.AreEqual(queueName, actual.UserMetadata);
 
             // rules
-            var rules = await client.GetRulesAsync(topicName, subscriptionName);
+            var rules = await client.GetRulesAsync(topicName, subscriptionName).ToListAsync();
             Assert.IsTrue(rules.Count == 4);
 
             var defaultRule = rules.ElementAt(0);
             Assert.AreEqual("$default", defaultRule.Name);
-            Assert.AreEqual(new FalseFilter().SqlExpression, ((FalseFilter)defaultRule.Filter).SqlExpression);
+            Assert.AreEqual(new FalseRuleFilter().SqlExpression, ((FalseRuleFilter)defaultRule.Filter).SqlExpression);
 
             var customRuleNameRule = rules.ElementAt(1);
             Assert.AreEqual("CustomRuleName", customRuleNameRule.Name);
-            Assert.AreEqual(new SqlFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage3%'").SqlExpression, ((SqlFilter)customRuleNameRule.Filter).SqlExpression);
+            Assert.AreEqual(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage3%'").SqlExpression, ((SqlRuleFilter)customRuleNameRule.Filter).SqlExpression);
 
             var myMessage1Rule = rules.ElementAt(2);
             Assert.AreEqual("MyMessage1", myMessage1Rule.Name);
-            Assert.AreEqual(new SqlFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyMessage1%'").SqlExpression, ((SqlFilter)myMessage1Rule.Filter).SqlExpression);
+            Assert.AreEqual(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyMessage1%'").SqlExpression, ((SqlRuleFilter)myMessage1Rule.Filter).SqlExpression);
 
             var myMessage2WithNamespace = rules.ElementAt(3);
             Assert.AreEqual("MyNamespace1.MyMessage2", myMessage2WithNamespace.Name);
-            Assert.AreEqual(new SqlFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage2%'").SqlExpression, ((SqlFilter)myMessage2WithNamespace.Filter).SqlExpression);
+            Assert.AreEqual(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage2%'").SqlExpression, ((SqlRuleFilter)myMessage2WithNamespace.Filter).SqlExpression);
         }
 
         async Task VerifySubscriptionContainsOnlyDefaultRule(string topicName, string subscriptionName)
         {
             // rules
-            var rules = await client.GetRulesAsync(topicName, subscriptionName);
+            var rules = await client.GetRulesAsync(topicName, subscriptionName).ToListAsync();
+
             Assert.IsTrue(rules.Count == 1);
 
             var defaultRule = rules.ElementAt(0);
             Assert.AreEqual("$default", defaultRule.Name);
-            Assert.AreEqual(new FalseFilter().SqlExpression, ((FalseFilter)defaultRule.Filter).SqlExpression);
+            Assert.AreEqual(new FalseRuleFilter().SqlExpression, ((FalseRuleFilter)defaultRule.Filter).SqlExpression);
         }
 
         async Task VerifyQueueExists(bool queueShouldExist)
         {
-            var queueExists = await client.QueueExistsAsync(QueueName);
+            var queueExists = (await client.QueueExistsAsync(QueueName)).Value;
             Assert.AreEqual(queueShouldExist, queueExists);
         }
 
@@ -228,7 +223,7 @@
             {
                 await client.DeleteQueueAsync(queueName);
             }
-            catch (MessagingEntityNotFoundException)
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
             }
         }
@@ -239,11 +234,11 @@
             {
                 await client.DeleteTopicAsync(topicName);
             }
-            catch (MessagingEntityNotFoundException)
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
             }
         }
 
-        ManagementClient client;
+        ServiceBusAdministrationClient client;
     }
 }

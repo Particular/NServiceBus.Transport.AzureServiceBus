@@ -2,17 +2,16 @@
 {
     using System;
     using System.Collections.Generic;
+    using Azure.Messaging.ServiceBus;
     using Configuration;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.InteropExtensions;
 
     static class MessageExtensions
     {
-        public static Dictionary<string, string> GetNServiceBusHeaders(this Message message)
+        public static Dictionary<string, string> GetNServiceBusHeaders(this ServiceBusReceivedMessage message)
         {
-            var headers = new Dictionary<string, string>(message.UserProperties.Count);
+            var headers = new Dictionary<string, string>(message.ApplicationProperties.Count);
 
-            foreach (var kvp in message.UserProperties)
+            foreach (var kvp in message.ApplicationProperties)
             {
                 headers[kvp.Key] = kvp.Value?.ToString();
             }
@@ -32,7 +31,7 @@
             return headers;
         }
 
-        public static string GetMessageId(this Message message)
+        public static string GetMessageId(this ServiceBusReceivedMessage message)
         {
             if (string.IsNullOrEmpty(message.MessageId))
             {
@@ -40,16 +39,6 @@
             }
 
             return message.MessageId;
-        }
-
-        public static byte[] GetBody(this Message message)
-        {
-            if (message.UserProperties.TryGetValue(TransportMessageHeaders.TransportEncoding, out var value) && value.Equals("wcf/byte-array"))
-            {
-                return message.GetBody<byte[]>() ?? Array.Empty<byte>();
-            }
-
-            return message.Body ?? Array.Empty<byte>();
         }
     }
 }

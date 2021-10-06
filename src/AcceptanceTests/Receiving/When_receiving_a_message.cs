@@ -3,6 +3,7 @@
     using System;
     using System.Threading.Tasks;
     using AcceptanceTesting;
+    using Azure.Messaging.ServiceBus;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
     using Pipeline;
@@ -43,7 +44,7 @@
 
                 public Task Handle(Message request, IMessageHandlerContext context)
                 {
-                    testContext.NativeMessageFound = testContext.NativeMessageFound && context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>() != null;
+                    testContext.NativeMessageFound = testContext.NativeMessageFound && context.Extensions.Get<ServiceBusReceivedMessage>() != null;
 
                     return Task.CompletedTask;
                 }
@@ -60,7 +61,7 @@
 
                 public override Task Invoke(ITransportReceiveContext context, Func<Task> next)
                 {
-                    testContext.NativeMessageFound = context.Extensions.Get<Microsoft.Azure.ServiceBus.Message>() != null;
+                    testContext.NativeMessageFound = context.Extensions.Get<ServiceBusReceivedMessage>() != null;
 
                     return next();
                 }

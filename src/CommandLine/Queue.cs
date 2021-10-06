@@ -2,26 +2,26 @@
 {
     using System;
     using System.Threading.Tasks;
+    using Azure.Messaging.ServiceBus.Administration;
     using McMaster.Extensions.CommandLineUtils;
-    using Microsoft.Azure.ServiceBus.Management;
 
     static class Queue
     {
-        public static Task Create(ManagementClient client, CommandArgument name, CommandOption<int> size, CommandOption partitioning)
+        public static Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption<int> size, CommandOption partitioning)
         {
-            var queueDescription = new QueueDescription(name.Value)
+            var queueDescription = new CreateQueueOptions(name.Value)
             {
                 EnableBatchedOperations = true,
                 LockDuration = TimeSpan.FromMinutes(5),
                 MaxDeliveryCount = int.MaxValue,
-                MaxSizeInMB = (size.HasValue() ? size.ParsedValue : 5) * 1024,
+                MaxSizeInMegabytes = (size.HasValue() ? size.ParsedValue : 5) * 1024,
                 EnablePartitioning = partitioning.HasValue()
             };
 
             return client.CreateQueueAsync(queueDescription);
         }
 
-        public static Task Delete(ManagementClient client, CommandArgument name)
+        public static Task Delete(ServiceBusAdministrationClient client, CommandArgument name)
         {
             return client.DeleteQueueAsync(name.Value);
         }

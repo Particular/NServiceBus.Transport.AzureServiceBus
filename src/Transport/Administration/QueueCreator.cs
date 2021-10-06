@@ -3,23 +3,26 @@
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Management;
+    using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
+    using NServiceBus.Logging;
 
     class QueueCreator
     {
+        static readonly ILog Logger = LogManager.GetLogger<QueueCreator>();
+
         readonly AzureServiceBusTransport transportSettings;
-        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
+        readonly ServiceBusAdministrationClient administrativeClient;
         readonly NamespacePermissions namespacePermissions;
         readonly int maxSizeInMb;
 
         public QueueCreator(
             AzureServiceBusTransport transportSettings,
-            ServiceBusConnectionStringBuilder connectionStringBuilder,
+            ServiceBusAdministrationClient administrativeClient,
             NamespacePermissions namespacePermissions)
         {
             this.transportSettings = transportSettings;
-            this.connectionStringBuilder = connectionStringBuilder;
+            this.administrativeClient = administrativeClient;
             this.namespacePermissions = namespacePermissions;
             maxSizeInMb = transportSettings.EntityMaximumSize * 1024;
         }
@@ -28,56 +31,49 @@
         {
             await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
 
-            var client = new ManagementClient(connectionStringBuilder, transportSettings.TokenProvider);
+            var topic = new CreateTopicOptions(transportSettings.TopicName)
+            {
+                EnableBatchedOperations = true,
+                EnablePartitioning = transportSettings.EnablePartitioning,
+                MaxSizeInMegabytes = maxSizeInMb
+            };
 
             try
             {
-                var topic = new TopicDescription(transportSettings.TopicName)
+                await administrativeClient.CreateTopicAsync(topic, cancellationToken).ConfigureAwait(false);
+            }
+            catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+            {
+                Logger.Info($"Topic {topic.Name} already exists");
+            }
+            catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
+            {
+                Logger.Info($"Topic creation for {topic.Name} is already in progress");
+            }
+
+            foreach (var address in queues)
+            {
+                var queue = new CreateQueueOptions(address)
                 {
                     EnableBatchedOperations = true,
-                    EnablePartitioning = transportSettings.EnablePartitioning,
-                    MaxSizeInMB = maxSizeInMb
+                    LockDuration = TimeSpan.FromMinutes(5),
+                    MaxDeliveryCount = int.MaxValue,
+                    MaxSizeInMegabytes = maxSizeInMb,
+                    EnablePartitioning = transportSettings.EnablePartitioning
                 };
 
                 try
                 {
-                    await client.CreateTopicAsync(topic, cancellationToken).ConfigureAwait(false);
+                    await administrativeClient.CreateQueueAsync(queue, cancellationToken).ConfigureAwait(false);
                 }
-                catch (MessagingEntityAlreadyExistsException)
+                catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
+                    Logger.Debug($"Queue {queue.Name} already exists");
                 }
-                // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
-                catch (ServiceBusException sbe) when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
+                catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
                 {
+                    Logger.Info($"Queue creation for {queue.Name} is already in progress");
                 }
-
-                foreach (var address in queues)
-                {
-                    var queue = new QueueDescription(address)
-                    {
-                        EnableBatchedOperations = true,
-                        LockDuration = TimeSpan.FromMinutes(5),
-                        MaxDeliveryCount = int.MaxValue,
-                        MaxSizeInMB = maxSizeInMb,
-                        EnablePartitioning = transportSettings.EnablePartitioning
-                    };
-
-                    try
-                    {
-                        await client.CreateQueueAsync(queue, cancellationToken).ConfigureAwait(false);
-                    }
-                    catch (MessagingEntityAlreadyExistsException)
-                    {
-                    }
-                    // TODO: refactor when https://github.com/Azure/azure-service-bus-dotnet/issues/525 is fixed
-                    catch (ServiceBusException sbe) when (sbe.Message.Contains("SubCode=40901.")) // An operation is in progress.
-                    {
-                    }
-                }
-            }
-            finally
-            {
-                await client.CloseAsync().ConfigureAwait(false);
             }
         }
     }

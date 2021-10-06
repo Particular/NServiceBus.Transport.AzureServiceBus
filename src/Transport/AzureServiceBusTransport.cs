@@ -6,20 +6,25 @@
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Primitives;
+    using Azure.Core;
+    using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using Transport;
     using Transport.AzureServiceBus;
 
     /// <summary>
     /// Transport definition for Azure Service Bus.
     /// </summary>
-    public partial class AzureServiceBusTransport : TransportDefinition
+    public class AzureServiceBusTransport : TransportDefinition
     {
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString) : this()
+        public AzureServiceBusTransport(string connectionString) : base(
+            defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
+            supportsDelayedDelivery: true,
+            supportsPublishSubscribe: true,
+            supportsTTBR: true)
         {
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
             ConnectionString = connectionString;
@@ -29,19 +34,38 @@
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
             ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)
         {
-            CheckConnectionStringHasBeenConfigured();
-
-            var connectionStringBuilder = new ServiceBusConnectionStringBuilder(ConnectionString)
+            var serviceBusClientOptions = new ServiceBusClientOptions()
             {
-                TransportType = UseWebSockets ? TransportType.AmqpWebSockets : TransportType.Amqp
+                TransportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp,
+                EnableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
             };
-            var namespacePermissions = new NamespacePermissions(connectionStringBuilder, TokenProvider);
 
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receivers, connectionStringBuilder, namespacePermissions);
+            if (RetryPolicyOptions != null)
+            {
+                serviceBusClientOptions.RetryOptions = RetryPolicyOptions;
+            }
+
+            var recieveClientTuple = receivers.Select(receiver =>
+            {
+                var client = TokenCredential != null
+                    ? new ServiceBusClient(ConnectionString, TokenCredential, serviceBusClientOptions)
+                    : new ServiceBusClient(ConnectionString, serviceBusClientOptions);
+                return (receiver, client);
+            }).ToArray();
+
+            var defaultClient = TokenCredential != null
+                ? new ServiceBusClient(ConnectionString, TokenCredential, serviceBusClientOptions)
+                : new ServiceBusClient(ConnectionString, serviceBusClientOptions);
+
+            var administrativeClient = TokenCredential != null ? new ServiceBusAdministrationClient(ConnectionString, TokenCredential) : new ServiceBusAdministrationClient(ConnectionString);
+
+            var namespacePermissions = new NamespacePermissions(administrativeClient);
+
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, recieveClientTuple, defaultClient, administrativeClient, namespacePermissions);
 
             if (hostSettings.SetupInfrastructure)
             {
-                var queueCreator = new QueueCreator(this, connectionStringBuilder, namespacePermissions);
+                var queueCreator = new QueueCreator(this, administrativeClient, namespacePermissions);
                 var allQueues = receivers
                     .Select(r => r.ReceiveAddress)
                     .Concat(sendingAddresses)
@@ -130,7 +154,7 @@
         int prefetchMultiplier = 10;
 
         /// <summary>
-        /// Overrides the default prefetch count calculation with the specified value. 
+        /// Overrides the default prefetch count calculation with the specified value.
         /// </summary>
         public int? PrefetchCount
         {
@@ -223,21 +247,21 @@
         /// <summary>
         /// Overrides the default token provider.
         /// </summary>
-        public ITokenProvider TokenProvider { get; set; }
+        public TokenCredential TokenCredential { get; set; }
 
         /// <summary>
         /// Overrides the default retry policy.
         /// </summary>
-        public RetryPolicy RetryPolicy
+        public ServiceBusRetryOptions RetryPolicyOptions
         {
             get => retryPolicy;
             set
             {
-                Guard.AgainstNull(nameof(RetryPolicy), value);
+                Guard.AgainstNull(nameof(RetryPolicyOptions), value);
                 retryPolicy = value;
             }
         }
-        RetryPolicy retryPolicy;
+        ServiceBusRetryOptions retryPolicy;
 
         /// <summary>
         /// Configures the Service Bus connection string.

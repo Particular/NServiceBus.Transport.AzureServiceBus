@@ -1,8 +1,8 @@
 ﻿namespace NServiceBus.Testing
 {
     using System;
+    using Azure.Messaging.ServiceBus;
     using Extensibility;
-    using Microsoft.Azure.ServiceBus;
 
     /// <summary>
     /// Provides helper implementations for the native message customization for testing purposes.
@@ -14,9 +14,9 @@
         /// </summary>
         /// <param name="options">Option being extended.</param>
         /// <returns>The customization action or null.</returns>
-        public static Action<Message> GetNativeMessageCustomization(this ExtendableOptions options)
+        public static Action<ServiceBusMessage> GetNativeMessageCustomization(this ExtendableOptions options)
         {
-            return options.GetExtensions().TryGet<Action<Message>>(NativeMessageCustomizationBehavior.CustomizationKey, out var customization) ? customization : null;
+            return options.GetExtensions().TryGet<Action<ServiceBusMessage>>(NativeMessageCustomizationBehavior.CustomizationKey, out var customization) ? customization : null;
         }
     }
 }

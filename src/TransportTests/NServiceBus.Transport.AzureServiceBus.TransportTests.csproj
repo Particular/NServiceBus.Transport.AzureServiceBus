@@ -10,15 +10,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.3.0" />
     <PackageReference Include="GitHubActionsTestLogger" Version="1.2.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.11.0" />
     <PackageReference Include="NServiceBus.TransportTests.Sources" Version="8.0.0-alpha.1897" />
     <PackageReference Include="NUnit" Version="3.13.2" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.0.0" />
-  </ItemGroup>
-
-  <ItemGroup Label="Force the latest version of the transitive dependencies">
-    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="5.1.3" />
   </ItemGroup>
 
 </Project>
