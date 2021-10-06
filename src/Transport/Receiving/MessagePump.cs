@@ -19,7 +19,6 @@
         readonly ServiceBusRetryOptions retryOptions;
         readonly ServiceBusTransportType transportType;
         readonly TokenCredential tokenCredential;
-        int numberOfExecutingReceives;
         bool enableCrossEntityTransactions;
         ServiceBusClient serviceBusClient;
 
@@ -159,10 +158,6 @@
 
             try
             {
-                // Workaround for Core v7 not having CancellationToken support. The Azure.Messaging.ServiceBus
-                // receivers support cancellation tokens, hoever given that Core doesn't we want to track how
-                // many receives are waiting and could be ignored when endpoint is stopping.
-                Interlocked.Increment(ref numberOfExecutingReceives);
                 message = await receiveTask.ConfigureAwait(false);
 
                 circuitBreaker.Success();
@@ -179,13 +174,6 @@
                 logger.Warn($"Failed to receive a message. Exception: {exception.Message}", exception);
 
                 await circuitBreaker.Failure(exception).ConfigureAwait(false);
-            }
-            finally
-            {
-                // Workaround for Core v7 not having CancellationToken support. The Azure.Messaging.ServiceBus
-                // receivers support cancellation tokens, hoever given that Core doesn't we want to track how
-                // many receives are waiting and could be ignored when endpoint is stopping.
-                Interlocked.Decrement(ref numberOfExecutingReceives);
             }
 
             // By default, ASB client long polls for a minute and returns null if it times out
@@ -324,10 +312,7 @@
 
             await receiveLoopTask.ConfigureAwait(false);
 
-            // Workaround for Core v7 not having CancellationToken support. The Azure.Messaging.ServiceBus
-            // receivers support cancellation tokens, hoever given that Core doesn't we want to track how
-            // many receives are waiting and could be ignored when endpoint is stopping.
-            while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
+            while (semaphore.CurrentCount != maxConcurrency)
             {
                 await Task.Delay(50).ConfigureAwait(false);
             }
