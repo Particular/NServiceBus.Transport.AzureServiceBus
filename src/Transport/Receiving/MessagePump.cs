@@ -239,7 +239,7 @@
 
                     if (receiveCancellationTokenSource.IsCancellationRequested == false)
                     {
-                        await receiver.CompleteMessageAsync(message)
+                        await receiver.SafeCompleteMessageAsync(message, pushSettings.RequiredTransactionMode, transaction)
                             .ConfigureAwait(false);
 
                         transaction?.Commit();
@@ -247,7 +247,7 @@
 
                     if (receiveCancellationTokenSource.IsCancellationRequested)
                     {
-                        await receiver.AbandonMessageAsync(message).ConfigureAwait(false);
+                        await receiver.SafeAbandonMessageAsync(message, pushSettings.RequiredTransactionMode).ConfigureAwait(false);
 
                         transaction?.Rollback();
                     }
@@ -269,7 +269,7 @@
 
                         if (result == ErrorHandleResult.Handled)
                         {
-                            await receiver.CompleteMessageAsync(message).ConfigureAwait(false);
+                            await receiver.SafeCompleteMessageAsync(message, pushSettings.RequiredTransactionMode, transaction).ConfigureAwait(false);
                         }
 
                         transaction?.Commit();
@@ -277,7 +277,7 @@
 
                     if (result == ErrorHandleResult.RetryRequired)
                     {
-                        await receiver.AbandonMessageAsync(message).ConfigureAwait(false);
+                        await receiver.SafeAbandonMessageAsync(message, pushSettings.RequiredTransactionMode).ConfigureAwait(false);
                     }
                 }
                 catch (ServiceBusException onErrorException) when (onErrorException.Reason == ServiceBusFailureReason.MessageLockLost || onErrorException.Reason == ServiceBusFailureReason.ServiceTimeout)
@@ -288,7 +288,7 @@
                 {
                     criticalError.Raise($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException);
 
-                    await receiver.AbandonMessageAsync(message).ConfigureAwait(false);
+                    await receiver.SafeAbandonMessageAsync(message, pushSettings.RequiredTransactionMode).ConfigureAwait(false);
                 }
             }
         }
