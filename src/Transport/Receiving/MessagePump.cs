@@ -283,7 +283,7 @@
 
                     await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
-                    await receiver.CompleteMessageAsync(message, messageProcessingCancellationToken).ConfigureAwait(false);
+                    await receiver.SafeCompleteMessageAsync(message, transportSettings.TransportTransactionMode, transaction, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
 
                     transaction?.Commit();
                 }
@@ -304,7 +304,7 @@
 
                         if (result == ErrorHandleResult.Handled)
                         {
-                            await receiver.CompleteMessageAsync(message, messageProcessingCancellationToken).ConfigureAwait(false);
+                            await receiver.SafeCompleteMessageAsync(message, transportSettings.TransportTransactionMode, transaction, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                         }
 
                         transaction?.Commit();
@@ -312,7 +312,7 @@
 
                     if (result == ErrorHandleResult.RetryRequired)
                     {
-                        await receiver.AbandonMessageAsync(message, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                        await receiver.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                     }
                 }
                 catch (ServiceBusException onErrorEx) when (onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost || onErrorEx.Reason == ServiceBusFailureReason.ServiceTimeout)
@@ -329,7 +329,7 @@
                 {
                     criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
 
-                    await receiver.AbandonMessageAsync(message, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                    await receiver.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                 }
             }
         }
