@@ -119,7 +119,7 @@
                 {
                     await semaphore.WaitAsync(messageProcessing.Token).ConfigureAwait(false);
 
-                    var receiveTask = receiver.ReceiveMessageAsync();
+                    var receiveTask = receiver.ReceiveMessageAsync(cancellationToken: messageProcessing.Token);
 
                     _ = ProcessMessage(receiveTask);
                 }
