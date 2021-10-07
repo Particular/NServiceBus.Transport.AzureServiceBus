@@ -34,7 +34,6 @@
                 context =>
                 {
                     throw new ServiceBusException("from onError", ServiceBusFailureReason.ServiceTimeout);
-                    ;
                 },
                 transactionMode,
                 (message, exception) =>
