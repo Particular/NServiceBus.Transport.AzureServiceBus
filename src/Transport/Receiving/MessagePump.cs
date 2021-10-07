@@ -194,15 +194,22 @@
             }
             catch (Exception exception)
             {
-                if (pushSettings.RequiredTransactionMode != TransportTransactionMode.None)
+                var tryDeadlettering = pushSettings.RequiredTransactionMode != TransportTransactionMode.None;
+
+                logger.Warn($"Poison message detected. " +
+                    $"Message {(tryDeadlettering ? "will be moved to the poison queue" : "will be discarded, transaction mode is set to None")}. " +
+                    $"Exception: {exception.Message}", exception);
+
+                if (tryDeadlettering)
                 {
                     try
                     {
                         await receiver.DeadLetterMessageAsync(message, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
                     }
-                    catch (Exception)
+                    catch (Exception deadLetterException)
                     {
                         // nothing we can do about it, message will be retried
+                        logger.Warn($"Failed to deadletter a message. Exception: {deadLetterException.Message}", deadLetterException);
                     }
                 }
 
