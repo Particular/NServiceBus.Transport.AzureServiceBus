@@ -235,14 +235,23 @@
             }
             catch (Exception ex)
             {
-                try
+                var tryDeadlettering = transportSettings.TransportTransactionMode != TransportTransactionMode.None;
+
+                Logger.Warn($"Poison message detected. " +
+                    $"Message {(tryDeadlettering ? "will be moved to the poison queue" : "will be discarded, transaction mode is set to None")}. " +
+                    $"Exception: {ex.Message}", ex);
+
+                if (tryDeadlettering)
                 {
-                    await receiver.DeadLetterMessageAsync(message, deadLetterReason: "Poisoned message", deadLetterErrorDescription: ex.Message, cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(messageReceivingCancellationToken))
-                {
-                    // nothing we can do about it, message will be retried
-                    Logger.Debug("Error dead lettering poisoned message.", deadLetterEx);
+                    try
+                    {
+                        await receiver.DeadLetterMessageAsync(message, deadLetterReason: "Poisoned message", deadLetterErrorDescription: ex.Message, cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(messageReceivingCancellationToken))
+                    {
+                        // nothing we can do about it, message will be retried
+                        Logger.Debug("Error dead lettering poisoned message.", deadLetterEx);
+                    }
                 }
 
                 return;
