@@ -1,8 +1,8 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.CommandLine
 {
     using System;
+    using Azure.Messaging.ServiceBus;
     using McMaster.Extensions.CommandLineUtils;
-    using Microsoft.Azure.ServiceBus.Management;
 
     class Program
     {
@@ -122,7 +122,7 @@
                             await CommandRunner.Run(connectionString, client => Queue.Create(client, name, size, partitioning));
                             Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
                         }
-                        catch (MessagingEntityAlreadyExistsException)
+                        catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                         {
                             Console.WriteLine($"Queue '{name.Value}' already exists, skipping creation");
                         }

@@ -1,7 +1,7 @@
 ﻿namespace NServiceBus
 {
     using System;
-    using Microsoft.Azure.ServiceBus;
+    using Azure.Messaging.ServiceBus;
     using NServiceBus.Extensibility;
 
     /// <summary>
@@ -19,7 +19,7 @@
         /// </summary>
         /// <param name="options">Option being extended.</param>
         /// <param name="customization">Customization action.</param>
-        public static void CustomizeNativeMessage(this ExtendableOptions options, Action<Message> customization)
+        public static void CustomizeNativeMessage(this ExtendableOptions options, Action<ServiceBusMessage> customization)
         {
             if (options.GetHeaders().ContainsKey(CustomizationHeader))
             {
@@ -45,7 +45,7 @@
         /// <param name="options">Option being extended.</param>
         /// <param name="context">Context used to dispatch messages in the message handler.</param>
         /// <param name="customization">Customization action.</param>
-        public static void CustomizeNativeMessage(this ExtendableOptions options, IPipelineContext context, Action<Message> customization)
+        public static void CustomizeNativeMessage(this ExtendableOptions options, IPipelineContext context, Action<ServiceBusMessage> customization)
         {
             if (options.GetHeaders().ContainsKey(CustomizationHeader))
             {

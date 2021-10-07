@@ -3,26 +3,26 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using Azure.Messaging.ServiceBus;
     using Configuration;
     using DelayedDelivery;
     using DeliveryConstraints;
-    using Microsoft.Azure.ServiceBus;
     using Performance.TimeToBeReceived;
 
     static class OutgoingMessageExtensions
     {
-        public static Message ToAzureServiceBusMessage(this OutgoingMessage outgoingMessage, List<DeliveryConstraint> deliveryConstraints, string incomingQueuePartitionKey)
+        public static ServiceBusMessage ToAzureServiceBusMessage(this OutgoingMessage outgoingMessage, List<DeliveryConstraint> deliveryConstraints, string incomingQueuePartitionKey)
         {
-            var message = new Message(outgoingMessage.Body)
+            var message = new ServiceBusMessage(outgoingMessage.Body)
             {
                 // Cannot re-use MessageId to be compatible with ASB transport that could have native de-dup enabled
                 MessageId = Guid.NewGuid().ToString()
             };
 
             // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
-            message.UserProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
+            message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
 
-            message.ViaPartitionKey = incomingQueuePartitionKey;
+            message.TransactionPartitionKey = incomingQueuePartitionKey;
 
             ApplyDeliveryConstraints(message, deliveryConstraints);
 
@@ -37,17 +37,19 @@
             return message;
         }
 
-        static void ApplyDeliveryConstraints(Message message, List<DeliveryConstraint> deliveryConstraints)
+        static void ApplyDeliveryConstraints(ServiceBusMessage message, List<DeliveryConstraint> deliveryConstraints)
         {
-            // TODO: review when delaying with TimeSpan is supported https://github.com/Azure/azure-service-bus-dotnet/issues/160
+            // TODO: review if delaying with TimeSpan will be supported
 
             if (deliveryConstraints.TryGet(out DoNotDeliverBefore doNotDeliverBefore))
             {
-                message.ScheduledEnqueueTimeUtc = doNotDeliverBefore.At;
+                //TODO: datetime -> datetimeOffset
+                message.ScheduledEnqueueTime = doNotDeliverBefore.At;
             }
             else if (deliveryConstraints.TryGet(out DelayDeliveryWith delayDeliveryWith))
             {
-                message.ScheduledEnqueueTimeUtc = Time.UtcNow() + delayDeliveryWith.Delay;
+                //TODO: datetime -> datetimeOffset
+                message.ScheduledEnqueueTime = Time.UtcNow() + delayDeliveryWith.Delay;
             }
 
             if (deliveryConstraints.TryGet(out DiscardIfNotReceivedBefore discardIfNotReceivedBefore))
@@ -56,7 +58,7 @@
             }
         }
 
-        static void ApplyCorrelationId(Message message, Dictionary<string, string> headers)
+        static void ApplyCorrelationId(ServiceBusMessage message, Dictionary<string, string> headers)
         {
             if (headers.TryGetValue(Headers.CorrelationId, out var correlationId))
             {
@@ -64,7 +66,7 @@
             }
         }
 
-        static void ApplyContentType(Message message, Dictionary<string, string> headers)
+        static void ApplyContentType(ServiceBusMessage message, Dictionary<string, string> headers)
         {
             if (headers.TryGetValue(Headers.ContentType, out var contentType))
             {
@@ -72,7 +74,7 @@
             }
         }
 
-        static void SetReplyToAddress(Message message, Dictionary<string, string> headers)
+        static void SetReplyToAddress(ServiceBusMessage message, Dictionary<string, string> headers)
         {
             if (headers.TryGetValue(Headers.ReplyToAddress, out var replyToAddress))
             {
@@ -80,11 +82,11 @@
             }
         }
 
-        static void CopyHeaders(Message outgoingMessage, Dictionary<string, string> headers)
+        static void CopyHeaders(ServiceBusMessage outgoingMessage, Dictionary<string, string> headers)
         {
             foreach (var header in headers)
             {
-                outgoingMessage.UserProperties[header.Key] = header.Value;
+                outgoingMessage.ApplicationProperties[header.Key] = header.Value;
             }
         }
 

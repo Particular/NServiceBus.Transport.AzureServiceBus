@@ -3,59 +3,51 @@
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Core;
-    using Microsoft.Azure.ServiceBus.Primitives;
+    using Azure.Core;
+    using Azure.Messaging.ServiceBus;
 
     class MessageSenderPool
     {
-        public MessageSenderPool(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, RetryPolicy retryPolicy)
+        public MessageSenderPool(string connectionString, TokenCredential tokenCredential, ServiceBusRetryOptions retryOptions, ServiceBusTransportType transportType, TransportTransactionMode transactionMode)
         {
-            this.connectionStringBuilder = connectionStringBuilder;
-            this.tokenProvider = tokenProvider;
-            this.retryPolicy = retryPolicy;
+            var serviceBusClientOptions = new ServiceBusClientOptions()
+            {
+                TransportType = transportType,
+                EnableCrossEntityTransactions = transactionMode == TransportTransactionMode.SendsAtomicWithReceive
+            };
 
-            senders = new ConcurrentDictionary<(string, (ServiceBusConnection, string)), ConcurrentQueue<MessageSender>>();
+            if (retryOptions != null)
+            {
+                serviceBusClientOptions.RetryOptions = retryOptions;
+            }
+
+            defaultClient = tokenCredential != null
+                    ? new ServiceBusClient(connectionString, tokenCredential, serviceBusClientOptions)
+                    : new ServiceBusClient(connectionString, serviceBusClientOptions);
+
+            senders = new ConcurrentDictionary<(string, ServiceBusClient), ConcurrentQueue<ServiceBusSender>>();
         }
 
-        public MessageSender GetMessageSender(string destination, (ServiceBusConnection connection, string path) receiverConnectionAndPath)
+        public ServiceBusSender GetMessageSender(string destination, ServiceBusClient client)
         {
-            var sendersForDestination = senders.GetOrAdd((destination, receiverConnectionAndPath), _ => new ConcurrentQueue<MessageSender>());
+            var sendersForDestination = senders.GetOrAdd((destination, client ?? defaultClient), _ => new ConcurrentQueue<ServiceBusSender>());
 
-            if (!sendersForDestination.TryDequeue(out var sender) || sender.IsClosedOrClosing)
+            if (!sendersForDestination.TryDequeue(out var sender) || sender.IsClosed)
             {
-                // Send-Via case
-                if (receiverConnectionAndPath != (null, null))
-                {
-                    sender = new MessageSender(receiverConnectionAndPath.connection, destination, receiverConnectionAndPath.path, retryPolicy);
-                }
-                else
-                {
-                    if (tokenProvider == null)
-                    {
-                        sender = new MessageSender(connectionStringBuilder.GetNamespaceConnectionString(), destination, retryPolicy);
-                    }
-                    else
-                    {
-                        sender = new MessageSender(connectionStringBuilder.Endpoint, destination, tokenProvider, connectionStringBuilder.TransportType, retryPolicy);
-                    }
-                }
+                sender = (client ?? defaultClient).CreateSender(destination);
             }
 
             return sender;
         }
 
-        public void ReturnMessageSender(MessageSender sender)
+        public void ReturnMessageSender(ServiceBusSender sender, ServiceBusClient client)
         {
-            if (sender.IsClosedOrClosing)
+            if (sender.IsClosed)
             {
                 return;
             }
 
-            var connectionToUse = sender.OwnsConnection ? null : sender.ServiceBusConnection;
-            var path = sender.OwnsConnection ? sender.Path : sender.TransferDestinationPath;
-
-            if (senders.TryGetValue((path, (connectionToUse, sender.ViaEntityPath)), out var sendersForDestination))
+            if (senders.TryGetValue((sender.EntityPath, client ?? defaultClient), out var sendersForDestination))
             {
                 sendersForDestination.Enqueue(sender);
             }
@@ -78,10 +70,7 @@
             return Task.WhenAll(tasks);
         }
 
-        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
-        readonly ITokenProvider tokenProvider;
-        readonly RetryPolicy retryPolicy;
-
-        ConcurrentDictionary<(string destination, (ServiceBusConnection connnection, string incomingQueue)), ConcurrentQueue<MessageSender>> senders;
+        readonly ServiceBusClient defaultClient;
+        ConcurrentDictionary<(string destination, ServiceBusClient client), ConcurrentQueue<ServiceBusSender>> senders;
     }
 }

@@ -2,40 +2,30 @@
 {
     using System;
     using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Management;
-    using Microsoft.Azure.ServiceBus.Primitives;
+    using Azure.Messaging.ServiceBus.Administration;
 
     class NamespacePermissions
     {
-        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
-        readonly ITokenProvider tokenProvider;
+        readonly ServiceBusAdministrationClient administrativeClient;
 
-        public NamespacePermissions(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider)
+        public NamespacePermissions(ServiceBusAdministrationClient administrativeClient)
         {
-            this.connectionStringBuilder = connectionStringBuilder;
-            this.tokenProvider = tokenProvider;
+            this.administrativeClient = administrativeClient;
         }
 
         public async Task<StartupCheckResult> CanManage()
         {
-            var client = new ManagementClient(connectionStringBuilder, tokenProvider);
-
             try
             {
-                await client.QueueExistsAsync("$nservicebus-verification-queue").ConfigureAwait(false);
+                await administrativeClient.QueueExistsAsync("$nservicebus-verification-queue").ConfigureAwait(false);
             }
-            catch (UnauthorizedException)
+            catch (UnauthorizedAccessException)
             {
                 return StartupCheckResult.Failed("Management rights are required to run this endpoint. Verify that the SAS policy has the Manage claim.");
             }
             catch (Exception exception)
             {
                 return StartupCheckResult.Failed(exception.Message);
-            }
-            finally
-            {
-                await client.CloseAsync().ConfigureAwait(false);
             }
 
             return StartupCheckResult.Success;

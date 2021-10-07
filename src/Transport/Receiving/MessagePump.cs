@@ -5,21 +5,22 @@
     using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
+    using Azure.Core;
+    using Azure.Messaging.ServiceBus;
     using Extensibility;
     using Logging;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Core;
-    using Microsoft.Azure.ServiceBus.Primitives;
 
     class MessagePump : IPushMessages
     {
-        readonly ServiceBusConnectionStringBuilder connectionStringBuilder;
+        readonly string connectionString;
         readonly int prefetchMultiplier;
         readonly int? overriddenPrefetchCount;
         readonly TimeSpan timeToWaitBeforeTriggeringCircuitBreaker;
-        readonly RetryPolicy retryPolicy;
-        readonly ITokenProvider tokenProvider;
-        int numberOfExecutingReceives;
+        readonly ServiceBusRetryOptions retryOptions;
+        readonly ServiceBusTransportType transportType;
+        readonly TokenCredential tokenCredential;
+        bool enableCrossEntityTransactions;
+        ServiceBusClient serviceBusClient;
 
         // Init
         Func<MessageContext, Task> onMessage;
@@ -33,19 +34,19 @@
         SemaphoreSlim semaphore;
         CancellationTokenSource messageProcessing;
         int maxConcurrency;
-        MessageReceiver receiver;
-
+        ServiceBusReceiver receiver;
         static readonly ILog logger = LogManager.GetLogger<MessagePump>();
 
-        public MessagePump(ServiceBusConnectionStringBuilder connectionStringBuilder, ITokenProvider tokenProvider, int prefetchMultiplier, int? overriddenPrefetchCount,
-            TimeSpan timeToWaitBeforeTriggeringCircuitBreaker, RetryPolicy retryPolicy)
+        public MessagePump(string connectionString, TokenCredential tokenCredential, int prefetchMultiplier, int? overriddenPrefetchCount,
+            TimeSpan timeToWaitBeforeTriggeringCircuitBreaker, ServiceBusRetryOptions retryOptions, ServiceBusTransportType transportType)
         {
-            this.connectionStringBuilder = connectionStringBuilder;
-            this.tokenProvider = tokenProvider;
+            this.connectionString = connectionString;
+            this.tokenCredential = tokenCredential;
             this.prefetchMultiplier = prefetchMultiplier;
             this.overriddenPrefetchCount = overriddenPrefetchCount;
             this.timeToWaitBeforeTriggeringCircuitBreaker = timeToWaitBeforeTriggeringCircuitBreaker;
-            this.retryPolicy = retryPolicy;
+            this.retryOptions = retryOptions;
+            this.transportType = transportType;
         }
 
         public Task Init(Func<MessageContext, Task> onMessage, Func<ErrorContext, Task<ErrorHandleResult>> onError, CriticalError criticalError, PushSettings settings)
@@ -76,16 +77,32 @@
                 prefetchCount = overriddenPrefetchCount.Value;
             }
 
-            var receiveMode = pushSettings.RequiredTransactionMode == TransportTransactionMode.None ? ReceiveMode.ReceiveAndDelete : ReceiveMode.PeekLock;
+            enableCrossEntityTransactions = pushSettings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive;
 
-            if (tokenProvider == null)
+            var serviceBusClientOptions = new ServiceBusClientOptions()
             {
-                receiver = new MessageReceiver(connectionStringBuilder.GetNamespaceConnectionString(), pushSettings.InputQueue, receiveMode, retryPolicy: retryPolicy, prefetchCount);
-            }
-            else
+                TransportType = transportType,
+                EnableCrossEntityTransactions = enableCrossEntityTransactions
+            };
+
+            if (retryOptions != null)
             {
-                receiver = new MessageReceiver(connectionStringBuilder.Endpoint, pushSettings.InputQueue, tokenProvider, connectionStringBuilder.TransportType, receiveMode, retryPolicy: retryPolicy, prefetchCount);
+                serviceBusClientOptions.RetryOptions = retryOptions;
             }
+
+            serviceBusClient = tokenCredential != null
+                    ? new ServiceBusClient(connectionString, tokenCredential, serviceBusClientOptions)
+                    : new ServiceBusClient(connectionString, serviceBusClientOptions);
+
+            var receiveOptions = new ServiceBusReceiverOptions()
+            {
+                PrefetchCount = prefetchCount,
+                ReceiveMode = pushSettings.RequiredTransactionMode == TransportTransactionMode.None
+                    ? ServiceBusReceiveMode.ReceiveAndDelete
+                    : ServiceBusReceiveMode.PeekLock
+            };
+
+            receiver = serviceBusClient.CreateReceiver(pushSettings.InputQueue, receiveOptions);
 
             semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
@@ -102,7 +119,7 @@
                 {
                     await semaphore.WaitAsync(messageProcessing.Token).ConfigureAwait(false);
 
-                    var receiveTask = receiver.ReceiveAsync();
+                    var receiveTask = receiver.ReceiveMessageAsync(cancellationToken: messageProcessing.Token);
 
                     _ = ProcessMessage(receiveTask);
                 }
@@ -112,7 +129,7 @@
             }
         }
 
-        async Task ProcessMessage(Task<Message> receiveTask)
+        async Task ProcessMessage(Task<ServiceBusReceivedMessage> receiveTask)
         {
             try
             {
@@ -135,16 +152,12 @@
             }
         }
 
-        async Task InnerProcessMessage(Task<Message> receiveTask)
+        async Task InnerProcessMessage(Task<ServiceBusReceivedMessage> receiveTask)
         {
-            Message message = null;
+            ServiceBusReceivedMessage message = null;
 
             try
             {
-                // Workaround for ASB MessageReceiver.Receive() that has a timeout and doesn't take a CancellationToken.
-                // We want to track how many receives are waiting and could be ignored when endpoint is stopping.
-                // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
-                Interlocked.Increment(ref numberOfExecutingReceives);
                 message = await receiveTask.ConfigureAwait(false);
 
                 circuitBreaker.Success();
@@ -162,11 +175,6 @@
 
                 await circuitBreaker.Failure(exception).ConfigureAwait(false);
             }
-            finally
-            {
-                // TODO: remove workaround when https://github.com/Azure/azure-service-bus-dotnet/issues/439 is fixed
-                Interlocked.Decrement(ref numberOfExecutingReceives);
-            }
 
             // By default, ASB client long polls for a minute and returns null if it times out
             if (message == null || messageProcessing.IsCancellationRequested)
@@ -174,27 +182,35 @@
                 return;
             }
 
-            var lockToken = message.SystemProperties.LockToken;
-
             string messageId;
             Dictionary<string, string> headers;
-            byte[] body;
+            BinaryData body;
 
             try
             {
                 messageId = message.GetMessageId();
                 headers = message.GetNServiceBusHeaders();
-                body = message.GetBody();
+                body = message.Body;
             }
             catch (Exception exception)
             {
-                try
+                var tryDeadlettering = pushSettings.RequiredTransactionMode != TransportTransactionMode.None;
+
+                logger.Warn($"Poison message detected. " +
+                    $"Message {(tryDeadlettering ? "will be moved to the poison queue" : "will be discarded, transaction mode is set to None")}. " +
+                    $"Exception: {exception.Message}", exception);
+
+                if (tryDeadlettering)
                 {
-                    await receiver.SafeDeadLetterAsync(pushSettings.RequiredTransactionMode, lockToken, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
-                }
-                catch (Exception)
-                {
-                    // nothing we can do about it, message will be retried
+                    try
+                    {
+                        await receiver.DeadLetterMessageAsync(message, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
+                    }
+                    catch (Exception deadLetterException)
+                    {
+                        // nothing we can do about it, message will be retried
+                        logger.Warn($"Failed to deadletter a message. Exception: {deadLetterException.Message}", deadLetterException);
+                    }
                 }
 
                 return;
@@ -211,14 +227,14 @@
                     contextBag.Set(message);
                     contextBag.GetOrCreate<NativeMessageCustomizer>();
 
-                    var messageContext = new MessageContext(messageId, headers, body, transportTransaction,
+                    var messageContext = new MessageContext(messageId, headers, body.ToArray(), transportTransaction,
                         receiveCancellationTokenSource, contextBag);
 
                     await onMessage(messageContext).ConfigureAwait(false);
 
                     if (receiveCancellationTokenSource.IsCancellationRequested == false)
                     {
-                        await receiver.SafeCompleteAsync(pushSettings.RequiredTransactionMode, lockToken, transaction)
+                        await receiver.SafeCompleteMessageAsync(message, pushSettings.RequiredTransactionMode, transaction)
                             .ConfigureAwait(false);
 
                         transaction?.Commit();
@@ -226,7 +242,7 @@
 
                     if (receiveCancellationTokenSource.IsCancellationRequested)
                     {
-                        await receiver.SafeAbandonAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                        await receiver.SafeAbandonMessageAsync(message, pushSettings.RequiredTransactionMode).ConfigureAwait(false);
 
                         transaction?.Rollback();
                     }
@@ -242,13 +258,13 @@
                     {
                         var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
-                        var errorContext = new ErrorContext(exception, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.SystemProperties.DeliveryCount);
+                        var errorContext = new ErrorContext(exception, message.GetNServiceBusHeaders(), messageId, body.ToArray(), transportTransaction, message.DeliveryCount);
 
                         result = await onError(errorContext).ConfigureAwait(false);
 
                         if (result == ErrorHandleResult.Handled)
                         {
-                            await receiver.SafeCompleteAsync(pushSettings.RequiredTransactionMode, lockToken, transaction).ConfigureAwait(false);
+                            await receiver.SafeCompleteMessageAsync(message, pushSettings.RequiredTransactionMode, transaction).ConfigureAwait(false);
                         }
 
                         transaction?.Commit();
@@ -256,10 +272,10 @@
 
                     if (result == ErrorHandleResult.RetryRequired)
                     {
-                        await receiver.SafeAbandonAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                        await receiver.SafeAbandonMessageAsync(message, pushSettings.RequiredTransactionMode).ConfigureAwait(false);
                     }
                 }
-                catch (Exception onErrorException) when (onErrorException is MessageLockLostException || onErrorException is ServiceBusTimeoutException)
+                catch (ServiceBusException onErrorException) when (onErrorException.Reason == ServiceBusFailureReason.MessageLockLost || onErrorException.Reason == ServiceBusFailureReason.ServiceTimeout)
                 {
                     logger.Debug("Failed to execute recoverability.", onErrorException);
                 }
@@ -267,7 +283,7 @@
                 {
                     criticalError.Raise($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException);
 
-                    await receiver.SafeAbandonAsync(pushSettings.RequiredTransactionMode, lockToken).ConfigureAwait(false);
+                    await receiver.SafeAbandonMessageAsync(message, pushSettings.RequiredTransactionMode).ConfigureAwait(false);
                 }
             }
         }
@@ -289,7 +305,7 @@
 
             if (pushSettings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive)
             {
-                transportTransaction.Set((receiver.ServiceBusConnection, receiver.Path));
+                transportTransaction.Set(serviceBusClient);
                 transportTransaction.Set("IncomingQueue.PartitionKey", incomingQueuePartitionKey);
                 transportTransaction.Set(transaction);
             }
@@ -303,7 +319,7 @@
 
             await receiveLoopTask.ConfigureAwait(false);
 
-            while (semaphore.CurrentCount + Volatile.Read(ref numberOfExecutingReceives) != maxConcurrency)
+            while (semaphore.CurrentCount != maxConcurrency)
             {
                 await Task.Delay(50).ConfigureAwait(false);
             }
