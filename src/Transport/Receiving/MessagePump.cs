@@ -108,10 +108,11 @@
 
             messageProcessing = new CancellationTokenSource();
 
-            receiveLoopTask = Task.Run(() => ReceiveLoop());
+            // no Task.Run() here because ReceiveMessagesAndSwallowExceptions immediately yields with an await
+            receiveLoopTask = ReceiveMessagesAndSwallowExceptions();
         }
 
-        async Task ReceiveLoop()
+        async Task ReceiveMessagesAndSwallowExceptions()
         {
             try
             {
@@ -119,9 +120,7 @@
                 {
                     await semaphore.WaitAsync(messageProcessing.Token).ConfigureAwait(false);
 
-                    var receiveTask = receiver.ReceiveMessageAsync(cancellationToken: messageProcessing.Token);
-
-                    _ = ProcessMessage(receiveTask);
+                    _ = ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(messageProcessing.Token);
                 }
             }
             catch (OperationCanceledException)
@@ -129,21 +128,26 @@
             }
         }
 
-        async Task ProcessMessage(Task<ServiceBusReceivedMessage> receiveTask)
+        async Task ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(CancellationToken messageReceivingCancellationToken)
         {
             try
             {
-                await InnerProcessMessage(receiveTask).ConfigureAwait(false);
+                await ReceiveMessage(messageReceivingCancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex.IsCausedBy(messageReceivingCancellationToken))
+            {
+                // private token, pump is being stopped, log the exception in case the stack trace is ever needed for debugging
+                logger.Debug("Operation canceled while stopping message pump.", ex);
             }
             catch (Exception ex)
             {
-                logger.Debug($"Exception from {nameof(ProcessMessage)}: ", ex);
+                logger.Error("Error receiving messages.", ex);
             }
             finally
             {
                 try
                 {
-                    semaphore.Release();
+                    _ = semaphore.Release();
                 }
                 catch (ObjectDisposedException)
                 {
@@ -152,13 +156,13 @@
             }
         }
 
-        async Task InnerProcessMessage(Task<ServiceBusReceivedMessage> receiveTask)
+        async Task ReceiveMessage(CancellationToken messageReceivingCancellationToken)
         {
             ServiceBusReceivedMessage message = null;
 
             try
             {
-                message = await receiveTask.ConfigureAwait(false);
+                message = await receiver.ReceiveMessageAsync(cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
 
                 circuitBreaker.Success();
             }
@@ -169,7 +173,7 @@
             {
                 // Can happen during endpoint shutdown
             }
-            catch (Exception exception)
+            catch (Exception exception) when (!exception.IsCausedBy(messageReceivingCancellationToken))
             {
                 logger.Warn($"Failed to receive a message. Exception: {exception.Message}", exception);
 
@@ -204,9 +208,9 @@
                 {
                     try
                     {
-                        await receiver.DeadLetterMessageAsync(message, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message).ConfigureAwait(false);
+                        await receiver.DeadLetterMessageAsync(message, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message, cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception deadLetterException)
+                    catch (Exception deadLetterException) when (!deadLetterException.IsCausedBy(messageReceivingCancellationToken))
                     {
                         // nothing we can do about it, message will be retried
                         logger.Warn($"Failed to deadletter a message. Exception: {deadLetterException.Message}", deadLetterException);
