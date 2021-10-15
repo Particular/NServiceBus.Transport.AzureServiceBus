@@ -1,49 +1,6 @@
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo(@"NServiceBus.Transport.AzureServiceBus.Tests, PublicKey=0024000004800000940000000602000000240000525341310004000001000100dde965e6172e019ac82c2639ffe494dd2e7dd16347c34762a05732b492e110f2e4e2e1b5ef2d85c848ccfb671ee20a47c8d1376276708dc30a90ff1121b647ba3b7259a6bc383b2034938ef0e275b58b920375ac605076178123693c6c4f1331661a62eba28c249386855637780e3ff5f23a6d854700eaa6803ef48907513b92")]
 namespace NServiceBus
 {
-    public class AzureServiceBusSettings
-    {
-        public AzureServiceBusSettings() { }
-        [System.Obsolete("Provide the connection string to the AzureServiceBusTransport constructor. The me" +
-            "mber currently throws a NotImplementedException. Will be removed in version 4.0." +
-            "0.", true)]
-        public NServiceBus.AzureServiceBusSettings ConnectionString(string connectionString) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.EnablePartitioning` instead. The member currently t" +
-            "hrows a NotImplementedException. Will be removed in version 4.0.0.", true)]
-        public NServiceBus.AzureServiceBusSettings EnablePartitioning() { }
-        [System.Obsolete("Use `AzureServiceBusTransport.EntityMaximumSize` instead. The member currently th" +
-            "rows a NotImplementedException. Will be removed in version 4.0.0.", true)]
-        public NServiceBus.AzureServiceBusSettings EntityMaximumSize(int maximumSizeInGB) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.PrefetchCount` instead. The member currently throws" +
-            " a NotImplementedException. Will be removed in version 4.0.0.", true)]
-        public NServiceBus.AzureServiceBusSettings PrefetchCount(int prefetchCount) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.PrefetchMultiplier` instead. The member currently t" +
-            "hrows a NotImplementedException. Will be removed in version 4.0.0.", true)]
-        public NServiceBus.AzureServiceBusSettings PrefetchMultiplier(int prefetchMultiplier) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.SubscriptionNamingConvention` instead. The member c" +
-            "urrently throws a NotImplementedException. Will be removed in version 4.0.0.", true)]
-        public NServiceBus.AzureServiceBusSettings SubscriptionNamingConvention(System.Func<string, string> subscriptionNamingConvention) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.SubscriptionRuleNamingConvention` instead. The memb" +
-            "er currently throws a NotImplementedException. Will be removed in version 4.0.0." +
-            "", true)]
-        public NServiceBus.AzureServiceBusSettings SubscriptionRuleNamingConvention(System.Func<System.Type, string> subscriptionRuleNamingConvention) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.TimeToWaitBeforeTriggeringCircuitBreaker` instead. " +
-            "The member currently throws a NotImplementedException. Will be removed in versio" +
-            "n 4.0.0.", true)]
-        public NServiceBus.AzureServiceBusSettings TimeToWaitBeforeTriggeringCircuitBreaker(System.TimeSpan timeToWait) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.TopicName` instead. The member currently throws a N" +
-            "otImplementedException. Will be removed in version 4.0.0.", true)]
-        public NServiceBus.AzureServiceBusSettings TopicName(string topicName) { }
-        [System.Obsolete("Use `AzureServiceBusTransport.UseWebSockets` instead. The member currently throws" +
-            " a NotImplementedException. Will be removed in version 4.0.0.", true)]
-        public NServiceBus.AzureServiceBusSettings UseWebSockets() { }
-    }
-    public static class AzureServiceBusSettingsExtensions
-    {
-        [System.Obsolete("Use `EndpointConfiguration.UseTransport(TransportDefinition)` instead. The member" +
-            " currently throws a NotImplementedException. Will be removed in version 4.0.0.", true)]
-        public static NServiceBus.AzureServiceBusSettings UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration) { }
-    }
     public class AzureServiceBusTransport : NServiceBus.Transport.TransportDefinition
     {
         public AzureServiceBusTransport(string connectionString) { }
@@ -62,6 +19,23 @@ namespace NServiceBus
         public override System.Collections.Generic.IReadOnlyCollection<NServiceBus.TransportTransactionMode> GetSupportedTransactionModes() { }
         public override System.Threading.Tasks.Task<NServiceBus.Transport.TransportInfrastructure> Initialize(NServiceBus.Transport.HostSettings hostSettings, NServiceBus.Transport.ReceiveSettings[] receivers, string[] sendingAddresses, System.Threading.CancellationToken cancellationToken = default) { }
         public override string ToTransportAddress(NServiceBus.Transport.QueueAddress address) { }
+    }
+    public static class AzureServiceBusTransportSettingsExtensions
+    {
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string> connectionString) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string connectionString) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Messaging.ServiceBus.ServiceBusRetryOptions retryPolicy) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EnablePartitioning(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EntityMaximumSize(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int maximumSizeInGB) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchMultiplier(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchMultiplier) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> subscriptionNamingConvention) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionRuleNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<System.Type, string> subscriptionRuleNamingConvention) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TimeToWaitBeforeTriggeringCircuitBreaker(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan timeToWait) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TopicName(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string topicName) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration)
+            where TTransport : NServiceBus.AzureServiceBusTransport { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseWebSockets(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
     }
     public static class CustomizeNativeMessageExtensions
     {
