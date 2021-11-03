@@ -5,7 +5,7 @@ This transport targets the Azure Service Bus .NET Standard client library availa
 
 ## Documentation
 
-[Azure Service Bus transport](https://docs.particular.net/nservicebus/azure-service-bus/)
+[Azure Service Bus transport](https://docs.particular.net/transports/azure-service-bus/)
 
 [Samples](https://docs.particular.net/transports/azure-service-bus/#related-samples)
 
