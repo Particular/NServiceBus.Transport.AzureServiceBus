@@ -1,7 +1,7 @@
 # Azure Service Bus Transport for NServiceBus
 
 The Azure ServiceBus transport for NServiceBus enables the use of the Azure Service Bus Brokered Messaging service as the underlying transport used by NServiceBus. 
-This transport targets the Azure Service Bus .NET Standard client library available through the [Azure.Messaging.ServiceBus nuget package](https://www.nuget.org/packages/Azure.Messaging.ServiceBus/).
+This transport uses the [Azure.Messaging.ServiceBus](https://www.nuget.org/packages/Azure.Messaging.ServiceBus/) NuGet package.
 
 ## Documentation
 
