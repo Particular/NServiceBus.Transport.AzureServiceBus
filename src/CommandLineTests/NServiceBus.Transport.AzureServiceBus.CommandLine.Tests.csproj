@@ -2,16 +2,10 @@
 
   <PropertyGroup>
     <TargetFrameworks>netcoreapp3.1;net6.0</TargetFrameworks>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CommandLine\NServiceBus.Transport.AzureServiceBus.CommandLine.csproj" />
-  </ItemGroup>
-
-  <ItemGroup Label="Required to force the main project's transitive dependencies to be copied">
-    <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="3.1.0" />
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.4.0" />
   </ItemGroup>
 
   <ItemGroup>
