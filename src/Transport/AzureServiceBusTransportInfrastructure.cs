@@ -72,6 +72,7 @@
 
         public override string ToTransportAddress(QueueAddress address) => TranslateAddress(address);
 
+        // this can be inlined once the TransportDefinition.ToTransportAddress() has been obsoleted with ERROR
         public static string TranslateAddress(QueueAddress address)
         {
             var queue = new StringBuilder(address.BaseAddress);
