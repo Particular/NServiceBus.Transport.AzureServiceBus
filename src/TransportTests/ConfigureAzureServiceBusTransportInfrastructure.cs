@@ -44,13 +44,13 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
         return transport;
     }
 
-    public async Task<TransportInfrastructure> Configure(TransportDefinition transportDefinition, HostSettings hostSettings, string inputQueueName, string errorQueueName, CancellationToken cancellationToken = default)
+    public async Task<TransportInfrastructure> Configure(TransportDefinition transportDefinition, HostSettings hostSettings, QueueAddress inputQueueName, string errorQueueName, CancellationToken cancellationToken = default)
     {
         var transportInfrastructure = await transportDefinition.Initialize(
             hostSettings,
             new[]
             {
-                new ReceiveSettings(inputQueueName, inputQueueName, true, false, errorQueueName),
+                new ReceiveSettings(inputQueueName.ToString(), inputQueueName, true, false, errorQueueName),
             },
             new string[0],
             cancellationToken);
