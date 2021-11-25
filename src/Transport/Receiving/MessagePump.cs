@@ -38,11 +38,13 @@
             ServiceBusClient serviceBusClient,
             ServiceBusAdministrationClient administrativeClient,
             AzureServiceBusTransport transportSettings,
+            string receiveAddress,
             ReceiveSettings receiveSettings,
             Action<string, Exception, CancellationToken> criticalErrorAction,
             NamespacePermissions namespacePermissions)
         {
             Id = receiveSettings.Id;
+            ReceiveAddress = receiveAddress;
             this.serviceBusClient = serviceBusClient;
             this.transportSettings = transportSettings;
             this.receiveSettings = receiveSettings;
@@ -51,7 +53,7 @@
             if (receiveSettings.UsePublishSubscribe)
             {
                 Subscriptions = new SubscriptionManager(
-                    receiveSettings.ReceiveAddress,
+                    ReceiveAddress,
                     transportSettings,
                     administrativeClient,
                     namespacePermissions);
@@ -98,7 +100,7 @@
                     : ServiceBusReceiveMode.PeekLock
             };
 
-            receiver = serviceBusClient.CreateReceiver(receiveSettings.ReceiveAddress, receiveOptions);
+            receiver = serviceBusClient.CreateReceiver(ReceiveAddress, receiveOptions);
 
             semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
@@ -280,7 +282,7 @@
 
                     contextBag.Set(message);
 
-                    var messageContext = new MessageContext(messageId, headers, body, transportTransaction, contextBag);
+                    var messageContext = new MessageContext(messageId, headers, body, transportTransaction, ReceiveAddress, contextBag);
 
                     await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
@@ -299,7 +301,7 @@
                     {
                         var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
-                        var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.DeliveryCount, contextBag);
+                        var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
 
                         result = await onError(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
@@ -363,5 +365,7 @@
         public ISubscriptionManager Subscriptions { get; }
 
         public string Id { get; }
+
+        public string ReceiveAddress { get; }
     }
 }

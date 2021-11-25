@@ -3,7 +3,6 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Azure.Core;
@@ -75,8 +74,8 @@
             if (hostSettings.SetupInfrastructure)
             {
                 var queueCreator = new QueueCreator(this, administrativeClient, namespacePermissions);
-                var allQueues = receivers
-                    .Select(r => r.ReceiveAddress)
+                var allQueues = infrastructure.Receivers
+                    .Select(r => r.Value.ReceiveAddress)
                     .Concat(sendingAddresses)
                     .ToArray();
 
@@ -87,22 +86,12 @@
         }
 
         /// <inheritdoc />
-        public override string ToTransportAddress(QueueAddress address)
-        {
-            var queue = new StringBuilder(address.BaseAddress);
-
-            if (address.Discriminator != null)
-            {
-                queue.Append($"-{address.Discriminator}");
-            }
-
-            if (address.Qualifier != null)
-            {
-                queue.Append($".{address.Qualifier}");
-            }
-
-            return queue.ToString();
-        }
+        [ObsoleteEx(Message = "Inject the ITransportAddressResolver type to access the address translation mechanism at runtime. See the NServiceBus version 8 upgrade guide for further details.",
+                    TreatAsErrorFromVersion = "4",
+                    RemoveInVersion = "5")]
+#pragma warning disable CS0672 // Member overrides obsolete member
+        public override string ToTransportAddress(QueueAddress address) => AzureServiceBusTransportInfrastructure.TranslateAddress(address);
+#pragma warning restore CS0672 // Member overrides obsolete member
 
         /// <inheritdoc />
         public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes()

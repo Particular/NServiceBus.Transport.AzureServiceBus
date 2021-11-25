@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System.Linq;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
@@ -55,6 +56,7 @@
                 client,
                 administrationClient,
                 transportSettings,
+                TranslateAddress(receiveSettings.ReceiveAddress),
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
                 namespacePermissions);
@@ -66,6 +68,26 @@
             {
                 await messageSenderPool.Close(cancellationToken).ConfigureAwait(false);
             }
+        }
+
+        public override string ToTransportAddress(QueueAddress address) => TranslateAddress(address);
+
+        // this can be inlined once the TransportDefinition.ToTransportAddress() has been obsoleted with ERROR
+        public static string TranslateAddress(QueueAddress address)
+        {
+            var queue = new StringBuilder(address.BaseAddress);
+
+            if (address.Discriminator != null)
+            {
+                queue.Append($"-{address.Discriminator}");
+            }
+
+            if (address.Qualifier != null)
+            {
+                queue.Append($".{address.Qualifier}");
+            }
+
+            return queue.ToString();
         }
     }
 }
