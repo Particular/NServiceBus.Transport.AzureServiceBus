@@ -24,7 +24,7 @@
 
         // Start
         Task messageReceivingTask;
-        SemaphoreSlim semaphore;
+        volatile SemaphoreSlim concurrencyLimiter;
         CancellationTokenSource messageReceivingCancellationTokenSource;
         CancellationTokenSource messageProcessingCancellationTokenSource;
         int maxConcurrency;
@@ -102,7 +102,7 @@
 
             receiver = serviceBusClient.CreateReceiver(ReceiveAddress, receiveOptions);
 
-            semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
+            concurrencyLimiter = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
             messageReceivingCancellationTokenSource = new CancellationTokenSource();
             messageProcessingCancellationTokenSource = new CancellationTokenSource();
@@ -115,6 +115,29 @@
             return Task.CompletedTask;
         }
 
+        public async Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = new CancellationToken())
+        {
+            var oldLimiter = concurrencyLimiter;
+            var oldMaxConcurrency = maxConcurrency;
+            concurrencyLimiter = new SemaphoreSlim(newLimitations.MaxConcurrency);
+            limitations = newLimitations;
+            maxConcurrency = limitations.MaxConcurrency;
+
+            try
+            {
+                //Drain and dispose of the old semaphore
+                while (oldLimiter.CurrentCount != oldMaxConcurrency)
+                {
+                    await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+                }
+                oldLimiter.Dispose();
+            }
+            catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
+            {
+                //Ignore, we are stopping anyway
+            }
+        }
+
         public async Task StopReceive(CancellationToken cancellationToken = default)
         {
             messageReceivingCancellationTokenSource?.Cancel();
@@ -123,7 +146,7 @@
             {
                 await messageReceivingTask.ConfigureAwait(false);
 
-                while (semaphore.CurrentCount != maxConcurrency)
+                while (concurrencyLimiter.CurrentCount != maxConcurrency)
                 {
                     // Do not forward cancellationToken here so that pump has ability to exit gracefully
                     // Individual message processing pipelines will be canceled instead
@@ -140,7 +163,7 @@
                 }
             }
 
-            semaphore?.Dispose();
+            concurrencyLimiter?.Dispose();
             messageReceivingCancellationTokenSource?.Dispose();
             messageProcessingCancellationTokenSource?.Dispose();
             circuitBreaker?.Dispose();
@@ -150,9 +173,10 @@
         {
             while (!messageReceivingCancellationToken.IsCancellationRequested)
             {
+                var localConcurrencyLimiter = concurrencyLimiter;
                 try
                 {
-                    await semaphore.WaitAsync(messageReceivingCancellationToken).ConfigureAwait(false);
+                    await localConcurrencyLimiter.WaitAsync(messageReceivingCancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex) when (ex.IsCausedBy(messageReceivingCancellationToken))
                 {
@@ -161,11 +185,11 @@
                 }
 
                 // no Task.Run() here to avoid a closure
-                _ = ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(messageReceivingCancellationToken);
+                _ = ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(localConcurrencyLimiter, messageReceivingCancellationToken);
             }
         }
 
-        async Task ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(CancellationToken messageReceivingCancellationToken)
+        async Task ReceiveMessagesSwallowExceptionsAndReleaseSemaphore(SemaphoreSlim localConcurrencyLimiter, CancellationToken messageReceivingCancellationToken)
         {
             try
             {
@@ -184,7 +208,7 @@
             {
                 try
                 {
-                    _ = semaphore.Release();
+                    _ = localConcurrencyLimiter.Release();
                 }
                 catch (ObjectDisposedException)
                 {
