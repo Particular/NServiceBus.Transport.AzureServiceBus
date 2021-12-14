@@ -119,7 +119,7 @@
         {
             var oldLimiter = concurrencyLimiter;
             var oldMaxConcurrency = maxConcurrency;
-            concurrencyLimiter = new SemaphoreSlim(newLimitations.MaxConcurrency);
+            concurrencyLimiter = new SemaphoreSlim(newLimitations.MaxConcurrency, newLimitations.MaxConcurrency);
             limitations = newLimitations;
             maxConcurrency = limitations.MaxConcurrency;
 
