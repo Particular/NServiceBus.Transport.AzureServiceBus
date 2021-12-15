@@ -2,6 +2,8 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Runtime.Serialization;
+    using System.Xml;
     using Azure.Messaging.ServiceBus;
     using Configuration;
 
@@ -39,6 +41,25 @@
             }
 
             return message.MessageId;
+        }
+
+        public static BinaryData GetBody(this ServiceBusReceivedMessage message)
+        {
+            var body = message.Body ?? new BinaryData(Array.Empty<byte>());
+            var memory = body.ToMemory();
+
+            if (!memory.IsEmpty && message.ApplicationProperties.TryGetValue(TransportMessageHeaders.TransportEncoding, out var value) && value.Equals("wcf/byte-array"))
+            {
+                var deserializer = new DataContractSerializer(typeof(byte[]));
+
+                using (var reader = XmlDictionaryReader.CreateBinaryReader(body.ToStream(), XmlDictionaryReaderQuotas.Max))
+                {
+                    var bodyBytes = (byte[])deserializer.ReadObject(reader);
+                    return new BinaryData(bodyBytes);
+                }
+            }
+
+            return body;
         }
     }
 }
