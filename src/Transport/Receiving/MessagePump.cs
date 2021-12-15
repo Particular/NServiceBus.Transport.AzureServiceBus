@@ -233,7 +233,7 @@
             {
                 messageId = message.GetMessageId();
                 headers = message.GetNServiceBusHeaders();
-                body = message.Body;
+                body = message.GetBody();
             }
             catch (Exception ex)
             {
