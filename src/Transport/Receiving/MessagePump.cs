@@ -115,27 +115,11 @@
             return Task.CompletedTask;
         }
 
-        public async Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = new CancellationToken())
+        public async Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
         {
-            var oldLimiter = concurrencyLimiter;
-            var oldMaxConcurrency = maxConcurrency;
-            concurrencyLimiter = new SemaphoreSlim(newLimitations.MaxConcurrency, newLimitations.MaxConcurrency);
+            await StopReceive(cancellationToken).ConfigureAwait(false);
             limitations = newLimitations;
-            maxConcurrency = limitations.MaxConcurrency;
-
-            try
-            {
-                //Drain and dispose of the old semaphore
-                while (oldLimiter.CurrentCount != oldMaxConcurrency)
-                {
-                    await Task.Delay(50, cancellationToken).ConfigureAwait(false);
-                }
-                oldLimiter.Dispose();
-            }
-            catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
-            {
-                //Ignore, we are stopping anyway
-            }
+            await StartReceive(cancellationToken).ConfigureAwait(false);
         }
 
         public async Task StopReceive(CancellationToken cancellationToken = default)
@@ -167,6 +151,7 @@
             messageReceivingCancellationTokenSource?.Dispose();
             messageProcessingCancellationTokenSource?.Dispose();
             circuitBreaker?.Dispose();
+            messageReceivingTask = null;
         }
 
         async Task ReceiveMessagesAndSwallowExceptions(CancellationToken messageReceivingCancellationToken)
