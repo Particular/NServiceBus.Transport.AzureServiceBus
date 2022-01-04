@@ -67,6 +67,6 @@ jobs:
         uses: Particular/setup-azureservicebus-action@v1.0.0
         with:
           connection-string-name: AzureServiceBus_ConnectionString
-          tag: setup-azureservicebus-action
+          tag: ASBTransport
       - name: Run tests
         uses: Particular/run-tests-action@v1.0.0
