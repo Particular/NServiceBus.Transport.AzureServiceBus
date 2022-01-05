@@ -15,15 +15,20 @@ jobs:
       (github.event_name == 'pull_request_target' && github.event.pull_request.user.login == 'dependabot[bot]') ||
       (github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]') ||
       github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    name: ${{ matrix.name }}
+    name: ${{ matrix.os-name }}-${{ matrix.framework }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ windows-2019, ubuntu-20.04 ]
+        framework: [ net6.0, netcoreapp3.1, net472 ]
         include:
           - os: windows-2019
-            name: Windows
+            os-name: Windows
           - os: ubuntu-20.04
-            name: Linux
+            os-name: Linux
+        exclude:
+          - os: ubuntu-20.04
+            framework: net472
       fail-fast: false
     steps:
       - name: Check for secrets
@@ -45,11 +50,9 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v1.9.0
         with:
-          dotnet-version: 6.0.x
-      - name: Setup .NET Core 3.1 runtime
-        uses: actions/setup-dotnet@v1.9.0
-        with:
-          dotnet-version: 3.1.x
+          dotnet-version: |
+            6.0.x
+            3.1.x
       - name: Build
         run: dotnet build src --configuration Release
       - name: Upload packages
@@ -69,4 +72,5 @@ jobs:
           connection-string-name: AzureServiceBus_ConnectionString
           tag: ASBTransport
       - name: Run tests
-        uses: Particular/run-tests-action@v1.0.0
+        run: dotnet test src --configuration Release --no-build --framework ${{ matrix.framework }} --logger "GitHubActions;report-warnings=false" -m:1
+
