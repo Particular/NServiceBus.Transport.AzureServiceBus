@@ -72,5 +72,6 @@ jobs:
           connection-string-name: AzureServiceBus_ConnectionString
           tag: ASBTransport
       - name: Run tests
-        run: dotnet test src --configuration Release --no-build --framework ${{ matrix.framework }} --logger "GitHubActions;report-warnings=false" -m:1
-
+        uses: Particular/run-tests-action@framework-param
+        with:
+          framework: ${{ matrix.framework }}
