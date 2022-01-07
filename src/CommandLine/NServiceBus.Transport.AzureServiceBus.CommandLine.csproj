@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFrameworks>netcoreapp3.1;net6.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <ToolCommandName>asb-transport</ToolCommandName>
     <PackAsTool>True</PackAsTool>
@@ -12,7 +12,7 @@
   <ItemGroup>
     <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="3.0.0" />
     <PackageReference Include="Microsoft.Azure.ServiceBus" Version="5.0.0" />
-    <PackageReference Include="Particular.Packaging" Version="1.2.1" PrivateAssets="All" />
+    <PackageReference Include="Particular.Packaging" Version="1.4.0" PrivateAssets="All" />
   </ItemGroup>
 
 </Project>
