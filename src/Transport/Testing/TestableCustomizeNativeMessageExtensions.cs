@@ -7,7 +7,7 @@
     /// <summary>
     /// Provides helper implementations for the native message customization for testing purposes.
     /// </summary>
-    public static class TestableCustomizeNativeMessageExtensions
+    public static partial class TestableCustomizeNativeMessageExtensions
     {
         /// <summary>
         /// Gets the customization of the outgoing native message sent using <see cref="NServiceBus.SendOptions"/>, <see cref="NServiceBus.PublishOptions"/> or <see cref="NServiceBus.ReplyOptions"/>.

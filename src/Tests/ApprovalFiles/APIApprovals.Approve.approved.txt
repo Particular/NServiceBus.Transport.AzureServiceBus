@@ -53,3 +53,28 @@ namespace NServiceBus.Testing
         public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options) { }
     }
 }
+namespace NServiceBus.Transport.AzureServiceBus
+{
+    public static class AzureServiceBusTransportSettingsExtensions
+    {
+        [System.Obsolete("The member currently throws a NotImplementedException. Will be removed in version" +
+            " 4.0.0.", true)]
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenCredential(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Core.TokenCredential tokenCredential) { }
+        [System.Obsolete("Use `SubscriptionRuleNamingConvention` instead. The member currently throws a Not" +
+            "ImplementedException. Will be removed in version 4.0.0.", true)]
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> RuleNameShortener(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> ruleNameShortener) { }
+        [System.Obsolete("Use `SubscriptionNamingConvention` instead. The member currently throws a NotImpl" +
+            "ementedException. Will be removed in version 4.0.0.", true)]
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionNameShortener(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> subscriptionNameShortener) { }
+    }
+    public static class CustomizeNativeMessageExtensions
+    {
+        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context, System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
+    }
+    public static class TestableCustomizeNativeMessageExtensions
+    {
+        [System.Obsolete("The member currently throws a NotImplementedException. Will be removed in version" +
+            " 4.0.0.", true)]
+        public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context) { }
+    }
+}

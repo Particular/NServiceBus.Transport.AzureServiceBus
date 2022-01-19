@@ -2,12 +2,12 @@
 {
     using System;
     using Azure.Messaging.ServiceBus;
-    using NServiceBus.Transport.AzureServiceBus;
+    using Transport.AzureServiceBus;
 
     /// <summary>
     /// Adds access to the Azure Service Bus transport config to the global Transport object.
     /// </summary>
-    public static class AzureServiceBusTransportSettingsExtensions
+    public static partial class AzureServiceBusTransportSettingsExtensions
     {
         /// <summary>
         /// Configure the endpoint to use the Azure Service bus transport. This configuration method will eventually be deprecated.
