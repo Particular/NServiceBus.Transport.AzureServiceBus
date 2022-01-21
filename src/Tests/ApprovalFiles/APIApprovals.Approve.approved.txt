@@ -29,6 +29,7 @@ namespace NServiceBus
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string> connectionString) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string connectionString) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Messaging.ServiceBus.ServiceBusRetryOptions retryPolicy) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenCredential(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Core.TokenCredential tokenCredential) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EnablePartitioning(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EntityMaximumSize(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int maximumSizeInGB) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }
@@ -57,9 +58,6 @@ namespace NServiceBus.Transport.AzureServiceBus
 {
     public static class AzureServiceBusTransportSettingsExtensions
     {
-        [System.Obsolete("The member currently throws a NotImplementedException. Will be removed in version" +
-            " 4.0.0.", true)]
-        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenCredential(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Core.TokenCredential tokenCredential) { }
         [System.Obsolete("Use `SubscriptionRuleNamingConvention` instead. The member currently throws a Not" +
             "ImplementedException. Will be removed in version 4.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> RuleNameShortener(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> ruleNameShortener) { }

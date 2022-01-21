@@ -1,7 +1,6 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
-    using Azure.Core;
     using Azure.Messaging.ServiceBus;
     using Extensibility;
 
@@ -34,18 +33,6 @@
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameShortener(
             this TransportExtensions<AzureServiceBusTransport> transportExtensions,
             Func<string, string> subscriptionNameShortener)
-            => throw new NotImplementedException();
-
-        /// <summary>
-        /// Overrides the default token credential with a custom one.
-        /// </summary>
-        /// <param name="transportExtensions"></param>
-        /// <param name="tokenCredential">The token credential to be used.</param>
-        [ObsoleteEx(
-            TreatAsErrorFromVersion = "3",
-            RemoveInVersion = "4")]
-        public static TransportExtensions<AzureServiceBusTransport> CustomTokenCredential(
-            this TransportExtensions<AzureServiceBusTransport> transportExtensions, TokenCredential tokenCredential)
             => throw new NotImplementedException();
     }
 
