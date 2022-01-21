@@ -1,4 +1,4 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus
+﻿namespace NServiceBus
 {
     using System;
     using Azure.Messaging.ServiceBus;
@@ -37,25 +37,6 @@
     }
 
     /// <summary>
-    /// Provides helper implementations for the native message customization for testing purposes.
-    /// </summary>
-    public static partial class TestableCustomizeNativeMessageExtensions
-    {
-        /// <summary>
-        /// Gets the customization of the outgoing native message sent using <see cref="SendOptions"/>, <see cref="PublishOptions"/> or <see cref="ReplyOptions"/>.
-        /// </summary>
-        /// <param name="options">Option being extended.</param>
-        /// <param name="context">Context used to dispatch messages in the message handler.</param>
-        /// <returns>The customization action or null.</returns>
-        [ObsoleteEx(
-            TreatAsErrorFromVersion = "3",
-            RemoveInVersion = "4")]
-        public static Action<ServiceBusMessage> GetNativeMessageCustomization(this ExtendableOptions options,
-            IPipelineContext context)
-            => throw new NotImplementedException();
-    }
-
-    /// <summary>
     /// Allows the users to customize outgoing native messages.
     /// </summary>
     /// <remarks>
@@ -73,9 +54,37 @@
         /// <param name="context">Context used to dispatch messages in the message handler.</param>
         /// <param name="customization">Customization action.</param>
         [ObsoleteEx(
+            Message = "Use overload that does not require IPipelineContext",
             TreatAsErrorFromVersion = "3",
             RemoveInVersion = "4")]
         public static void CustomizeNativeMessage(this ExtendableOptions options, IPipelineContext context, Action<ServiceBusMessage> customization)
+            => throw new NotImplementedException();
+    }
+}
+
+namespace NServiceBus.Testing
+{
+    using System;
+    using Azure.Messaging.ServiceBus;
+    using NServiceBus.Extensibility;
+
+    /// <summary>
+    /// Provides helper implementations for the native message customization for testing purposes.
+    /// </summary>
+    public static partial class TestableCustomizeNativeMessageExtensions
+    {
+        /// <summary>
+        /// Gets the customization of the outgoing native message sent using <see cref="SendOptions"/>, <see cref="PublishOptions"/> or <see cref="ReplyOptions"/>.
+        /// </summary>
+        /// <param name="options">Option being extended.</param>
+        /// <param name="context">Context used to dispatch messages in the message handler.</param>
+        /// <returns>The customization action or null.</returns>
+        [ObsoleteEx(
+            Message = "Use overload that does not require IPipelineContext",
+            TreatAsErrorFromVersion = "3",
+            RemoveInVersion = "4")]
+        public static Action<ServiceBusMessage> GetNativeMessageCustomization(this ExtendableOptions options,
+            IPipelineContext context)
             => throw new NotImplementedException();
     }
 }
