@@ -60,6 +60,6 @@ jobs:
           connection-string-name: AzureServiceBus_ConnectionString
           tag: ASBTransport
       - name: Run tests
-        uses: Particular/run-tests-action@v1.1.0
+        uses: Particular/run-tests-action@v1.2.0
         with:
           framework: ${{ matrix.framework }}
