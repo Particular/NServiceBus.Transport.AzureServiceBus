@@ -44,9 +44,9 @@
                     createCommand.Description = "Creates required infrastructure for an endpoint.";
                     var name = createCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
 
-                    createCommand.Options.Add(connectionString);
-                    createCommand.Options.Add(size);
-                    createCommand.Options.Add(partitioning);
+                    createCommand.AddOption(connectionString);
+                    createCommand.AddOption(size);
+                    createCommand.AddOption(partitioning);
                     var topicName = createCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                     var subscriptionName = createCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
 
@@ -64,7 +64,7 @@
                     var name = subscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
                     var eventType = subscribeCommand.Argument("event-type", "Full name of the event to subscribe to (e.g. MyNamespace.MyMessage) (required)").IsRequired();
 
-                    subscribeCommand.Options.Add(connectionString);
+                    subscribeCommand.AddOption(connectionString);
                     var topicName = subscribeCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                     var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                     var shortenedRuleName = subscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
@@ -83,7 +83,7 @@
                     var name = unsubscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
                     var eventType = unsubscribeCommand.Argument("event-type", "Full name of the event to unsubscribe from (e.g. MyNamespace.MyMessage) (required)").IsRequired();
 
-                    unsubscribeCommand.Options.Add(connectionString);
+                    unsubscribeCommand.AddOption(connectionString);
                     var topicName = unsubscribeCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                     var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                     var shortenedRuleName = unsubscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
@@ -111,9 +111,9 @@
                     createCommand.Description = "Creates a queue with the settings required by the transport";
                     var name = createCommand.Argument("name", "Name of the queue (required)").IsRequired();
 
-                    createCommand.Options.Add(connectionString);
-                    createCommand.Options.Add(size);
-                    createCommand.Options.Add(partitioning);
+                    createCommand.AddOption(connectionString);
+                    createCommand.AddOption(size);
+                    createCommand.AddOption(partitioning);
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
@@ -131,7 +131,7 @@
 
                 queueCommand.Command("delete", deleteCommand =>
                 {
-                    deleteCommand.Options.Add(connectionString);
+                    deleteCommand.AddOption(connectionString);
 
                     deleteCommand.Description = "Deletes a queue";
                     var name = deleteCommand.Argument("name", "Name of the queue (required)").IsRequired();
