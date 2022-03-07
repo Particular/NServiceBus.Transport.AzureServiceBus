@@ -24,7 +24,7 @@
                 },
                 (_, __) =>
                 {
-                    onErrorCalled.SetResult(true);
+                    onErrorCalled.TrySetResult(true);
                     throw new ServiceBusException("from onError", ServiceBusFailureReason.MessageLockLost);
                 },
                 transactionMode,
