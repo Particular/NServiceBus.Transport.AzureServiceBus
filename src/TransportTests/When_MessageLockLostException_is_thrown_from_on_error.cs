@@ -15,7 +15,7 @@
         public async Task Should_not_raise_critical_error(TransportTransactionMode transactionMode)
         {
             var onErrorCalled = new TaskCompletionSource<bool>();
-            var criticalErrorCalled = false;
+            string criticalErrorDetails = null;
 
             await StartPump(
                 (_, __) =>
@@ -28,9 +28,9 @@
                     throw new ServiceBusException("from onError", ServiceBusFailureReason.MessageLockLost);
                 },
                 transactionMode,
-                (_, __, ___) =>
+                (msg, ex, ___) =>
                 {
-                    criticalErrorCalled = true;
+                    criticalErrorDetails = $"{msg}, Exception: {ex}";
                 }
             );
 
@@ -40,7 +40,7 @@
 
             await StopPump();
 
-            Assert.IsFalse(criticalErrorCalled, $"Should not invoke critical error for {nameof(ServiceBusException)}");
+            Assert.IsNull(criticalErrorDetails, $"Should not invoke critical error for {nameof(ServiceBusException)}");
         }
     }
 }
