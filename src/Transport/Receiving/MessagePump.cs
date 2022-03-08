@@ -331,7 +331,7 @@
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
-                    await receiver.AbandonMessageAsync(message, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                    await receiver.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(messageProcessingCancellationToken))
                 {
