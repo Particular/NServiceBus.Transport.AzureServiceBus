@@ -14,7 +14,7 @@
         [TestCase(TransportTransactionMode.SendsAtomicWithReceive)]
         public async Task Should_not_raise_critical_error(TransportTransactionMode transactionMode)
         {
-            var onErrorCalled = new TaskCompletionSource<bool>();
+            var onErrorCalled = CreateTaskCompletionSource<bool>();
             string criticalErrorDetails = null;
 
             await StartPump(
