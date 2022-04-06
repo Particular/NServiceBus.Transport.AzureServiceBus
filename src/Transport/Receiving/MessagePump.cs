@@ -290,7 +290,7 @@
                     var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
                     contextBag.Set(message);
-                    contextBag.Set(serviceBusClient);
+                    contextBag.Set(receiver);
 
                     var messageContext = new MessageContext(messageId, headers, body, transportTransaction, ReceiveAddress, contextBag);
 
