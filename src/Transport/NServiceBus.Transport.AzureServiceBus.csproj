@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net472;netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks>net472;netcoreapp6.0</TargetFrameworks>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\NServiceBus.snk</AssemblyOriginatorKeyFile>
     <Description>Azure Service Bus transport for NServiceBus</Description>
@@ -10,8 +10,8 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="[7.4.0, 8)" />
-    <PackageReference Include="NServiceBus" Version="[8.0.0-beta.1, 9.0.0)" />
-    <PackageReference Include="Particular.Packaging" Version="2.0.0" PrivateAssets="All" />
+    <PackageReference Include="NServiceBus" Version="[8.0.0-beta.2, 9.0.0)" />
+    <PackageReference Include="Particular.Packaging" Version="2.1.0" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
