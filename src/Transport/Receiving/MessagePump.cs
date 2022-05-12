@@ -327,7 +327,7 @@
                         await receiver.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                     }
                 }
-                catch (ServiceBusException onErrorEx) when (onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost || onErrorEx.Reason == ServiceBusFailureReason.ServiceTimeout)
+                catch (ServiceBusException onErrorEx) when (onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost or ServiceBusFailureReason.ServiceTimeout)
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
