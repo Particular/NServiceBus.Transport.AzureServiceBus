@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [ windows-2019, ubuntu-20.04 ]
-        framework: [ net6.0, net472 ]
+        framework: [net6.0, net472 ]
         include:
           - os: windows-2019
             os-name: Windows
@@ -38,7 +38,10 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v2
         with:
-          dotnet-version: 6.0.x
+          dotnet-version: |
+            7.0.x
+            6.0.x
+          include-prerelease: true
       - name: Build
         run: dotnet build src --configuration Release
       - name: Upload packages
