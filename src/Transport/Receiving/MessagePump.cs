@@ -279,7 +279,7 @@
                         await receiver.SafeAbandonMessageAsync(message, pushSettings.RequiredTransactionMode).ConfigureAwait(false);
                     }
                 }
-                catch (ServiceBusException onErrorException) when (onErrorException.Reason == ServiceBusFailureReason.MessageLockLost || onErrorException.Reason == ServiceBusFailureReason.ServiceTimeout)
+                catch (ServiceBusException onErrorException) when (onErrorException.Reason is ServiceBusFailureReason.MessageLockLost || onErrorException.Reason == ServiceBusFailureReason.ServiceTimeout)
                 {
                     logger.Debug("Failed to execute recoverability.", onErrorException);
                 }
