@@ -36,12 +36,12 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v2.1.0
         with:
           dotnet-version: |
-            3.1.x 
-            6.0.x
             7.0.x
+            6.0.x
+            3.1.x 
           include-prerelease: true
       - name: Build
         run: dotnet build src --configuration Release
