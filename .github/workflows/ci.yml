@@ -14,8 +14,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ windows-2019, ubuntu-20.04 ]
-        framework: [ netcoreapp3.1, net6.0, net461 ]
+        os: [ windows-2019, ubuntu-20.04 ]        
+        framework: [ net7.0, net6.0, net472 ]
         include:
           - os: windows-2019
             os-name: Windows
@@ -39,8 +39,8 @@ jobs:
         uses: actions/setup-dotnet@v2.1.0
         with:
           dotnet-version: |
+            7.0.x
             6.0.x
-            3.1.x 
           include-prerelease: true
       - name: Build
         run: dotnet build src --configuration Release
