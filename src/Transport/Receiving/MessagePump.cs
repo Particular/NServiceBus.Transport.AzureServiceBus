@@ -183,7 +183,7 @@
             catch (Exception ex) when (ex.IsCausedBy(messageReceivingCancellationToken))
             {
                 // private token, pump is being stopped, log the exception in case the stack trace is ever needed for debugging
-                Logger.Debug("Operation canceled while stopping message pump.", ex);
+                Logger.Debug("Operation canceled while stopping message pump.");
             }
             catch (Exception ex)
             {
