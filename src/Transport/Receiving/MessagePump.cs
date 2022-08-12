@@ -229,6 +229,7 @@
 
                     var contextBag = new ContextBag();
                     contextBag.Set(message);
+                    contextBag.Set(receiver);
                     contextBag.GetOrCreate<NativeMessageCustomizer>();
 
                     var messageContext = new MessageContext(messageId, headers, body.ToArray(), transportTransaction,
