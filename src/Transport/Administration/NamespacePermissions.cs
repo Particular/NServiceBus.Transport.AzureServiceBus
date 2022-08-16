@@ -24,10 +24,7 @@
                 await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    if (manageTask == null)
-                    {
-                        manageTask = CheckPermission(cancellationToken);
-                    }
+                    manageTask ??= CheckPermission(cancellationToken);
                 }
                 finally
                 {
