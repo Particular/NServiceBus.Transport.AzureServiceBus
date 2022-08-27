@@ -49,9 +49,15 @@
             _ = settings.TryGet(SettingsKeys.CustomTokenCredential, out TokenCredential tc);
             tokenCredential = tc;
 
-            administrationClient = tokenCredential != null
-                ? new ServiceBusAdministrationClient(connectionString, tokenCredential)
-                : new ServiceBusAdministrationClient(connectionString);
+            if (tokenCredential != null)
+            {
+                var connectionStringProperties = ServiceBusConnectionStringProperties.Parse(connectionString);
+                administrationClient = new ServiceBusAdministrationClient(connectionStringProperties.FullyQualifiedNamespace, tokenCredential);
+            }
+            else
+            {
+                administrationClient = new ServiceBusAdministrationClient(connectionString);
+            }
 
             namespacePermissions = new NamespacePermissions(administrationClient);
 
