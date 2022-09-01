@@ -51,8 +51,8 @@
 
             if (tokenCredential != null)
             {
-                var connectionStringProperties = ServiceBusConnectionStringProperties.Parse(connectionString);
-                administrationClient = new ServiceBusAdministrationClient(connectionStringProperties.FullyQualifiedNamespace, tokenCredential);
+                var fullyQualifiedNamespace = ServiceBusConnectionStringProperties.Parse(connectionString).FullyQualifiedNamespace;
+                administrationClient = new ServiceBusAdministrationClient(fullyQualifiedNamespace, tokenCredential);
             }
             else
             {
