@@ -21,8 +21,10 @@
                 serviceBusClientOptions.RetryOptions = retryOptions;
             }
 
+            var fullyQualifiedNamespace = ServiceBusConnectionStringProperties.Parse(connectionString).FullyQualifiedNamespace;
+
             defaultClient = tokenCredential != null
-                    ? new ServiceBusClient(connectionString, tokenCredential, serviceBusClientOptions)
+                    ? new ServiceBusClient(fullyQualifiedNamespace, tokenCredential, serviceBusClientOptions)
                     : new ServiceBusClient(connectionString, serviceBusClientOptions);
 
             senders = new ConcurrentDictionary<(string, ServiceBusClient), ConcurrentQueue<ServiceBusSender>>();

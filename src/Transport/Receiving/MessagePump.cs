@@ -90,8 +90,10 @@
                 serviceBusClientOptions.RetryOptions = retryOptions;
             }
 
+            var fullyQualifiedNamespace = ServiceBusConnectionStringProperties.Parse(connectionString).FullyQualifiedNamespace;
+
             serviceBusClient = tokenCredential != null
-                    ? new ServiceBusClient(connectionString, tokenCredential, serviceBusClientOptions)
+                    ? new ServiceBusClient(fullyQualifiedNamespace, tokenCredential, serviceBusClientOptions)
                     : new ServiceBusClient(connectionString, serviceBusClientOptions);
 
             var receiveOptions = new ServiceBusReceiverOptions()
