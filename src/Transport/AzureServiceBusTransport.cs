@@ -53,19 +53,25 @@
                 serviceBusClientOptions.RetryOptions = RetryPolicyOptions;
             }
 
+            var fullyQualifiedNamespace = TokenCredential != null
+                ? ServiceBusConnectionStringProperties.Parse(ConnectionString).FullyQualifiedNamespace
+                : null;
+
             var recieveClientTuple = receivers.Select(receiver =>
             {
                 var client = TokenCredential != null
-                    ? new ServiceBusClient(ConnectionString, TokenCredential, serviceBusClientOptions)
+                    ? new ServiceBusClient(fullyQualifiedNamespace, TokenCredential, serviceBusClientOptions)
                     : new ServiceBusClient(ConnectionString, serviceBusClientOptions);
                 return (receiver, client);
             }).ToArray();
 
             var defaultClient = TokenCredential != null
-                ? new ServiceBusClient(ConnectionString, TokenCredential, serviceBusClientOptions)
+                ? new ServiceBusClient(fullyQualifiedNamespace, TokenCredential, serviceBusClientOptions)
                 : new ServiceBusClient(ConnectionString, serviceBusClientOptions);
 
-            var administrativeClient = TokenCredential != null ? new ServiceBusAdministrationClient(ConnectionString, TokenCredential) : new ServiceBusAdministrationClient(ConnectionString);
+            var administrativeClient = TokenCredential != null
+                ? new ServiceBusAdministrationClient(fullyQualifiedNamespace, TokenCredential)
+                : new ServiceBusAdministrationClient(ConnectionString);
 
             var namespacePermissions = new NamespacePermissions(administrativeClient);
 
