@@ -269,8 +269,7 @@
                         await args.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                     }
                 }
-                // TODO: Validate whether we switch ServiceBusFailureReason.ServiceTimeout to IsTransient
-                catch (ServiceBusException onErrorEx) when (onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost or ServiceBusFailureReason.ServiceTimeout)
+                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost)
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
