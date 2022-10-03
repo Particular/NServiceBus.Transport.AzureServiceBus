@@ -169,9 +169,15 @@
         async Task OnProcessorError(ProcessErrorEventArgs arg)
 #pragma warning restore PS0018
         {
-            // TODO: Check whether transient exceptions are actually raised here
-            // TODO: Add more information to the warn string in a readable way
-            Logger.Warn($"Failed to receive a message on pump '{arg.Identifier}'. Exception: {arg.Exception}", arg.Exception);
+            string message = $"Failed to receive a message on pump '{arg.Identifier}' listening on '{arg.EntityPath}' connected to '{arg.FullyQualifiedNamespace}' due to '{arg.ErrorSource}'. Exception: {arg.Exception}";
+            // Making sure transient exceptions do not trigger the circuit breaker.
+            if (arg.Exception is ServiceBusException { IsTransient: true })
+            {
+                Logger.Debug(message, arg.Exception);
+                return;
+            }
+
+            Logger.Warn(message, arg.Exception);
             await circuitBreaker.Failure(arg.Exception, arg.CancellationToken).ConfigureAwait(false);
         }
 
