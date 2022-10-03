@@ -235,7 +235,7 @@
                     var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
                     contextBag.Set(message);
-                    contextBag.Set(processor);
+                    contextBag.Set(args);
 
                     var messageContext = new MessageContext(messageId, headers, body, transportTransaction, ReceiveAddress, contextBag);
 
