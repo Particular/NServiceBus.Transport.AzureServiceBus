@@ -9,7 +9,6 @@
     using Azure.Messaging.ServiceBus.Administration;
     using Extensibility;
     using Logging;
-    using IMessageReceiver = IMessageReceiver;
 
     class MessagePump : IMessageReceiver
     {
@@ -98,7 +97,6 @@
                 Identifier = ReceiveAddress,
                 MaxConcurrentCalls = maxConcurrency,
                 AutoCompleteMessages = false
-                // TODO: Configure AutoLockRenewal
             };
 
             processor = serviceBusClient.CreateProcessor(ReceiveAddress, receiveOptions);
