@@ -129,15 +129,17 @@
             {
                 var tryDeadlettering = transportSettings.TransportTransactionMode != TransportTransactionMode.None;
 
-                Logger.Warn($"Poison message detected. " +
-                            $"Message {(tryDeadlettering ? "will be moved to the poison queue" : "will be discarded, transaction mode is set to None")}. " +
-                            $"Exception: {ex.Message}", ex);
+                Logger.Warn($"Poison message detected. Message {(tryDeadlettering ? "will be moved to the poison queue" : "will be discarded, transaction mode is set to None")}. Exception: {ex.Message}", ex);
 
                 if (tryDeadlettering)
                 {
                     try
                     {
-                        await arg.DeadLetterMessageAsync(message, deadLetterReason: "Poisoned message", deadLetterErrorDescription: ex.Message, cancellationToken: arg.CancellationToken).ConfigureAwait(false);
+                        await arg.DeadLetterMessageAsync(message,
+                                deadLetterReason: "Poisoned message",
+                                deadLetterErrorDescription: ex.Message,
+                                cancellationToken: arg.CancellationToken)
+                            .ConfigureAwait(false);
                     }
                     catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(arg.CancellationToken))
                     {
@@ -173,7 +175,8 @@
             }
 
             Logger.Warn(message, processErrorEventArgs.Exception);
-            await circuitBreaker.Failure(processErrorEventArgs.Exception, processErrorEventArgs.CancellationToken).ConfigureAwait(false);
+            await circuitBreaker.Failure(processErrorEventArgs.Exception, processErrorEventArgs.CancellationToken)
+                .ConfigureAwait(false);
         }
 
         public Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
@@ -195,11 +198,13 @@
             // the processor waits until all processing handlers have returned. This makes
             // the code compliant to the previous version that uses manual receives and is aligned
             // with how the cancellation token support was initially designed.
-            await processor.StopProcessingAsync(CancellationToken.None).ConfigureAwait(false);
+            await processor.StopProcessingAsync(CancellationToken.None)
+                .ConfigureAwait(false);
 
             try
             {
-                await processor.CloseAsync(cancellationToken).ConfigureAwait(false);
+                await processor.CloseAsync(cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
             {
@@ -238,7 +243,11 @@
 
                     await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
-                    await processMessageEventArgs.SafeCompleteMessageAsync(message, transportSettings.TransportTransactionMode, transaction, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                    await processMessageEventArgs.SafeCompleteMessageAsync(message,
+                            transportSettings.TransportTransactionMode,
+                            transaction,
+                            cancellationToken: messageProcessingCancellationToken)
+                        .ConfigureAwait(false);
 
                     transaction?.Commit();
                 }
@@ -253,13 +262,18 @@
                     {
                         var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
-                        var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body, transportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
+                        var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body,
+                            transportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
 
                         result = await onError(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
                         if (result == ErrorHandleResult.Handled)
                         {
-                            await processMessageEventArgs.SafeCompleteMessageAsync(message, transportSettings.TransportTransactionMode, transaction, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                            await processMessageEventArgs.SafeCompleteMessageAsync(message,
+                                    transportSettings.TransportTransactionMode,
+                                    transaction,
+                                    cancellationToken: messageProcessingCancellationToken)
+                                .ConfigureAwait(false);
                         }
 
                         transaction?.Commit();
@@ -267,14 +281,20 @@
 
                     if (result == ErrorHandleResult.RetryRequired)
                     {
-                        await processMessageEventArgs.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                        await processMessageEventArgs.SafeAbandonMessageAsync(message,
+                                transportSettings.TransportTransactionMode,
+                                cancellationToken: messageProcessingCancellationToken)
+                            .ConfigureAwait(false);
                     }
                 }
                 catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost)
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
-                    await processMessageEventArgs.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                    await processMessageEventArgs.SafeAbandonMessageAsync(message,
+                            transportSettings.TransportTransactionMode,
+                            cancellationToken: messageProcessingCancellationToken)
+                        .ConfigureAwait(false);
                 }
                 catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(messageProcessingCancellationToken))
                 {
@@ -284,7 +304,10 @@
                 {
                     criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
 
-                    await processMessageEventArgs.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                    await processMessageEventArgs.SafeAbandonMessageAsync(message,
+                            transportSettings.TransportTransactionMode,
+                            cancellationToken: messageProcessingCancellationToken)
+                        .ConfigureAwait(false);
                 }
             }
         }
