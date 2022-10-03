@@ -23,7 +23,6 @@
 
         // Start
         CancellationTokenSource messageProcessingCancellationTokenSource;
-        int maxConcurrency;
         ServiceBusProcessor processor;
 
         static readonly ILog Logger = LogManager.GetLogger<MessagePump>();
@@ -79,9 +78,7 @@
 
         public async Task StartReceive(CancellationToken cancellationToken = default)
         {
-            maxConcurrency = limitations.MaxConcurrency;
-
-            var prefetchCount = maxConcurrency * transportSettings.PrefetchMultiplier;
+            var prefetchCount = limitations.MaxConcurrency * transportSettings.PrefetchMultiplier;
 
             if (transportSettings.PrefetchCount.HasValue)
             {
@@ -95,7 +92,7 @@
                     ? ServiceBusReceiveMode.ReceiveAndDelete
                     : ServiceBusReceiveMode.PeekLock,
                 Identifier = Id,
-                MaxConcurrentCalls = maxConcurrency,
+                MaxConcurrentCalls = limitations.MaxConcurrency,
                 AutoCompleteMessages = false
             };
 
@@ -179,11 +176,11 @@
             await circuitBreaker.Failure(arg.Exception, arg.CancellationToken).ConfigureAwait(false);
         }
 
-        public async Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
+        public Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
         {
-            await StopReceive(cancellationToken).ConfigureAwait(false);
             limitations = newLimitations;
-            await StartReceive(cancellationToken).ConfigureAwait(false);
+            processor.UpdateConcurrency(limitations.MaxConcurrency);
+            return Task.CompletedTask;
         }
 
         public async Task StopReceive(CancellationToken cancellationToken = default)
