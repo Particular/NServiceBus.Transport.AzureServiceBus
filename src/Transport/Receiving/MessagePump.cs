@@ -161,19 +161,19 @@
         }
 
 #pragma warning disable PS0018
-        async Task OnProcessorError(ProcessErrorEventArgs arg)
+        async Task OnProcessorError(ProcessErrorEventArgs processErrorEventArgs)
 #pragma warning restore PS0018
         {
-            string message = $"Failed to receive a message on pump '{arg.Identifier}' listening on '{arg.EntityPath}' connected to '{arg.FullyQualifiedNamespace}' due to '{arg.ErrorSource}'. Exception: {arg.Exception}";
+            string message = $"Failed to receive a message on pump '{processErrorEventArgs.Identifier}' listening on '{processErrorEventArgs.EntityPath}' connected to '{processErrorEventArgs.FullyQualifiedNamespace}' due to '{processErrorEventArgs.ErrorSource}'. Exception: {processErrorEventArgs.Exception}";
             // Making sure transient exceptions do not trigger the circuit breaker.
-            if (arg.Exception is ServiceBusException { IsTransient: true })
+            if (processErrorEventArgs.Exception is ServiceBusException { IsTransient: true })
             {
-                Logger.Debug(message, arg.Exception);
+                Logger.Debug(message, processErrorEventArgs.Exception);
                 return;
             }
 
-            Logger.Warn(message, arg.Exception);
-            await circuitBreaker.Failure(arg.Exception, arg.CancellationToken).ConfigureAwait(false);
+            Logger.Warn(message, processErrorEventArgs.Exception);
+            await circuitBreaker.Failure(processErrorEventArgs.Exception, processErrorEventArgs.CancellationToken).ConfigureAwait(false);
         }
 
         public Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
@@ -217,7 +217,7 @@
         }
 
         async Task ProcessMessage(ServiceBusReceivedMessage message,
-            ProcessMessageEventArgs args,
+            ProcessMessageEventArgs processMessageEventArgs,
             string messageId, Dictionary<string, string> headers, BinaryData body,
             CancellationToken messageProcessingCancellationToken)
         {
@@ -232,13 +232,13 @@
                     var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
                     contextBag.Set(message);
-                    contextBag.Set(args);
+                    contextBag.Set(processMessageEventArgs);
 
                     var messageContext = new MessageContext(messageId, headers, body, transportTransaction, ReceiveAddress, contextBag);
 
                     await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
-                    await args.SafeCompleteMessageAsync(message, transportSettings.TransportTransactionMode, transaction, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                    await processMessageEventArgs.SafeCompleteMessageAsync(message, transportSettings.TransportTransactionMode, transaction, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
 
                     transaction?.Commit();
                 }
@@ -259,7 +259,7 @@
 
                         if (result == ErrorHandleResult.Handled)
                         {
-                            await args.SafeCompleteMessageAsync(message, transportSettings.TransportTransactionMode, transaction, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                            await processMessageEventArgs.SafeCompleteMessageAsync(message, transportSettings.TransportTransactionMode, transaction, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                         }
 
                         transaction?.Commit();
@@ -267,14 +267,14 @@
 
                     if (result == ErrorHandleResult.RetryRequired)
                     {
-                        await args.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                        await processMessageEventArgs.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                     }
                 }
                 catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost)
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
-                    await args.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                    await processMessageEventArgs.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(messageProcessingCancellationToken))
                 {
@@ -284,7 +284,7 @@
                 {
                     criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
 
-                    await args.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
+                    await processMessageEventArgs.SafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, cancellationToken: messageProcessingCancellationToken).ConfigureAwait(false);
                 }
             }
         }
