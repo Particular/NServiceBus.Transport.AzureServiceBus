@@ -21,7 +21,6 @@
 
         public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
         {
-            // Assumption: we're not implementing batching as it will be done by ASB client
             transaction.TryGet<ServiceBusClient>(out var client);
             transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
             transaction.TryGet<CommittableTransaction>(out var committableTransaction);
