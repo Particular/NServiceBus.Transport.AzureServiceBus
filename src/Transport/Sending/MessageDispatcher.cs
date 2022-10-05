@@ -138,7 +138,8 @@
                     logBuilder = new StringBuilder();
                 }
 
-                if (messageBatch.TryAddMessage(messagesToSend.Peek()))
+                var peekedMessage = messagesToSend.Peek();
+                if (messageBatch.TryAddMessage(peekedMessage))
                 {
                     var added = messagesToSend.Dequeue();
                     if (Log.IsDebugEnabled)
@@ -149,7 +150,8 @@
                 }
                 else
                 {
-                    throw new Exception($"Message {messageCount - messagesToSend.Count} is too large and cannot be sent.");
+                    peekedMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
+                    throw new Exception($"Message #{messageCount - messagesToSend.Count} with message id '{messageId ?? peekedMessage.MessageId}' is too large and cannot be sent.");
                 }
 
                 while (messagesToSend.Count > 0 && messageBatch.TryAddMessage(messagesToSend.Peek()))
