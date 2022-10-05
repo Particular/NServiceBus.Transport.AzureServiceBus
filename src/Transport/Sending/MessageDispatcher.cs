@@ -2,7 +2,6 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -13,6 +12,9 @@
     class MessageDispatcher : IMessageDispatcher
     {
         static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
+        static readonly Dictionary<string, List<IOutgoingTransportOperation>> emptyDestinationAndOperations =
+            new Dictionary<string, List<IOutgoingTransportOperation>>();
+
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
 
@@ -37,23 +39,54 @@
             transportOperations.AddRange(unicastTransportOperations);
             transportOperations.AddRange(multicastTransportOperations);
 
-            var concurrentDispatchTasks = new List<Task>(2);
+            Dictionary<string, List<IOutgoingTransportOperation>> isolatedOperationsPerDestination = null;
+            Dictionary<string, List<IOutgoingTransportOperation>> defaultOperationsPerDestination = null;
+            var numberOfIsolatedOperations = 0;
+            var numberOfDefaultOperationDestinations = 0;
 
-            foreach (var dispatchConsistencyGroup in transportOperations
-                         .GroupBy(o => o.RequiredDispatchConsistency))
+            foreach (var operation in transportOperations)
             {
-                switch (dispatchConsistencyGroup.Key)
+                var destination = Destination(operation);
+                switch (operation.RequiredDispatchConsistency)
                 {
-                    case DispatchConsistency.Isolated:
-                        concurrentDispatchTasks.Add(DispatchIsolated(dispatchConsistencyGroup, client, partitionKey, transaction, cancellationToken));
-                        break;
                     case DispatchConsistency.Default:
-                        concurrentDispatchTasks.Add(DispatchBatched(dispatchConsistencyGroup, client, partitionKey, committableTransaction, transaction, cancellationToken));
+                        defaultOperationsPerDestination ??=
+                            new Dictionary<string, List<IOutgoingTransportOperation>>(StringComparer.OrdinalIgnoreCase);
+
+                        if (!defaultOperationsPerDestination.ContainsKey(destination))
+                        {
+                            defaultOperationsPerDestination[destination] = new List<IOutgoingTransportOperation> { operation };
+                            // because we batch only the number of destinations are relevant
+                            numberOfDefaultOperationDestinations++;
+                        }
+                        else
+                        {
+                            defaultOperationsPerDestination[destination].Add(operation);
+                        }
+                        break;
+                    case DispatchConsistency.Isolated:
+                        // every isolated operation counts
+                        numberOfIsolatedOperations++;
+                        isolatedOperationsPerDestination ??=
+                            new Dictionary<string, List<IOutgoingTransportOperation>>(StringComparer.OrdinalIgnoreCase);
+                        if (!isolatedOperationsPerDestination.ContainsKey(destination))
+                        {
+                            isolatedOperationsPerDestination[destination] = new List<IOutgoingTransportOperation> { operation };
+                        }
+                        else
+                        {
+                            isolatedOperationsPerDestination[destination].Add(operation);
+                        }
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
             }
+
+            var concurrentDispatchTasks =
+                new List<Task>(numberOfIsolatedOperations + numberOfDefaultOperationDestinations);
+            AddIsolatedOperationsTo(concurrentDispatchTasks, isolatedOperationsPerDestination ?? emptyDestinationAndOperations, client, partitionKey, transaction, cancellationToken);
+            AddBatchedOperationsTo(concurrentDispatchTasks, defaultOperationsPerDestination ?? emptyDestinationAndOperations, client, partitionKey, committableTransaction, transaction, cancellationToken);
 
             try
             {
@@ -66,22 +99,25 @@
             }
         }
 
-        Task DispatchBatched(IEnumerable<IOutgoingTransportOperation> dispatchConsistencyGroup, ServiceBusClient client, string partitionKey, CommittableTransaction committableTransaction, TransportTransaction transaction, CancellationToken cancellationToken)
+        void AddBatchedOperationsTo(List<Task> dispatchTasks,
+            Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
+            ServiceBusClient client, string partitionKey, CommittableTransaction committableTransaction,
+            TransportTransaction transaction, CancellationToken cancellationToken)
         {
-            var dispatchTasks = new List<Task>();
-            foreach (var operationsPerDestination in dispatchConsistencyGroup.Select(op => (Destination: Destination(op), Operation: op))
-                         .GroupBy(destOp => destOp.Destination, StringComparer.OrdinalIgnoreCase))
+            foreach (var destinationAndOperations in transportOperationsPerDestination)
             {
-                var messagesToSend = new Queue<ServiceBusMessage>();
-                foreach (var (_, operation) in operationsPerDestination)
+                var destination = destinationAndOperations.Key;
+                var operations = destinationAndOperations.Value;
+
+                var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
+                foreach (var operation in operations)
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, partitionKey);
                     ApplyCustomizationToOutgoingNativeMessage(operation, message, transaction);
                     messagesToSend.Enqueue(message);
                 }
-                dispatchTasks.Add(DispatchBatchForDestination(operationsPerDestination.Key, client, committableTransaction, messagesToSend, cancellationToken));
+                dispatchTasks.Add(DispatchBatchForDestination(destination, client, committableTransaction, messagesToSend, cancellationToken));
             }
-            return Task.WhenAll(dispatchTasks);
         }
 
         async Task DispatchBatchForDestination(string destination, ServiceBusClient client, CommittableTransaction committableTransaction, Queue<ServiceBusMessage> messagesToSend, CancellationToken cancellationToken)
@@ -142,16 +178,23 @@
             }
         }
 
-        Task DispatchIsolated(IEnumerable<IOutgoingTransportOperation> dispatchConsistencyGroup, ServiceBusClient client, string partitionKey, TransportTransaction transaction, CancellationToken cancellationToken)
+        void AddIsolatedOperationsTo(List<Task> dispatchTasks,
+            Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
+            ServiceBusClient client, string partitionKey, TransportTransaction transaction,
+            CancellationToken cancellationToken)
         {
-            var dispatchTasks = new List<Task>();
-            foreach (var (destination, operation) in dispatchConsistencyGroup.Select(op => (Destination: Destination(op), Operation: op)))
+            foreach (var destinationAndOperations in transportOperationsPerDestination)
             {
-                var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, partitionKey);
-                ApplyCustomizationToOutgoingNativeMessage(operation, message, transaction);
-                dispatchTasks.Add(DispatchIsolatedForDestination(destination, client, message, cancellationToken));
+                var destination = destinationAndOperations.Key;
+                var operations = destinationAndOperations.Value;
+
+                foreach (var operation in operations)
+                {
+                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, partitionKey);
+                    ApplyCustomizationToOutgoingNativeMessage(operation, message, transaction);
+                    dispatchTasks.Add(DispatchIsolatedForDestination(destination, client, message, cancellationToken));
+                }
             }
-            return dispatchTasks.Count == 1 ? dispatchTasks[0] : Task.WhenAll(dispatchTasks);
         }
 
         async Task DispatchIsolatedForDestination(string destination, ServiceBusClient client, ServiceBusMessage message, CancellationToken cancellationToken)
