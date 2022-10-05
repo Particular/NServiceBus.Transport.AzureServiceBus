@@ -151,7 +151,7 @@
                 else
                 {
                     peekedMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
-                    throw new Exception($"Message #{messageCount - messagesToSend.Count} with message id '{messageId ?? peekedMessage.MessageId}' is too large and cannot be sent.");
+                    throw new ServiceBusException($"Message #{messageCount - messagesToSend.Count} with message id '{messageId ?? peekedMessage.MessageId}' is too large and cannot be sent.", ServiceBusFailureReason.MessageSizeExceeded);
                 }
 
                 while (messagesToSend.Count > 0 && messageBatch.TryAddMessage(messagesToSend.Peek()))
