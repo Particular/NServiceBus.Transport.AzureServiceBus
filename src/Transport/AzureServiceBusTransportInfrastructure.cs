@@ -34,8 +34,7 @@
         }
 
 
-        void WriteStartupDiagnostics(StartupDiagnosticEntries startupDiagnostic)
-        {
+        void WriteStartupDiagnostics(StartupDiagnosticEntries startupDiagnostic) =>
             startupDiagnostic.Add("Azure Service Bus transport", new
             {
                 transportSettings.TopicName,
@@ -48,11 +47,9 @@
                 CustomTokenProvider = transportSettings.TokenCredential?.ToString() ?? "default",
                 CustomRetryPolicy = transportSettings.RetryPolicyOptions?.ToString() ?? "default"
             });
-        }
 
-        IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient client)
-        {
-            return new MessagePump(
+        IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient client) =>
+            new MessagePump(
                 client,
                 administrationClient,
                 transportSettings,
@@ -60,7 +57,6 @@
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
                 namespacePermissions);
-        }
 
         public override async Task Shutdown(CancellationToken cancellationToken = default)
         {
