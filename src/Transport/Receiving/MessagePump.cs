@@ -179,11 +179,26 @@
                 .ConfigureAwait(false);
         }
 
+
         public async Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
         {
-            await StopReceive(cancellationToken).ConfigureAwait(false);
             limitations = newLimitations;
-            await StartReceive(cancellationToken).ConfigureAwait(false);
+            if (transportSettings.PrefetchCount.HasValue)
+            {
+                // For all users that have set a predefined fixed prefetch count we are adjusting the concurrency
+                // by using what the SDK provides since the prefetch count is always fixed.
+                processor.UpdateConcurrency(limitations.MaxConcurrency);
+            }
+            else
+            {
+                // For all other cases the users is using either the default multiplier or a defined multiplier
+                // that sets the prefetch count in accordance of the maximum concurrency. In those scenarios we cannot
+                // use UpdateConcurrency because that would not adjust the prefetch count to the new desired values
+                // therefore we are stopping and restarting (which also creates a new underlying AMQP link that will have
+                // the new prefetch count settings.
+                await StopReceive(cancellationToken).ConfigureAwait(false);
+                await StartReceive(cancellationToken).ConfigureAwait(false);
+            }
         }
 
         public async Task StopReceive(CancellationToken cancellationToken = default)
