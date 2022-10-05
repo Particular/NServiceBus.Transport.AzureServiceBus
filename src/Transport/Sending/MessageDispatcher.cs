@@ -99,6 +99,8 @@
             }
         }
 
+        // The parameters of this method are deliberately mutable and of the original collection type to make sure
+        // no boxing occurs
         void AddBatchedOperationsTo(List<Task> dispatchTasks,
             Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
             ServiceBusClient client, string partitionKey, CommittableTransaction committableTransaction,
@@ -178,6 +180,8 @@
             }
         }
 
+        // The parameters of this method are deliberately mutable and of the original collection type to make sure
+        // no boxing occurs
         void AddIsolatedOperationsTo(List<Task> dispatchTasks,
             Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
             ServiceBusClient client, string partitionKey, TransportTransaction transaction,
