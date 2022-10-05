@@ -48,18 +48,18 @@
             var body = message.Body ?? new BinaryData(Array.Empty<byte>());
             var memory = body.ToMemory();
 
-            if (!memory.IsEmpty && message.ApplicationProperties.TryGetValue(TransportMessageHeaders.TransportEncoding, out var value) && value.Equals("wcf/byte-array"))
+            if (memory.IsEmpty ||
+                !message.ApplicationProperties.TryGetValue(TransportMessageHeaders.TransportEncoding, out var value) ||
+                !value.Equals("wcf/byte-array"))
             {
-                var deserializer = new DataContractSerializer(typeof(byte[]));
-
-                using (var reader = XmlDictionaryReader.CreateBinaryReader(body.ToStream(), XmlDictionaryReaderQuotas.Max))
-                {
-                    var bodyBytes = (byte[])deserializer.ReadObject(reader);
-                    return new BinaryData(bodyBytes);
-                }
+                return body;
             }
 
-            return body;
+            using var reader = XmlDictionaryReader.CreateBinaryReader(body.ToStream(), XmlDictionaryReaderQuotas.Max);
+            var bodyBytes = (byte[])Deserializer.ReadObject(reader);
+            return new BinaryData(bodyBytes);
         }
+
+        static readonly DataContractSerializer Deserializer = new DataContractSerializer(typeof(byte[]));
     }
 }
