@@ -13,12 +13,12 @@
     class MessageDispatcher : IMessageDispatcher
     {
         static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
-        readonly MessageSenderPool messageSenderPool;
+        readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
 
-        public MessageDispatcher(MessageSenderPool messageSenderPool, string topicName)
+        public MessageDispatcher(MessageSenderRegistry messageSenderRegistry, string topicName)
         {
-            this.messageSenderPool = messageSenderPool;
+            this.messageSenderRegistry = messageSenderRegistry;
             this.topicName = topicName;
         }
 
@@ -88,65 +88,57 @@
         {
             var messageCount = messagesToSend.Count;
             int batchCount = 0;
-            // TODO: Currently this design creates more senders because we are no longer quickly returning them. Planning to change the sender pool in a dedicated commit
-            var sender = messageSenderPool.GetMessageSender(destination, client);
-            try
+            var sender = messageSenderRegistry.GetMessageSender(destination, client);
+            while (messagesToSend.Count > 0)
             {
-                while (messagesToSend.Count > 0)
+                using ServiceBusMessageBatch messageBatch = await sender.CreateMessageBatchAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                StringBuilder logBuilder = null;
+                if (Log.IsDebugEnabled)
                 {
-                    using ServiceBusMessageBatch messageBatch = await sender.CreateMessageBatchAsync(cancellationToken)
-                        .ConfigureAwait(false);
+                    logBuilder = new StringBuilder();
+                }
 
-                    StringBuilder logBuilder = null;
+                if (messageBatch.TryAddMessage(messagesToSend.Peek()))
+                {
+                    var added = messagesToSend.Dequeue();
                     if (Log.IsDebugEnabled)
                     {
-                        logBuilder = new StringBuilder();
-                    }
-
-                    if (messageBatch.TryAddMessage(messagesToSend.Peek()))
-                    {
-                        var added = messagesToSend.Dequeue();
-                        if (Log.IsDebugEnabled)
-                        {
-                            added.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
-                            logBuilder!.Append($"{messageId ?? added.MessageId},");
-                        }
-                    }
-                    else
-                    {
-                        throw new Exception($"Message {messageCount - messagesToSend.Count} is too large and cannot be sent.");
-                    }
-
-                    while (messagesToSend.Count > 0 && messageBatch.TryAddMessage(messagesToSend.Peek()))
-                    {
-                        var added = messagesToSend.Dequeue();
-                        if (Log.IsDebugEnabled)
-                        {
-                            added.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
-                            logBuilder!.Append($"{messageId ?? added.MessageId},");
-                        }
-                    }
-
-                    batchCount++;
-                    if (Log.IsDebugEnabled)
-                    {
-                        Log.Debug($"Sending batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
-                    }
-
-                    using var scope = committableTransaction.ToScope();
-                    await sender.SendMessagesAsync(messageBatch, cancellationToken).ConfigureAwait(false);
-                    //committable tx will not be committed because this scope is not the owner
-                    scope.Complete();
-
-                    if (Log.IsDebugEnabled)
-                    {
-                        Log.Debug($"Sent batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
+                        added.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
+                        logBuilder!.Append($"{messageId ?? added.MessageId},");
                     }
                 }
-            }
-            finally
-            {
-                messageSenderPool.ReturnMessageSender(sender, client);
+                else
+                {
+                    throw new Exception($"Message {messageCount - messagesToSend.Count} is too large and cannot be sent.");
+                }
+
+                while (messagesToSend.Count > 0 && messageBatch.TryAddMessage(messagesToSend.Peek()))
+                {
+                    var added = messagesToSend.Dequeue();
+                    if (Log.IsDebugEnabled)
+                    {
+                        added.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
+                        logBuilder!.Append($"{messageId ?? added.MessageId},");
+                    }
+                }
+
+                batchCount++;
+                if (Log.IsDebugEnabled)
+                {
+                    Log.Debug($"Sending batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
+                }
+
+                using var scope = committableTransaction.ToScope();
+                await sender.SendMessagesAsync(messageBatch, cancellationToken).ConfigureAwait(false);
+                //committable tx will not be committed because this scope is not the owner
+                scope.Complete();
+
+                if (Log.IsDebugEnabled)
+                {
+                    Log.Debug($"Sent batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
+                }
             }
         }
 
@@ -164,19 +156,12 @@
 
         async Task DispatchIsolatedForDestination(string destination, ServiceBusClient client, ServiceBusMessage message, CancellationToken cancellationToken)
         {
-            // TODO: Currently this design creates more senders because we are no longer quickly returning them. Planning to change the sender pool in a dedicated commit
-            var sender = messageSenderPool.GetMessageSender(destination, client);
-            try
-            {
-                using var scope = default(Transaction).ToScope();
-                await sender.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
-                //committable tx will not be committed because this scope is not the owner
-                scope.Complete();
-            }
-            finally
-            {
-                messageSenderPool.ReturnMessageSender(sender, client);
-            }
+            var sender = messageSenderRegistry.GetMessageSender(destination, client);
+            // Making sure we have a suppress scope around the sending
+            using var scope = default(Transaction).ToScope();
+            await sender.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
+            //committable tx will not be committed because this scope is not the owner
+            scope.Complete();
         }
 
         string Destination(IOutgoingTransportOperation outgoingTransportOperation)

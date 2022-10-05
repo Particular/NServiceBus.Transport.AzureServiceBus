@@ -14,7 +14,7 @@
 
         readonly ServiceBusAdministrationClient administrationClient;
         readonly NamespacePermissions namespacePermissions;
-        readonly MessageSenderPool messageSenderPool;
+        readonly MessageSenderRegistry messageSenderRegistry;
         readonly HostSettings hostSettings;
 
         public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, (ReceiveSettings receiveSettings, ServiceBusClient client)[] receivers, ServiceBusClient defaultClient, ServiceBusAdministrationClient administrationClient, NamespacePermissions namespacePermissions)
@@ -25,9 +25,9 @@
             this.administrationClient = administrationClient;
             this.namespacePermissions = namespacePermissions;
 
-            messageSenderPool = new MessageSenderPool(defaultClient);
+            messageSenderRegistry = new MessageSenderRegistry(defaultClient);
 
-            Dispatcher = new MessageDispatcher(messageSenderPool, transportSettings.TopicName);
+            Dispatcher = new MessageDispatcher(messageSenderRegistry, transportSettings.TopicName);
             Receivers = receivers.ToDictionary(s => s.receiveSettings.Id, s => CreateMessagePump(s.receiveSettings, s.client));
 
             WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
@@ -64,9 +64,9 @@
 
         public override async Task Shutdown(CancellationToken cancellationToken = default)
         {
-            if (messageSenderPool != null)
+            if (messageSenderRegistry != null)
             {
-                await messageSenderPool.Close(cancellationToken).ConfigureAwait(false);
+                await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
             }
         }
 
