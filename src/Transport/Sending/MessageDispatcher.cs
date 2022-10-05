@@ -46,7 +46,7 @@
 
             foreach (var operation in transportOperations)
             {
-                var destination = Destination(operation);
+                var destination = operation.ExtractDestination(defaultMulticastRoute: topicName);
                 switch (operation.RequiredDispatchConsistency)
                 {
                     case DispatchConsistency.Default:
@@ -115,7 +115,7 @@
                 foreach (var operation in operations)
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, partitionKey);
-                    ApplyCustomizationToOutgoingNativeMessage(operation, message, transaction);
+                    operation.ApplyCustomizationToOutgoingNativeMessage(message, transaction, Log);
                     messagesToSend.Enqueue(message);
                 }
                 dispatchTasks.Add(DispatchBatchForDestination(destination, client, committableTransaction, messagesToSend, cancellationToken));
@@ -197,7 +197,7 @@
                 foreach (var operation in operations)
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, partitionKey);
-                    ApplyCustomizationToOutgoingNativeMessage(operation, message, transaction);
+                    operation.ApplyCustomizationToOutgoingNativeMessage(message, transaction, Log);
                     dispatchTasks.Add(DispatchIsolatedForDestination(destination, client, message, cancellationToken));
                 }
             }
@@ -211,48 +211,6 @@
             await sender.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
             //committable tx will not be committed because this scope is not the owner
             scope.Complete();
-        }
-
-        string Destination(IOutgoingTransportOperation outgoingTransportOperation)
-        {
-            switch (outgoingTransportOperation)
-            {
-                case MulticastTransportOperation:
-                    return topicName;
-                case UnicastTransportOperation unicastTransportOperation:
-                    var destination = unicastTransportOperation.Destination;
-
-                    // Workaround for reply-to address set by ASB transport
-                    var index = unicastTransportOperation.Destination.IndexOf('@');
-
-                    if (index > 0)
-                    {
-                        destination = destination.Substring(0, index);
-                    }
-                    return destination;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));
-            }
-        }
-
-        static void ApplyCustomizationToOutgoingNativeMessage(IOutgoingTransportOperation transportOperation,
-            ServiceBusMessage message, TransportTransaction transportTransaction)
-        {
-            if (!transportOperation.Properties.TryGetValue(NativeMessageCustomizationBehavior.CustomizationKey,
-                out var key))
-            {
-                return;
-            }
-
-            var messageCustomizer = transportTransaction.Get<NativeMessageCustomizer>();
-            if (!messageCustomizer.Customizations.TryGetValue(key, out var action))
-            {
-                Log.Warn(
-                    $"Message {transportOperation.Message.MessageId} was configured with a native message customization but the customization was not found in {nameof(NativeMessageCustomizer)}");
-                return;
-            }
-
-            action(message);
         }
     }
 }
