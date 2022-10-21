@@ -20,6 +20,7 @@
         {
             // According to the client SDK guidelines we can safely use these client objects for concurrent asynchronous
             // operations and from multiple threads.
+            // see https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-performance-improvements
             var lazySender = destinationToSenderMapping.GetOrAdd((destination, client ?? defaultClient),
                 static arg =>
                 {
