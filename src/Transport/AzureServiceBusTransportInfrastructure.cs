@@ -14,7 +14,7 @@
 
         readonly ServiceBusAdministrationClient administrationClient;
         readonly NamespacePermissions namespacePermissions;
-        readonly MessageSenderPool messageSenderPool;
+        readonly MessageSenderRegistry messageSenderRegistry;
         readonly HostSettings hostSettings;
 
         public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, (ReceiveSettings receiveSettings, ServiceBusClient client)[] receivers, ServiceBusClient defaultClient, ServiceBusAdministrationClient administrationClient, NamespacePermissions namespacePermissions)
@@ -25,17 +25,16 @@
             this.administrationClient = administrationClient;
             this.namespacePermissions = namespacePermissions;
 
-            messageSenderPool = new MessageSenderPool(defaultClient);
+            messageSenderRegistry = new MessageSenderRegistry(defaultClient);
 
-            Dispatcher = new MessageDispatcher(messageSenderPool, transportSettings.TopicName);
+            Dispatcher = new MessageDispatcher(messageSenderRegistry, transportSettings.TopicName);
             Receivers = receivers.ToDictionary(s => s.receiveSettings.Id, s => CreateMessagePump(s.receiveSettings, s.client));
 
             WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
         }
 
 
-        void WriteStartupDiagnostics(StartupDiagnosticEntries startupDiagnostic)
-        {
+        void WriteStartupDiagnostics(StartupDiagnosticEntries startupDiagnostic) =>
             startupDiagnostic.Add("Azure Service Bus transport", new
             {
                 transportSettings.TopicName,
@@ -48,11 +47,9 @@
                 CustomTokenProvider = transportSettings.TokenCredential?.ToString() ?? "default",
                 CustomRetryPolicy = transportSettings.RetryPolicyOptions?.ToString() ?? "default"
             });
-        }
 
-        IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient client)
-        {
-            return new MessagePump(
+        IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient client) =>
+            new MessagePump(
                 client,
                 administrationClient,
                 transportSettings,
@@ -60,13 +57,12 @@
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
                 namespacePermissions);
-        }
 
         public override async Task Shutdown(CancellationToken cancellationToken = default)
         {
-            if (messageSenderPool != null)
+            if (messageSenderRegistry != null)
             {
-                await messageSenderPool.Close(cancellationToken).ConfigureAwait(false);
+                await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
             }
         }
 
