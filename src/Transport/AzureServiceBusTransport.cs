@@ -42,12 +42,15 @@
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
             ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)
         {
+            var transportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp;
+            bool enableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive;
+
             var receiveSettingsAndClientPairs = receivers.Select(receiver =>
             {
                 var options = new ServiceBusClientOptions
                 {
-                    TransportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp,
-                    EnableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
+                    TransportType = transportType,
+                    EnableCrossEntityTransactions = enableCrossEntityTransactions
                 };
                 ApplyRetryPolicyOptionsIfNeeded(options);
                 var client = TokenCredential != null
@@ -58,7 +61,7 @@
 
             var defaultClientOptions = new ServiceBusClientOptions
             {
-                TransportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp,
+                TransportType = transportType,
                 // for the default client we never want things to automatically use cross entity transaction
                 EnableCrossEntityTransactions = false
             };
