@@ -42,34 +42,36 @@
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
             ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)
         {
-            var serviceBusClientOptions = new ServiceBusClientOptions()
+            var receiveSettingsAndClientPairs = receivers.Select(receiver =>
             {
-                TransportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp,
-                EnableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
-            };
-
-            if (RetryPolicyOptions != null)
-            {
-                serviceBusClientOptions.RetryOptions = RetryPolicyOptions;
-            }
-
-            var recieveClientTuple = receivers.Select(receiver =>
-            {
+                var options = new ServiceBusClientOptions
+                {
+                    TransportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp,
+                    EnableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
+                };
+                ApplyRetryPolicyOptionsIfNeeded(options);
                 var client = TokenCredential != null
-                    ? new ServiceBusClient(ConnectionString, TokenCredential, serviceBusClientOptions)
-                    : new ServiceBusClient(ConnectionString, serviceBusClientOptions);
+                    ? new ServiceBusClient(ConnectionString, TokenCredential, options)
+                    : new ServiceBusClient(ConnectionString, options);
                 return (receiver, client);
             }).ToArray();
 
+            var defaultClientOptions = new ServiceBusClientOptions
+            {
+                TransportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp,
+                // for the default client we never want things to automatically use cross entity transaction
+                EnableCrossEntityTransactions = false
+            };
+            ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
             var defaultClient = TokenCredential != null
-                ? new ServiceBusClient(ConnectionString, TokenCredential, serviceBusClientOptions)
-                : new ServiceBusClient(ConnectionString, serviceBusClientOptions);
+                ? new ServiceBusClient(ConnectionString, TokenCredential, defaultClientOptions)
+                : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
             var administrativeClient = TokenCredential != null ? new ServiceBusAdministrationClient(ConnectionString, TokenCredential) : new ServiceBusAdministrationClient(ConnectionString);
 
             var namespacePermissions = new NamespacePermissions(administrativeClient);
 
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, recieveClientTuple, defaultClient, administrativeClient, namespacePermissions);
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrativeClient, namespacePermissions);
 
             if (hostSettings.SetupInfrastructure)
             {
@@ -83,6 +85,14 @@
             }
 
             return infrastructure;
+        }
+
+        void ApplyRetryPolicyOptionsIfNeeded(ServiceBusClientOptions options)
+        {
+            if (RetryPolicyOptions != null)
+            {
+                options.RetryOptions = RetryPolicyOptions;
+            }
         }
 
         /// <inheritdoc />
