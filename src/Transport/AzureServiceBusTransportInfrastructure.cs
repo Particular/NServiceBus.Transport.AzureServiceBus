@@ -16,19 +16,23 @@
         readonly NamespacePermissions namespacePermissions;
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly HostSettings hostSettings;
+        readonly ServiceBusClient defaultClient;
+        readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
 
-        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, (ReceiveSettings receiveSettings, ServiceBusClient client)[] receivers, ServiceBusClient defaultClient, ServiceBusAdministrationClient administrationClient, NamespacePermissions namespacePermissions)
+        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs, ServiceBusClient defaultClient, ServiceBusAdministrationClient administrationClient, NamespacePermissions namespacePermissions)
         {
             this.transportSettings = transportSettings;
 
             this.hostSettings = hostSettings;
+            this.defaultClient = defaultClient;
+            this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
             this.administrationClient = administrationClient;
             this.namespacePermissions = namespacePermissions;
 
             messageSenderRegistry = new MessageSenderRegistry(defaultClient);
 
             Dispatcher = new MessageDispatcher(messageSenderRegistry, transportSettings.TopicName);
-            Receivers = receivers.ToDictionary(s => s.receiveSettings.Id, s => CreateMessagePump(s.receiveSettings, s.client));
+            Receivers = receiveSettingsAndClientPairs.ToDictionary(s => s.receiveSettings.Id, s => CreateMessagePump(s.receiveSettings, s.client));
 
             WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
         }
@@ -64,6 +68,13 @@
             {
                 await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
             }
+
+            foreach (var (_, serviceBusClient) in receiveSettingsAndClientPairs)
+            {
+                await serviceBusClient.DisposeAsync().ConfigureAwait(false);
+            }
+
+            await defaultClient.DisposeAsync().ConfigureAwait(false);
         }
 
         public override string ToTransportAddress(QueueAddress address) => TranslateAddress(address);
