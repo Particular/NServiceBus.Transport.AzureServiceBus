@@ -32,7 +32,15 @@
             messageSenderRegistry = new MessageSenderRegistry(defaultClient);
 
             Dispatcher = new MessageDispatcher(messageSenderRegistry, transportSettings.TopicName);
-            Receivers = receiveSettingsAndClientPairs.ToDictionary(s => s.receiveSettings.Id, s => CreateMessagePump(s.receiveSettings, s.client));
+            Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
+            {
+                var (receiveSettings, _) = settingsAndClient;
+                return receiveSettings.Id;
+            }, settingsAndClient =>
+            {
+                (ReceiveSettings receiveSettings, ServiceBusClient client) = settingsAndClient;
+                return CreateMessagePump(receiveSettings, client);
+            });
 
             WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
         }
