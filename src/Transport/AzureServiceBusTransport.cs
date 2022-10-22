@@ -94,15 +94,13 @@
 #pragma warning restore CS0672 // Member overrides obsolete member
 
         /// <inheritdoc />
-        public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes()
-        {
-            return new[]
+        public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes() =>
+            new[]
             {
                 TransportTransactionMode.None,
                 TransportTransactionMode.ReceiveOnly,
                 TransportTransactionMode.SendsAtomicWithReceive
             };
-        }
 
         /// <summary>
         /// The topic name used to publish events between endpoints.
