@@ -4,6 +4,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
+    using Azure.Messaging.ServiceBus;
     using NUnit.Framework;
     using Routing;
 
@@ -332,6 +333,28 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             Assert.That(someTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
             var someTopicSenderBatchContent = someTopicSender[someTopicSender.BatchSentMessages.ElementAt(0)];
             Assert.That(someTopicSenderBatchContent, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void Should_throw_when_batch_size_exceeded()
+        {
+            var client = new FakeServiceBusClient();
+            var sender = new FakeSender();
+            client.Senders["SomeDestination"] = sender;
+
+            sender.TryAdd = _ => false;
+
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), "sometopic");
+
+            var operation1 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        new Dictionary<string, string>(),
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    new DispatchProperties(),
+                    DispatchConsistency.Default);
+
+            Assert.ThrowsAsync<ServiceBusException>(async () => await dispatcher.Dispatch(new TransportOperations(operation1), new TransportTransaction()));
         }
 
         class SomeEvent { }
