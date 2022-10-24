@@ -1,12 +1,14 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.CommandLine
 {
     using System;
+    using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
     using McMaster.Extensions.CommandLineUtils;
+    using Microsoft.Extensions.Logging;
 
     class Program
     {
-        static int Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
             var app = new CommandLineApplication
             {
@@ -30,11 +32,17 @@
 
             app.HelpOption(inherited: true);
 
+            var ignoreUpdates = app.Option("-i|--ignore-updates", "Ignore tool updates.", CommandOptionType.NoValue, true);
+            var verboseOption = app.Option("-v|--verbose", "Show verbose output", CommandOptionType.NoValue, true);
+            var versionOption = app.Option("--version", "Show the current version of the tool", CommandOptionType.NoValue, true);
+
+            var logger = new ConsoleLogger(verboseOption.HasValue());
+
             app.Command("endpoint", endpointCommand =>
             {
                 endpointCommand.OnExecute(() =>
                 {
-                    Console.WriteLine("Specify a subcommand");
+                    logger.LogWarning("Specify a subcommand");
                     endpointCommand.ShowHelp();
                     return 1;
                 });
@@ -52,9 +60,9 @@
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, client => Endpoint.Create(client, name, topicName, subscriptionName, size, partitioning));
+                        await CommandRunner.Run(connectionString, client => Endpoint.Create(logger, client, name, topicName, subscriptionName, size, partitioning));
 
-                        Console.WriteLine($"Endpoint '{name.Value}' is ready.");
+                        logger.LogInformation($"Endpoint '{name.Value}' is ready.");
                     });
                 });
 
@@ -71,9 +79,9 @@
 
                     subscribeCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, client => Endpoint.Subscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
+                        await CommandRunner.Run(connectionString, client => Endpoint.Subscribe(logger, client, name, topicName, subscriptionName, eventType, shortenedRuleName));
 
-                        Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{eventType.Value}'.");
+                        logger.LogInformation($"Endpoint '{name.Value}' subscribed to '{eventType.Value}'.");
                     });
                 });
 
@@ -90,9 +98,9 @@
 
                     unsubscribeCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, client => Endpoint.Unsubscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
+                        await CommandRunner.Run(connectionString, client => Endpoint.Unsubscribe(logger, client, name, topicName, subscriptionName, eventType, shortenedRuleName));
 
-                        Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{eventType.Value}'.");
+                        logger.LogInformation($"Endpoint '{name.Value}' unsubscribed from '{eventType.Value}'.");
                     });
                 });
             });
@@ -101,7 +109,7 @@
             {
                 queueCommand.OnExecute(() =>
                 {
-                    Console.WriteLine("Specify a subcommand");
+                    logger.LogWarning("Specify a subcommand");
                     queueCommand.ShowHelp();
                     return 1;
                 });
@@ -120,11 +128,11 @@
                         try
                         {
                             await CommandRunner.Run(connectionString, client => Queue.Create(client, name, size, partitioning));
-                            Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
+                            logger.LogInformation($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
                         }
                         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                         {
-                            Console.WriteLine($"Queue '{name.Value}' already exists, skipping creation");
+                            logger.LogInformation($"Queue '{name.Value}' already exists, skipping creation");
                         }
                     });
                 });
@@ -140,25 +148,37 @@
                     {
                         await CommandRunner.Run(connectionString, client => Queue.Delete(client, name));
 
-                        Console.WriteLine($"Queue name '{name.Value}' deleted");
+                        logger.LogInformation($"Queue name '{name.Value}' deleted");
                     });
                 });
             });
 
-            app.OnExecute(() =>
+            app.OnExecuteAsync(async cancellationToken =>
             {
-                Console.WriteLine("Specify a subcommand");
+                logger.LogInformation(ToolVersion.GetVersionInfo());
+
+                if (versionOption.HasValue())
+                {
+                    return 0;
+                }
+
+                if (!await ToolVersion.CheckIsLatestVersion(logger, ignoreUpdates.HasValue(), cancellationToken).ConfigureAwait(false))
+                {
+                    return 1;
+                }
+
+                logger.LogWarning("Specify a subcommand");
                 app.ShowHelp();
                 return 1;
             });
 
             try
             {
-                return app.Execute(args);
+                return await app.ExecuteAsync(args).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
-                Console.Error.WriteLine($"Command failed with exception ({exception.GetType().Name}): {exception.Message}");
+                logger.LogError($"Command failed with exception ({exception.GetType().Name}): {exception.Message}");
                 return 1;
             }
         }

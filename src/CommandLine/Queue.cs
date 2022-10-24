@@ -21,9 +21,6 @@
             return client.CreateQueueAsync(queueDescription);
         }
 
-        public static Task Delete(ServiceBusAdministrationClient client, CommandArgument name)
-        {
-            return client.DeleteQueueAsync(name.Value);
-        }
+        public static Task Delete(ServiceBusAdministrationClient client, CommandArgument name) => client.DeleteQueueAsync(name.Value);
     }
 }
