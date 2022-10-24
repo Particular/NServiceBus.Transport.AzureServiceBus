@@ -7,6 +7,7 @@ namespace NServiceBus
         protected string ConnectionString { get; set; }
         public bool EnablePartitioning { get; set; }
         public int EntityMaximumSize { get; set; }
+        public System.TimeSpan? MaxAutoLockRenewalDuration { get; set; }
         public int? PrefetchCount { get; set; }
         public int PrefetchMultiplier { get; set; }
         public Azure.Messaging.ServiceBus.ServiceBusRetryOptions RetryPolicyOptions { get; set; }
