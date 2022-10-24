@@ -27,7 +27,7 @@
                     (string innerDestination, ServiceBusClient innerClient) = arg;
                     // Unfortunately Lazy closure allocates but this should be fine since the majority of the
                     // execution path will fall into the get and not the add.
-                    return new Lazy<ServiceBusSender>(() => innerClient.CreateSender(innerDestination), LazyThreadSafetyMode.ExecutionAndPublication);
+                    return new Lazy<ServiceBusSender>(() => innerClient.CreateSender(innerDestination, new ServiceBusSenderOptions { Identifier = $"Sender-{innerDestination}-{Guid.NewGuid()}" }), LazyThreadSafetyMode.ExecutionAndPublication);
                 });
             return lazySender.Value;
         }

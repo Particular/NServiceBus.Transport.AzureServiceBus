@@ -40,8 +40,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             return Task.CompletedTask;
         }
 
-        public override Task SendMessagesAsync(ServiceBusMessageBatch messageBatch,
-            CancellationToken cancellationToken = new CancellationToken())
+        public override Task SendMessagesAsync(ServiceBusMessageBatch messageBatch, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             batchedMessages.Add(messageBatch);

@@ -50,7 +50,8 @@
                 var options = new ServiceBusClientOptions
                 {
                     TransportType = transportType,
-                    EnableCrossEntityTransactions = enableCrossEntityTransactions
+                    EnableCrossEntityTransactions = enableCrossEntityTransactions,
+                    Identifier = $"Client-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
                 };
                 ApplyRetryPolicyOptionsIfNeeded(options);
                 var client = TokenCredential != null
@@ -63,7 +64,8 @@
             {
                 TransportType = transportType,
                 // for the default client we never want things to automatically use cross entity transaction
-                EnableCrossEntityTransactions = false
+                EnableCrossEntityTransactions = false,
+                Identifier = $"Client-{hostSettings.Name}-{Guid.NewGuid()}"
             };
             ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
             var defaultClient = TokenCredential != null
