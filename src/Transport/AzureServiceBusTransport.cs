@@ -42,34 +42,41 @@
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
             ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)
         {
-            var serviceBusClientOptions = new ServiceBusClientOptions()
-            {
-                TransportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp,
-                EnableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
-            };
+            var transportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp;
+            bool enableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive;
 
-            if (RetryPolicyOptions != null)
+            var receiveSettingsAndClientPairs = receivers.Select(receiver =>
             {
-                serviceBusClientOptions.RetryOptions = RetryPolicyOptions;
-            }
-
-            var recieveClientTuple = receivers.Select(receiver =>
-            {
+                var options = new ServiceBusClientOptions
+                {
+                    TransportType = transportType,
+                    EnableCrossEntityTransactions = enableCrossEntityTransactions,
+                    Identifier = $"Client-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
+                };
+                ApplyRetryPolicyOptionsIfNeeded(options);
                 var client = TokenCredential != null
-                    ? new ServiceBusClient(ConnectionString, TokenCredential, serviceBusClientOptions)
-                    : new ServiceBusClient(ConnectionString, serviceBusClientOptions);
+                    ? new ServiceBusClient(ConnectionString, TokenCredential, options)
+                    : new ServiceBusClient(ConnectionString, options);
                 return (receiver, client);
             }).ToArray();
 
+            var defaultClientOptions = new ServiceBusClientOptions
+            {
+                TransportType = transportType,
+                // for the default client we never want things to automatically use cross entity transaction
+                EnableCrossEntityTransactions = false,
+                Identifier = $"Client-{hostSettings.Name}-{Guid.NewGuid()}"
+            };
+            ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
             var defaultClient = TokenCredential != null
-                ? new ServiceBusClient(ConnectionString, TokenCredential, serviceBusClientOptions)
-                : new ServiceBusClient(ConnectionString, serviceBusClientOptions);
+                ? new ServiceBusClient(ConnectionString, TokenCredential, defaultClientOptions)
+                : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
             var administrativeClient = TokenCredential != null ? new ServiceBusAdministrationClient(ConnectionString, TokenCredential) : new ServiceBusAdministrationClient(ConnectionString);
 
             var namespacePermissions = new NamespacePermissions(administrativeClient);
 
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, recieveClientTuple, defaultClient, administrativeClient, namespacePermissions);
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrativeClient, namespacePermissions);
 
             if (hostSettings.SetupInfrastructure)
             {
@@ -85,6 +92,14 @@
             return infrastructure;
         }
 
+        void ApplyRetryPolicyOptionsIfNeeded(ServiceBusClientOptions options)
+        {
+            if (RetryPolicyOptions != null)
+            {
+                options.RetryOptions = RetryPolicyOptions;
+            }
+        }
+
         /// <inheritdoc />
         [ObsoleteEx(Message = "Inject the ITransportAddressResolver type to access the address translation mechanism at runtime. See the NServiceBus version 8 upgrade guide for further details.",
                     TreatAsErrorFromVersion = "4",
@@ -94,15 +109,13 @@
 #pragma warning restore CS0672 // Member overrides obsolete member
 
         /// <inheritdoc />
-        public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes()
-        {
-            return new[]
+        public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes() =>
+            new[]
             {
                 TransportTransactionMode.None,
                 TransportTransactionMode.ReceiveOnly,
                 TransportTransactionMode.SendsAtomicWithReceive
             };
-        }
 
         /// <summary>
         /// The topic name used to publish events between endpoints.

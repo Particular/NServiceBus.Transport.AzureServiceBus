@@ -15,5 +15,15 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             }
             return Senders[queueOrTopicName];
         }
+
+        public override ServiceBusSender CreateSender(string queueOrTopicName, ServiceBusSenderOptions options)
+        {
+            if (!Senders.ContainsKey(queueOrTopicName))
+            {
+                var fakeSender = new FakeSender();
+                Senders[queueOrTopicName] = fakeSender;
+            }
+            return Senders[queueOrTopicName];
+        }
     }
 }
