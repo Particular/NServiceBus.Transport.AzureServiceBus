@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.CommandLine
 {
     using System;
+    using System.ComponentModel.DataAnnotations;
     using Azure.Messaging.ServiceBus;
     using McMaster.Extensions.CommandLineUtils;
 
@@ -17,6 +18,13 @@
             {
                 Description = $"Overrides environment variable '{CommandRunner.EnvironmentVariableName}'"
             };
+
+            var fullyQualifiedNamespace = new CommandOption("-n|--namespace", CommandOptionType.SingleValue)
+            {
+                Description = "Sets the fully qualified namespace for connecting without the connection string"
+            };
+            fullyQualifiedNamespace.OnValidate(v => ValidateConnectionAndNamespaceNotUsedTogether(connectionString, fullyQualifiedNamespace));
+            connectionString.OnValidate(v => ValidateConnectionAndNamespaceNotUsedTogether(connectionString, fullyQualifiedNamespace));
 
             var size = new CommandOption<int>(app.ValueParsers.GetParser<int>(), "-s|--size", CommandOptionType.SingleValue)
             {
@@ -45,6 +53,7 @@
                     var name = createCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
 
                     createCommand.AddOption(connectionString);
+                    createCommand.AddOption(fullyQualifiedNamespace);
                     createCommand.AddOption(size);
                     createCommand.AddOption(partitioning);
                     var topicName = createCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
@@ -52,7 +61,7 @@
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, client => Endpoint.Create(client, name, topicName, subscriptionName, size, partitioning));
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Endpoint.Create(client, name, topicName, subscriptionName, size, partitioning));
 
                         Console.WriteLine($"Endpoint '{name.Value}' is ready.");
                     });
@@ -65,13 +74,14 @@
                     var eventType = subscribeCommand.Argument("event-type", "Full name of the event to subscribe to (e.g. MyNamespace.MyMessage) (required)").IsRequired();
 
                     subscribeCommand.AddOption(connectionString);
+                    subscribeCommand.AddOption(fullyQualifiedNamespace);
                     var topicName = subscribeCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                     var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                     var shortenedRuleName = subscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
 
                     subscribeCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, client => Endpoint.Subscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Endpoint.Subscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
 
                         Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{eventType.Value}'.");
                     });
@@ -84,13 +94,14 @@
                     var eventType = unsubscribeCommand.Argument("event-type", "Full name of the event to unsubscribe from (e.g. MyNamespace.MyMessage) (required)").IsRequired();
 
                     unsubscribeCommand.AddOption(connectionString);
+                    unsubscribeCommand.AddOption(fullyQualifiedNamespace);
                     var topicName = unsubscribeCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                     var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                     var shortenedRuleName = unsubscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
 
                     unsubscribeCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, client => Endpoint.Unsubscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Endpoint.Unsubscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
 
                         Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{eventType.Value}'.");
                     });
@@ -112,6 +123,7 @@
                     var name = createCommand.Argument("name", "Name of the queue (required)").IsRequired();
 
                     createCommand.AddOption(connectionString);
+                    createCommand.AddOption(fullyQualifiedNamespace);
                     createCommand.AddOption(size);
                     createCommand.AddOption(partitioning);
 
@@ -119,7 +131,7 @@
                     {
                         try
                         {
-                            await CommandRunner.Run(connectionString, client => Queue.Create(client, name, size, partitioning));
+                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Create(client, name, size, partitioning));
                             Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
                         }
                         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
@@ -132,13 +144,14 @@
                 queueCommand.Command("delete", deleteCommand =>
                 {
                     deleteCommand.AddOption(connectionString);
+                    deleteCommand.AddOption(fullyQualifiedNamespace);
 
                     deleteCommand.Description = "Deletes a queue";
                     var name = deleteCommand.Argument("name", "Name of the queue (required)").IsRequired();
 
                     deleteCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, client => Queue.Delete(client, name));
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Delete(client, name));
 
                         Console.WriteLine($"Queue name '{name.Value}' deleted");
                     });
@@ -161,6 +174,18 @@
                 Console.Error.WriteLine($"Command failed with exception ({exception.GetType().Name}): {exception.Message}");
                 return 1;
             }
+        }
+
+        static ValidationResult ValidateConnectionAndNamespaceNotUsedTogether(CommandOption connectionString,
+            CommandOption fullyQualifiedNamespace)
+        {
+            if (connectionString.HasValue() && fullyQualifiedNamespace.HasValue())
+            {
+                return new ValidationResult(
+                    "The connection string and the namespace option cannot be used together. Choose either the connection string or the namespace option to establish the connection");
+            }
+
+            return ValidationResult.Success;
         }
     }
 }

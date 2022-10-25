@@ -2,17 +2,24 @@
 {
     using System;
     using System.Threading.Tasks;
+    using Azure.Identity;
     using Azure.Messaging.ServiceBus.Administration;
     using McMaster.Extensions.CommandLineUtils;
 
     static class CommandRunner
     {
-        public static async Task Run(CommandOption connectionString, Func<ServiceBusAdministrationClient, Task> func)
+        public static async Task Run(CommandOption connectionString, CommandOption fullyQualifiedNamespace, Func<ServiceBusAdministrationClient, Task> func)
         {
-            var connectionStringToUse = connectionString.HasValue() ? connectionString.Value() : Environment.GetEnvironmentVariable(EnvironmentVariableName);
-
-            var client = new ServiceBusAdministrationClient(connectionStringToUse);
-
+            ServiceBusAdministrationClient client;
+            if (fullyQualifiedNamespace.HasValue())
+            {
+                client = new ServiceBusAdministrationClient(fullyQualifiedNamespace.Value(), new DefaultAzureCredential());
+            }
+            else
+            {
+                var connectionStringToUse = connectionString.HasValue() ? connectionString.Value() : Environment.GetEnvironmentVariable(EnvironmentVariableName);
+                client = new ServiceBusAdministrationClient(connectionStringToUse);
+            }
             await func(client);
         }
 

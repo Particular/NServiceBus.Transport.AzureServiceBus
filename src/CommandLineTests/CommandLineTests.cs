@@ -34,6 +34,15 @@
         }
 
         [Test]
+        public async Task Create_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+
+            Assert.AreEqual(1, exitCode);
+            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+        }
+
+        [Test]
         public async Task Subscribe_endpoint()
         {
             await DeleteQueue(QueueName);
@@ -48,6 +57,15 @@
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
             await VerifySubscription(TopicName, SubscriptionName, QueueName);
+        }
+
+        [Test]
+        public async Task Subscribe_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+
+            Assert.AreEqual(1, exitCode);
+            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
         }
 
         [Test]
@@ -69,6 +87,15 @@
         }
 
         [Test]
+        public async Task Unsubscribe_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+
+            Assert.AreEqual(1, exitCode);
+            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+        }
+
+        [Test]
         public async Task Create_queue_when_it_does_not_exist()
         {
             await DeleteQueue(QueueName);
@@ -80,6 +107,15 @@
             Assert.IsFalse(output.Contains("skipping"));
 
             await VerifyQueue(QueueName);
+        }
+
+        [Test]
+        public async Task Create_queue_validates_namespace_and_connection_string_cannot_be_used_together()
+        {
+            var (_, error, exitCode) = await Execute($"queue create {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+
+            Assert.AreEqual(1, exitCode);
+            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
         }
 
         [Test]
@@ -111,11 +147,18 @@
             await VerifyQueueExists(false);
         }
 
+        [Test]
+        public async Task Delete_queue_validates_namespace_and_connection_string_cannot_be_used_together()
+        {
+            var (_, error, exitCode) = await Execute($"queue delete {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+
+            Assert.AreEqual(1, exitCode);
+            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+        }
+
         [SetUp]
         public void Setup()
-        {
-            client = new ServiceBusAdministrationClient(Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
-        }
+            => client = new ServiceBusAdministrationClient(Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
 
         async Task VerifyQueue(string queueName, bool enablePartitioning = false, int size = 5 * 1024)
         {
