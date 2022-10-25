@@ -17,6 +17,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
 
         public IReadOnlyCollection<ServiceBusMessage> IndividuallySentMessages => sentMessages;
         public IReadOnlyCollection<ServiceBusMessageBatch> BatchSentMessages => batchedMessages;
+        public Func<ServiceBusMessage, bool> TryAdd { get; set; } = _ => true;
+
+        public override string FullyQualifiedNamespace { get; } = "FullyQualifiedNamespace";
 
         public IReadOnlyCollection<ServiceBusMessage> this[ServiceBusMessageBatch batch]
         {
@@ -27,7 +30,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
         public override ValueTask<ServiceBusMessageBatch> CreateMessageBatchAsync(CancellationToken cancellationToken = default)
         {
             var batchMessageStore = new List<ServiceBusMessage>();
-            ServiceBusMessageBatch serviceBusMessageBatch = ServiceBusModelFactory.ServiceBusMessageBatch(256 * 1024, batchMessageStore);
+            ServiceBusMessageBatch serviceBusMessageBatch = ServiceBusModelFactory.ServiceBusMessageBatch(256 * 1024, batchMessageStore, tryAddCallback: TryAdd);
             batchToBackingStore.Add(serviceBusMessageBatch, batchMessageStore);
             return new ValueTask<ServiceBusMessageBatch>(
                 serviceBusMessageBatch);

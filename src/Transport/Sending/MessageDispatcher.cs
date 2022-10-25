@@ -151,7 +151,11 @@
                 else
                 {
                     peekedMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
-                    throw new ServiceBusException($"Message #{messageCount - messagesToSend.Count} with message id '{messageId ?? peekedMessage.MessageId}' is too large and cannot be sent.", ServiceBusFailureReason.MessageSizeExceeded);
+                    var message =
+                        @$"Unable to add the message '#{messageCount - messagesToSend.Count}' with message id '{messageId ?? peekedMessage.MessageId}' to the the batch '#{batchCount}'.
+The message may be too large or the batch size has reached the maximum allowed messages per batch for the current tier selected for the namespace '{sender.FullyQualifiedNamespace}'. 
+To mitigate this problem reduce the message size by using the data bus or upgrade to a higher Service Bus tier.";
+                    throw new ServiceBusException(message, ServiceBusFailureReason.MessageSizeExceeded);
                 }
 
                 while (messagesToSend.Count > 0 && messageBatch.TryAddMessage(messagesToSend.Peek()))
