@@ -185,6 +185,27 @@
         TimeSpan timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
 
         /// <summary>
+        /// Gets or sets the maximum duration within which the lock will be renewed automatically. This
+        /// value should be greater than the longest message lock duration.
+        /// </summary>
+        /// <value>The maximum duration during which message locks are automatically renewed. The default value is 5 minutes.</value>
+        /// <remarks>The message renew can continue for sometime in the background
+        /// after completion of message and result in a few false MessageLockLostExceptions temporarily.</remarks>
+        public TimeSpan? MaxAutoLockRenewalDuration
+        {
+            get => maxAutoLockRenewalDuration;
+            set
+            {
+                if (value.HasValue)
+                {
+                    Guard.AgainstNegative(nameof(MaxAutoLockRenewalDuration), value.Value);
+                    maxAutoLockRenewalDuration = value;
+                }
+            }
+        }
+        TimeSpan? maxAutoLockRenewalDuration;
+
+        /// <summary>
         /// Specifies a callback to customize subscription names.
         /// </summary>
         public Func<string, string> SubscriptionNamingConvention

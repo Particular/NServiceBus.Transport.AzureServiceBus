@@ -96,6 +96,11 @@
                 AutoCompleteMessages = false
             };
 
+            if (transportSettings.MaxAutoLockRenewalDuration.HasValue)
+            {
+                receiveOptions.MaxAutoLockRenewalDuration = transportSettings.MaxAutoLockRenewalDuration.Value;
+            }
+
             processor = serviceBusClient.CreateProcessor(ReceiveAddress, receiveOptions);
             processor.ProcessErrorAsync += OnProcessorError;
             processor.ProcessMessageAsync += OnProcessMessage;
