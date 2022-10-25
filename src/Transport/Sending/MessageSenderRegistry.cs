@@ -27,22 +27,33 @@
                     (string innerDestination, ServiceBusClient innerClient) = arg;
                     // Unfortunately Lazy closure allocates but this should be fine since the majority of the
                     // execution path will fall into the get and not the add.
-                    return new Lazy<ServiceBusSender>(() => innerClient.CreateSender(innerDestination), LazyThreadSafetyMode.ExecutionAndPublication);
+                    return new Lazy<ServiceBusSender>(() => innerClient.CreateSender(innerDestination, new ServiceBusSenderOptions { Identifier = $"Sender-{innerDestination}-{Guid.NewGuid()}" }), LazyThreadSafetyMode.ExecutionAndPublication);
                 });
             return lazySender.Value;
         }
 
         public Task Close(CancellationToken cancellationToken = default)
         {
+            static async Task CloseAndDispose(ServiceBusSender sender, CancellationToken cancellationToken)
+            {
+                await using (sender.ConfigureAwait(false))
+                {
+                    await sender.CloseAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+
             var tasks = new List<Task>(destinationToSenderMapping.Keys.Count);
             foreach (var key in destinationToSenderMapping.Keys)
             {
                 var queue = destinationToSenderMapping[key];
 
-                if (queue.IsValueCreated)
+                if (!queue.IsValueCreated)
                 {
-                    tasks.Add(queue.Value.CloseAsync(cancellationToken));
+                    continue;
                 }
+
+
+                tasks.Add(CloseAndDispose(queue.Value, cancellationToken));
             }
             return Task.WhenAll(tasks);
         }

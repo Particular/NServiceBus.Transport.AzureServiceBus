@@ -91,7 +91,7 @@
                 ReceiveMode = transportSettings.TransportTransactionMode == TransportTransactionMode.None
                     ? ServiceBusReceiveMode.ReceiveAndDelete
                     : ServiceBusReceiveMode.PeekLock,
-                Identifier = Id,
+                Identifier = $"Processor-{Id}-{ReceiveAddress}-{Guid.NewGuid()}",
                 MaxConcurrentCalls = limitations.MaxConcurrency,
                 AutoCompleteMessages = false
             };
