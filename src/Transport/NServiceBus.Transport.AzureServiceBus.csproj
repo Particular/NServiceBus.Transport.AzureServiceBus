@@ -5,7 +5,6 @@
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\NServiceBus.snk</AssemblyOriginatorKeyFile>
     <Description>Azure Service Bus transport for NServiceBus</Description>
-    <LangVersion>10.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
