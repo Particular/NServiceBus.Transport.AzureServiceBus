@@ -2,7 +2,6 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
 {
     using System.Collections.Generic;
     using Azure.Messaging.ServiceBus;
-    using Sending;
 
     public class FakeServiceBusClient : ServiceBusClient
     {
