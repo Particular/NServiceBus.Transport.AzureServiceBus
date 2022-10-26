@@ -21,7 +21,7 @@
 
             var fullyQualifiedNamespace = new CommandOption("-n|--namespace", CommandOptionType.SingleValue)
             {
-                Description = "Sets the fully qualified namespace for connecting without the connection string"
+                Description = "Sets the fully qualified namespace for connecting with cached credentials, such as those from Azure PowerShell or CLI"
             };
             fullyQualifiedNamespace.OnValidate(v => ValidateConnectionAndNamespaceNotUsedTogether(connectionString, fullyQualifiedNamespace));
             connectionString.OnValidate(v => ValidateConnectionAndNamespaceNotUsedTogether(connectionString, fullyQualifiedNamespace));
