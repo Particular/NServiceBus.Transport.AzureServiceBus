@@ -6,24 +6,36 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
     public class FakeServiceBusClient : ServiceBusClient
     {
         public Dictionary<string, FakeSender> Senders { get; } = new Dictionary<string, FakeSender>();
+        public Dictionary<string, FakeProcessor> Processors { get; } = new Dictionary<string, FakeProcessor>();
 
         public override ServiceBusSender CreateSender(string queueOrTopicName)
         {
-            if (!Senders.ContainsKey(queueOrTopicName))
+            if (!Senders.TryGetValue(queueOrTopicName, out var fakeSender))
             {
-                Senders[queueOrTopicName] = new FakeSender();
+                fakeSender = new FakeSender();
+                Senders.Add(queueOrTopicName, fakeSender);
             }
-            return Senders[queueOrTopicName];
+            return fakeSender;
         }
 
         public override ServiceBusSender CreateSender(string queueOrTopicName, ServiceBusSenderOptions options)
         {
-            if (!Senders.ContainsKey(queueOrTopicName))
+            if (!Senders.TryGetValue(queueOrTopicName, out var fakeSender))
             {
-                var fakeSender = new FakeSender();
-                Senders[queueOrTopicName] = fakeSender;
+                fakeSender = new FakeSender();
+                Senders.Add(queueOrTopicName, fakeSender);
             }
-            return Senders[queueOrTopicName];
+            return fakeSender;
+        }
+
+        public override ServiceBusProcessor CreateProcessor(string queueName, ServiceBusProcessorOptions options)
+        {
+            if (!Processors.TryGetValue(queueName, out var fakeProcessor))
+            {
+                fakeProcessor = new FakeProcessor();
+                Processors.Add(queueName, fakeProcessor);
+            }
+            return fakeProcessor;
         }
     }
 }
