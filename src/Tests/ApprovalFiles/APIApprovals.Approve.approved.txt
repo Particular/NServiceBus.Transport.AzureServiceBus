@@ -26,20 +26,50 @@ namespace NServiceBus
     }
     public static class AzureServiceBusTransportSettingsExtensions
     {
+        [System.Obsolete("Provide the connection string to the AzureServiceBusTransport constructor. The me" +
+            "mber currently throws a NotImplementedException. Will be removed in version 5.0." +
+            "0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string> connectionString) { }
+        [System.Obsolete("Provide the connection string to the AzureServiceBusTransport constructor. The me" +
+            "mber currently throws a NotImplementedException. Will be removed in version 5.0." +
+            "0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string connectionString) { }
+        [System.Obsolete("Use `AzureServiceBusTransport.RetryPolicyOptions` instead. The member currently t" +
+            "hrows a NotImplementedException. Will be removed in version 5.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Messaging.ServiceBus.ServiceBusRetryOptions retryPolicy) { }
+        [System.Obsolete("Use `AzureServiceBusTransport.TokenCredential` instead. The member currently thro" +
+            "ws a NotImplementedException. Will be removed in version 5.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenCredential(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Core.TokenCredential tokenCredential) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EnablePartitioning(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
+        [System.Obsolete("Use `AzureServiceBusTransport.EntityMaximumSize` instead. The member currently th" +
+            "rows a NotImplementedException. Will be removed in version 5.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EntityMaximumSize(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int maximumSizeInGB) { }
+        [System.Obsolete("Use `AzureServiceBusTransport.PrefetchCount` instead. The member currently throws" +
+            " a NotImplementedException. Will be removed in version 5.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }
+        [System.Obsolete("Use `AzureServiceBusTransport.PrefetchMultiplier` instead. The member currently t" +
+            "hrows a NotImplementedException. Will be removed in version 5.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchMultiplier(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchMultiplier) { }
+        [System.Obsolete("Use `AzureServiceBusTransport.SubscriptionNamingConvention` instead. The member c" +
+            "urrently throws a NotImplementedException. Will be removed in version 5.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> subscriptionNamingConvention) { }
+        [System.Obsolete("Use `AzureServiceBusTransport.SubscriptionRuleNamingConvention` instead. The memb" +
+            "er currently throws a NotImplementedException. Will be removed in version 5.0.0." +
+            "", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionRuleNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<System.Type, string> subscriptionRuleNamingConvention) { }
+        [System.Obsolete("Use `AzureServiceBusTransport.TimeToWaitBeforeTriggeringCircuitBreaker` instead. " +
+            "The member currently throws a NotImplementedException. Will be removed in versio" +
+            "n 5.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TimeToWaitBeforeTriggeringCircuitBreaker(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan timeToWait) { }
+        [System.Obsolete("Use `AzureServiceBusTransport.TopicName` instead. The member currently throws a N" +
+            "otImplementedException. Will be removed in version 5.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TopicName(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string topicName) { }
+        [System.Obsolete("Use `EndpointConfiguration.UseTransport(TransportDefinition)` instead. The member" +
+            " currently throws a NotImplementedException. Will be removed in version 5.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration)
             where TTransport : NServiceBus.AzureServiceBusTransport { }
+        [System.Obsolete("Use `AzureServiceBusTransport.UseWebSockets` instead. The member currently throws" +
+            " a NotImplementedException. Will be removed in version 5.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseWebSockets(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
     }
     public static class CustomizeNativeMessageExtensions
