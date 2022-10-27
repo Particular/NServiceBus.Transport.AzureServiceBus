@@ -21,8 +21,7 @@ namespace NServiceBus
         public override System.Threading.Tasks.Task<NServiceBus.Transport.TransportInfrastructure> Initialize(NServiceBus.Transport.HostSettings hostSettings, NServiceBus.Transport.ReceiveSettings[] receivers, string[] sendingAddresses, System.Threading.CancellationToken cancellationToken = default) { }
         [System.Obsolete("Inject the ITransportAddressResolver type to access the address translation mecha" +
             "nism at runtime. See the NServiceBus version 8 upgrade guide for further details" +
-            ". Will be treated as an error from version 4.0.0. Will be removed in version 5.0" +
-            ".0.", false)]
+            ". Will be removed in version 5.0.0.", true)]
         public override string ToTransportAddress(NServiceBus.Transport.QueueAddress address) { }
     }
     public static class AzureServiceBusTransportSettingsExtensions
@@ -35,12 +34,6 @@ namespace NServiceBus
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EntityMaximumSize(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int maximumSizeInGB) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchMultiplier(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchMultiplier) { }
-        [System.Obsolete("Use `SubscriptionRuleNamingConvention` instead. The member currently throws a Not" +
-            "ImplementedException. Will be removed in version 4.0.0.", true)]
-        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> RuleNameShortener(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> ruleNameShortener) { }
-        [System.Obsolete("Use `SubscriptionNamingConvention` instead. The member currently throws a NotImpl" +
-            "ementedException. Will be removed in version 4.0.0.", true)]
-        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionNameShortener(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> subscriptionNameShortener) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> subscriptionNamingConvention) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionRuleNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<System.Type, string> subscriptionRuleNamingConvention) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TimeToWaitBeforeTriggeringCircuitBreaker(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan timeToWait) { }
@@ -52,9 +45,6 @@ namespace NServiceBus
     public static class CustomizeNativeMessageExtensions
     {
         public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
-        [System.Obsolete("Use overload that does not require IPipelineContext. The member currently throws " +
-            "a NotImplementedException. Will be removed in version 4.0.0.", true)]
-        public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context, System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
     }
 }
 namespace NServiceBus.Testing
@@ -62,8 +52,5 @@ namespace NServiceBus.Testing
     public static class TestableCustomizeNativeMessageExtensions
     {
         public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options) { }
-        [System.Obsolete("Use overload that does not require IPipelineContext. The member currently throws " +
-            "a NotImplementedException. Will be removed in version 4.0.0.", true)]
-        public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context) { }
     }
 }
