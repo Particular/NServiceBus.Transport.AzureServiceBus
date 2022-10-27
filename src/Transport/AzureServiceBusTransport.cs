@@ -29,15 +29,6 @@
             ConnectionString = connectionString;
         }
 
-        [PreObsolete(RemoveInVersion = "4", Note = "Will not be required by TransportExtensions methods anymore in 4.0")]
-        internal AzureServiceBusTransport() : base(
-            defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
-            supportsDelayedDelivery: true,
-            supportsPublishSubscribe: true,
-            supportsTTBR: true)
-        {
-        }
-
         /// <inheritdoc />
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
             ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)

@@ -16,7 +16,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var fakeClient = new FakeServiceBusClient();
             var fakeReceiver = new FakeReceiver();
 
-            var pump = new MessagePump(fakeClient, null, new AzureServiceBusTransport(), "receiveAddress",
+            var pump = new MessagePump(fakeClient, null, new AzureServiceBusTransport("fakeConnectionString"), "receiveAddress",
                 new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
 
             await pump.Initialize(new PushRuntimeSettings(1), (context, token) => Task.CompletedTask,
@@ -38,7 +38,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var fakeClient = new FakeServiceBusClient();
             var fakeReceiver = new FakeReceiver();
 
-            var pump = new MessagePump(fakeClient, null, new AzureServiceBusTransport(), "receiveAddress",
+            var pump = new MessagePump(fakeClient, null, new AzureServiceBusTransport("fakeConnectionString"), "receiveAddress",
                 new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
 
             await pump.Initialize(new PushRuntimeSettings(1), (context, token) => Task.FromException<InvalidOperationException>(new InvalidOperationException()),
@@ -60,7 +60,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var fakeClient = new FakeServiceBusClient();
             var fakeReceiver = new FakeReceiver();
 
-            var pump = new MessagePump(fakeClient, null, new AzureServiceBusTransport(), "receiveAddress",
+            var pump = new MessagePump(fakeClient, null, new AzureServiceBusTransport("fakeConnectionString"), "receiveAddress",
                 new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
 
             await pump.Initialize(new PushRuntimeSettings(1), (context, token) => Task.FromException<InvalidOperationException>(new InvalidOperationException()),
