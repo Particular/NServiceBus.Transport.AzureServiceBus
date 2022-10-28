@@ -26,7 +26,24 @@
             supportsTTBR: true)
         {
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
+
             ConnectionString = connectionString;
+        }
+
+        /// <summary>
+        /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
+        /// </summary>
+        public AzureServiceBusTransport(string fullyQualifiedNamespace, TokenCredential tokenCredential) : base(
+            defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
+            supportsDelayedDelivery: true,
+            supportsPublishSubscribe: true,
+            supportsTTBR: true)
+        {
+            Guard.AgainstNullAndEmpty(nameof(fullyQualifiedNamespace), fullyQualifiedNamespace);
+            Guard.AgainstNull(nameof(tokenCredential), tokenCredential);
+
+            FullyQualifiedNamespace = fullyQualifiedNamespace;
+            TokenCredential = tokenCredential;
         }
 
         [PreObsolete(RemoveInVersion = "4", Note = "Will not be required by TransportExtensions methods anymore in 4.0")]
@@ -55,7 +72,7 @@
                 };
                 ApplyRetryPolicyOptionsIfNeeded(options);
                 var client = TokenCredential != null
-                    ? new ServiceBusClient(ConnectionString, TokenCredential, options)
+                    ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, options)
                     : new ServiceBusClient(ConnectionString, options);
                 return (receiver, client);
             }).ToArray();
@@ -69,7 +86,7 @@
             };
             ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
             var defaultClient = TokenCredential != null
-                ? new ServiceBusClient(ConnectionString, TokenCredential, defaultClientOptions)
+                ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
                 : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
             var administrativeClient = TokenCredential != null ? new ServiceBusAdministrationClient(ConnectionString, TokenCredential) : new ServiceBusAdministrationClient(ConnectionString);
@@ -277,11 +294,6 @@
         public bool UseWebSockets { get; set; }
 
         /// <summary>
-        /// Overrides the default token provider.
-        /// </summary>
-        public TokenCredential TokenCredential { get; set; }
-
-        /// <summary>
         /// Overrides the default retry policy.
         /// </summary>
         public ServiceBusRetryOptions RetryPolicyOptions
@@ -295,9 +307,9 @@
         }
         ServiceBusRetryOptions retryPolicy;
 
-        /// <summary>
-        /// Configures the Service Bus connection string.
-        /// </summary>
-        protected internal string ConnectionString { get; set; }
+        internal string ConnectionString { get; set; }
+
+        internal string FullyQualifiedNamespace { get; set; }
+        internal TokenCredential TokenCredential { get; set; }
     }
 }
