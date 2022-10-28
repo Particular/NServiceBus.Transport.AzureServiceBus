@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus
 {
     using System;
+    using System.Net;
     using Azure.Core;
     using Azure.Messaging.ServiceBus;
     using Transport.AzureServiceBus;
@@ -188,13 +189,18 @@
         /// Configures the transport to use AMQP over WebSockets.
         /// </summary>
         /// <param name="transportExtensions"></param>
+        /// <param name="webProxy">The proxy to use for communication over web sockets.</param>
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport.UseWebSockets",
             TreatAsErrorFromVersion = "4",
             RemoveInVersion = "5")]
-        public static TransportExtensions<AzureServiceBusTransport> UseWebSockets(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
+        public static TransportExtensions<AzureServiceBusTransport> UseWebSockets(this TransportExtensions<AzureServiceBusTransport> transportExtensions, IWebProxy webProxy = default)
         {
             transportExtensions.Transport.UseWebSockets = true;
+            if (webProxy != default)
+            {
+                transportExtensions.Transport.WebProxy = webProxy;
+            }
             return transportExtensions;
         }
 

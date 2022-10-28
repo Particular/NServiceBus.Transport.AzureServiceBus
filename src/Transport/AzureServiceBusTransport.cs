@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Net;
     using System.Threading;
     using System.Threading.Tasks;
     using Azure.Core;
@@ -51,9 +52,10 @@
                 {
                     TransportType = transportType,
                     EnableCrossEntityTransactions = enableCrossEntityTransactions,
-                    Identifier = $"Client-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
+                    Identifier = $"Client-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}",
                 };
                 ApplyRetryPolicyOptionsIfNeeded(options);
+                ApplyWebProxyIfNeeded(options);
                 var client = TokenCredential != null
                     ? new ServiceBusClient(ConnectionString, TokenCredential, options)
                     : new ServiceBusClient(ConnectionString, options);
@@ -68,6 +70,7 @@
                 Identifier = $"Client-{hostSettings.Name}-{Guid.NewGuid()}"
             };
             ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
+            ApplyWebProxyIfNeeded(defaultClientOptions);
             var defaultClient = TokenCredential != null
                 ? new ServiceBusClient(ConnectionString, TokenCredential, defaultClientOptions)
                 : new ServiceBusClient(ConnectionString, defaultClientOptions);
@@ -97,6 +100,14 @@
             if (RetryPolicyOptions != null)
             {
                 options.RetryOptions = RetryPolicyOptions;
+            }
+        }
+
+        void ApplyWebProxyIfNeeded(ServiceBusClientOptions options)
+        {
+            if (WebProxy != null)
+            {
+                options.WebProxy = WebProxy;
             }
         }
 
@@ -294,6 +305,20 @@
             }
         }
         ServiceBusRetryOptions retryPolicy;
+
+        /// <summary>
+        /// The proxy to use for communication over web sockets.
+        /// </summary>
+        public IWebProxy WebProxy
+        {
+            get => webProxy;
+            set
+            {
+                Guard.AgainstNull(nameof(WebProxy), value);
+                webProxy = value;
+            }
+        }
+        IWebProxy webProxy;
 
         /// <summary>
         /// Configures the Service Bus connection string.
