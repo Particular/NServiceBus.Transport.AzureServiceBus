@@ -127,6 +127,16 @@
             try
             {
                 messageId = message.GetMessageId();
+
+                if (processor.ReceiveMode == ServiceBusReceiveMode.PeekLock && message.LockedUntil < DateTimeOffset.UtcNow)
+                {
+                    if (Logger.IsDebugEnabled)
+                    {
+                        Logger.Debug($"Skip handling the message with id '{messageId}' because the lock has expired at '{message.LockedUntil}'.");
+                    }
+                    return;
+                }
+
                 headers = message.GetNServiceBusHeaders();
                 body = message.GetBody();
             }
