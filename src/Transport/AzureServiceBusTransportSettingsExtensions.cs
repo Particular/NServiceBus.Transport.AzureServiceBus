@@ -233,6 +233,7 @@
         public static TransportExtensions<AzureServiceBusTransport> CustomTokenCredential(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string fullyQualifiedNamespace, TokenCredential tokenCredential)
         {
             Guard.AgainstNull(nameof(tokenCredential), tokenCredential);
+            Guard.AgainstNullAndEmpty(nameof(fullyQualifiedNamespace), fullyQualifiedNamespace);
             transportExtensions.Transport.FullyQualifiedNamespace = fullyQualifiedNamespace;
             transportExtensions.Transport.TokenCredential = tokenCredential;
             return transportExtensions;
