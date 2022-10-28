@@ -252,7 +252,8 @@
 
             try
             {
-                using (var transaction = CreateTransaction())
+                var transaction = CreateTransaction();
+                try
                 {
                     var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
@@ -265,11 +266,15 @@
 
                     await processMessageEventArgs.SafeCompleteMessageAsync(message,
                             transportSettings.TransportTransactionMode,
-                            transaction,
+                            transaction.Value,
                             cancellationToken: messageProcessingCancellationToken)
                         .ConfigureAwait(false);
 
-                    transaction?.Commit();
+                    transaction.Value?.Commit();
+                }
+                finally
+                {
+                    transaction.Value?.Dispose();
                 }
             }
             catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationToken))
@@ -278,7 +283,8 @@
                 {
                     ErrorHandleResult result;
 
-                    using (var transaction = CreateTransaction())
+                    var transaction = CreateTransaction();
+                    try
                     {
                         var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
 
@@ -291,12 +297,16 @@
                         {
                             await processMessageEventArgs.SafeCompleteMessageAsync(message,
                                     transportSettings.TransportTransactionMode,
-                                    transaction,
+                                    transaction.Value,
                                     cancellationToken: messageProcessingCancellationToken)
                                 .ConfigureAwait(false);
                         }
 
-                        transaction?.Commit();
+                        transaction.Value?.Commit();
+                    }
+                    finally
+                    {
+                        transaction.Value?.Dispose();
                     }
 
                     if (result == ErrorHandleResult.RetryRequired)
@@ -332,16 +342,16 @@
             }
         }
 
-        CommittableTransaction CreateTransaction() =>
-            transportSettings.TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
+        Lazy<CommittableTransaction> CreateTransaction() =>
+            new(() => transportSettings.TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
                 ? new CommittableTransaction(new TransactionOptions
                 {
                     IsolationLevel = IsolationLevel.Serializable,
                     Timeout = TransactionManager.MaximumTimeout
                 })
-                : null;
+                : null, LazyThreadSafetyMode.ExecutionAndPublication);
 
-        TransportTransaction CreateTransportTransaction(string incomingQueuePartitionKey, CommittableTransaction transaction)
+        TransportTransaction CreateTransportTransaction(string incomingQueuePartitionKey, Lazy<CommittableTransaction> transaction)
         {
             var transportTransaction = new TransportTransaction();
 

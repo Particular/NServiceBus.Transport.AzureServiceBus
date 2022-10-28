@@ -28,7 +28,7 @@
         {
             transaction.TryGet<ServiceBusClient>(out var client);
             transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
-            transaction.TryGet<CommittableTransaction>(out var committableTransaction);
+            transaction.TryGet<Lazy<CommittableTransaction>>(out var committableTransaction);
 
             var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
             var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
@@ -103,7 +103,7 @@
         // no boxing occurs
         void AddBatchedOperationsTo(List<Task> dispatchTasks,
             Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
-            ServiceBusClient client, string partitionKey, CommittableTransaction committableTransaction,
+            ServiceBusClient client, string partitionKey, Lazy<CommittableTransaction> committableTransaction,
             TransportTransaction transaction, CancellationToken cancellationToken)
         {
             foreach (var destinationAndOperations in transportOperationsPerDestination)
@@ -122,7 +122,7 @@
             }
         }
 
-        async Task DispatchBatchForDestination(string destination, ServiceBusClient client, CommittableTransaction committableTransaction, Queue<ServiceBusMessage> messagesToSend, CancellationToken cancellationToken)
+        async Task DispatchBatchForDestination(string destination, ServiceBusClient client, Lazy<CommittableTransaction> committableTransaction, Queue<ServiceBusMessage> messagesToSend, CancellationToken cancellationToken)
         {
             var messageCount = messagesToSend.Count;
             int batchCount = 0;
@@ -174,7 +174,7 @@ To mitigate this problem reduce the message size by using the data bus or upgrad
                     Log.Debug($"Sending batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
                 }
 
-                using var scope = committableTransaction.ToScope();
+                using var scope = (committableTransaction?.Value).ToScope();
                 await sender.SendMessagesAsync(messageBatch, cancellationToken).ConfigureAwait(false);
                 //committable tx will not be committed because this scope is not the owner
                 scope.Complete();
