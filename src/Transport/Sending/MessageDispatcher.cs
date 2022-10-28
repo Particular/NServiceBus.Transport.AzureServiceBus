@@ -12,8 +12,7 @@
     class MessageDispatcher : IMessageDispatcher
     {
         static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
-        static readonly Dictionary<string, List<IOutgoingTransportOperation>> emptyDestinationAndOperations =
-            new Dictionary<string, List<IOutgoingTransportOperation>>();
+        static readonly Dictionary<string, List<IOutgoingTransportOperation>> emptyDestinationAndOperations = new();
 
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
@@ -26,9 +25,7 @@
 
         public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
         {
-            transaction.TryGet<ServiceBusClient>(out var client);
-            transaction.TryGet<string>("IncomingQueue.PartitionKey", out var partitionKey);
-            transaction.TryGet<Lazy<CommittableTransaction>>(out var committableTransaction);
+            transaction.TryGet(out ReceiveTransaction receiveTransaction);
 
             var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
             var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
@@ -85,8 +82,8 @@
 
             var concurrentDispatchTasks =
                 new List<Task>(numberOfIsolatedOperations + numberOfDefaultOperationDestinations);
-            AddIsolatedOperationsTo(concurrentDispatchTasks, isolatedOperationsPerDestination ?? emptyDestinationAndOperations, client, partitionKey, transaction, cancellationToken);
-            AddBatchedOperationsTo(concurrentDispatchTasks, defaultOperationsPerDestination ?? emptyDestinationAndOperations, client, partitionKey, committableTransaction, transaction, cancellationToken);
+            AddIsolatedOperationsTo(concurrentDispatchTasks, isolatedOperationsPerDestination ?? emptyDestinationAndOperations, receiveTransaction?.ServiceBusClient, receiveTransaction?.IncomingQueuePartitionKey, transaction, cancellationToken);
+            AddBatchedOperationsTo(concurrentDispatchTasks, defaultOperationsPerDestination ?? emptyDestinationAndOperations, receiveTransaction?.ServiceBusClient, receiveTransaction?.IncomingQueuePartitionKey, receiveTransaction?.CommittableTransaction, transaction, cancellationToken);
 
             try
             {
@@ -103,7 +100,7 @@
         // no boxing occurs
         void AddBatchedOperationsTo(List<Task> dispatchTasks,
             Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
-            ServiceBusClient client, string partitionKey, Lazy<CommittableTransaction> committableTransaction,
+            ServiceBusClient client, string partitionKey, CommittableTransaction committableTransaction,
             TransportTransaction transaction, CancellationToken cancellationToken)
         {
             foreach (var destinationAndOperations in transportOperationsPerDestination)
@@ -122,7 +119,7 @@
             }
         }
 
-        async Task DispatchBatchForDestination(string destination, ServiceBusClient client, Lazy<CommittableTransaction> committableTransaction, Queue<ServiceBusMessage> messagesToSend, CancellationToken cancellationToken)
+        async Task DispatchBatchForDestination(string destination, ServiceBusClient client, Transaction committableTransaction, Queue<ServiceBusMessage> messagesToSend, CancellationToken cancellationToken)
         {
             var messageCount = messagesToSend.Count;
             int batchCount = 0;
@@ -174,7 +171,7 @@ To mitigate this problem reduce the message size by using the data bus or upgrad
                     Log.Debug($"Sending batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
                 }
 
-                using var scope = (committableTransaction?.Value).ToScope();
+                using var scope = committableTransaction.ToScope();
                 await sender.SendMessagesAsync(messageBatch, cancellationToken).ConfigureAwait(false);
                 //committable tx will not be committed because this scope is not the owner
                 scope.Complete();
