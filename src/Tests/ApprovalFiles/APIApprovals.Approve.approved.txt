@@ -4,7 +4,7 @@ namespace NServiceBus
     public class AzureServiceBusTransport : NServiceBus.Transport.TransportDefinition
     {
         public AzureServiceBusTransport(string connectionString) { }
-        protected string ConnectionString { get; set; }
+        public AzureServiceBusTransport(string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential) { }
         public bool EnablePartitioning { get; set; }
         public int EntityMaximumSize { get; set; }
         public System.TimeSpan? MaxAutoLockRenewalDuration { get; set; }
@@ -14,7 +14,6 @@ namespace NServiceBus
         public System.Func<string, string> SubscriptionNamingConvention { get; set; }
         public System.Func<System.Type, string> SubscriptionRuleNamingConvention { get; set; }
         public System.TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
-        public Azure.Core.TokenCredential TokenCredential { get; set; }
         public string TopicName { get; set; }
         public bool UseWebSockets { get; set; }
         public System.Net.IWebProxy WebProxy { get; set; }
@@ -31,7 +30,11 @@ namespace NServiceBus
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string> connectionString) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string connectionString) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Messaging.ServiceBus.ServiceBusRetryOptions retryPolicy) { }
+        [System.Obsolete("Use `CustomTokenCredential(string fullyQualifiedNamespace, TokenCredential tokenC" +
+            "redential)` instead. The member currently throws a NotImplementedException. Will" +
+            " be removed in version 4.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenCredential(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Core.TokenCredential tokenCredential) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenCredential(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EnablePartitioning(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EntityMaximumSize(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int maximumSizeInGB) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }

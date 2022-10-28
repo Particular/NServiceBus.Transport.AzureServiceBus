@@ -2,6 +2,7 @@
 namespace NServiceBus
 {
     using System;
+    using Azure.Core;
     using Azure.Messaging.ServiceBus;
     using Extensibility;
 
@@ -21,6 +22,12 @@ namespace NServiceBus
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionNameShortener(
             this TransportExtensions<AzureServiceBusTransport> transportExtensions,
             Func<string, string> subscriptionNameShortener)
+            => throw new NotImplementedException();
+
+        [ObsoleteEx(ReplacementTypeOrMember = "CustomTokenCredential(string fullyQualifiedNamespace, TokenCredential tokenCredential)",
+            TreatAsErrorFromVersion = "3",
+            RemoveInVersion = "4")]
+        public static TransportExtensions<AzureServiceBusTransport> CustomTokenCredential(this TransportExtensions<AzureServiceBusTransport> transportExtensions, TokenCredential tokenCredential)
             => throw new NotImplementedException();
     }
 
