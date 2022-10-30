@@ -16,6 +16,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     /// </summary>
     sealed class AzureServiceBusTransaction : IDisposable
     {
+        // TODO: We need to support a mode that automatically uses the ambient committable transaction
         public AzureServiceBusTransaction(bool useCrossEntityTransactions)
         {
             this.useCrossEntityTransactions = useCrossEntityTransactions;
