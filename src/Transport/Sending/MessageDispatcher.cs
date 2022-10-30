@@ -25,7 +25,11 @@
 
         public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
         {
-            transaction.TryGet(out ReceiveTransaction receiveTransaction);
+            if (!transaction.TryGet(out AzureServiceBusTransaction azureServiceBusTransaction))
+            {
+                // in the case there is no transaction already available we create that that should never try to enlist
+                azureServiceBusTransaction = new AzureServiceBusTransaction(useCrossEntityTransactions: false);
+            }
 
             var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
             var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
@@ -82,8 +86,8 @@
 
             var concurrentDispatchTasks =
                 new List<Task>(numberOfIsolatedOperations + numberOfDefaultOperationDestinations);
-            AddIsolatedOperationsTo(concurrentDispatchTasks, isolatedOperationsPerDestination ?? emptyDestinationAndOperations, receiveTransaction?.ServiceBusClient, receiveTransaction?.IncomingQueuePartitionKey, transaction, cancellationToken);
-            AddBatchedOperationsTo(concurrentDispatchTasks, defaultOperationsPerDestination ?? emptyDestinationAndOperations, receiveTransaction?.ServiceBusClient, receiveTransaction?.IncomingQueuePartitionKey, receiveTransaction?.CommittableTransaction, transaction, cancellationToken);
+            AddIsolatedOperationsTo(concurrentDispatchTasks, isolatedOperationsPerDestination ?? emptyDestinationAndOperations, azureServiceBusTransaction, cancellationToken);
+            AddBatchedOperationsTo(concurrentDispatchTasks, defaultOperationsPerDestination ?? emptyDestinationAndOperations, azureServiceBusTransaction, cancellationToken);
 
             try
             {
@@ -100,8 +104,7 @@
         // no boxing occurs
         void AddBatchedOperationsTo(List<Task> dispatchTasks,
             Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
-            ServiceBusClient client, string partitionKey, CommittableTransaction committableTransaction,
-            TransportTransaction transaction, CancellationToken cancellationToken)
+            AzureServiceBusTransaction azureServiceBusTransaction, CancellationToken cancellationToken)
         {
             foreach (var destinationAndOperations in transportOperationsPerDestination)
             {
@@ -111,15 +114,17 @@
                 var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
                 foreach (var operation in operations)
                 {
-                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, partitionKey);
-                    operation.ApplyCustomizationToOutgoingNativeMessage(message, transaction, Log);
+                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransaction.IncomingQueuePartitionKey);
+                    operation.ApplyCustomizationToOutgoingNativeMessage(message, azureServiceBusTransaction.TransportTransaction, Log);
                     messagesToSend.Enqueue(message);
                 }
-                dispatchTasks.Add(DispatchBatchForDestination(destination, client, committableTransaction, messagesToSend, cancellationToken));
+                // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
+                // doing the access as late as possible but still on the synchronous path.
+                dispatchTasks.Add(DispatchBatchForDestination(destination, azureServiceBusTransaction.ServiceBusClient, azureServiceBusTransaction.CommittableTransaction, messagesToSend, cancellationToken));
             }
         }
 
-        async Task DispatchBatchForDestination(string destination, ServiceBusClient client, Transaction committableTransaction, Queue<ServiceBusMessage> messagesToSend, CancellationToken cancellationToken)
+        async Task DispatchBatchForDestination(string destination, ServiceBusClient client, Transaction transaction, Queue<ServiceBusMessage> messagesToSend, CancellationToken cancellationToken)
         {
             var messageCount = messagesToSend.Count;
             int batchCount = 0;
@@ -171,7 +176,7 @@ To mitigate this problem reduce the message size by using the data bus or upgrad
                     Log.Debug($"Sending batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
                 }
 
-                using var scope = committableTransaction.ToScope();
+                using var scope = transaction.ToScope();
                 await sender.SendMessagesAsync(messageBatch, cancellationToken).ConfigureAwait(false);
                 //committable tx will not be committed because this scope is not the owner
                 scope.Complete();
@@ -187,7 +192,7 @@ To mitigate this problem reduce the message size by using the data bus or upgrad
         // no boxing occurs
         void AddIsolatedOperationsTo(List<Task> dispatchTasks,
             Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
-            ServiceBusClient client, string partitionKey, TransportTransaction transaction,
+            AzureServiceBusTransaction azureServiceBusTransaction,
             CancellationToken cancellationToken)
         {
             foreach (var destinationAndOperations in transportOperationsPerDestination)
@@ -197,20 +202,19 @@ To mitigate this problem reduce the message size by using the data bus or upgrad
 
                 foreach (var operation in operations)
                 {
-                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, partitionKey);
-                    operation.ApplyCustomizationToOutgoingNativeMessage(message, transaction, Log);
-                    dispatchTasks.Add(DispatchIsolatedForDestination(destination, client, message, cancellationToken));
+                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransaction.IncomingQueuePartitionKey);
+                    operation.ApplyCustomizationToOutgoingNativeMessage(message, azureServiceBusTransaction.TransportTransaction, Log);
+                    dispatchTasks.Add(DispatchIsolatedForDestination(destination, azureServiceBusTransaction.ServiceBusClient, azureServiceBusTransaction.CommittableTransaction, message, cancellationToken));
                 }
             }
         }
 
-        async Task DispatchIsolatedForDestination(string destination, ServiceBusClient client, ServiceBusMessage message, CancellationToken cancellationToken)
+        async Task DispatchIsolatedForDestination(string destination, ServiceBusClient client, Transaction transaction, ServiceBusMessage message, CancellationToken cancellationToken)
         {
             var sender = messageSenderRegistry.GetMessageSender(destination, client);
             // Making sure we have a suppress scope around the sending
-            using var scope = default(Transaction).ToScope();
+            using var scope = transaction.ToScope();
             await sender.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
-            //committable tx will not be committed because this scope is not the owner
             scope.Complete();
         }
     }

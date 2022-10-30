@@ -327,8 +327,8 @@
             }
         }
 
-        ReceiveTransaction CreateTransaction(string incomingQueuePartitionKey) =>
-            new(useTransactions: transportSettings.TransportTransactionMode ==
+        AzureServiceBusTransaction CreateTransaction(string incomingQueuePartitionKey) =>
+            new(useCrossEntityTransactions: transportSettings.TransportTransactionMode ==
                                  TransportTransactionMode.SendsAtomicWithReceive)
             {
                 IncomingQueuePartitionKey = incomingQueuePartitionKey,
