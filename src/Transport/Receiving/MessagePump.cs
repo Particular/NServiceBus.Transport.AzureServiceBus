@@ -130,7 +130,11 @@
 
                 if (processor.ReceiveMode == ServiceBusReceiveMode.PeekLock && message.LockedUntil < DateTimeOffset.UtcNow)
                 {
-                    Logger.Warn($"Skip handling the message with id '{messageId}' because the lock has expired at '{message.LockedUntil}'.");
+                    Logger.Warn(
+                        $"Skip handling the message with id '{messageId}' because the lock has expired at '{message.LockedUntil}'. " +
+                        "This is usually an indication that the endpoint prefetches more messages than it is able to handle within the configured" +
+                        " peek lock duration. Consider tweaking the prefetch configuration to values that are better aligned with the concurrency" +
+                        " of the endpoint and the time it takes to handle the messages.");
                     return;
                 }
 
