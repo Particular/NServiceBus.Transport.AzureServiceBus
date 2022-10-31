@@ -238,5 +238,23 @@
             transportExtensions.Transport.TokenCredential = tokenCredential;
             return transportExtensions;
         }
+
+        /// <summary>
+        /// Overrides the default maximum duration within which the lock will be renewed automatically. This
+        /// value should be greater than the longest message lock duration.
+        /// </summary>
+        /// <value>The maximum duration during which message locks are automatically renewed. The default value is 5 minutes.</value>
+        /// <remarks>The message renew can continue for sometime in the background
+        /// after completion of message and result in a few false MessageLockLostExceptions temporarily.</remarks>
+        [PreObsolete(
+            ReplacementTypeOrMember = "AzureServiceBusTransport.MaxAutoLockRenewalDuration",
+            TreatAsErrorFromVersion = "4",
+            RemoveInVersion = "5")]
+        public static TransportExtensions<AzureServiceBusTransport> MaxAutoLockRenewalDuration(this TransportExtensions<AzureServiceBusTransport> transportExtensions, TimeSpan maximumAutoLockRenewalDuration)
+        {
+            Guard.AgainstNegative(nameof(maximumAutoLockRenewalDuration), maximumAutoLockRenewalDuration);
+            transportExtensions.Transport.MaxAutoLockRenewalDuration = maximumAutoLockRenewalDuration;
+            return transportExtensions;
+        }
     }
 }
