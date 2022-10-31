@@ -11,6 +11,8 @@
     /// </summary>
     public static partial class AzureServiceBusTransportSettingsExtensions
     {
+        const string Note = "As long as the persistence configuration API has not been adjusted to match the transport configuration API keep bumping the versions when working on a new major";
+
         /// <summary>
         /// Configure the endpoint to use the Azure Service bus transport. This configuration method will eventually be deprecated.
         /// Consider using endpointConfiguration.UseTransport(new AzureServiceBusTransport(connectionString)) instead.
@@ -18,7 +20,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "EndpointConfiguration.UseTransport(TransportDefinition)",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> UseTransport<TTransport>(this EndpointConfiguration endpointConfiguration)
             where TTransport : AzureServiceBusTransport
         {
@@ -35,7 +38,8 @@
         [PreObsolete(
                     Message = "Provide the connection string to the AzureServiceBusTransport constructor",
                     TreatAsErrorFromVersion = "4",
-                    RemoveInVersion = "5")]
+                    RemoveInVersion = "5",
+                    Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> ConnectionString(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string connectionString)
         {
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
@@ -49,7 +53,8 @@
         [PreObsolete(
                     Message = "Provide the connection string to the AzureServiceBusTransport constructor",
                     TreatAsErrorFromVersion = "4",
-                    RemoveInVersion = "5")]
+                    RemoveInVersion = "5",
+                    Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> ConnectionString(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string> connectionString)
         {
             Guard.AgainstNull(nameof(connectionString), connectionString);
@@ -67,7 +72,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport.TopicName",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> TopicName(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string topicName)
         {
             Guard.AgainstNullAndEmpty(nameof(topicName), topicName);
@@ -83,7 +89,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport.EntityMaximumSize",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> EntityMaximumSize(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int maximumSizeInGB)
         {
             Guard.AgainstNegativeAndZero(nameof(maximumSizeInGB), maximumSizeInGB);
@@ -97,7 +104,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport.EnablePartitioning",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> EnablePartitioning(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
         {
             transportExtensions.Transport.EnablePartitioning = true;
@@ -112,7 +120,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport.PrefetchMultiplier",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> PrefetchMultiplier(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int prefetchMultiplier)
         {
             Guard.AgainstNegativeAndZero(nameof(prefetchMultiplier), prefetchMultiplier);
@@ -128,7 +137,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport.PrefetchCount",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> PrefetchCount(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int prefetchCount)
         {
             Guard.AgainstNegative(nameof(prefetchCount), prefetchCount);
@@ -144,7 +154,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport.TimeToWaitBeforeTriggeringCircuitBreaker",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> TimeToWaitBeforeTriggeringCircuitBreaker(this TransportExtensions<AzureServiceBusTransport> transportExtensions, TimeSpan timeToWait)
         {
             Guard.AgainstNegativeAndZero(nameof(timeToWait), timeToWait);
@@ -160,7 +171,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionNamingConvention",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNamingConvention)
         {
             Guard.AgainstNull(nameof(subscriptionNamingConvention), subscriptionNamingConvention);
@@ -177,7 +189,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionRuleNamingConvention",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionRuleNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<Type, string> subscriptionRuleNamingConvention)
         {
             Guard.AgainstNull(nameof(subscriptionRuleNamingConvention), subscriptionRuleNamingConvention);
@@ -193,7 +206,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport.UseWebSockets",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> UseWebSockets(this TransportExtensions<AzureServiceBusTransport> transportExtensions, IWebProxy webProxy = default)
         {
             transportExtensions.Transport.UseWebSockets = true;
@@ -212,7 +226,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport.RetryPolicyOptions",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> CustomRetryPolicy(this TransportExtensions<AzureServiceBusTransport> transportExtensions, ServiceBusRetryOptions retryPolicy)
         {
             Guard.AgainstNull(nameof(retryPolicy), retryPolicy);
@@ -229,7 +244,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport(string fullyQualifiedNamespace, TokenCredential tokenCredential)",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> CustomTokenCredential(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string fullyQualifiedNamespace, TokenCredential tokenCredential)
         {
             Guard.AgainstNull(nameof(tokenCredential), tokenCredential);
@@ -249,7 +265,8 @@
         [PreObsolete(
             ReplacementTypeOrMember = "AzureServiceBusTransport.MaxAutoLockRenewalDuration",
             TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5")]
+            RemoveInVersion = "5",
+            Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> MaxAutoLockRenewalDuration(this TransportExtensions<AzureServiceBusTransport> transportExtensions, TimeSpan maximumAutoLockRenewalDuration)
         {
             Guard.AgainstNegative(nameof(maximumAutoLockRenewalDuration), maximumAutoLockRenewalDuration);
