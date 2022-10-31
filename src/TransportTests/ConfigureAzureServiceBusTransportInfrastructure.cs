@@ -52,14 +52,11 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
             {
                 new ReceiveSettings(inputQueueName.ToString(), inputQueueName, true, false, errorQueueName),
             },
-            new string[0],
+            Array.Empty<string>(),
             cancellationToken);
 
         return transportInfrastructure;
     }
 
-    public Task Cleanup(CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
-    }
+    public Task Cleanup(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
