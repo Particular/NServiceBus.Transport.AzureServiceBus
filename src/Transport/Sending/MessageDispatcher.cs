@@ -27,8 +27,10 @@
         {
             if (!transaction.TryGet(out AzureServiceBusTransaction azureServiceBusTransaction))
             {
-                // in the case there is no transaction already available we create that that should never try to enlist
-                azureServiceBusTransaction = new AzureServiceBusTransaction(useCrossEntityTransactions: false);
+                // in the case there is no transaction already available we create one with the current
+                // transport transaction. This is required to make sure contextual information that might be passed
+                // in from the outside is available
+                azureServiceBusTransaction = new AzureServiceBusTransaction(transaction);
             }
 
             var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;

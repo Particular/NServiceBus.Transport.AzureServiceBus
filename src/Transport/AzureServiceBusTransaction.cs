@@ -16,11 +16,10 @@ namespace NServiceBus.Transport.AzureServiceBus
     /// </summary>
     sealed class AzureServiceBusTransaction : IDisposable
     {
-        // TODO: We need to support a mode that automatically uses the ambient committable transaction
-        public AzureServiceBusTransaction(bool useCrossEntityTransactions)
+        public AzureServiceBusTransaction(TransportTransaction transportTransaction, bool? useCrossEntityTransactions = default)
         {
             this.useCrossEntityTransactions = useCrossEntityTransactions;
-            TransportTransaction = new TransportTransaction();
+            TransportTransaction = transportTransaction;
             TransportTransaction.Set(this);
         }
 
@@ -41,17 +40,25 @@ namespace NServiceBus.Transport.AzureServiceBus
                     return transaction;
                 }
 
-                if (!useCrossEntityTransactions)
+                // Only the pump explicitly asks to disable cross entity transaction support
+                if (useCrossEntityTransactions.HasValue && !useCrossEntityTransactions.Value)
                 {
                     transaction = default;
                 }
-                else
+                // Only the pump explicitly asks for cross entity transaction support
+                else if (useCrossEntityTransactions.HasValue && useCrossEntityTransactions.Value)
                 {
                     transaction = new CommittableTransaction(new TransactionOptions
                     {
                         IsolationLevel = IsolationLevel.Serializable,
                         Timeout = TransactionManager.MaximumTimeout
                     });
+                    TransportTransaction.Set(transaction);
+                }
+                else
+                {
+                    // it is possible that for example Azure Functions tries to sneak in a committable transaction
+                    TransportTransaction.TryGet(out transaction);
                 }
                 transactionIsInitialized = true;
 
@@ -68,12 +75,13 @@ namespace NServiceBus.Transport.AzureServiceBus
                     return serviceBusClient;
                 }
 
-                if (!useCrossEntityTransactions)
+                if (useCrossEntityTransactions.HasValue && !useCrossEntityTransactions.Value)
                 {
                     serviceBusClient = default;
                 }
                 else
                 {
+                    // it is possible that for example Azure Functions tries to sneak in a service bus client
                     TransportTransaction.TryGet(out serviceBusClient);
                 }
                 serviceBusClientIsInitialized = true;
@@ -82,7 +90,7 @@ namespace NServiceBus.Transport.AzureServiceBus
             }
             set
             {
-                if (!useCrossEntityTransactions)
+                if (useCrossEntityTransactions.HasValue && !useCrossEntityTransactions.Value)
                 {
                     return;
                 }
@@ -101,12 +109,13 @@ namespace NServiceBus.Transport.AzureServiceBus
                     return incomingQueuePartitionKey;
                 }
 
-                if (!useCrossEntityTransactions)
+                if (useCrossEntityTransactions.HasValue && !useCrossEntityTransactions.Value)
                 {
                     incomingQueuePartitionKey = default;
                 }
                 else
                 {
+                    // it is possible that for example Azure Functions tries to sneak in a partition key
                     TransportTransaction.TryGet("IncomingQueue.PartitionKey", out incomingQueuePartitionKey);
                 }
                 incomingQueuePartitionKeyIsInitialized = true;
@@ -115,7 +124,7 @@ namespace NServiceBus.Transport.AzureServiceBus
             }
             set
             {
-                if (!useCrossEntityTransactions)
+                if (useCrossEntityTransactions.HasValue && !useCrossEntityTransactions.Value)
                 {
                     return;
                 }
@@ -129,7 +138,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
         public void Dispose() => transaction?.Dispose();
 
-        readonly bool useCrossEntityTransactions;
+        readonly bool? useCrossEntityTransactions;
         CommittableTransaction? transaction;
         bool transactionIsInitialized;
         ServiceBusClient? serviceBusClient;
