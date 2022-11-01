@@ -62,7 +62,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                     return transaction;
                 }
 
-                transaction = !transactionOptions.HasValue ? default : new CommittableTransaction(transactionOptions.Value);
+                transaction = transactionOptions.HasValue ? new CommittableTransaction(transactionOptions.Value) : default;
                 transactionIsInitialized = true;
                 return transaction;
             }

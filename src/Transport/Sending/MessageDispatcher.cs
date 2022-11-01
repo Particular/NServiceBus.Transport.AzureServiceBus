@@ -119,7 +119,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 }
                 // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
                 // doing the access as late as possible but still on the synchronous path.
-                dispatchTasks.Add(DispatchBatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.CommittableTransaction, messagesToSend, cancellationToken));
+                dispatchTasks.Add(DispatchBatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, messagesToSend, cancellationToken));
             }
         }
 

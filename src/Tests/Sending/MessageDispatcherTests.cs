@@ -388,7 +388,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             Assert.That(someDestinationTransactionalBatchContent, Has.Exactly(1)
                 .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == "SomePartitionKey"));
             Assert.That(defaultSender.BatchSentMessages, Is.Empty);
-            Assert.That(azureServiceBusTransaction.CommittableTransaction, Is.Not.Null);
+            Assert.That(azureServiceBusTransaction.Transaction, Is.Not.Null);
         }
 
         [Test]
@@ -420,7 +420,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             Assert.That(someOtherDestinationBatchContent, Has.Exactly(1)
                 .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == default));
             Assert.That(transactionalSender.BatchSentMessages, Is.Empty);
-            Assert.That(azureServiceBusTransaction.CommittableTransaction, Is.Null);
+            Assert.That(azureServiceBusTransaction.Transaction, Is.Null);
         }
 
         class SomeEvent { }
