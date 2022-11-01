@@ -7,10 +7,12 @@ namespace NServiceBus.Transport.AzureServiceBus
     using Azure.Messaging.ServiceBus;
 
     /// <summary>
-    /// The Azure Service Bus transaction encapsulates the logic of sharing and accessing the transaction means
-    /// such as the <see cref="ServiceBusClient"/>, the <see cref="IncomingQueuePartitionKey"/> and the <see cref="CommittableTransaction"/>
+    /// The Azure Service Bus transaction encapsulates the logic of sharing and accessing the connection information
+    /// required to support cross entity transaction (<see cref="ServiceBusClientOptions.EnableCrossEntityTransactions"/> set to <c>true</c>)
+    /// such as the <see cref="ServiceBusClient"/>, the <see cref="IncomingQueuePartitionKey"/> and the <see cref="Transaction"/>
     /// between the incoming message (if available) and the outgoing messages dispatched.
     /// </summary>
+    /// <remarks>This class is not thread safe.</remarks>
     public sealed class AzureServiceBusTransportTransaction : IDisposable
     {
         /// <summary>
@@ -48,12 +50,13 @@ namespace NServiceBus.Transport.AzureServiceBus
         public TransportTransaction TransportTransaction { get; }
 
         /// <summary>
-        /// Gets the <see cref="CommittableTransaction"/> in case cross entity transactions are used.
+        /// Gets the <see cref="Transaction"/> in case cross entity transactions
+        /// <see cref="ServiceBusClientOptions.EnableCrossEntityTransactions"/> are enabled.
         /// </summary>
-        /// <returns>A committable transaction or null.</returns>
-        /// <remarks>The committable transaction is lazy initialized as late as possible to make sure
+        /// <returns>A transaction or null.</returns>
+        /// <remarks>The transaction is lazy initialized as late as possible to make sure
         /// the transaction timeout is only started when the transaction is really needed.</remarks>
-        internal CommittableTransaction? CommittableTransaction
+        internal Transaction? Transaction
         {
             get
             {
