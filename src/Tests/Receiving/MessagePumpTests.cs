@@ -56,7 +56,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             await fakeClient.Processors["receiveAddress"].ProcessMessage(messageWithLostLock, fakeReceiver);
 
             Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
-            Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+            Assert.That(fakeReceiver.AbandonedMessages, Has.Exactly(1)
+                .Matches<(ServiceBusReceivedMessage Message, IDictionary<string, object> Props)>(abandoned => abandoned.Message.MessageId == "SomeId"));
             Assert.That(pumpWasCalled, Is.False);
         }
 
