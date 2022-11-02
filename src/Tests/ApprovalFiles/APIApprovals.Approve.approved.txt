@@ -82,4 +82,8 @@ namespace NServiceBus.Transport.AzureServiceBus
         public void Commit() { }
         public void Dispose() { }
     }
+    public static class AzureServiceBusTransportTransactionExtensions
+    {
+        public static System.Transactions.TransactionScope ToTransactionScope(this NServiceBus.Transport.AzureServiceBus.AzureServiceBusTransportTransaction azureServiceBusTransaction) { }
+    }
 }
