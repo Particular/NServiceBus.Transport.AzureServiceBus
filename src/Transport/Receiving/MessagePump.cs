@@ -274,7 +274,7 @@
 
                     await processMessageEventArgs.SafeCompleteMessageAsync(message,
                             transportSettings.TransportTransactionMode,
-                            azureServiceBusTransaction.Transaction,
+                            azureServiceBusTransaction,
                             cancellationToken: messageProcessingCancellationToken)
                         .ConfigureAwait(false);
 
@@ -298,7 +298,7 @@
                         {
                             await processMessageEventArgs.SafeCompleteMessageAsync(message,
                                     transportSettings.TransportTransactionMode,
-                                    azureServiceBusTransaction.Transaction,
+                                    azureServiceBusTransaction,
                                     cancellationToken: messageProcessingCancellationToken)
                                 .ConfigureAwait(false);
                         }
