@@ -5,20 +5,18 @@
     using NUnit.Framework;
 
     [TestFixture]
-    public class MessageSenderPoolTests
+    public class MessageRegistryTests
     {
         [Test]
         public async Task Should_get_cached_sender_per_destination()
         {
-            var pool = new MessageSenderPool(new ServiceBusClient(connectionString));
+            var pool = new MessageSenderRegistry(new ServiceBusClient(FakeConnectionString));
 
             try
             {
                 var firstMessageSenderDest1 = pool.GetMessageSender("dest1", null);
-                pool.ReturnMessageSender(firstMessageSenderDest1, null);
 
                 var firstMessageSenderDest2 = pool.GetMessageSender("dest2", null);
-                pool.ReturnMessageSender(firstMessageSenderDest2, null);
 
                 var secondMessageSenderDest1 = pool.GetMessageSender("dest1", null);
                 var secondMessageSenderDest2 = pool.GetMessageSender("dest2", null);
@@ -34,6 +32,6 @@
             }
         }
 
-        static string connectionString = "Endpoint=sb://fake.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=fake=";
+        static readonly string FakeConnectionString = "Endpoint=sb://fake.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=fake=";
     }
 }
