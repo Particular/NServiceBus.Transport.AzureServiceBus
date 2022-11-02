@@ -263,24 +263,22 @@
 
             try
             {
-                using (var transaction = CreateTransaction())
+                using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
                 {
-                    var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
-
                     contextBag.Set(message);
                     contextBag.Set(processMessageEventArgs);
 
-                    var messageContext = new MessageContext(messageId, headers, body, transportTransaction, ReceiveAddress, contextBag);
+                    var messageContext = new MessageContext(messageId, headers, body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
                     await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
                     await processMessageEventArgs.SafeCompleteMessageAsync(message,
                             transportSettings.TransportTransactionMode,
-                            transaction,
+                            azureServiceBusTransaction.Transaction,
                             cancellationToken: messageProcessingCancellationToken)
                         .ConfigureAwait(false);
 
-                    transaction?.Commit();
+                    azureServiceBusTransaction.Commit();
                 }
             }
             catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationToken))
@@ -289,12 +287,10 @@
                 {
                     ErrorHandleResult result;
 
-                    using (var transaction = CreateTransaction())
+                    using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
                     {
-                        var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
-
                         var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body,
-                            transportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
+                            azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
 
                         result = await onError(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
@@ -302,12 +298,12 @@
                         {
                             await processMessageEventArgs.SafeCompleteMessageAsync(message,
                                     transportSettings.TransportTransactionMode,
-                                    transaction,
+                                    azureServiceBusTransaction.Transaction,
                                     cancellationToken: messageProcessingCancellationToken)
                                 .ConfigureAwait(false);
                         }
 
-                        transaction?.Commit();
+                        azureServiceBusTransaction.Commit();
                     }
 
                     if (result == ErrorHandleResult.RetryRequired)
@@ -343,28 +339,15 @@
             }
         }
 
-        CommittableTransaction CreateTransaction() =>
+        AzureServiceBusTransportTransaction CreateTransaction(string incomingQueuePartitionKey) =>
             transportSettings.TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
-                ? new CommittableTransaction(new TransactionOptions
-                {
-                    IsolationLevel = IsolationLevel.Serializable,
-                    Timeout = TransactionManager.MaximumTimeout
-                })
-                : null;
-
-        TransportTransaction CreateTransportTransaction(string incomingQueuePartitionKey, CommittableTransaction transaction)
-        {
-            var transportTransaction = new TransportTransaction();
-
-            if (transportSettings.TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive)
-            {
-                transportTransaction.Set(serviceBusClient);
-                transportTransaction.Set("IncomingQueue.PartitionKey", incomingQueuePartitionKey);
-                transportTransaction.Set(transaction);
-            }
-
-            return transportTransaction;
-        }
+                ? new AzureServiceBusTransportTransaction(serviceBusClient, incomingQueuePartitionKey,
+                    new TransactionOptions
+                    {
+                        IsolationLevel = IsolationLevel.Serializable,
+                        Timeout = TransactionManager.DefaultTimeout
+                    })
+                : new AzureServiceBusTransportTransaction();
 
         public ISubscriptionManager Subscriptions { get; }
 

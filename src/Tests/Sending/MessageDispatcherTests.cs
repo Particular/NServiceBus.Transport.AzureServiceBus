@@ -4,6 +4,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
+    using System.Transactions;
     using Azure.Messaging.ServiceBus;
     using NUnit.Framework;
     using Routing;
@@ -355,6 +356,71 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                     DispatchConsistency.Default);
 
             Assert.ThrowsAsync<ServiceBusException>(async () => await dispatcher.Dispatch(new TransportOperations(operation1), new TransportTransaction()));
+        }
+
+        [Test]
+        public async Task Should_use_connection_information_of_existing_service_bus_transaction()
+        {
+            var defaultClient = new FakeServiceBusClient();
+            var defaultSender = new FakeSender();
+            defaultClient.Senders["SomeDestination"] = defaultSender;
+            var transactionalClient = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+
+            var operation1 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        new Dictionary<string, string>(),
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    new DispatchProperties(),
+                    DispatchConsistency.Default);
+
+            var azureServiceBusTransaction = new AzureServiceBusTransportTransaction(transactionalClient,
+                "SomePartitionKey", new TransactionOptions());
+
+            await dispatcher.Dispatch(new TransportOperations(operation1), azureServiceBusTransaction.TransportTransaction);
+
+            var transactionalSender = transactionalClient.Senders["SomeDestination"];
+
+            Assert.That(transactionalSender.BatchSentMessages, Has.Count.EqualTo(1));
+            var someDestinationTransactionalBatchContent = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(0)];
+            Assert.That(someDestinationTransactionalBatchContent, Has.Exactly(1)
+                .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == "SomePartitionKey"));
+            Assert.That(defaultSender.BatchSentMessages, Is.Empty);
+            Assert.That(azureServiceBusTransaction.Transaction, Is.Not.Null);
+        }
+
+        [Test]
+        public async Task Should_use_default_connection_information_when_existing_service_bus_transaction_has_none()
+        {
+            var defaultClient = new FakeServiceBusClient();
+            var transactionalClient = new FakeServiceBusClient();
+            var transactionalSender = new FakeSender();
+            transactionalClient.Senders["SomeDestination"] = transactionalSender;
+
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+
+            var operation1 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        new Dictionary<string, string>(),
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    new DispatchProperties(),
+                    DispatchConsistency.Default);
+
+            var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
+
+            await dispatcher.Dispatch(new TransportOperations(operation1), azureServiceBusTransaction.TransportTransaction);
+
+            var defaultSender = defaultClient.Senders["SomeDestination"];
+
+            Assert.That(defaultSender.BatchSentMessages, Has.Count.EqualTo(1));
+            var someOtherDestinationBatchContent = defaultSender[defaultSender.BatchSentMessages.ElementAt(0)];
+            Assert.That(someOtherDestinationBatchContent, Has.Exactly(1)
+                .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == default));
+            Assert.That(transactionalSender.BatchSentMessages, Is.Empty);
+            Assert.That(azureServiceBusTransaction.Transaction, Is.Null);
         }
 
         class SomeEvent { }
