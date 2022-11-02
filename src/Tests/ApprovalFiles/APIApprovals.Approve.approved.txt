@@ -70,3 +70,14 @@ namespace NServiceBus.Testing
         public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context) { }
     }
 }
+namespace NServiceBus.Transport.AzureServiceBus
+{
+    public sealed class AzureServiceBusTransportTransaction : System.IDisposable
+    {
+        public AzureServiceBusTransportTransaction(NServiceBus.Transport.TransportTransaction? transportTransaction = null) { }
+        public AzureServiceBusTransportTransaction(Azure.Messaging.ServiceBus.ServiceBusClient serviceBusClient, string incomingQueuePartitionKey, System.Transactions.TransactionOptions transactionOptions, NServiceBus.Transport.TransportTransaction? transportTransaction = null) { }
+        public NServiceBus.Transport.TransportTransaction TransportTransaction { get; }
+        public void Commit() { }
+        public void Dispose() { }
+    }
+}
