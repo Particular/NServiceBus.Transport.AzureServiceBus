@@ -128,6 +128,7 @@ namespace NServiceBus.Transport.AzureServiceBus
             var messageCount = messagesToSend.Count;
             int batchCount = 0;
             var sender = messageSenderRegistry.GetMessageSender(destination, client);
+            int maxItemsPerBatch = transaction == null ? int.MaxValue : 100;
             while (messagesToSend.Count > 0)
             {
                 using ServiceBusMessageBatch messageBatch = await sender.CreateMessageBatchAsync(cancellationToken)
@@ -159,7 +160,7 @@ To mitigate this problem reduce the message size by using the data bus or upgrad
                     throw new ServiceBusException(message, ServiceBusFailureReason.MessageSizeExceeded);
                 }
 
-                while (messagesToSend.Count > 0 && messageBatch.TryAddMessage(messagesToSend.Peek()))
+                while (messagesToSend.Count > 0 && messageBatch.Count < maxItemsPerBatch && messageBatch.TryAddMessage(messagesToSend.Peek()))
                 {
                     var added = messagesToSend.Dequeue();
                     if (Log.IsDebugEnabled)
