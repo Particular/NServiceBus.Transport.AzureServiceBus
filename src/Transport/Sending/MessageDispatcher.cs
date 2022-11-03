@@ -128,6 +128,16 @@ namespace NServiceBus.Transport.AzureServiceBus
             var messageCount = messagesToSend.Count;
             int batchCount = 0;
             var sender = messageSenderRegistry.GetMessageSender(destination, client);
+            // There are two limits for batching that unfortunately are not enforced over TryAdd.
+            //
+            // Limit 1: For transactional sends you cannot add more than 100 messages into the same batch. This limit
+            // is enforced when the batch is attempted to be sent.
+            //
+            // Limit 2: For non-transactional sends you cannot add more than 4500 messages into the same batch. This limit
+            // is enforced when the batch is attempted to be sent. There are plans to incorporate this limit into
+            // the TryAdd logic, see https://github.com/Azure/azure-sdk-for-net/issues/21451. Even though with all
+            // the headers we will probably never reach 4500 messages per batch this upper limit was added as a precaution
+            int maxItemsPerBatch = transaction == null ? 4500 : 100;
             while (messagesToSend.Count > 0)
             {
                 using ServiceBusMessageBatch messageBatch = await sender.CreateMessageBatchAsync(cancellationToken)
@@ -159,7 +169,7 @@ To mitigate this problem reduce the message size by using the data bus or upgrad
                     throw new ServiceBusException(message, ServiceBusFailureReason.MessageSizeExceeded);
                 }
 
-                while (messagesToSend.Count > 0 && messageBatch.TryAddMessage(messagesToSend.Peek()))
+                while (messagesToSend.Count > 0 && messageBatch.Count < maxItemsPerBatch && messageBatch.TryAddMessage(messagesToSend.Peek()))
                 {
                     var added = messagesToSend.Dequeue();
                     if (Log.IsDebugEnabled)
