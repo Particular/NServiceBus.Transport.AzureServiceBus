@@ -135,6 +135,21 @@
                         "This is usually an indication that the endpoint prefetches more messages than it is able to handle within the configured" +
                         " peek lock duration. Consider tweaking the prefetch configuration to values that are better aligned with the concurrency" +
                         " of the endpoint and the time it takes to handle the messages.");
+
+                    try
+                    {
+                        // Deliberately not using the cancellation token to make sure we abandon the message even when the
+                        // cancellation token is already set.
+                        await arg.SafeAbandonMessageAsync(message,
+                                transportSettings.TransportTransactionMode,
+                                cancellationToken: CancellationToken.None)
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception abandonException)
+                    {
+                        // nothing we can do about it, message will be retried
+                        Logger.Debug($"Error abandoning the message with id '{messageId}' because the lock has expired at '{message.LockedUntil}.", abandonException);
+                    }
                     return;
                 }
 
