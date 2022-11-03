@@ -432,12 +432,12 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
 
             Assert.That(transactionalSender.BatchSentMessages, Has.Count.EqualTo(3));
-            var someDestinationTransactionalBatchContent1 = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(0)];
-            var someDestinationTransactionalBatchContent2 = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(1)];
-            var someDestinationTransactionalBatchContent3 = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(2)];
-            Assert.That(someDestinationTransactionalBatchContent1, Has.Count.EqualTo(100));
-            Assert.That(someDestinationTransactionalBatchContent2, Has.Count.EqualTo(25));
-            Assert.That(someDestinationTransactionalBatchContent3, Has.Count.EqualTo(25));
+            var firstBatch = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(0)];
+            var secondBatch = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(1)];
+            var thirdBatch = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(2)];
+            Assert.That(firstBatch, Has.Count.EqualTo(100));
+            Assert.That(secondBatch, Has.Count.EqualTo(25));
+            Assert.That(thirdBatch, Has.Count.EqualTo(25));
         }
 
         [Test]
@@ -477,12 +477,12 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
 
             Assert.That(defaultSender.BatchSentMessages, Has.Count.EqualTo(3));
-            var someDestinationTransactionalBatchContent1 = defaultSender[defaultSender.BatchSentMessages.ElementAt(0)];
-            var someDestinationTransactionalBatchContent2 = defaultSender[defaultSender.BatchSentMessages.ElementAt(1)];
-            var someDestinationTransactionalBatchContent3 = defaultSender[defaultSender.BatchSentMessages.ElementAt(2)];
-            Assert.That(someDestinationTransactionalBatchContent1, Has.Count.EqualTo(4500));
-            Assert.That(someDestinationTransactionalBatchContent2, Has.Count.EqualTo(50));
-            Assert.That(someDestinationTransactionalBatchContent3, Has.Count.EqualTo(50));
+            var firstBatch = defaultSender[defaultSender.BatchSentMessages.ElementAt(0)];
+            var secondBatch = defaultSender[defaultSender.BatchSentMessages.ElementAt(1)];
+            var thirdBatch = defaultSender[defaultSender.BatchSentMessages.ElementAt(2)];
+            Assert.That(firstBatch, Has.Count.EqualTo(4500));
+            Assert.That(secondBatch, Has.Count.EqualTo(50));
+            Assert.That(thirdBatch, Has.Count.EqualTo(50));
         }
 
         [Test]
