@@ -437,9 +437,52 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var someDestinationTransactionalBatchContent3 = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(2)];
             Assert.That(someDestinationTransactionalBatchContent1, Has.Count.EqualTo(100));
             Assert.That(someDestinationTransactionalBatchContent2, Has.Count.EqualTo(25));
-            Assert.That(someDestinationTransactionalBatchContent2, Has.Count.EqualTo(25));
-            Assert.That(defaultSender.BatchSentMessages, Is.Empty);
-            Assert.That(azureServiceBusTransaction.Transaction, Is.Not.Null);
+            Assert.That(someDestinationTransactionalBatchContent3, Has.Count.EqualTo(25));
+        }
+
+        [Test]
+        public async Task Should_split_into_batches_of_max_4500_when_no_transactions_used()
+        {
+            var defaultClient = new FakeServiceBusClient();
+            var defaultSender = new FakeSender();
+            defaultClient.Senders["SomeDestination"] = defaultSender;
+
+            bool firstTime = true;
+            defaultSender.TryAdd = msg =>
+            {
+                if ((string)msg.ApplicationProperties["Number"] != "4550" || !firstTime)
+                {
+                    return true;
+                }
+
+                firstTime = false;
+                return false;
+            };
+
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+
+            var operations = new List<TransportOperation>(4600);
+            for (int i = 0; i < 4600; i++)
+            {
+                operations.Add(new TransportOperation(new OutgoingMessage($"SomeId{i}",
+                        new Dictionary<string, string> { { "Number", i.ToString() } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    new DispatchProperties(),
+                    DispatchConsistency.Default));
+            }
+
+            var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
+
+            await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
+
+            Assert.That(defaultSender.BatchSentMessages, Has.Count.EqualTo(3));
+            var someDestinationTransactionalBatchContent1 = defaultSender[defaultSender.BatchSentMessages.ElementAt(0)];
+            var someDestinationTransactionalBatchContent2 = defaultSender[defaultSender.BatchSentMessages.ElementAt(1)];
+            var someDestinationTransactionalBatchContent3 = defaultSender[defaultSender.BatchSentMessages.ElementAt(2)];
+            Assert.That(someDestinationTransactionalBatchContent1, Has.Count.EqualTo(4500));
+            Assert.That(someDestinationTransactionalBatchContent2, Has.Count.EqualTo(50));
+            Assert.That(someDestinationTransactionalBatchContent3, Has.Count.EqualTo(50));
         }
 
         [Test]
