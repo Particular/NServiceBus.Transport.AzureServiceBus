@@ -392,6 +392,57 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
+        public async Task Should_split_into_batches_of_max_hundred_when_transactions_used()
+        {
+            var defaultClient = new FakeServiceBusClient();
+            var defaultSender = new FakeSender();
+            defaultClient.Senders["SomeDestination"] = defaultSender;
+            var transactionalSender = new FakeSender();
+            var transactionalClient = new FakeServiceBusClient();
+            transactionalClient.Senders["SomeDestination"] = transactionalSender;
+
+            bool firstTime = true;
+            transactionalSender.TryAdd = msg =>
+            {
+                if ((string)msg.ApplicationProperties["Number"] != "125" || !firstTime)
+                {
+                    return true;
+                }
+
+                firstTime = false;
+                return false;
+            };
+
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+
+            var operations = new List<TransportOperation>(150);
+            for (int i = 0; i < 150; i++)
+            {
+                operations.Add(new TransportOperation(new OutgoingMessage($"SomeId{i}",
+                        new Dictionary<string, string> { { "Number", i.ToString() } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    new DispatchProperties(),
+                    DispatchConsistency.Default));
+            }
+
+            var azureServiceBusTransaction = new AzureServiceBusTransportTransaction(transactionalClient,
+                "SomePartitionKey", new TransactionOptions());
+
+            await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
+
+            Assert.That(transactionalSender.BatchSentMessages, Has.Count.EqualTo(3));
+            var someDestinationTransactionalBatchContent1 = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(0)];
+            var someDestinationTransactionalBatchContent2 = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(1)];
+            var someDestinationTransactionalBatchContent3 = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(2)];
+            Assert.That(someDestinationTransactionalBatchContent1, Has.Count.EqualTo(100));
+            Assert.That(someDestinationTransactionalBatchContent2, Has.Count.EqualTo(25));
+            Assert.That(someDestinationTransactionalBatchContent2, Has.Count.EqualTo(25));
+            Assert.That(defaultSender.BatchSentMessages, Is.Empty);
+            Assert.That(azureServiceBusTransaction.Transaction, Is.Not.Null);
+        }
+
+        [Test]
         public async Task Should_use_default_connection_information_when_existing_service_bus_transaction_has_none()
         {
             var defaultClient = new FakeServiceBusClient();
