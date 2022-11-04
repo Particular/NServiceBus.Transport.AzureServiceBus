@@ -51,20 +51,20 @@
 
             try
             {
-                var existingRule = await client.GetRuleAsync(transportSettings.TopicNameToSubscribeOn, subscriptionName, rule.Name, cancellationToken).ConfigureAwait(false);
+                var existingRule = await client.GetRuleAsync(transportSettings.Topology.TopicToSubscribeOn, subscriptionName, rule.Name, cancellationToken).ConfigureAwait(false);
 
                 if (existingRule.Value.Filter.ToString() != rule.Filter.ToString())
                 {
                     existingRule.Value.Action = rule.Action;
 
-                    await client.UpdateRuleAsync(transportSettings.TopicNameToSubscribeOn, subscriptionName, existingRule, cancellationToken).ConfigureAwait(false);
+                    await client.UpdateRuleAsync(transportSettings.Topology.TopicToSubscribeOn, subscriptionName, existingRule, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
                 try
                 {
-                    await client.CreateRuleAsync(transportSettings.TopicNameToSubscribeOn, subscriptionName, rule, cancellationToken).ConfigureAwait(false);
+                    await client.CreateRuleAsync(transportSettings.Topology.TopicToSubscribeOn, subscriptionName, rule, cancellationToken).ConfigureAwait(false);
                 }
                 catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -80,7 +80,7 @@
 
             try
             {
-                await administrativeClient.DeleteRuleAsync(transportSettings.TopicNameToSubscribeOn, subscriptionName, ruleName, cancellationToken).ConfigureAwait(false);
+                await administrativeClient.DeleteRuleAsync(transportSettings.Topology.TopicToSubscribeOn, subscriptionName, ruleName, cancellationToken).ConfigureAwait(false);
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
@@ -91,7 +91,7 @@
         {
             await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
 
-            var subscription = new CreateSubscriptionOptions(transportSettings.TopicNameToSubscribeOn, subscriptionName)
+            var subscription = new CreateSubscriptionOptions(transportSettings.Topology.TopicToSubscribeOn, subscriptionName)
             {
                 LockDuration = TimeSpan.FromMinutes(5),
                 ForwardTo = subscribingQueue,

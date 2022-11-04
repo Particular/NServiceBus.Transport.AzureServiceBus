@@ -154,38 +154,15 @@
             ReplacementTypeOrMember = "TopicNameToPublishTo")]
         public string TopicName
         {
-            get => TopicNameToPublishTo;
-            set => TopicNameToPublishTo = value;
+            get => Topology.TopicToPublishTo;
+            set => Topology = Topology.Single(value);
         }
 
         /// <summary>
         /// The topic name used to publish events between endpoints.
         /// </summary>
-        public string TopicNameToPublishTo
-        {
-            get => topicNameToPublishTo;
-            set
-            {
-                Guard.AgainstNullAndEmpty(nameof(TopicNameToPublishTo), value);
-                topicNameToPublishTo = value;
-            }
-        }
-        string topicNameToPublishTo = "bundle-1";
-
-        /// <summary>
-        /// The topic name used to subscribe on events between endpoints.
-        /// </summary>
-        public string TopicNameToSubscribeOn
-        {
-            get => topicNameToSubscribeOn;
-            set
-            {
-                Guard.AgainstNullAndEmpty(nameof(TopicNameToSubscribeOn), value);
-                topicNameToSubscribeOn = value;
-            }
-        }
-
-        string topicNameToSubscribeOn = "bundle-1";
+        /// <remarks>The default is bundle-1</remarks>
+        public Topology Topology { get; set; } = Topology.DefaultBundle;
 
         /// <summary>
         /// The maximum size used when creating queues and topics in GB.

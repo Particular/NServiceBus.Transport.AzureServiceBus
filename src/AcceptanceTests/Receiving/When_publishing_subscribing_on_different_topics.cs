@@ -36,7 +36,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 EndpointSetup<DefaultPublisher>(b =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.TopicNameToPublishTo = "bundle-a";
+                    transport.Topology = Topology.Single("bundle-a");
                     b.SendOnly();
                 });
         }
@@ -48,8 +48,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.TopicNameToPublishTo = "bundle-a";
-                    transport.TopicNameToSubscribeOn = "bundle-b";
+                    transport.Topology = Topology.Hierarchy("bundle-a", "bundle-b");
                 });
 
             public class MyHandler : IHandleMessages<MyEvent>
@@ -74,8 +73,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.TopicNameToPublishTo = "bundle-a";
-                    transport.TopicNameToSubscribeOn = "bundle-c";
+                    transport.Topology = Topology.Hierarchy("bundle-a", "bundle-c");
                 });
 
             public class MyHandler : IHandleMessages<MyEvent>

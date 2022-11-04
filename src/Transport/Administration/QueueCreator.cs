@@ -31,7 +31,8 @@
         {
             await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
 
-            var topicToPublishTo = new CreateTopicOptions(transportSettings.TopicNameToPublishTo)
+            var topology = transportSettings.Topology;
+            var topicToPublishTo = new CreateTopicOptions(topology.TopicToPublishTo)
             {
                 EnableBatchedOperations = true,
                 EnablePartitioning = transportSettings.EnablePartitioning,
@@ -51,10 +52,9 @@
                 Logger.Info($"Topic creation for {topicToPublishTo.Name} is already in progress");
             }
 
-            // TODO: Comparison?
-            if (transportSettings.TopicNameToPublishTo != transportSettings.TopicNameToSubscribeOn)
+            if (topology.IsHierarchy)
             {
-                var topicToSubscribeOn = new CreateTopicOptions(transportSettings.TopicNameToSubscribeOn)
+                var topicToSubscribeOn = new CreateTopicOptions(topology.TopicToSubscribeOn)
                 {
                     EnableBatchedOperations = true,
                     EnablePartitioning = transportSettings.EnablePartitioning,
@@ -74,15 +74,14 @@
                     Logger.Info($"Topic creation for {topicToSubscribeOn.Name} is already in progress");
                 }
 
-                // TODO: Apply naming convention?
-                var subscription = new CreateSubscriptionOptions(transportSettings.TopicNameToPublishTo, $"ForwardTo-{transportSettings.TopicNameToSubscribeOn}")
+                var subscription = new CreateSubscriptionOptions(topology.TopicToPublishTo, $"forwardTo-{topology.TopicToSubscribeOn}")
                 {
                     LockDuration = TimeSpan.FromMinutes(5),
-                    ForwardTo = transportSettings.TopicNameToSubscribeOn,
+                    ForwardTo = topology.TopicToSubscribeOn,
                     EnableDeadLetteringOnFilterEvaluationExceptions = false,
                     MaxDeliveryCount = int.MaxValue,
                     EnableBatchedOperations = true,
-                    UserMetadata = transportSettings.TopicNameToSubscribeOn
+                    UserMetadata = topology.TopicToSubscribeOn
                 };
 
                 try
