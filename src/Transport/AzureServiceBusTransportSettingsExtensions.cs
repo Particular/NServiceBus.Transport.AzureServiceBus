@@ -77,7 +77,7 @@
         public static TransportExtensions<AzureServiceBusTransport> TopicName(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string topicName)
         {
             Guard.AgainstNullAndEmpty(nameof(topicName), topicName);
-            transportExtensions.Transport.Topology = Topology.Single(topicName);
+            transportExtensions.Transport.Topology = TopicTopology.Single(topicName);
             return transportExtensions;
         }
 

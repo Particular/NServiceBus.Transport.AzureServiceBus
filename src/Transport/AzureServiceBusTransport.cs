@@ -148,21 +148,21 @@
         /// <summary>
         /// The topic name used to publish events between endpoints.
         /// </summary>
-        [ObsoleteEx(Message = "TBD.",
+        [ObsoleteEx(Message = "It is possible to represent the publish and subscribe topic separately by specifying a topology.",
             TreatAsErrorFromVersion = "4",
             RemoveInVersion = "5",
-            ReplacementTypeOrMember = "TopicNameToPublishTo")]
+            ReplacementTypeOrMember = "Topology")]
         public string TopicName
         {
             get => Topology.TopicToPublishTo;
-            set => Topology = Topology.Single(value);
+            set => Topology = TopicTopology.Single(value);
         }
 
         /// <summary>
-        /// The topic name used to publish events between endpoints.
+        /// Gets or sets the topic topology to be used.
         /// </summary>
-        /// <remarks>The default is bundle-1</remarks>
-        public Topology Topology { get; set; } = Topology.DefaultBundle;
+        /// <remarks>The default is <see cref="TopicTopology.DefaultBundle"/></remarks>
+        public TopicTopology Topology { get; set; } = TopicTopology.DefaultBundle;
 
         /// <summary>
         /// The maximum size used when creating queues and topics in GB.
