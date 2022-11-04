@@ -31,7 +31,7 @@
         {
             await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
 
-            var topic = new CreateTopicOptions(transportSettings.TopicName)
+            var topicToPublishTo = new CreateTopicOptions(transportSettings.TopicNameToPublishTo)
             {
                 EnableBatchedOperations = true,
                 EnablePartitioning = transportSettings.EnablePartitioning,
@@ -40,15 +40,64 @@
 
             try
             {
-                await administrativeClient.CreateTopicAsync(topic, cancellationToken).ConfigureAwait(false);
+                await administrativeClient.CreateTopicAsync(topicToPublishTo, cancellationToken).ConfigureAwait(false);
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
-                Logger.Info($"Topic {topic.Name} already exists");
+                Logger.Info($"Topic {topicToPublishTo.Name} already exists");
             }
             catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
             {
-                Logger.Info($"Topic creation for {topic.Name} is already in progress");
+                Logger.Info($"Topic creation for {topicToPublishTo.Name} is already in progress");
+            }
+
+            // TODO: Comparison?
+            if (transportSettings.TopicNameToPublishTo != transportSettings.TopicNameToSubscribeOn)
+            {
+                var topicToSubscribeOn = new CreateTopicOptions(transportSettings.TopicNameToSubscribeOn)
+                {
+                    EnableBatchedOperations = true,
+                    EnablePartitioning = transportSettings.EnablePartitioning,
+                    MaxSizeInMegabytes = maxSizeInMb,
+                };
+
+                try
+                {
+                    await administrativeClient.CreateTopicAsync(topicToSubscribeOn, cancellationToken).ConfigureAwait(false);
+                }
+                catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+                {
+                    Logger.Info($"Topic {topicToSubscribeOn.Name} already exists");
+                }
+                catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
+                {
+                    Logger.Info($"Topic creation for {topicToSubscribeOn.Name} is already in progress");
+                }
+
+                // TODO: Apply naming convention?
+                var subscription = new CreateSubscriptionOptions(transportSettings.TopicNameToPublishTo, $"ForwardTo-{transportSettings.TopicNameToSubscribeOn}")
+                {
+                    LockDuration = TimeSpan.FromMinutes(5),
+                    ForwardTo = transportSettings.TopicNameToSubscribeOn,
+                    EnableDeadLetteringOnFilterEvaluationExceptions = false,
+                    MaxDeliveryCount = int.MaxValue,
+                    EnableBatchedOperations = true,
+                    UserMetadata = transportSettings.TopicNameToSubscribeOn
+                };
+
+                try
+                {
+                    await administrativeClient.CreateSubscriptionAsync(subscription,
+                        new CreateRuleOptions("$default", new TrueRuleFilter()), cancellationToken).ConfigureAwait(false);
+                }
+                catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+                {
+                    Logger.Debug($"Default subscription rule for topic {subscription.TopicName} already exists");
+                }
+                catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
+                {
+                    Logger.Info($"Default subscription rule for topic {subscription.TopicName} is already in progress");
+                }
             }
 
             foreach (var address in queues)

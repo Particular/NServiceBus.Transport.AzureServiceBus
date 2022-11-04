@@ -31,7 +31,7 @@
 
             messageSenderRegistry = new MessageSenderRegistry(defaultClient);
 
-            Dispatcher = new MessageDispatcher(messageSenderRegistry, transportSettings.TopicName);
+            Dispatcher = new MessageDispatcher(messageSenderRegistry, transportSettings.TopicNameToPublishTo);
             Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
             {
                 var (receiveSettings, _) = settingsAndClient;
@@ -49,7 +49,8 @@
         void WriteStartupDiagnostics(StartupDiagnosticEntries startupDiagnostic) =>
             startupDiagnostic.Add("Azure Service Bus transport", new
             {
-                transportSettings.TopicName,
+                transportSettings.TopicNameToPublishTo,
+                transportSettings.TopicNameToSubscribeOn,
                 EntityMaximumSize = transportSettings.EntityMaximumSize.ToString(),
                 EnablePartitioning = transportSettings.EnablePartitioning.ToString(),
                 PrefetchMultiplier = transportSettings.PrefetchMultiplier.ToString(),

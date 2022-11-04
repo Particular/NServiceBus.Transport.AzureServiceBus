@@ -70,14 +70,14 @@
         /// <param name="transportExtensions"></param>
         /// <param name="topicName">The name of the topic used to publish events between endpoints.</param>
         [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.TopicName",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.TopicNameToPublishTo",
             TreatAsErrorFromVersion = "4",
             RemoveInVersion = "5",
             Note = Note)]
         public static TransportExtensions<AzureServiceBusTransport> TopicName(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string topicName)
         {
             Guard.AgainstNullAndEmpty(nameof(topicName), topicName);
-            transportExtensions.Transport.TopicName = topicName;
+            transportExtensions.Transport.TopicNameToPublishTo = topicName;
             return transportExtensions;
         }
 
