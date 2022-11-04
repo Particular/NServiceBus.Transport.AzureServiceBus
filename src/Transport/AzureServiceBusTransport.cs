@@ -148,16 +148,44 @@
         /// <summary>
         /// The topic name used to publish events between endpoints.
         /// </summary>
+        [ObsoleteEx(Message = "TBD.",
+            TreatAsErrorFromVersion = "4",
+            RemoveInVersion = "5",
+            ReplacementTypeOrMember = "TopicNameToPublishTo")]
         public string TopicName
         {
-            get => topicName;
+            get => TopicNameToPublishTo;
+            set => TopicNameToPublishTo = value;
+        }
+
+        /// <summary>
+        /// The topic name used to publish events between endpoints.
+        /// </summary>
+        public string TopicNameToPublishTo
+        {
+            get => topicNameToPublishTo;
             set
             {
-                Guard.AgainstNullAndEmpty(nameof(TopicName), value);
-                topicName = value;
+                Guard.AgainstNullAndEmpty(nameof(TopicNameToPublishTo), value);
+                topicNameToPublishTo = value;
             }
         }
-        string topicName = "bundle-1";
+        string topicNameToPublishTo = "bundle-1";
+
+        /// <summary>
+        /// The topic name used to subscribe on events between endpoints.
+        /// </summary>
+        public string TopicNameToSubscribeOn
+        {
+            get => topicNameToSubscribeOn;
+            set
+            {
+                Guard.AgainstNullAndEmpty(nameof(TopicNameToSubscribeOn), value);
+                topicNameToSubscribeOn = value;
+            }
+        }
+
+        string topicNameToSubscribeOn = "bundle-1";
 
         /// <summary>
         /// The maximum size used when creating queues and topics in GB.
