@@ -5,11 +5,10 @@
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\NServiceBus.snk</AssemblyOriginatorKeyFile>
     <Description>Azure Service Bus transport for NServiceBus</Description>
-    <LangVersion>10.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="[7.10.0, 8.0.0)" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="[7.11.0, 8.0.0)" />
     <PackageReference Include="NServiceBus" Version="[8.0.0-rc.3, 9.0.0)" />
     <PackageReference Include="Particular.Packaging" Version="2.2.0" PrivateAssets="All" />
   </ItemGroup>
