@@ -3,6 +3,7 @@
   <PropertyGroup>
     <MinVerMinimumMajorMinor>3.0</MinVerMinimumMajorMinor>
     <MinVerAutoIncrement>minor</MinVerAutoIncrement>
+    <LangVersion>10.0</LangVersion>
   </PropertyGroup>
 
 </Project>
