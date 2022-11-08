@@ -6,7 +6,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
 
-    public class When_publishing_subscribing_on_different_topics : NServiceBusAcceptanceTest
+    public class When_publishing_sendonly_and_subscribing_on_different_topics : NServiceBusAcceptanceTest
     {
         [Test]
         public async Task Should_be_delivered_to_all_subscribers()
@@ -14,7 +14,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
             Requires.NativePubSubSupport();
 
             var context = await Scenario.Define<Context>()
-                .WithEndpoint<SendOnlyPublisher>(b => b.When((session, c) => session.Publish(new MyEvent())))
+                .WithEndpoint<SendOnlyPublisherOnTopicA>(b => b.When((session, c) => session.Publish(new MyEvent())))
                 .WithEndpoint<SubscriberOnTopicB>()
                 .WithEndpoint<SubscriberOnTopicC>()
                 .Done(c => c.SubscriberOnTopicAGotTheEvent && c.SubscriberOnTopicBGotTheEvent)
@@ -30,9 +30,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
             public bool SubscriberOnTopicBGotTheEvent { get; set; }
         }
 
-        public class SendOnlyPublisher : EndpointConfigurationBuilder
+        public class SendOnlyPublisherOnTopicA : EndpointConfigurationBuilder
         {
-            public SendOnlyPublisher() =>
+            public SendOnlyPublisherOnTopicA() =>
                 EndpointSetup<DefaultPublisher>(b =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
@@ -55,7 +55,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
             {
                 public MyHandler(Context context) => testContext = context;
 
-                public Task Handle(MyEvent messageThatIsEnlisted, IMessageHandlerContext context)
+                public Task Handle(MyEvent message, IMessageHandlerContext context)
                 {
                     testContext.SubscriberOnTopicAGotTheEvent = true;
 
@@ -80,7 +80,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
             {
                 public MyHandler(Context context) => testContext = context;
 
-                public Task Handle(MyEvent messageThatIsEnlisted, IMessageHandlerContext context)
+                public Task Handle(MyEvent message, IMessageHandlerContext context)
                 {
                     testContext.SubscriberOnTopicBGotTheEvent = true;
 
