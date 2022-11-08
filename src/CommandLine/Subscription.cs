@@ -24,5 +24,20 @@
 
             return client.CreateSubscriptionAsync(options, new CreateRuleOptions("$default", new FalseRuleFilter()));
         }
+
+        public static Task CreateForwarding(ServiceBusAdministrationClient client, CommandOption topicToPublishTo, CommandOption topicToSubscribeTo, string subscriptionName)
+        {
+            var options = new CreateSubscriptionOptions(topicToPublishTo.Value(), subscriptionName)
+            {
+                LockDuration = TimeSpan.FromMinutes(5),
+                ForwardTo = topicToSubscribeTo.Value(),
+                EnableDeadLetteringOnFilterEvaluationExceptions = false,
+                MaxDeliveryCount = int.MaxValue,
+                EnableBatchedOperations = true,
+                UserMetadata = topicToSubscribeTo.Value()
+            };
+
+            return client.CreateSubscriptionAsync(options, new CreateRuleOptions("$default", new TrueRuleFilter()));
+        }
     }
 }

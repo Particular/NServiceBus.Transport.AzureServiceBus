@@ -14,7 +14,9 @@
         const string EndpointName = "cli-queue";
         const string QueueName = EndpointName;
         const string TopicName = "cli-topic";
+        const string HierarchyTopicName = "cli-topic-sub";
         const string SubscriptionName = QueueName;
+        const string HierarchySubscriptionName = $"forwardTo-{HierarchyTopicName}";
 
         [Test]
         public async Task Create_endpoint_when_there_are_no_entities()
@@ -34,12 +36,53 @@
         }
 
         [Test]
+        public async Task Create_endpoint_with_hierarchy_when_there_are_no_entities()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+            await DeleteTopic(HierarchyTopicName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
+
+            Assert.AreEqual(0, exitCode);
+            Assert.IsTrue(error == string.Empty);
+            Assert.IsFalse(output.Contains("skipping"));
+
+            await VerifyQueue(QueueName);
+            await VerifyTopic(TopicName);
+            await VerifyTopic(HierarchyTopicName);
+            await VerifySubscriptionContainsOnlyDefaultMatchAllRule(TopicName, HierarchySubscriptionName);
+            await VerifySubscriptionContainsOnlyDefaultRule(HierarchyTopicName, SubscriptionName);
+        }
+
+        [Test]
         public async Task Create_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
         {
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.AreEqual(1, exitCode);
             StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+        }
+
+        [Test]
+        public async Task Create_endpoint_validates_topic_name_and_hierarchy_cannot_be_used_together()
+        {
+            var (_, publishError, publishExitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --topic-to-publish-to {HierarchyTopicName}");
+            var (_, subscribeError, subscribeExitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
+
+            Assert.AreEqual(1, publishExitCode);
+            Assert.AreEqual(1, subscribeExitCode);
+            StringAssert.Contains("The topic name and the topic to publish to option cannot be used together.", publishError);
+            StringAssert.Contains("The topic name and the topic to subscribe on option cannot be used together.", subscribeError);
+        }
+
+        [Test]
+        public async Task Create_endpoint_validates_hierarchy_is_correct()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic-to-subscribe-on {HierarchyTopicName} --topic-to-publish-to {HierarchyTopicName}");
+
+            Assert.AreEqual(1, exitCode);
+            StringAssert.Contains("In order to represent a topic hierarchy the topic to publish to and the topic to subscribe on need to be different.", error);
         }
 
         [Test]
@@ -57,6 +100,25 @@
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
             await VerifySubscription(TopicName, SubscriptionName, QueueName);
+        }
+
+        [Test]
+        public async Task Subscribe_endpoint_supports_hierarchy()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+            await DeleteTopic(HierarchyTopicName);
+
+            await Execute($"endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
+
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {HierarchyTopicName}");
+            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName}");
+            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName");
+
+            await VerifyQueue(QueueName);
+            await VerifyTopic(TopicName);
+            await VerifyTopic(HierarchyTopicName);
+            await VerifySubscription(HierarchyTopicName, SubscriptionName, QueueName);
         }
 
         [Test]
@@ -84,6 +146,25 @@
             await Execute($"endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
 
             await VerifySubscriptionContainsOnlyDefaultRule(TopicName, SubscriptionName);
+        }
+
+        [Test]
+        public async Task Unsubscribe_endpoint_supports_hierarchy()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+            await DeleteTopic(HierarchySubscriptionName);
+
+            await Execute($"endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {HierarchyTopicName}");
+            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName}");
+            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName");
+
+            await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --topic {HierarchyTopicName}");
+            await Execute($"endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName}");
+            await Execute($"endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName");
+
+            await VerifySubscriptionContainsOnlyDefaultRule(HierarchyTopicName, SubscriptionName);
         }
 
         [Test]
@@ -222,6 +303,18 @@
             var defaultRule = rules.ElementAt(0);
             Assert.AreEqual("$default", defaultRule.Name);
             Assert.AreEqual(new FalseRuleFilter().SqlExpression, ((FalseRuleFilter)defaultRule.Filter).SqlExpression);
+        }
+
+        async Task VerifySubscriptionContainsOnlyDefaultMatchAllRule(string topicName, string subscriptionName)
+        {
+            // rules
+            var rules = await client.GetRulesAsync(topicName, subscriptionName).ToListAsync();
+
+            Assert.IsTrue(rules.Count == 1);
+
+            var defaultRule = rules.ElementAt(0);
+            Assert.AreEqual("$default", defaultRule.Name);
+            Assert.AreEqual(new TrueRuleFilter().SqlExpression, ((TrueRuleFilter)defaultRule.Filter).SqlExpression);
         }
 
         async Task VerifyQueueExists(bool queueShouldExist)

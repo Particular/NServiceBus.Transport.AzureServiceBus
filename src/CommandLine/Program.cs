@@ -57,11 +57,18 @@
                     createCommand.AddOption(size);
                     createCommand.AddOption(partitioning);
                     var topicName = createCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
+                    var topicToPublishTo = createCommand.Option("-tp|--topic-to-publish-to", "The topic name to publish to", CommandOptionType.SingleValue);
+                    var topicToSubscribeOn = createCommand.Option("-ts|--topic-to-subscribe-on", "The topic name to subscribe on", CommandOptionType.SingleValue);
+
+                    topicName.OnValidate(v => ValidateTopicInformationIsCorrect(topicName, topicToPublishTo, topicToSubscribeOn));
+                    topicToPublishTo.OnValidate(v => ValidateTopicInformationIsCorrect(topicName, topicToPublishTo, topicToSubscribeOn));
+                    topicToSubscribeOn.OnValidate(v => ValidateTopicInformationIsCorrect(topicName, topicToPublishTo, topicToSubscribeOn));
+
                     var subscriptionName = createCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Endpoint.Create(client, name, topicName, subscriptionName, size, partitioning));
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Endpoint.Create(client, name, topicName, topicToPublishTo, topicToSubscribeOn, subscriptionName, size, partitioning));
 
                         Console.WriteLine($"Endpoint '{name.Value}' is ready.");
                     });
@@ -75,7 +82,7 @@
 
                     subscribeCommand.AddOption(connectionString);
                     subscribeCommand.AddOption(fullyQualifiedNamespace);
-                    var topicName = subscribeCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
+                    var topicName = subscribeCommand.Option("-t|--topic", "Topic name to subscribe on (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                     var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                     var shortenedRuleName = subscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
 
@@ -95,7 +102,7 @@
 
                     unsubscribeCommand.AddOption(connectionString);
                     unsubscribeCommand.AddOption(fullyQualifiedNamespace);
-                    var topicName = unsubscribeCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
+                    var topicName = unsubscribeCommand.Option("-t|--topic", "Topic name to unsubscribe from (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                     var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                     var shortenedRuleName = unsubscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
 
@@ -174,6 +181,29 @@
                 Console.Error.WriteLine($"Command failed with exception ({exception.GetType().Name}): {exception.Message}");
                 return 1;
             }
+        }
+
+        static ValidationResult ValidateTopicInformationIsCorrect(CommandOption topicName, CommandOption topicToPublishTo, CommandOption topicToSubscribeOn)
+        {
+            if (topicName.HasValue() && topicToPublishTo.HasValue())
+            {
+                return new ValidationResult(
+                    "The topic name and the topic to publish to option cannot be used together. Choose either a single topic name by specifying the topic name or a hierarchy by specifying the topic to publish to and the topic to subscribe on.");
+            }
+
+            if (topicName.HasValue() && topicToSubscribeOn.HasValue())
+            {
+                return new ValidationResult(
+                    "The topic name and the topic to subscribe on option cannot be used together. Choose either a single topic name by specifying the topic name or a hierarchy by specifying the topic to publish to and the topic to subscribe on.");
+            }
+
+            if (topicToPublishTo.HasValue() && topicToSubscribeOn.HasValue() && string.Equals(topicToPublishTo.Value(), topicToSubscribeOn.Value(), StringComparison.OrdinalIgnoreCase))
+            {
+                return new ValidationResult(
+                    "In order to represent a topic hierarchy the topic to publish to and the topic to subscribe on need to be different.");
+            }
+
+            return ValidationResult.Success;
         }
 
         static ValidationResult ValidateConnectionAndNamespaceNotUsedTogether(CommandOption connectionString,

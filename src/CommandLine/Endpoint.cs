@@ -8,7 +8,7 @@
 
     static class Endpoint
     {
-        public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning)
+        public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption topicToPublishTo, CommandOption topicToSubscribeOn, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning)
         {
             try
             {
@@ -19,22 +19,69 @@
                 Console.WriteLine($"Queue '{name.Value}' already exists, skipping creation");
             }
 
-            try
+            if (topicName.HasValue())
             {
-                await Topic.Create(client, topicName, size, partitioning);
-            }
-            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
-            {
-                Console.WriteLine($"Topic '{topicName.Value()}' already exists, skipping creation");
+                try
+                {
+                    await Topic.Create(client, topicName, size, partitioning);
+                }
+                catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+                {
+                    Console.WriteLine($"Topic '{topicName.Value()}' already exists, skipping creation");
+                }
+
+                try
+                {
+                    await Subscription.Create(client, name, topicName, subscriptionName);
+                }
+                catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+                {
+                    Console.WriteLine($"Subscription '{name.Value}' already exists, skipping creation");
+                }
+
+                // Validation takes care when the topic name is set the other options are not valid
+                return;
             }
 
-            try
+            // validation takes care when one is set the other is also set
+            if (topicToPublishTo.HasValue())
             {
-                await Subscription.Create(client, name, topicName, subscriptionName);
-            }
-            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
-            {
-                Console.WriteLine($"Subscription '{name.Value}' already exists, skipping creation");
+                try
+                {
+                    await Topic.Create(client, topicToPublishTo, size, partitioning);
+                }
+                catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+                {
+                    Console.WriteLine($"Topic '{topicToPublishTo.Value()}' already exists, skipping creation");
+                }
+
+                try
+                {
+                    await Topic.Create(client, topicToSubscribeOn, size, partitioning);
+                }
+                catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+                {
+                    Console.WriteLine($"Topic '{topicToSubscribeOn.Value()}' already exists, skipping creation");
+                }
+
+                var forwardingSubscriptionName = $"forwardTo-{topicToSubscribeOn.Value()}";
+                try
+                {
+                    await Subscription.CreateForwarding(client, topicToPublishTo, topicToSubscribeOn, forwardingSubscriptionName);
+                }
+                catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+                {
+                    Console.WriteLine($"Subscription '{forwardingSubscriptionName}' already exists, skipping creation");
+                }
+
+                try
+                {
+                    await Subscription.Create(client, name, topicToSubscribeOn, subscriptionName);
+                }
+                catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+                {
+                    Console.WriteLine($"Subscription '{name.Value}' already exists, skipping creation");
+                }
             }
         }
 
