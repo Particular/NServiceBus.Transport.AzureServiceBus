@@ -72,8 +72,8 @@
 
             Assert.AreEqual(1, publishExitCode);
             Assert.AreEqual(1, subscribeExitCode);
-            StringAssert.Contains("The topic name and the topic to publish to option cannot be used together.", publishError);
-            StringAssert.Contains("The topic name and the topic to subscribe on option cannot be used together.", subscribeError);
+            StringAssert.Contains("The --topic option and the --topic-to-publish-to option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option.", publishError);
+            StringAssert.Contains("The --topic option and the--topic-to-subscribe-on option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option.", subscribeError);
         }
 
         [Test]
@@ -82,7 +82,7 @@
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic-to-subscribe-on {HierarchyTopicName} --topic-to-publish-to {HierarchyTopicName}");
 
             Assert.AreEqual(1, exitCode);
-            StringAssert.Contains("In order to represent a topic hierarchy the topic to publish to and the topic to subscribe on need to be different.", error);
+            StringAssert.Contains("A valid topic hierarchy requires the topic-to-publish-to option and the topic-to-subscribe-on option to be different.", error);
         }
 
         [Test]

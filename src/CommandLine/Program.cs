@@ -188,19 +188,19 @@
             if (topicName.HasValue() && topicToPublishTo.HasValue())
             {
                 return new ValidationResult(
-                    "The topic name and the topic to publish to option cannot be used together. Choose either a single topic name by specifying the topic name or a hierarchy by specifying the topic to publish to and the topic to subscribe on.");
+                    "The --topic option and the --topic-to-publish-to option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option.");
             }
 
             if (topicName.HasValue() && topicToSubscribeOn.HasValue())
             {
                 return new ValidationResult(
-                    "The topic name and the topic to subscribe on option cannot be used together. Choose either a single topic name by specifying the topic name or a hierarchy by specifying the topic to publish to and the topic to subscribe on.");
+                    "The --topic option and the--topic-to-subscribe-on option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option.");
             }
 
             if (topicToPublishTo.HasValue() && topicToSubscribeOn.HasValue() && string.Equals(topicToPublishTo.Value(), topicToSubscribeOn.Value(), StringComparison.OrdinalIgnoreCase))
             {
                 return new ValidationResult(
-                    "In order to represent a topic hierarchy the topic to publish to and the topic to subscribe on need to be different.");
+                    "A valid topic hierarchy requires the topic-to-publish-to option and the topic-to-subscribe-on option to be different.");
             }
 
             return ValidationResult.Success;
