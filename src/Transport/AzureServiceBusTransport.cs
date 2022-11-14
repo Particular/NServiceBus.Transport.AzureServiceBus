@@ -148,16 +148,21 @@
         /// <summary>
         /// The topic name used to publish events between endpoints.
         /// </summary>
+        [ObsoleteEx(Message = "It is possible to represent the publish and subscribe topic separately by specifying a topology.",
+            TreatAsErrorFromVersion = "4",
+            RemoveInVersion = "5",
+            ReplacementTypeOrMember = "Topology")]
         public string TopicName
         {
-            get => topicName;
-            set
-            {
-                Guard.AgainstNullAndEmpty(nameof(TopicName), value);
-                topicName = value;
-            }
+            get => Topology.TopicToPublishTo;
+            set => Topology = TopicTopology.Single(value);
         }
-        string topicName = "bundle-1";
+
+        /// <summary>
+        /// Gets or sets the topic topology to be used.
+        /// </summary>
+        /// <remarks>The default is <see cref="TopicTopology.DefaultBundle"/></remarks>
+        public TopicTopology Topology { get; set; } = TopicTopology.DefaultBundle;
 
         /// <summary>
         /// The maximum size used when creating queues and topics in GB.

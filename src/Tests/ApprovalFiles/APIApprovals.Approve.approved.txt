@@ -14,7 +14,11 @@ namespace NServiceBus
         public System.Func<string, string> SubscriptionNamingConvention { get; set; }
         public System.Func<System.Type, string> SubscriptionRuleNamingConvention { get; set; }
         public System.TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
+        [System.Obsolete("It is possible to represent the publish and subscribe topic separately by specify" +
+            "ing a topology. Use `Topology` instead. Will be treated as an error from version" +
+            " 4.0.0. Will be removed in version 5.0.0.", false)]
         public string TopicName { get; set; }
+        public NServiceBus.TopicTopology Topology { get; set; }
         public bool UseWebSockets { get; set; }
         public System.Net.IWebProxy WebProxy { get; set; }
         public override System.Collections.Generic.IReadOnlyCollection<NServiceBus.TransportTransactionMode> GetSupportedTransactionModes() { }
@@ -60,6 +64,20 @@ namespace NServiceBus
         [System.Obsolete("Use overload that does not require IPipelineContext. The member currently throws " +
             "a NotImplementedException. Will be removed in version 4.0.0.", true)]
         public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, NServiceBus.IPipelineContext context, System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
+    }
+    public readonly struct TopicTopology : System.IEquatable<NServiceBus.TopicTopology>
+    {
+        public bool IsHierarchy { get; }
+        public string TopicToPublishTo { get; }
+        public string TopicToSubscribeOn { get; }
+        public static NServiceBus.TopicTopology DefaultBundle { get; }
+        public bool Equals(NServiceBus.TopicTopology other) { }
+        public override bool Equals(object obj) { }
+        public override int GetHashCode() { }
+        public static NServiceBus.TopicTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
+        public static NServiceBus.TopicTopology Single(string topicName) { }
+        public static bool operator !=(NServiceBus.TopicTopology left, NServiceBus.TopicTopology right) { }
+        public static bool operator ==(NServiceBus.TopicTopology left, NServiceBus.TopicTopology right) { }
     }
 }
 namespace NServiceBus.Testing
