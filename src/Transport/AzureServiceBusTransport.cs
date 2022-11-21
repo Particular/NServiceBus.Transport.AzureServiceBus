@@ -104,6 +104,14 @@
                     .ToArray();
 
                 await queueCreator.CreateQueues(allQueues, cancellationToken).ConfigureAwait(false);
+
+                foreach (IMessageReceiver messageReceiver in infrastructure.Receivers.Values)
+                {
+                    if (messageReceiver.Subscriptions is SubscriptionManager subscriptionManager)
+                    {
+                        await subscriptionManager.CreateSubscription(cancellationToken).ConfigureAwait(false);
+                    }
+                }
             }
 
             return infrastructure;
