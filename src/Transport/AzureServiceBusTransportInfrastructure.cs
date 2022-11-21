@@ -60,15 +60,20 @@
                 CustomRetryPolicy = transportSettings.RetryPolicyOptions?.ToString() ?? "default"
             });
 
-        IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient client) =>
-            new MessagePump(
+        IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient client)
+        {
+            string receiveAddress = TranslateAddress(receiveSettings.ReceiveAddress);
+            return new MessagePump(
                 client,
-                administrationClient,
                 transportSettings,
-                TranslateAddress(receiveSettings.ReceiveAddress),
+                receiveAddress,
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
-                namespacePermissions);
+                receiveSettings.UsePublishSubscribe
+                    ? new SubscriptionManager(receiveAddress, transportSettings, administrationClient,
+                        namespacePermissions)
+                    : null);
+        }
 
         public override async Task Shutdown(CancellationToken cancellationToken = default)
         {
