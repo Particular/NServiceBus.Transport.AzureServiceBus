@@ -3,6 +3,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
     using System;
     using System.Threading.Tasks;
     using AcceptanceTesting;
+    using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using Features;
     using NServiceBus.AcceptanceTests;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
@@ -12,6 +14,22 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
     public class When_operating_with_least_privilege : NServiceBusAcceptanceTest
     {
         const string DedicatedTopic = "bundle-no-manage-rights";
+
+        [SetUp]
+        public async Task Setup()
+        {
+            var adminClient =
+                new ServiceBusAdministrationClient(
+                    Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+            try
+            {
+                // makes sure during local development the topic gets cleared before each test run
+                await adminClient.DeleteTopicAsync(DedicatedTopic);
+            }
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            {
+            }
+        }
 
         [Test]
         public async Task Should_allow_message_operations_on_existing_resources()
