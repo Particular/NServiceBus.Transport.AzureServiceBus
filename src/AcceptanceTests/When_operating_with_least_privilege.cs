@@ -3,6 +3,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
     using System;
     using System.Threading.Tasks;
     using AcceptanceTesting;
+    using Features;
     using NServiceBus.AcceptanceTests;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NServiceBus.Configuration.AdvancedExtensibility;
@@ -31,10 +32,11 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                     b.CustomConfig(c =>
                     {
                         c.GetSettings().Set("Installers.Enable", false);
-                        // Hack using the legacy API for now
-                        c.UseTransport<AzureServiceBusTransport>()
-                            .ConnectionString(
-                                Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString_Restricted"));
+                        c.DisableFeature<AutoSubscribe>();
+
+                        var transport = c.ConfigureTransport<AzureServiceBusTransport>();
+                        transport.ConnectionString =
+                            Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString_Restricted");
                     });
                     b.When(session => session.SendLocal(new MyCommand()));
                 })
@@ -43,10 +45,11 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                     b.CustomConfig(c =>
                     {
                         c.GetSettings().Set("Installers.Enable", false);
-                        // Hack using the legacy API for now
-                        c.UseTransport<AzureServiceBusTransport>()
-                            .ConnectionString(
-                                Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString_Restricted"));
+                        c.DisableFeature<AutoSubscribe>();
+
+                        var transport = c.ConfigureTransport<AzureServiceBusTransport>();
+                        transport.ConnectionString =
+                            Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString_Restricted");
                     });
                 })
                 .Done(c => c.SubscriberGotEvent)
