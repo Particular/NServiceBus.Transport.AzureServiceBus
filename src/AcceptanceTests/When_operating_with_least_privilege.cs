@@ -14,7 +14,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
         const string DedicatedTopic = "bundle-no-manage-rights";
 
         [Test]
-        public async Task Should_work()
+        public async Task Should_allow_message_operations_on_existing_resources
         {
             Requires.NativePubSubSupport();
 
@@ -31,7 +31,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                 {
                     b.CustomConfig(c =>
                     {
+                        // least-privilege mode doesn't support installers
                         c.GetSettings().Set("Installers.Enable", false);
+                        // least-privilege mode doesn't support auto subscribe
                         c.DisableFeature<AutoSubscribe>();
 
                         var transport = c.ConfigureTransport<AzureServiceBusTransport>();
