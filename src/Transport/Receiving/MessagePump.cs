@@ -6,7 +6,6 @@
     using System.Threading.Tasks;
     using System.Transactions;
     using Azure.Messaging.ServiceBus;
-    using Azure.Messaging.ServiceBus.Administration;
     using Extensibility;
     using Logging;
 
@@ -31,12 +30,11 @@
 
         public MessagePump(
             ServiceBusClient serviceBusClient,
-            ServiceBusAdministrationClient administrativeClient,
             AzureServiceBusTransport transportSettings,
             string receiveAddress,
             ReceiveSettings receiveSettings,
             Action<string, Exception, CancellationToken> criticalErrorAction,
-            NamespacePermissions namespacePermissions)
+            SubscriptionManager subscriptionManager)
         {
             Id = receiveSettings.Id;
             ReceiveAddress = receiveAddress;
@@ -44,15 +42,7 @@
             this.transportSettings = transportSettings;
             this.receiveSettings = receiveSettings;
             this.criticalErrorAction = criticalErrorAction;
-
-            if (receiveSettings.UsePublishSubscribe)
-            {
-                Subscriptions = new SubscriptionManager(
-                    ReceiveAddress,
-                    transportSettings,
-                    administrativeClient,
-                    namespacePermissions);
-            }
+            Subscriptions = subscriptionManager;
         }
 
         public Task Initialize(
