@@ -13,6 +13,7 @@ This transport uses the [Azure.Messaging.ServiceBus](https://www.nuget.org/packa
 
 Follow these steps to run the acceptance tests locally:
 * Add a new environment variable `AzureServiceBus_ConnectionString` containing a connection string to your Azure Service Bus namespace
+* Add a new environment variable `AzureServiceBus_ConnectionString_Restricted` containing a connection string to the same namespace with [`Send` and `Listen` rights](https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-sas#shared-access-authorization-policies) only.
 
 ## Running the Unit Tests
 
