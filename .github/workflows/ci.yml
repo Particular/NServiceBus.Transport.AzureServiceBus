@@ -53,7 +53,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_ACI_CREDENTIALS }}
       - name: Setup Azure Service Bus
-        uses: Particular/setup-azureservicebus-action@v1.0.0
+        uses: Particular/setup-azureservicebus-action@980b4a0e11e094c76aecf7a37c16b7f543539bb9
         with:
           connection-string-name: AzureServiceBus_ConnectionString
           tag: ASBTransport
