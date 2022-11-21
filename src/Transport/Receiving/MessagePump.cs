@@ -55,7 +55,7 @@
             }
         }
 
-        public async Task Initialize(
+        public Task Initialize(
             PushRuntimeSettings limitations,
             OnMessage onMessage,
             OnError onError,
@@ -66,14 +66,11 @@
                 throw new Exception("Azure Service Bus transport doesn't support PurgeOnStartup behavior");
             }
 
-            if (Subscriptions is SubscriptionManager subscriptionManager)
-            {
-                await subscriptionManager.CreateSubscription(cancellationToken).ConfigureAwait(false);
-            }
-
             this.limitations = limitations;
             this.onMessage = onMessage;
             this.onError = onError;
+
+            return Task.CompletedTask;
         }
 
         public async Task StartReceive(CancellationToken cancellationToken = default)
