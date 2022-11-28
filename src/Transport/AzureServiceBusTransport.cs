@@ -89,7 +89,7 @@
                 ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
                 : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
-            var administrativeClient = TokenCredential != null ? new ServiceBusAdministrationClient(ConnectionString, TokenCredential) : new ServiceBusAdministrationClient(ConnectionString);
+            var administrativeClient = TokenCredential != null ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential) : new ServiceBusAdministrationClient(ConnectionString);
 
             var namespacePermissions = new NamespacePermissions(administrativeClient);
 
