@@ -11,7 +11,7 @@
 
   <ItemGroup Label="Required to force the main project's transitive dependencies to be copied">
     <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="3.0.0" />
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.4.0" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.11.1" />
   </ItemGroup>
 
   <ItemGroup>
