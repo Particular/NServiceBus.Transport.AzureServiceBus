@@ -204,7 +204,6 @@
                 .ConfigureAwait(false);
         }
 
-
         public Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
         {
             limitations = newLimitations;
