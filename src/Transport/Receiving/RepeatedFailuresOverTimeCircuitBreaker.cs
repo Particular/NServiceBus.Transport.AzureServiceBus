@@ -7,10 +7,15 @@
 
     class RepeatedFailuresOverTimeCircuitBreaker
     {
-        public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering, Action<Exception> triggerAction)
+        public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering,
+            Action<Exception> triggerAction,
+            Action armedAction,
+            Action disarmedAction)
         {
             this.name = name;
             this.triggerAction = triggerAction;
+            this.armedAction = armedAction;
+            this.disarmedAction = disarmedAction;
             this.timeToWaitBeforeTriggering = timeToWaitBeforeTriggering;
 
             timer = new Timer(CircuitBreakerTriggered);
@@ -25,9 +30,10 @@
                 return;
             }
 
-            triggered = false;
             timer.Change(Timeout.Infinite, Timeout.Infinite);
             Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
+            disarmedAction();
+            triggered = false;
         }
 
         public Task Failure(Exception exception, CancellationToken cancellationToken = default)
@@ -37,6 +43,7 @@
 
             if (newValue == 1)
             {
+                armedAction();
                 timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
                 Logger.WarnFormat("The circuit breaker for {0} is now in the armed state", name);
             }
@@ -70,6 +77,8 @@
         readonly Timer timer;
         readonly TimeSpan timeToWaitBeforeTriggering;
         readonly Action<Exception> triggerAction;
+        readonly Action armedAction;
+        readonly Action disarmedAction;
 
         static readonly TimeSpan NoPeriodicTriggering = TimeSpan.FromMilliseconds(-1);
         static readonly ILog Logger = LogManager.GetLogger<RepeatedFailuresOverTimeCircuitBreaker>();
