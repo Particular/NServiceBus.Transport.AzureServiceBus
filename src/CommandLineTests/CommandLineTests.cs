@@ -14,9 +14,27 @@
         const string EndpointName = "cli-queue";
         const string QueueName = EndpointName;
         const string TopicName = "cli-topic";
+        const string DefaultTopicName = "bundle-1";
         const string HierarchyTopicName = "cli-topic-sub";
         const string SubscriptionName = QueueName;
         const string HierarchySubscriptionName = $"forwardTo-{HierarchyTopicName}";
+
+        [Test]
+        public async Task Create_endpoint_without_specifying_a_topic()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(DefaultTopicName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName}");
+
+            Assert.AreEqual(0, exitCode);
+            Assert.IsTrue(error == string.Empty);
+            Assert.IsFalse(output.Contains("skipping"));
+
+            await VerifyQueue(QueueName);
+            await VerifyTopic(DefaultTopicName);
+            await VerifySubscriptionContainsOnlyDefaultRule(DefaultTopicName, SubscriptionName);
+        }
 
         [Test]
         public async Task Create_endpoint_when_there_are_no_entities()
