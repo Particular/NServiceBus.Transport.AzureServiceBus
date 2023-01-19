@@ -8,7 +8,7 @@
     {
         public static Task Create(ServiceBusAdministrationClient client, CommandOption topicName, CommandOption<int> size, CommandOption partitioning)
         {
-            var topicNameToUse = topicName.HasValue() ? topicName.Value() : DefaultTopicName;
+            var topicNameToUse = topicName.Value();
 
             var options = new CreateTopicOptions(topicNameToUse)
             {
