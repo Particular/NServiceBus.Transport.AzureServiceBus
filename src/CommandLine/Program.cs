@@ -68,6 +68,14 @@
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
+                        // Unfortunately the default value cannot be set outside the execute because it would then
+                        // trigger the validation. There seems to be no way in the command handling library to
+                        // differentiate defaults from user inputs we set a default for the topicName here.
+                        if (!topicName.HasValue() && !topicToPublishTo.HasValue() && !topicToSubscribeOn.HasValue())
+                        {
+                            topicName.DefaultValue = Topic.DefaultTopicName;
+                        }
+
                         await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Endpoint.Create(client, name, topicName, topicToPublishTo, topicToSubscribeOn, subscriptionName, size, partitioning));
 
                         Console.WriteLine($"Endpoint '{name.Value}' is ready.");
@@ -83,6 +91,7 @@
                     subscribeCommand.AddOption(connectionString);
                     subscribeCommand.AddOption(fullyQualifiedNamespace);
                     var topicName = subscribeCommand.Option("-t|--topic", "Topic name to subscribe on (defaults to 'bundle-1')", CommandOptionType.SingleValue);
+                    topicName.DefaultValue = Topic.DefaultTopicName;
                     var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                     var shortenedRuleName = subscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
 
@@ -103,6 +112,7 @@
                     unsubscribeCommand.AddOption(connectionString);
                     unsubscribeCommand.AddOption(fullyQualifiedNamespace);
                     var topicName = unsubscribeCommand.Option("-t|--topic", "Topic name to unsubscribe from (defaults to 'bundle-1')", CommandOptionType.SingleValue);
+                    topicName.DefaultValue = Topic.DefaultTopicName;
                     var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                     var shortenedRuleName = unsubscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
 
