@@ -104,7 +104,20 @@
 
             messageProcessingCancellationTokenSource = new CancellationTokenSource();
 
-            circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex => criticalErrorAction("Failed to receive message from Azure Service Bus.", ex, messageProcessingCancellationTokenSource.Token));
+            circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'",
+                transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex =>
+                {
+                    criticalErrorAction("Failed to receive message from Azure Service Bus.", ex,
+                        messageProcessingCancellationTokenSource.Token);
+                }, () =>
+                {
+                    //We don't have to update the prefetch count since we are failing to receive anyway
+                    processor.UpdateConcurrency(1);
+                },
+                () =>
+                {
+                    processor.UpdateConcurrency(limitations.MaxConcurrency);
+                });
 
             await processor.StartProcessingAsync(cancellationToken)
                 .ConfigureAwait(false);

@@ -7,10 +7,15 @@
 
     class RepeatedFailuresOverTimeCircuitBreaker
     {
-        public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering, Action<Exception> triggerAction)
+        public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering,
+            Action<Exception> triggerAction,
+            Action armedAction,
+            Action disarmedAction)
         {
             this.name = name;
             this.triggerAction = triggerAction;
+            this.armedAction = armedAction;
+            this.disarmedAction = disarmedAction;
             this.timeToWaitBeforeTriggering = timeToWaitBeforeTriggering;
 
             timer = new Timer(CircuitBreakerTriggered);
@@ -27,6 +32,8 @@
 
             timer.Change(Timeout.Infinite, Timeout.Infinite);
             Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
+            disarmedAction();
+            triggered = false;
         }
 
         public Task Failure(Exception exception, CancellationToken cancellationToken = default)
@@ -36,11 +43,15 @@
 
             if (newValue == 1)
             {
+                armedAction();
                 timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
                 Logger.WarnFormat("The circuit breaker for {0} is now in the armed state", name);
             }
 
-            return Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+            //If the circuit breaker has been triggered, wait for 10 seconds before proceeding to prevent flooding the logs and hammering the ServiceBus
+            var delay = triggered ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(1);
+
+            return Task.Delay(delay, cancellationToken);
         }
 
         public void Dispose()
@@ -53,17 +64,21 @@
             if (Interlocked.Read(ref failureCount) > 0)
             {
                 Logger.WarnFormat("The circuit breaker for {0} will now be triggered", name);
+                triggered = true;
                 triggerAction(lastException);
             }
         }
 
         long failureCount;
+        volatile bool triggered;
         Exception lastException;
 
         readonly string name;
         readonly Timer timer;
         readonly TimeSpan timeToWaitBeforeTriggering;
         readonly Action<Exception> triggerAction;
+        readonly Action armedAction;
+        readonly Action disarmedAction;
 
         static readonly TimeSpan NoPeriodicTriggering = TimeSpan.FromMilliseconds(-1);
         static readonly ILog Logger = LogManager.GetLogger<RepeatedFailuresOverTimeCircuitBreaker>();
