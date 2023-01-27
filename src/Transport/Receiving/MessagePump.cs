@@ -106,7 +106,7 @@
                         messageProcessingCancellationTokenSource.Token);
                 }, () =>
                 {
-                    //We don't have to update the prefetch count since we are failing to receive anyway
+                    //We don't have to update the prefetch count since we are failing to receive anyway.
                     processor.UpdateConcurrency(1);
                 },
                 () =>
