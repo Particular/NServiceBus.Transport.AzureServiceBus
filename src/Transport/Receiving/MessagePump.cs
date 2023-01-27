@@ -75,12 +75,7 @@
 
         public async Task StartReceive(CancellationToken cancellationToken = default)
         {
-            var prefetchCount = limitations.MaxConcurrency * transportSettings.PrefetchMultiplier;
-
-            if (transportSettings.PrefetchCount.HasValue)
-            {
-                prefetchCount = transportSettings.PrefetchCount.Value;
-            }
+            int prefetchCount = CalculatePrefetchCount();
 
             var receiveOptions = new ServiceBusProcessorOptions
             {
@@ -104,10 +99,35 @@
 
             messageProcessingCancellationTokenSource = new CancellationTokenSource();
 
-            circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'", transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex => criticalErrorAction("Failed to receive message from Azure Service Bus.", ex, messageProcessingCancellationTokenSource.Token));
+            circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'",
+                transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex =>
+                {
+                    criticalErrorAction("Failed to receive message from Azure Service Bus.", ex,
+                        messageProcessingCancellationTokenSource.Token);
+                }, () =>
+                {
+                    //We don't have to update the prefetch count since we are failing to receive anyway.
+                    processor.UpdateConcurrency(1);
+                },
+                () =>
+                {
+                    processor.UpdateConcurrency(limitations.MaxConcurrency);
+                });
 
             await processor.StartProcessingAsync(cancellationToken)
                 .ConfigureAwait(false);
+        }
+
+        int CalculatePrefetchCount()
+        {
+            var prefetchCount = limitations.MaxConcurrency * transportSettings.PrefetchMultiplier;
+
+            if (transportSettings.PrefetchCount.HasValue)
+            {
+                prefetchCount = transportSettings.PrefetchCount.Value;
+            }
+
+            return prefetchCount;
         }
 
 #pragma warning disable PS0018
@@ -207,26 +227,16 @@
                 .ConfigureAwait(false);
         }
 
-
-        public async Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
+        public Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
         {
             limitations = newLimitations;
-            if (transportSettings.PrefetchCount.HasValue)
-            {
-                // For all users that have set a predefined fixed prefetch count we are adjusting the concurrency
-                // by using what the SDK provides since the prefetch count is always fixed.
-                processor.UpdateConcurrency(limitations.MaxConcurrency);
-            }
-            else
-            {
-                // For all other cases the users is using either the default multiplier or a defined multiplier
-                // that sets the prefetch count in accordance of the maximum concurrency. In those scenarios we cannot
-                // use UpdateConcurrency because that would not adjust the prefetch count to the new desired values
-                // therefore we are stopping and restarting (which also creates a new underlying AMQP link that will have
-                // the new prefetch count settings.
-                await StopReceive(cancellationToken).ConfigureAwait(false);
-                await StartReceive(cancellationToken).ConfigureAwait(false);
-            }
+
+            processor.UpdateConcurrency(limitations.MaxConcurrency);
+
+            int prefetchCount = CalculatePrefetchCount();
+            processor.UpdatePrefetchCount(prefetchCount);
+
+            return Task.CompletedTask;
         }
 
         public async Task StopReceive(CancellationToken cancellationToken = default)
