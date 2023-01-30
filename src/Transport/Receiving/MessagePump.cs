@@ -61,7 +61,11 @@
             this.criticalError = criticalError;
             pushSettings = settings;
 
-            circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{settings.InputQueue}'", timeToWaitBeforeTriggeringCircuitBreaker, criticalError);
+            circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{settings.InputQueue}'",
+                timeToWaitBeforeTriggeringCircuitBreaker, ex =>
+                {
+                    criticalError.Raise("Failed to receive message from Azure Service Bus.", ex);
+                });
 
             return Task.CompletedTask;
         }
@@ -177,7 +181,7 @@
             {
                 logger.Warn($"Failed to receive a message. Exception: {exception.Message}", exception);
 
-                await circuitBreaker.Failure(exception).ConfigureAwait(false);
+                await circuitBreaker.Failure(exception, messageReceivingCancellationToken).ConfigureAwait(false);
             }
 
             // By default, ASB client long polls for a minute and returns null if it times out

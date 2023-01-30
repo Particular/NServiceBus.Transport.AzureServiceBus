@@ -7,10 +7,11 @@
 
     class RepeatedFailuresOverTimeCircuitBreaker
     {
-        public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering, CriticalError criticalError)
+        public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering,
+            Action<Exception> triggerAction)
         {
             this.name = name;
-            this.criticalError = criticalError;
+            this.triggerAction = triggerAction;
             this.timeToWaitBeforeTriggering = timeToWaitBeforeTriggering;
 
             timer = new Timer(CircuitBreakerTriggered);
@@ -26,10 +27,11 @@
             }
 
             timer.Change(Timeout.Infinite, Timeout.Infinite);
-            logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
+            Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
+            triggered = false;
         }
 
-        public Task Failure(Exception exception)
+        public Task Failure(Exception exception, CancellationToken cancellationToken = default)
         {
             lastException = exception;
             var newValue = Interlocked.Increment(ref failureCount);
@@ -37,10 +39,13 @@
             if (newValue == 1)
             {
                 timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
-                logger.WarnFormat("The circuit breaker for {0} is now in the armed state", name);
+                Logger.WarnFormat("The circuit breaker for {0} is now in the armed state", name);
             }
 
-            return Task.Delay(TimeSpan.FromSeconds(1));
+            //If the circuit breaker has been triggered, wait for 10 seconds before proceeding to prevent flooding the logs and hammering the ServiceBus
+            var delay = triggered ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(1);
+
+            return Task.Delay(delay, cancellationToken);
         }
 
         public void Dispose()
@@ -52,20 +57,22 @@
         {
             if (Interlocked.Read(ref failureCount) > 0)
             {
-                logger.WarnFormat("The circuit breaker for {0} will now be triggered", name);
-                criticalError.Raise("Failed to receive message from Azure Service Bus.", lastException);
+                Logger.WarnFormat("The circuit breaker for {0} will now be triggered", name);
+                triggered = true;
+                triggerAction(lastException);
             }
         }
 
         long failureCount;
+        volatile bool triggered;
         Exception lastException;
 
         readonly string name;
         readonly Timer timer;
         readonly TimeSpan timeToWaitBeforeTriggering;
-        readonly CriticalError criticalError;
+        readonly Action<Exception> triggerAction;
 
         static readonly TimeSpan NoPeriodicTriggering = TimeSpan.FromMilliseconds(-1);
-        static readonly ILog logger = LogManager.GetLogger<RepeatedFailuresOverTimeCircuitBreaker>();
+        static readonly ILog Logger = LogManager.GetLogger<RepeatedFailuresOverTimeCircuitBreaker>();
     }
 }
