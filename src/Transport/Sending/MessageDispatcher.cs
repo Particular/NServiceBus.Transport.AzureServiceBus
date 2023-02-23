@@ -182,7 +182,15 @@ To mitigate this problem reduce the message size by using the data bus or upgrad
                 batchCount++;
                 if (Log.IsDebugEnabled)
                 {
-                    Log.Debug($"Sending batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
+                    try
+                    {
+                        Log.Debug($"Sending batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error($"Exception occuered when logging debug info. BatchCount: '{batchCount}'. Is MessageBatch null? {messageBatch is null}. logBuilder is null? {logBuilder is null}. Destination = '{destination}'", ex);
+                        throw;
+                    }
                 }
 
                 using var scope = transaction.ToScope();
