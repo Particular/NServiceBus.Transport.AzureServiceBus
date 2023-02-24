@@ -13,6 +13,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
     class MessageDispatcher : IMessageDispatcher
     {
+        static readonly DateTime start = DateTime.UtcNow;
         static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
         static readonly Dictionary<string, List<IOutgoingTransportOperation>> emptyDestinationAndOperations = new();
 
@@ -188,7 +189,7 @@ To mitigate this problem reduce the message size by using the data bus or upgrad
                     }
                     catch (Exception ex)
                     {
-                        Log.Error($"Exception occuered when logging debug info. BatchCount: '{batchCount}'. Is MessageBatch null? {messageBatch is null}. logBuilder is null? {logBuilder is null}. Destination = '{destination}'", ex);
+                        Log.Error($"Exception occuered when logging debug info. BatchCount: '{batchCount}'. Is MessageBatch null? {messageBatch is null}. logBuilder is null? {logBuilder is null}. Destination = '{destination}'. Start time = {start}", ex);
                         throw;
                     }
                 }
