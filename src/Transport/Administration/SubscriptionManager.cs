@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
+    using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
@@ -38,12 +39,28 @@
 
         public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken = default)
         {
+            if (eventTypes.Length == 0)
+            {
+                return;
+            }
+
             var ruleManager = serviceBusClient.CreateRuleManager(transportSettings.Topology.TopicToSubscribeOn, subscriptionName);
             await using (ruleManager.ConfigureAwait(false))
             {
-                foreach (var eventType in eventTypes)
+                if (eventTypes.Length == 1)
                 {
-                    await SubscribeEvent(ruleManager, eventType.MessageType, cancellationToken).ConfigureAwait(false);
+                    await SubscribeEvent(ruleManager, eventTypes[0].MessageType, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    var subscribeTasks = new List<Task>(eventTypes.Length);
+                    foreach (var eventType in eventTypes)
+                    {
+                        subscribeTasks.Add(SubscribeEvent(ruleManager, eventType.MessageType, cancellationToken));
+                    }
+                    await Task.WhenAll(subscribeTasks)
+                        .ConfigureAwait(false);
                 }
             }
         }
