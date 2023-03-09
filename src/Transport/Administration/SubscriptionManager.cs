@@ -54,9 +54,21 @@
             var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType);
             var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
 
+            // on an entity with forwarding enabled it is not possible to do GetRules so we first have to delete and then create
+            // to preserve the update or create behavior
+
             try
             {
-                // on an entity with forwarding enabled it is not possible to do GetRules
+                await ruleManager.DeleteRuleAsync(ruleName, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            {
+                // ignored due to race conditions
+            }
+
+            try
+            {
                 await ruleManager.CreateRuleAsync(new CreateRuleOptions(ruleName, new SqlRuleFilter(sqlExpression)), cancellationToken)
                     .ConfigureAwait(false);
             }
