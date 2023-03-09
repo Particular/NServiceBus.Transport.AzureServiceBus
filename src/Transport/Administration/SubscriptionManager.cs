@@ -15,24 +15,18 @@
         static readonly ILog Logger = LogManager.GetLogger<SubscriptionManager>();
 
         readonly AzureServiceBusTransport transportSettings;
-        readonly ServiceBusAdministrationClient administrativeClient;
-        readonly NamespacePermissions namespacePermissions;
-        readonly ServiceBusClient serviceBusClient;
+        readonly ServiceBusClient client;
         readonly string subscribingQueue;
         readonly string subscriptionName;
 
         public SubscriptionManager(
             string subscribingQueue,
             AzureServiceBusTransport transportSettings,
-            ServiceBusAdministrationClient administrativeClient,
-            ServiceBusClient serviceBusClient,
-            NamespacePermissions namespacePermissions)
+            ServiceBusClient client)
         {
             this.subscribingQueue = subscribingQueue;
             this.transportSettings = transportSettings;
-            this.administrativeClient = administrativeClient;
-            this.serviceBusClient = serviceBusClient;
-            this.namespacePermissions = namespacePermissions;
+            this.client = client;
 
             subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
         }
@@ -44,7 +38,7 @@
                 return;
             }
 
-            var ruleManager = serviceBusClient.CreateRuleManager(transportSettings.Topology.TopicToSubscribeOn, subscriptionName);
+            var ruleManager = client.CreateRuleManager(transportSettings.Topology.TopicToSubscribeOn, subscriptionName);
             await using (ruleManager.ConfigureAwait(false))
             {
                 if (eventTypes.Length == 1)
@@ -99,7 +93,7 @@
         {
             var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType.MessageType);
 
-            var ruleManager = serviceBusClient.CreateRuleManager(transportSettings.Topology.TopicToSubscribeOn, subscriptionName);
+            var ruleManager = client.CreateRuleManager(transportSettings.Topology.TopicToSubscribeOn, subscriptionName);
             await using (ruleManager.ConfigureAwait(false))
             {
                 try
@@ -112,10 +106,8 @@
             }
         }
 
-        public async Task CreateSubscription(CancellationToken cancellationToken = default)
+        public async Task CreateSubscription(ServiceBusAdministrationClient adminClient, CancellationToken cancellationToken = default)
         {
-            await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
-
             var subscription = new CreateSubscriptionOptions(transportSettings.Topology.TopicToSubscribeOn, subscriptionName)
             {
                 LockDuration = TimeSpan.FromMinutes(5),
@@ -128,7 +120,7 @@
 
             try
             {
-                await administrativeClient.CreateSubscriptionAsync(subscription,
+                await adminClient.CreateSubscriptionAsync(subscription,
                     new CreateRuleOptions("$default", new FalseRuleFilter()), cancellationToken).ConfigureAwait(false);
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)

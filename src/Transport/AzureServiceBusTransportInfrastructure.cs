@@ -5,29 +5,24 @@
     using System.Threading;
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
-    using Azure.Messaging.ServiceBus.Administration;
     using Transport;
 
     sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
         readonly AzureServiceBusTransport transportSettings;
 
-        readonly ServiceBusAdministrationClient administrationClient;
-        readonly NamespacePermissions namespacePermissions;
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly HostSettings hostSettings;
         readonly ServiceBusClient defaultClient;
         readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
 
-        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs, ServiceBusClient defaultClient, ServiceBusAdministrationClient administrationClient, NamespacePermissions namespacePermissions)
+        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs, ServiceBusClient defaultClient)
         {
             this.transportSettings = transportSettings;
 
             this.hostSettings = hostSettings;
             this.defaultClient = defaultClient;
             this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
-            this.administrationClient = administrationClient;
-            this.namespacePermissions = namespacePermissions;
 
             messageSenderRegistry = new MessageSenderRegistry(defaultClient);
 
@@ -44,7 +39,6 @@
 
             WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
         }
-
 
         void WriteStartupDiagnostics(StartupDiagnosticEntries startupDiagnostic) =>
             startupDiagnostic.Add("Azure Service Bus transport", new
@@ -70,8 +64,7 @@
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
                 receiveSettings.UsePublishSubscribe
-                    ? new SubscriptionManager(receiveAddress, transportSettings, administrationClient,
-                        defaultClient, namespacePermissions)
+                    ? new SubscriptionManager(receiveAddress, transportSettings, defaultClient)
                     : null);
         }
 

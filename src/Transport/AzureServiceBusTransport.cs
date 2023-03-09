@@ -8,7 +8,6 @@
     using System.Threading.Tasks;
     using Azure.Core;
     using Azure.Messaging.ServiceBus;
-    using Azure.Messaging.ServiceBus.Administration;
     using Transport;
     using Transport.AzureServiceBus;
 
@@ -92,27 +91,27 @@
                 ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
                 : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
-            var administrativeClient = TokenCredential != null ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential) : new ServiceBusAdministrationClient(ConnectionString);
-
-            var namespacePermissions = new NamespacePermissions(administrativeClient);
-
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrativeClient, namespacePermissions);
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient);
 
             if (hostSettings.SetupInfrastructure)
             {
-                var queueCreator = new QueueCreator(this, administrativeClient, namespacePermissions);
+                var namespacePermissions = new NamespacePermissions(TokenCredential, FullyQualifiedNamespace, ConnectionString);
+                var adminClient = await namespacePermissions.CanManage(cancellationToken)
+                    .ConfigureAwait(false);
+
+                var queueCreator = new QueueCreator(this);
                 var allQueues = infrastructure.Receivers
                     .Select(r => r.Value.ReceiveAddress)
                     .Concat(sendingAddresses)
                     .ToArray();
 
-                await queueCreator.CreateQueues(allQueues, cancellationToken).ConfigureAwait(false);
+                await queueCreator.CreateQueues(adminClient, allQueues, cancellationToken).ConfigureAwait(false);
 
                 foreach (IMessageReceiver messageReceiver in infrastructure.Receivers.Values)
                 {
                     if (messageReceiver.Subscriptions is SubscriptionManager subscriptionManager)
                     {
-                        await subscriptionManager.CreateSubscription(cancellationToken).ConfigureAwait(false);
+                        await subscriptionManager.CreateSubscription(adminClient, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }

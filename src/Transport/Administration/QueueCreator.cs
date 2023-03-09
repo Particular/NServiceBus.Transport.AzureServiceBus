@@ -1,4 +1,6 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus
+﻿#nullable enable
+
+namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
     using System.Threading;
@@ -12,25 +14,17 @@
         static readonly ILog Logger = LogManager.GetLogger<QueueCreator>();
 
         readonly AzureServiceBusTransport transportSettings;
-        readonly ServiceBusAdministrationClient administrativeClient;
-        readonly NamespacePermissions namespacePermissions;
         readonly int maxSizeInMb;
 
         public QueueCreator(
-            AzureServiceBusTransport transportSettings,
-            ServiceBusAdministrationClient administrativeClient,
-            NamespacePermissions namespacePermissions)
+            AzureServiceBusTransport transportSettings)
         {
             this.transportSettings = transportSettings;
-            this.administrativeClient = administrativeClient;
-            this.namespacePermissions = namespacePermissions;
             maxSizeInMb = transportSettings.EntityMaximumSize * 1024;
         }
 
-        public async Task CreateQueues(string[] queues, CancellationToken cancellationToken = default)
+        public async Task CreateQueues(ServiceBusAdministrationClient adminClient, string[] queues, CancellationToken cancellationToken = default)
         {
-            await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
-
             var topology = transportSettings.Topology;
             var topicToPublishTo = new CreateTopicOptions(topology.TopicToPublishTo)
             {
@@ -41,7 +35,7 @@
 
             try
             {
-                await administrativeClient.CreateTopicAsync(topicToPublishTo, cancellationToken).ConfigureAwait(false);
+                await adminClient.CreateTopicAsync(topicToPublishTo, cancellationToken).ConfigureAwait(false);
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
@@ -63,7 +57,7 @@
 
                 try
                 {
-                    await administrativeClient.CreateTopicAsync(topicToSubscribeOn, cancellationToken).ConfigureAwait(false);
+                    await adminClient.CreateTopicAsync(topicToSubscribeOn, cancellationToken).ConfigureAwait(false);
                 }
                 catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -86,7 +80,7 @@
 
                 try
                 {
-                    await administrativeClient.CreateSubscriptionAsync(subscription,
+                    await adminClient.CreateSubscriptionAsync(subscription,
                         new CreateRuleOptions("$default", new TrueRuleFilter()), cancellationToken).ConfigureAwait(false);
                 }
                 catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
@@ -112,7 +106,7 @@
 
                 try
                 {
-                    await administrativeClient.CreateQueueAsync(queue, cancellationToken).ConfigureAwait(false);
+                    await adminClient.CreateQueueAsync(queue, cancellationToken).ConfigureAwait(false);
                 }
                 catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
