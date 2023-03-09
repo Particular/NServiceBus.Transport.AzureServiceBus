@@ -16,6 +16,7 @@
         readonly AzureServiceBusTransport transportSettings;
         readonly ServiceBusAdministrationClient administrativeClient;
         readonly NamespacePermissions namespacePermissions;
+        readonly ServiceBusClient serviceBusClient;
         readonly string subscribingQueue;
         readonly string subscriptionName;
 
@@ -23,11 +24,13 @@
             string subscribingQueue,
             AzureServiceBusTransport transportSettings,
             ServiceBusAdministrationClient administrativeClient,
+            ServiceBusClient serviceBusClient,
             NamespacePermissions namespacePermissions)
         {
             this.subscribingQueue = subscribingQueue;
             this.transportSettings = transportSettings;
             this.administrativeClient = administrativeClient;
+            this.serviceBusClient = serviceBusClient;
             this.namespacePermissions = namespacePermissions;
 
             subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
@@ -35,55 +38,48 @@
 
         public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken = default)
         {
-            await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
-
-            foreach (var eventType in eventTypes)
+            var ruleManager = serviceBusClient.CreateRuleManager(transportSettings.Topology.TopicToSubscribeOn, subscriptionName);
+            await using (ruleManager.ConfigureAwait(false))
             {
-                await SubscribeEvent(administrativeClient, eventType.MessageType, cancellationToken).ConfigureAwait(false);
+                foreach (var eventType in eventTypes)
+                {
+                    await SubscribeEvent(ruleManager, eventType.MessageType, cancellationToken).ConfigureAwait(false);
+                }
             }
         }
 
-        async Task SubscribeEvent(ServiceBusAdministrationClient client, Type eventType, CancellationToken cancellationToken)
+        async Task SubscribeEvent(ServiceBusRuleManager ruleManager, Type eventType,
+            CancellationToken cancellationToken)
         {
             var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType);
             var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
-            var rule = new CreateRuleOptions(ruleName, new SqlRuleFilter(sqlExpression));
 
             try
             {
-                var existingRule = await client.GetRuleAsync(transportSettings.Topology.TopicToSubscribeOn, subscriptionName, rule.Name, cancellationToken).ConfigureAwait(false);
-
-                if (existingRule.Value.Filter.ToString() != rule.Filter.ToString())
-                {
-                    existingRule.Value.Action = rule.Action;
-
-                    await client.UpdateRuleAsync(transportSettings.Topology.TopicToSubscribeOn, subscriptionName, existingRule, cancellationToken).ConfigureAwait(false);
-                }
+                // on an entity with forwarding enabled it is not possible to do GetRules
+                await ruleManager.CreateRuleAsync(new CreateRuleOptions(ruleName, new SqlRuleFilter(sqlExpression)), cancellationToken)
+                    .ConfigureAwait(false);
             }
-            catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
-                try
-                {
-                    await client.CreateRuleAsync(transportSettings.Topology.TopicToSubscribeOn, subscriptionName, rule, cancellationToken).ConfigureAwait(false);
-                }
-                catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
-                {
-                }
+                // ignored due to race conditions
             }
         }
 
         public async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
         {
-            await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
-
             var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType.MessageType);
 
-            try
+            var ruleManager = serviceBusClient.CreateRuleManager(transportSettings.Topology.TopicToSubscribeOn, subscriptionName);
+            await using (ruleManager.ConfigureAwait(false))
             {
-                await administrativeClient.DeleteRuleAsync(transportSettings.Topology.TopicToSubscribeOn, subscriptionName, ruleName, cancellationToken).ConfigureAwait(false);
-            }
-            catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
-            {
+                try
+                {
+                    await ruleManager.DeleteRuleAsync(ruleName, cancellationToken).ConfigureAwait(false);
+                }
+                catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+                {
+                }
             }
         }
 

@@ -65,18 +65,18 @@
 
             var receiveSettingsAndClientPairs = receivers.Select(receiver =>
             {
-                var options = new ServiceBusClientOptions
+                var receiveClientOptions = new ServiceBusClientOptions
                 {
                     TransportType = transportType,
                     EnableCrossEntityTransactions = enableCrossEntityTransactions,
                     Identifier = $"Client-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}",
                 };
-                ApplyRetryPolicyOptionsIfNeeded(options);
-                ApplyWebProxyIfNeeded(options);
-                var client = TokenCredential != null
-                    ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, options)
-                    : new ServiceBusClient(ConnectionString, options);
-                return (receiver, client);
+                ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
+                ApplyWebProxyIfNeeded(receiveClientOptions);
+                var receiveClient = TokenCredential != null
+                    ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, receiveClientOptions)
+                    : new ServiceBusClient(ConnectionString, receiveClientOptions);
+                return (receiver, receiveClient);
             }).ToArray();
 
             var defaultClientOptions = new ServiceBusClientOptions
