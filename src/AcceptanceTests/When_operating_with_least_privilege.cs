@@ -34,8 +34,6 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
         [Test]
         public async Task Should_allow_message_operations_on_existing_resources()
         {
-            Requires.NativePubSubSupport();
-
             // Run the scenario first with manage rights to make sure the topic and the subscription is created
             await Scenario.Define<Context>()
                 .WithEndpoint<Publisher>(b =>
