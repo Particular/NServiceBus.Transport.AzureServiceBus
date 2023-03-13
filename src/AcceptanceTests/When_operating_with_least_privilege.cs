@@ -34,13 +34,19 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
         [Test]
         public async Task Should_allow_message_operations_on_existing_resources()
         {
-            Requires.NativePubSubSupport();
-
-            // Run the scenario first with manage rights to make sure the topology is created
+            // Run the scenario first with manage rights to make sure the topic and the subscription is created
             await Scenario.Define<Context>()
-                .WithEndpoint<Publisher>(b => b.When(session => session.SendLocal(new MyCommand())))
-                .WithEndpoint<Subscriber>()
-                .Done(c => c.SubscriberGotEvent)
+                .WithEndpoint<Publisher>(b =>
+                {
+                    // Disabling auto subscribe will make sure no rules get added
+                    b.CustomConfig(c => c.DisableFeature<AutoSubscribe>());
+                })
+                .WithEndpoint<Subscriber>(b =>
+                {
+                    // Disabling auto subscribe will make sure no rules get added
+                    b.CustomConfig(c => c.DisableFeature<AutoSubscribe>());
+                })
+                .Done(c => c.EndpointsStarted)
                 .Run();
 
             // Now we run without manage rights
@@ -51,8 +57,6 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                     {
                         // least-privilege mode doesn't support installers
                         c.GetSettings().Set("Installers.Enable", false);
-                        // least-privilege mode doesn't support auto subscribe
-                        c.DisableFeature<AutoSubscribe>();
 
                         var transport = c.ConfigureTransport<AzureServiceBusTransport>();
                         transport.ConnectionString =
@@ -66,8 +70,6 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                     {
                         // least-privilege mode doesn't support installers
                         c.GetSettings().Set("Installers.Enable", false);
-                        // least-privilege mode doesn't support auto subscribe
-                        c.DisableFeature<AutoSubscribe>();
 
                         var transport = c.ConfigureTransport<AzureServiceBusTransport>();
                         transport.ConnectionString =

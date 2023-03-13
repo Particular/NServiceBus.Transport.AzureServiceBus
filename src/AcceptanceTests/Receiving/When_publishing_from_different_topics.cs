@@ -12,8 +12,6 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
         [Test]
         public async Task Should_be_delivered_to_all_subscribers_and_back_to_the_publisher()
         {
-            Requires.NativePubSubSupport();
-
             var context = await Scenario.Define<Context>()
                 .WithEndpoint<PublisherOnTopicA>(b => b.When((session, c) => session.SendLocal(new MyCommand())))
                 .WithEndpoint<SubscriberOnTopicB>()

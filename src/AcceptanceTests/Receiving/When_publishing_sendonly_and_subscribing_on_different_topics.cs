@@ -11,8 +11,6 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
         [Test]
         public async Task Should_be_delivered_to_all_subscribers()
         {
-            Requires.NativePubSubSupport();
-
             var context = await Scenario.Define<Context>()
                 .WithEndpoint<SendOnlyPublisherOnTopicA>(b => b.When((session, c) => session.Publish(new MyEvent())))
                 .WithEndpoint<SubscriberOnTopicB>()

@@ -1,44 +1,27 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus
+﻿#nullable enable
+
+namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
     using System.Threading;
     using System.Threading.Tasks;
+    using Azure.Core;
     using Azure.Messaging.ServiceBus.Administration;
 
-    class NamespacePermissions
+    sealed class NamespacePermissions
     {
-        readonly ServiceBusAdministrationClient administrativeClient;
-        readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+        readonly ServiceBusAdministrationClient adminClient;
 
-        Task manageTask;
+        public NamespacePermissions(TokenCredential? tokenCredential, string fullyQualifiedNamespace, string connectionString)
+            => adminClient = tokenCredential != null ? new ServiceBusAdministrationClient(fullyQualifiedNamespace, tokenCredential) : new ServiceBusAdministrationClient(connectionString);
 
-        public NamespacePermissions(ServiceBusAdministrationClient administrativeClient)
-        {
-            this.administrativeClient = administrativeClient;
-        }
-
-        public async Task CanManage(CancellationToken cancellationToken = default)
-        {
-            if (manageTask == null)
-            {
-                await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-                try
-                {
-                    manageTask ??= CheckPermission(cancellationToken);
-                }
-                finally
-                {
-                    semaphore.Release();
-                }
-            }
-            await manageTask.ConfigureAwait(false);
-        }
-
-        async Task CheckPermission(CancellationToken cancellationToken)
+        public async ValueTask<ServiceBusAdministrationClient> CanManage(CancellationToken cancellationToken = default)
         {
             try
             {
-                await administrativeClient.QueueExistsAsync("$nservicebus-verification-queue", cancellationToken).ConfigureAwait(false);
+                await adminClient.QueueExistsAsync("$nservicebus-verification-queue", cancellationToken)
+                    .ConfigureAwait(false);
+                return adminClient;
             }
             catch (UnauthorizedAccessException e)
             {
