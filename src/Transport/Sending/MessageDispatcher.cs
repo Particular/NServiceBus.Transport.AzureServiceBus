@@ -50,13 +50,7 @@
                     ApplyCustomizationToOutgoingNativeMessage(context, transportOperation, message);
 
                     var transactionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : committableTransaction;
-                    using (var scope = transactionToUse.ToScope())
-                    {
-                        // Invoke sender and immediately return it back to the pool w/o awaiting for completion
-                        tasks.Add(sender.SendMessageAsync(message));
-
-                        scope.Complete();
-                    }
+                    tasks.Add(DispatchOperation(sender, message, transactionToUse));
                 }
                 finally
                 {
@@ -75,13 +69,7 @@
                     ApplyCustomizationToOutgoingNativeMessage(context, transportOperation, message);
 
                     var transactionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : committableTransaction;
-                    using (var scope = transactionToUse.ToScope())
-                    {
-                        // Invoke sender and immediately return it back to the pool w/o awaiting for completion
-                        tasks.Add(sender.SendMessageAsync(message));
-                        //committable tx will not be committed because this scope is not the owner
-                        scope.Complete();
-                    }
+                    tasks.Add(DispatchOperation(sender, message, transactionToUse));
                 }
                 finally
                 {
@@ -90,6 +78,15 @@
             }
 
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
+        }
+
+        static async Task DispatchOperation(ServiceBusSender sender, ServiceBusMessage message, CommittableTransaction transactionToUse)
+        {
+            using (var scope = transactionToUse.ToScope())
+            {
+                await sender.SendMessageAsync(message).ConfigureAwait(false);
+                scope.Complete();
+            }
         }
 
         static void ApplyCustomizationToOutgoingNativeMessage(ReadOnlyContextBag context, IOutgoingTransportOperation transportOperation, ServiceBusMessage message)
