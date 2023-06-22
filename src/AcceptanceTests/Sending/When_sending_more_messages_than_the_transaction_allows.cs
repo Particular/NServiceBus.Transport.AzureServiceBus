@@ -30,7 +30,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
 
         public class Context : ScenarioContext
         {
-            public ConcurrentBag<string> MessageIdsReceived { get; } = new();
+            public ConcurrentBag<string> MessageIdsReceived { get; } = new ConcurrentBag<string>();
             public bool MessageMovedToTheErrorQueue { get; set; }
         }
 
@@ -39,7 +39,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
             public Sender() =>
                 EndpointSetup<DefaultServer>(c =>
                 {
-                    c.ConfigureRouting().RouteToEndpoint(typeof(MyMessage), typeof(Receiver));
+                    c.ConfigureTransport().Routing().RouteToEndpoint(typeof(MyMessage), typeof(Receiver));
 
                     var recoverability = c.Recoverability();
                     recoverability.Immediate(i => i.NumberOfRetries(0));
