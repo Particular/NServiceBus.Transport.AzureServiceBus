@@ -1,6 +1,7 @@
 namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
 {
     using System.Collections.Concurrent;
+    using System.Linq;
     using System.Threading.Tasks;
     using AcceptanceTesting;
     using AcceptanceTesting.Customization;
@@ -10,8 +11,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
 
     public class When_sending_more_messages_than_the_transaction_allows : NServiceBusAcceptanceTest
     {
-        [Test]
-        public async Task Should_move_message_to_error_queue()
+        [Theory]
+        public async Task Should_move_message_to_error_queue(int number)
         {
             var context = await Scenario.Define<Context>()
                 .WithEndpoint<Sender>(b => b.When(session => session.SendLocal(new KickOffMessage())).DoNotFailOnErrorMessages())
@@ -23,6 +24,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
             // no messages should leak
             Assert.IsEmpty(context.MessageIdsReceived);
         }
+
+        [DatapointSource]
+        public int[] values = Enumerable.Range(1, 100).ToArray();
 
         public class Context : ScenarioContext
         {
@@ -47,7 +51,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
             {
                 public async Task Handle(KickOffMessage message, IMessageHandlerContext context)
                 {
-                    for (int i = 0; i < 500; i++)
+                    for (int i = 0; i < 1000; i++)
                     {
                         await context.Send(new MyMessage());
                     }
