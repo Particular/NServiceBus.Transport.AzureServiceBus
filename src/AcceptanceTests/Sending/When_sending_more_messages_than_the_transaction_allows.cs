@@ -41,6 +41,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                 {
                     c.ConfigureRouting().RouteToEndpoint(typeof(MyMessage), typeof(Receiver));
 
+                    var transport = c.ConfigureTransport<AzureServiceBusTransport>();
+                    transport.TransportTransactionMode = TransportTransactionMode.SendsAtomicWithReceive;
+
                     var recoverability = c.Recoverability();
                     recoverability.Immediate(i => i.NumberOfRetries(0));
                     recoverability.Delayed(d => d.NumberOfRetries(0));
