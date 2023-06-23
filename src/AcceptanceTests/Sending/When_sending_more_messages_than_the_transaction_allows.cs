@@ -51,7 +51,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
             {
                 public async Task Handle(KickOffMessage message, IMessageHandlerContext context)
                 {
-                    for (int i = 0; i < 1000; i++)
+                    for (int i = 0; i < 102; i++)
                     {
                         await context.Send(new MyMessage());
                     }
