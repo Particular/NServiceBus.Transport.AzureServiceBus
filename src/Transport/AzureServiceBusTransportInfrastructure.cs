@@ -28,7 +28,7 @@
         readonly ServiceBusTransportType transportType = ServiceBusTransportType.AmqpTcp;
         readonly TokenCredential tokenCredential;
         readonly ServiceBusRetryOptions retryOptions;
-        MessageSenderPool messageSenderPool;
+        MessageSenderRegistry messageSenderRegistry;
 
         public AzureServiceBusTransportInfrastructure(SettingsHolder settings, string connectionString)
         {
@@ -56,29 +56,6 @@
             namespacePermissions = new NamespacePermissions(administrationClient);
 
             WriteStartupDiagnostics();
-        }
-
-        //Hack: MessageSenderPool needs a default client instance, to reate one the endpoint transaction mode is needed.
-        //In Core v7 endpoint transaction mode is available only at message pump Init time. The following code performs
-        //the same steps Core v7 does to get the required transaction mode
-        TransportTransactionMode GetRequiredTransactionMode(SettingsHolder settings)
-        {
-            var transportTransactionSupport = TransactionMode;
-
-            //if user haven't asked for a explicit level use what the transport supports
-            if (!settings.HasSetting<TransportTransactionMode>())
-            {
-                return transportTransactionSupport;
-            }
-
-            var requestedTransportTransactionMode = settings.Get<TransportTransactionMode>();
-
-            if (requestedTransportTransactionMode > transportTransactionSupport)
-            {
-                throw new Exception($"Requested transaction mode `{requestedTransportTransactionMode}` can't be satisfied since the transport only supports `{transportTransactionSupport}`");
-            }
-
-            return requestedTransportTransactionMode;
         }
 
         void WriteStartupDiagnostics()
@@ -169,10 +146,9 @@
 
         MessageDispatcher CreateMessageDispatcher()
         {
-            var transactionMode = GetRequiredTransactionMode(settings);
-            messageSenderPool = new MessageSenderPool(connectionString, tokenCredential, retryOptions, transportType, transactionMode);
+            messageSenderRegistry = new MessageSenderRegistry(connectionString, tokenCredential, retryOptions, transportType);
 
-            return new MessageDispatcher(messageSenderPool, topicName);
+            return new MessageDispatcher(messageSenderRegistry, topicName);
         }
 
         public override TransportSubscriptionInfrastructure ConfigureSubscriptionInfrastructure()
@@ -226,9 +202,9 @@
 
         public override async Task Stop()
         {
-            if (messageSenderPool != null)
+            if (messageSenderRegistry != null)
             {
-                await messageSenderPool.Close().ConfigureAwait(false);
+                await messageSenderRegistry.Close().ConfigureAwait(false);
             }
         }
 
