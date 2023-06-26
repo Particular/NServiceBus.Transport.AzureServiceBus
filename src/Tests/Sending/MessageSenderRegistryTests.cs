@@ -5,20 +5,18 @@
     using NUnit.Framework;
 
     [TestFixture]
-    public class MessageSenderPoolTests
+    public class MessageSenderRegistryTests
     {
         [Test]
         public async Task Should_get_cached_sender_per_destination()
         {
-            var pool = new MessageSenderPool(connectionString, null, null, ServiceBusTransportType.AmqpTcp, TransportTransactionMode.None);
+            var pool = new MessageSenderRegistry(connectionString, null, null, ServiceBusTransportType.AmqpTcp, TransportTransactionMode.None);
 
             try
             {
                 var firstMessageSenderDest1 = pool.GetMessageSender("dest1", null);
-                pool.ReturnMessageSender(firstMessageSenderDest1, null);
 
                 var firstMessageSenderDest2 = pool.GetMessageSender("dest2", null);
-                pool.ReturnMessageSender(firstMessageSenderDest2, null);
 
                 var secondMessageSenderDest1 = pool.GetMessageSender("dest1", null);
                 var secondMessageSenderDest2 = pool.GetMessageSender("dest2", null);

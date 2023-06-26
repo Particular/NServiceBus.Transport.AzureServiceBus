@@ -28,7 +28,7 @@
         readonly ServiceBusTransportType transportType = ServiceBusTransportType.AmqpTcp;
         readonly TokenCredential tokenCredential;
         readonly ServiceBusRetryOptions retryOptions;
-        MessageSenderPool messageSenderPool;
+        MessageSenderRegistry messageSenderRegistry;
 
         public AzureServiceBusTransportInfrastructure(SettingsHolder settings, string connectionString)
         {
@@ -170,9 +170,9 @@
         MessageDispatcher CreateMessageDispatcher()
         {
             var transactionMode = GetRequiredTransactionMode(settings);
-            messageSenderPool = new MessageSenderPool(connectionString, tokenCredential, retryOptions, transportType, transactionMode);
+            messageSenderRegistry = new MessageSenderRegistry(connectionString, tokenCredential, retryOptions, transportType, transactionMode);
 
-            return new MessageDispatcher(messageSenderPool, topicName);
+            return new MessageDispatcher(messageSenderRegistry, topicName);
         }
 
         public override TransportSubscriptionInfrastructure ConfigureSubscriptionInfrastructure()
@@ -226,9 +226,9 @@
 
         public override async Task Stop()
         {
-            if (messageSenderPool != null)
+            if (messageSenderRegistry != null)
             {
-                await messageSenderPool.Close().ConfigureAwait(false);
+                await messageSenderRegistry.Close().ConfigureAwait(false);
             }
         }
 

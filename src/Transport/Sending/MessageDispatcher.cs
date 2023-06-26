@@ -8,12 +8,12 @@
 
     class MessageDispatcher : IDispatchMessages
     {
-        readonly MessageSenderPool messageSenderPool;
+        readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
 
-        public MessageDispatcher(MessageSenderPool messageSenderPool, string topicName)
+        public MessageDispatcher(MessageSenderRegistry messageSenderRegistry, string topicName)
         {
-            this.messageSenderPool = messageSenderPool;
+            this.messageSenderRegistry = messageSenderRegistry;
             this.topicName = topicName;
         }
 
@@ -41,40 +41,26 @@
                     destination = destination.Substring(0, index);
                 }
 
-                var sender = messageSenderPool.GetMessageSender(destination, serviceBusClient);
+                var sender = messageSenderRegistry.GetMessageSender(destination, serviceBusClient);
 
-                try
-                {
-                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
+                var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    ApplyCustomizationToOutgoingNativeMessage(context, transportOperation, message);
+                ApplyCustomizationToOutgoingNativeMessage(context, transportOperation, message);
 
-                    var transactionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : committableTransaction;
-                    tasks.Add(DispatchOperation(sender, message, transactionToUse));
-                }
-                finally
-                {
-                    messageSenderPool.ReturnMessageSender(sender, serviceBusClient);
-                }
+                var transactionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : committableTransaction;
+                tasks.Add(DispatchOperation(sender, message, transactionToUse));
             }
 
             foreach (var transportOperation in multicastTransportOperations)
             {
-                var sender = messageSenderPool.GetMessageSender(topicName, serviceBusClient);
+                var sender = messageSenderRegistry.GetMessageSender(topicName, serviceBusClient);
 
-                try
-                {
-                    var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
+                var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
-                    ApplyCustomizationToOutgoingNativeMessage(context, transportOperation, message);
+                ApplyCustomizationToOutgoingNativeMessage(context, transportOperation, message);
 
-                    var transactionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : committableTransaction;
-                    tasks.Add(DispatchOperation(sender, message, transactionToUse));
-                }
-                finally
-                {
-                    messageSenderPool.ReturnMessageSender(sender, serviceBusClient);
-                }
+                var transactionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : committableTransaction;
+                tasks.Add(DispatchOperation(sender, message, transactionToUse));
             }
 
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
