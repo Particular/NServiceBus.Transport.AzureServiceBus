@@ -10,7 +10,7 @@
         [Test]
         public async Task Should_get_cached_sender_per_destination()
         {
-            var pool = new MessageSenderRegistry(connectionString, null, null, ServiceBusTransportType.AmqpTcp, TransportTransactionMode.None);
+            var pool = new MessageSenderRegistry(connectionString, null, null, ServiceBusTransportType.AmqpTcp);
 
             try
             {
