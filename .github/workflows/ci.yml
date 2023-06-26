@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [ windows-2019, ubuntu-20.04 ]
-        framework: [ net6.0, net472 ]
+        framework: [ net7.0, net6.0, net472 ]
         include:
           - os: windows-2019
             os-name: Windows
