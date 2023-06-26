@@ -87,10 +87,7 @@
 
         async Task CheckForManagePermissions()
         {
-            if (startupCheckResult == null)
-            {
-                startupCheckResult = await namespacePermissions.CanManage().ConfigureAwait(false);
-            }
+            startupCheckResult ??= await namespacePermissions.CanManage().ConfigureAwait(false);
 
             if (!startupCheckResult.Succeeded)
             {
