@@ -12,10 +12,11 @@
     {
         public MessageSenderRegistry(string connectionString, TokenCredential tokenCredential, ServiceBusRetryOptions retryOptions, ServiceBusTransportType transportType, TransportTransactionMode transactionMode)
         {
-            var serviceBusClientOptions = new ServiceBusClientOptions()
+            var serviceBusClientOptions = new ServiceBusClientOptions
             {
                 TransportType = transportType,
-                EnableCrossEntityTransactions = transactionMode == TransportTransactionMode.SendsAtomicWithReceive
+                // for the default client we never want things to automatically use cross entity transaction
+                EnableCrossEntityTransactions = false,
             };
 
             if (retryOptions != null)
@@ -36,7 +37,6 @@
             // operations and from multiple threads.
             // see https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-performance-improvements
             var lazySender = destinationToSenderMapping.GetOrAdd((destination, client ?? defaultClient),
-                // TODO: Make this static
                 arg =>
                 {
                     (string innerDestination, ServiceBusClient innerClient) = arg;
@@ -49,7 +49,7 @@
 
         public Task Close(CancellationToken cancellationToken = default)
         {
-            var tasks = new List<Task>(destinationToSenderMapping.Keys.Count);
+            var tasks = new List<Task>(destinationToSenderMapping.Keys.Count + 1);
             foreach (var key in destinationToSenderMapping.Keys)
             {
                 var queue = destinationToSenderMapping[key];
@@ -59,6 +59,7 @@
                     tasks.Add(queue.Value.CloseAsync(cancellationToken));
                 }
             }
+            tasks.Add(defaultClient.DisposeAsync().AsTask());
             return Task.WhenAll(tasks);
         }
 
