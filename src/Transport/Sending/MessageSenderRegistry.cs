@@ -10,7 +10,7 @@
 
     sealed class MessageSenderRegistry
     {
-        public MessageSenderRegistry(string connectionString, TokenCredential tokenCredential, ServiceBusRetryOptions retryOptions, ServiceBusTransportType transportType, TransportTransactionMode transactionMode)
+        public MessageSenderRegistry(string connectionString, TokenCredential tokenCredential, ServiceBusRetryOptions retryOptions, ServiceBusTransportType transportType)
         {
             var serviceBusClientOptions = new ServiceBusClientOptions
             {
@@ -47,20 +47,30 @@
             return lazySender.Value;
         }
 
-        public Task Close(CancellationToken cancellationToken = default)
+        public async Task Close(CancellationToken cancellationToken = default)
         {
-            var tasks = new List<Task>(destinationToSenderMapping.Keys.Count + 1);
+            static async Task CloseAndDispose(ServiceBusSender sender, CancellationToken cancellationToken)
+            {
+                await using (sender.ConfigureAwait(false))
+                {
+                    await sender.CloseAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            var tasks = new List<Task>(destinationToSenderMapping.Keys.Count);
             foreach (var key in destinationToSenderMapping.Keys)
             {
                 var queue = destinationToSenderMapping[key];
 
-                if (queue.IsValueCreated)
+                if (!queue.IsValueCreated)
                 {
-                    tasks.Add(queue.Value.CloseAsync(cancellationToken));
+                    continue;
                 }
+
+                tasks.Add(CloseAndDispose(queue.Value, cancellationToken));
             }
-            tasks.Add(defaultClient.DisposeAsync().AsTask());
-            return Task.WhenAll(tasks);
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+            await defaultClient.DisposeAsync().ConfigureAwait(false);
         }
 
         readonly ServiceBusClient defaultClient;

@@ -58,29 +58,6 @@
             WriteStartupDiagnostics();
         }
 
-        //Hack: MessageSenderPool needs a default client instance, to reate one the endpoint transaction mode is needed.
-        //In Core v7 endpoint transaction mode is available only at message pump Init time. The following code performs
-        //the same steps Core v7 does to get the required transaction mode
-        TransportTransactionMode GetRequiredTransactionMode(SettingsHolder settings)
-        {
-            var transportTransactionSupport = TransactionMode;
-
-            //if user haven't asked for a explicit level use what the transport supports
-            if (!settings.HasSetting<TransportTransactionMode>())
-            {
-                return transportTransactionSupport;
-            }
-
-            var requestedTransportTransactionMode = settings.Get<TransportTransactionMode>();
-
-            if (requestedTransportTransactionMode > transportTransactionSupport)
-            {
-                throw new Exception($"Requested transaction mode `{requestedTransportTransactionMode}` can't be satisfied since the transport only supports `{transportTransactionSupport}`");
-            }
-
-            return requestedTransportTransactionMode;
-        }
-
         void WriteStartupDiagnostics()
         {
             settings.AddStartupDiagnosticsSection("Azure Service Bus transport", new
@@ -169,8 +146,7 @@
 
         MessageDispatcher CreateMessageDispatcher()
         {
-            var transactionMode = GetRequiredTransactionMode(settings);
-            messageSenderRegistry = new MessageSenderRegistry(connectionString, tokenCredential, retryOptions, transportType, transactionMode);
+            messageSenderRegistry = new MessageSenderRegistry(connectionString, tokenCredential, retryOptions, transportType);
 
             return new MessageDispatcher(messageSenderRegistry, topicName);
         }
