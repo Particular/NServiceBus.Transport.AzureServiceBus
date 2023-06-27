@@ -286,7 +286,7 @@
                 }
                 catch (ServiceBusException onErrorException) when (onErrorException.Reason == ServiceBusFailureReason.MessageLockLost || onErrorException.Reason == ServiceBusFailureReason.ServiceTimeout)
                 {
-                    logger.Debug("Failed to execute recoverability.", onErrorException);
+                    logger.Error("Failed to execute recoverability.", onErrorException);
                 }
                 catch (Exception onErrorException)
                 {
