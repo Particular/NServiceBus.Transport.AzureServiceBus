@@ -80,6 +80,13 @@
                 }
             }
 
+            if (transaction != null && numberOfDefaultOperations > 100)
+            {
+                // Azure Service Bus will throw an exception if we try to send too many messages in a single transaction https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-quotas
+                // But the incoming message may not be handled properly after that https://github.com/Azure/azure-sdk-for-net/issues/37265
+                throw new Exception($"The number of outgoing messages ({numberOfDefaultOperations}) exceeds the limits permitted by Azure Service Bus (100) in a single transaction");
+            }
+
             var concurrentDispatchTasks = new List<Task>(numberOfIsolatedOperations + numberOfDefaultOperations);
             AddOperationsTo(concurrentDispatchTasks, isolatedOperationsPerDestination ?? EmptyDestinationAndOperations, context, serviceBusClient, partitionKey, null);
             AddOperationsTo(concurrentDispatchTasks, defaultOperationsPerDestination ?? EmptyDestinationAndOperations, context, serviceBusClient, partitionKey, committableTransaction);
