@@ -1,5 +1,6 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
+    using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using System.Transactions;
@@ -8,6 +9,8 @@
 
     class MessageDispatcher : IDispatchMessages
     {
+        static readonly Dictionary<string, List<IOutgoingTransportOperation>> EmptyDestinationAndOperations = new Dictionary<string, List<IOutgoingTransportOperation>>();
+
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
 
@@ -33,23 +36,80 @@
             transportOperations.AddRange(unicastTransportOperations);
             transportOperations.AddRange(multicastTransportOperations);
 
-            var tasks = new List<Task>(unicastTransportOperations.Count + multicastTransportOperations.Count);
+            Dictionary<string, List<IOutgoingTransportOperation>> isolatedOperationsPerDestination = null;
+            Dictionary<string, List<IOutgoingTransportOperation>> defaultOperationsPerDestination = null;
+            var numberOfIsolatedOperations = 0;
+            var numberOfDefaultOperations = 0;
 
-            foreach (var transportOperation in transportOperations)
+            foreach (var operation in transportOperations)
             {
-                var destination = transportOperation.ExtractDestination(defaultMulticastRoute: topicName);
+                var destination = operation.ExtractDestination(defaultMulticastRoute: topicName);
+                switch (operation.RequiredDispatchConsistency)
+                {
+                    case DispatchConsistency.Default:
+                        numberOfDefaultOperations++;
+                        defaultOperationsPerDestination ??=
+                            new Dictionary<string, List<IOutgoingTransportOperation>>(StringComparer.OrdinalIgnoreCase);
+
+                        if (!defaultOperationsPerDestination.ContainsKey(destination))
+                        {
+                            defaultOperationsPerDestination[destination] = new List<IOutgoingTransportOperation> { operation };
+                            // because we batch only the number of destinations are relevant
+                        }
+                        else
+                        {
+                            defaultOperationsPerDestination[destination].Add(operation);
+                        }
+                        break;
+                    case DispatchConsistency.Isolated:
+                        // every isolated operation counts
+                        numberOfIsolatedOperations++;
+                        isolatedOperationsPerDestination ??=
+                            new Dictionary<string, List<IOutgoingTransportOperation>>(StringComparer.OrdinalIgnoreCase);
+                        if (!isolatedOperationsPerDestination.ContainsKey(destination))
+                        {
+                            isolatedOperationsPerDestination[destination] = new List<IOutgoingTransportOperation> { operation };
+                        }
+                        else
+                        {
+                            isolatedOperationsPerDestination[destination].Add(operation);
+                        }
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+
+            var concurrentDispatchTasks = new List<Task>(numberOfIsolatedOperations + numberOfDefaultOperations);
+            AddOperationsTo(concurrentDispatchTasks, isolatedOperationsPerDestination ?? EmptyDestinationAndOperations, context, serviceBusClient, partitionKey, null);
+            AddOperationsTo(concurrentDispatchTasks, defaultOperationsPerDestination ?? EmptyDestinationAndOperations, context, serviceBusClient, partitionKey, committableTransaction);
+
+            return concurrentDispatchTasks.Count == 1 ? concurrentDispatchTasks[0] : Task.WhenAll(concurrentDispatchTasks);
+        }
+
+        // The parameters of this method are deliberately mutable and of the original collection type to make sure
+        // no boxing occurs
+        void AddOperationsTo(List<Task> dispatchTasks,
+            Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
+            ContextBag context,
+            ServiceBusClient serviceBusClient,
+            string partitionKey,
+            CommittableTransaction transactionToUse)
+        {
+            foreach (var destinationAndOperations in transportOperationsPerDestination)
+            {
+                var destination = destinationAndOperations.Key;
+                var operations = destinationAndOperations.Value;
 
                 var sender = messageSenderRegistry.GetMessageSender(destination, serviceBusClient);
 
-                var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
-
-                ApplyCustomizationToOutgoingNativeMessage(context, transportOperation, message);
-
-                var transactionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : committableTransaction;
-                tasks.Add(DispatchOperation(sender, message, transactionToUse));
+                foreach (var operation in operations)
+                {
+                    var message = operation.Message.ToAzureServiceBusMessage(operation.DeliveryConstraints, partitionKey);
+                    ApplyCustomizationToOutgoingNativeMessage(context, operation, message);
+                    dispatchTasks.Add(DispatchOperation(sender, message, transactionToUse));
+                }
             }
-
-            return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
         }
 
         static async Task DispatchOperation(ServiceBusSender sender, ServiceBusMessage message, CommittableTransaction transactionToUse)
