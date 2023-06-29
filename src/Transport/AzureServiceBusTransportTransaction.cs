@@ -71,7 +71,7 @@ namespace NServiceBus.Transport.AzureServiceBus
             }
         }
 
-        internal bool HasTransaction => transactionIsInitialized || transactionOptions.HasValue;
+        internal bool HasTransaction => transaction != null || transactionOptions.HasValue;
 
         internal ServiceBusClient? ServiceBusClient
         {
