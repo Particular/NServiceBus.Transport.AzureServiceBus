@@ -1,5 +1,6 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
+    using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using System.Transactions;
@@ -8,6 +9,8 @@
 
     class MessageDispatcher : IDispatchMessages
     {
+        const int MaxMessageThresholdForTransaction = 100;
+
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
 
@@ -26,6 +29,8 @@
 
             var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
             var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
+
+            AssertBelowMaxMessageThresholdForTransaction(unicastTransportOperations, multicastTransportOperations, committableTransaction);
 
             var tasks = new List<Task>(unicastTransportOperations.Count + multicastTransportOperations.Count);
 
@@ -64,6 +69,36 @@
             }
 
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
+        }
+
+        static void AssertBelowMaxMessageThresholdForTransaction(List<UnicastTransportOperation> unicastTransportOperations, List<MulticastTransportOperation> multicastTransportOperations, CommittableTransaction committableTransaction)
+        {
+            var totalNumberOfOperations = unicastTransportOperations.Count + multicastTransportOperations.Count;
+            if (committableTransaction == null || totalNumberOfOperations <= MaxMessageThresholdForTransaction)
+            {
+                return;
+            }
+
+            var numberOfTransactionalOperations = 0;
+            foreach (var transportOperation in unicastTransportOperations)
+            {
+                if (transportOperation.RequiredDispatchConsistency == DispatchConsistency.Default)
+                {
+                    numberOfTransactionalOperations++;
+                }
+            }
+            foreach (var transportOperation in multicastTransportOperations)
+            {
+                if (transportOperation.RequiredDispatchConsistency == DispatchConsistency.Default)
+                {
+                    numberOfTransactionalOperations++;
+                }
+            }
+
+            if (numberOfTransactionalOperations > MaxMessageThresholdForTransaction)
+            {
+                throw new Exception($"The number of outgoing messages ({numberOfTransactionalOperations}) exceeds the limits permitted by Azure Service Bus ({MaxMessageThresholdForTransaction}) in a single transaction");
+            }
         }
 
         static async Task DispatchOperation(ServiceBusSender sender, ServiceBusMessage message, CommittableTransaction transactionToUse)
