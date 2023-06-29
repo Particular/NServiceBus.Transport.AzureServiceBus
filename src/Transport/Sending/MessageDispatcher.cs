@@ -1,5 +1,6 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
+    using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using System.Transactions;
@@ -8,6 +9,8 @@
 
     class MessageDispatcher : IDispatchMessages
     {
+        const int MaxMessageThresholdForTransaction = 100;
+        
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
 
@@ -31,6 +34,8 @@
             transportOperations.AddRange(unicastTransportOperations);
             transportOperations.AddRange(multicastTransportOperations);
 
+            var numberOfTransactionalOperations = 0;
+
             var tasks = new List<Task>(unicastTransportOperations.Count + multicastTransportOperations.Count);
 
             foreach (var transportOperation in transportOperations)
@@ -44,6 +49,14 @@
                 ApplyCustomizationToOutgoingNativeMessage(context, transportOperation, message);
 
                 var transactionToUse = transportOperation.RequiredDispatchConsistency == DispatchConsistency.Isolated ? null : committableTransaction;
+                if (transactionToUse != null)
+                {
+                    numberOfTransactionalOperations++;
+                    if (numberOfTransactionalOperations > MaxMessageThresholdForTransaction)
+                    {
+                        throw new Exception($"The number of outgoing messages exceeds the limits permitted by Azure Service Bus ({MaxMessageThresholdForTransaction}) in a single transaction");
+                    }
+                }
                 tasks.Add(DispatchOperation(sender, message, transactionToUse));
             }
 
