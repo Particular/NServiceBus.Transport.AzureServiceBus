@@ -31,15 +31,7 @@
 
             foreach (var transportOperation in unicastTransportOperations)
             {
-                var destination = transportOperation.Destination;
-
-                // Workaround for reply-to address set by ASB transport
-                var index = transportOperation.Destination.IndexOf('@');
-
-                if (index > 0)
-                {
-                    destination = destination.Substring(0, index);
-                }
+                var destination = transportOperation.ExtractDestination(defaultMulticastRoute: topicName);
 
                 var sender = messageSenderRegistry.GetMessageSender(destination, serviceBusClient);
 
@@ -53,7 +45,9 @@
 
             foreach (var transportOperation in multicastTransportOperations)
             {
-                var sender = messageSenderRegistry.GetMessageSender(topicName, serviceBusClient);
+                var destination = transportOperation.ExtractDestination(defaultMulticastRoute: topicName);
+
+                var sender = messageSenderRegistry.GetMessageSender(destination, serviceBusClient);
 
                 var message = transportOperation.Message.ToAzureServiceBusMessage(transportOperation.DeliveryConstraints, partitionKey);
 
