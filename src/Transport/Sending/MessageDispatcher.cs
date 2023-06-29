@@ -10,7 +10,7 @@
     class MessageDispatcher : IDispatchMessages
     {
         const int MaxMessageThresholdForTransaction = 100;
-        
+
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
 
