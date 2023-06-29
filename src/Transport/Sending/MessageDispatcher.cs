@@ -13,6 +13,8 @@ namespace NServiceBus.Transport.AzureServiceBus
 
     class MessageDispatcher : IMessageDispatcher
     {
+        const int MaxMessageThresholdForTransaction = 100;
+
         static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
         static readonly Dictionary<string, List<IOutgoingTransportOperation>> emptyDestinationAndOperations = new();
 
@@ -40,6 +42,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
             Dictionary<string, List<IOutgoingTransportOperation>>? isolatedOperationsPerDestination = null;
             Dictionary<string, List<IOutgoingTransportOperation>>? defaultOperationsPerDestination = null;
+            var numberOfDefaultOperations = 0;
             var numberOfIsolatedOperations = 0;
             var numberOfDefaultOperationDestinations = 0;
 
@@ -49,6 +52,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 switch (operation.RequiredDispatchConsistency)
                 {
                     case DispatchConsistency.Default:
+                        numberOfDefaultOperations++;
                         defaultOperationsPerDestination ??=
                             new Dictionary<string, List<IOutgoingTransportOperation>>(StringComparer.OrdinalIgnoreCase);
 
@@ -80,6 +84,11 @@ namespace NServiceBus.Transport.AzureServiceBus
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
+            }
+
+            if (azureServiceBusTransaction is { HasTransaction: true } && numberOfDefaultOperations > MaxMessageThresholdForTransaction)
+            {
+                throw new Exception($"The number of outgoing messages ({numberOfDefaultOperations}) exceeds the limits permitted by Azure Service Bus ({MaxMessageThresholdForTransaction}) in a single transaction");
             }
 
             var concurrentDispatchTasks =
