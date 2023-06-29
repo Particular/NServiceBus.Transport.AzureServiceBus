@@ -71,10 +71,14 @@
             return tasks.Count == 1 ? tasks[0] : Task.WhenAll(tasks);
         }
 
-        static void AssertBelowMaxMessageThresholdForTransaction(List<UnicastTransportOperation> unicastTransportOperations, List<MulticastTransportOperation> multicastTransportOperations, CommittableTransaction committableTransaction)
+        /// <summary>
+        /// Throws an exception if attempting to send more than 100 messages in a transaction.
+        /// This prevents the transport from experiencing this issue https://github.com/Azure/azure-sdk-for-net/issues/37265
+        /// </summary>
+        static void AssertBelowMaxMessageThresholdForTransaction(List<UnicastTransportOperation> unicastTransportOperations, List<MulticastTransportOperation> multicastTransportOperations, Transaction transaction)
         {
             var totalNumberOfOperations = unicastTransportOperations.Count + multicastTransportOperations.Count;
-            if (committableTransaction == null || totalNumberOfOperations <= MaxMessageThresholdForTransaction)
+            if (transaction == null || totalNumberOfOperations <= MaxMessageThresholdForTransaction)
             {
                 return;
             }
