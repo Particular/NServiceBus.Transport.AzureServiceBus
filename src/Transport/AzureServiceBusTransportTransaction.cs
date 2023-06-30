@@ -71,6 +71,8 @@ namespace NServiceBus.Transport.AzureServiceBus
             }
         }
 
+        internal bool HasTransaction => transaction != null || transactionOptions.HasValue;
+
         internal ServiceBusClient? ServiceBusClient
         {
             get;

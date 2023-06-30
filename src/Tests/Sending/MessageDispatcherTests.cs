@@ -392,7 +392,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
-        public async Task Should_split_into_batches_of_max_hundred_when_transactions_used()
+        public void Should_throw_when_detecting_more_than_hundred_messages_when_transactions_used()
         {
             var defaultClient = new FakeServiceBusClient();
             var defaultSender = new FakeSender();
@@ -415,8 +415,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
 
-            var operations = new List<TransportOperation>(150);
-            for (int i = 0; i < 150; i++)
+            var nrOfMessages = 150;
+            var operations = new List<TransportOperation>(nrOfMessages);
+            for (int i = 0; i < nrOfMessages; i++)
             {
                 operations.Add(new TransportOperation(new OutgoingMessage($"SomeId{i}",
                         new Dictionary<string, string> { { "Number", i.ToString() } },
@@ -429,15 +430,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var azureServiceBusTransaction = new AzureServiceBusTransportTransaction(transactionalClient,
                 "SomePartitionKey", new TransactionOptions());
 
-            await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
-
-            Assert.That(transactionalSender.BatchSentMessages, Has.Count.EqualTo(3));
-            var firstBatch = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(0)];
-            var secondBatch = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(1)];
-            var thirdBatch = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(2)];
-            Assert.That(firstBatch, Has.Count.EqualTo(100));
-            Assert.That(secondBatch, Has.Count.EqualTo(25));
-            Assert.That(thirdBatch, Has.Count.EqualTo(25));
+            var ex = Assert.ThrowsAsync<Exception>(async () => await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction));
+            Assert.AreEqual($"The number of outgoing messages ({nrOfMessages}) exceeds the limits permitted by Azure Service Bus ({100}) in a single transaction", ex.Message);
         }
 
         [Test]
