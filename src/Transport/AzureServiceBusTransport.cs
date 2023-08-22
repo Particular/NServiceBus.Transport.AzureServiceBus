@@ -46,7 +46,7 @@
             TokenCredential = tokenCredential;
         }
 
-        [PreObsolete(RemoveInVersion = "4", Note = "Will not be required by TransportExtensions methods anymore in 4.0")]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811", Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.")]
         internal AzureServiceBusTransport() : base(
             defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
             supportsDelayedDelivery: true,

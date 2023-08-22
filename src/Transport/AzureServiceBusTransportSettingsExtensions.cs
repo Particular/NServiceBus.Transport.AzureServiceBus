@@ -11,17 +11,13 @@
     /// </summary>
     public static partial class AzureServiceBusTransportSettingsExtensions
     {
-        const string Note = "As long as the persistence configuration API has not been adjusted to match the transport configuration API keep bumping the versions when working on a new major";
-
         /// <summary>
         /// Configure the endpoint to use the Azure Service bus transport. This configuration method will eventually be deprecated.
         /// Consider using endpointConfiguration.UseTransport(new AzureServiceBusTransport(connectionString)) instead.
         /// </summary>
-        [PreObsolete(
-            ReplacementTypeOrMember = "EndpointConfiguration.UseTransport(TransportDefinition)",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "EndpointConfiguration.UseTransport(TransportDefinition)")]
         public static TransportExtensions<AzureServiceBusTransport> UseTransport<TTransport>(this EndpointConfiguration endpointConfiguration)
             where TTransport : AzureServiceBusTransport
         {
@@ -35,11 +31,9 @@
         /// <summary>
         /// Sets the Azure Service Bus connection string.
         /// </summary>
-        [PreObsolete(
-                    Message = "Provide the connection string to the AzureServiceBusTransport constructor",
-                    TreatAsErrorFromVersion = "4",
-                    RemoveInVersion = "5",
-                    Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            Message = "Provide the connection string to the AzureServiceBusTransport constructor")]
         public static TransportExtensions<AzureServiceBusTransport> ConnectionString(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string connectionString)
         {
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
@@ -50,11 +44,9 @@
         /// <summary>
         /// Sets the Azure Service Bus connection string.
         /// </summary>
-        [PreObsolete(
-                    Message = "Provide the connection string to the AzureServiceBusTransport constructor",
-                    TreatAsErrorFromVersion = "4",
-                    RemoveInVersion = "5",
-                    Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            Message = "Provide the connection string to the AzureServiceBusTransport constructor")]
         public static TransportExtensions<AzureServiceBusTransport> ConnectionString(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string> connectionString)
         {
             Guard.AgainstNull(nameof(connectionString), connectionString);
@@ -69,11 +61,9 @@
         /// </summary>
         /// <param name="transportExtensions"></param>
         /// <param name="topicName">The name of the topic used to publish events between endpoints.</param>
-        [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.Topology",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.Topology")]
         public static TransportExtensions<AzureServiceBusTransport> TopicName(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string topicName)
         {
             Guard.AgainstNullAndEmpty(nameof(topicName), topicName);
@@ -86,11 +76,9 @@
         /// </summary>
         /// <param name="transportExtensions"></param>
         /// <param name="maximumSizeInGB">The maximum size to use, in gigabytes.</param>
-        [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.EntityMaximumSize",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.EntityMaximumSize")]
         public static TransportExtensions<AzureServiceBusTransport> EntityMaximumSize(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int maximumSizeInGB)
         {
             Guard.AgainstNegativeAndZero(nameof(maximumSizeInGB), maximumSizeInGB);
@@ -101,11 +89,9 @@
         /// <summary>
         /// Enables entity partitioning when creating queues and topics.
         /// </summary>
-        [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.EnablePartitioning",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.EnablePartitioning")]
         public static TransportExtensions<AzureServiceBusTransport> EnablePartitioning(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
         {
             transportExtensions.Transport.EnablePartitioning = true;
@@ -117,11 +103,9 @@
         /// </summary>
         /// <param name="transportExtensions"></param>
         /// <param name="prefetchMultiplier">The multiplier value to use in the prefetch calculation.</param>
-        [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.PrefetchMultiplier",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.PrefetchMultiplier")]
         public static TransportExtensions<AzureServiceBusTransport> PrefetchMultiplier(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int prefetchMultiplier)
         {
             Guard.AgainstNegativeAndZero(nameof(prefetchMultiplier), prefetchMultiplier);
@@ -134,11 +118,9 @@
         /// </summary>
         /// <param name="transportExtensions"></param>
         /// <param name="prefetchCount">The prefetch count to use.</param>
-        [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.PrefetchCount",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.PrefetchCount")]
         public static TransportExtensions<AzureServiceBusTransport> PrefetchCount(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int prefetchCount)
         {
             Guard.AgainstNegative(nameof(prefetchCount), prefetchCount);
@@ -151,11 +133,9 @@
         /// </summary>
         /// <param name="transportExtensions"></param>
         /// <param name="timeToWait">The time to wait before triggering the circuit breaker.</param>
-        [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.TimeToWaitBeforeTriggeringCircuitBreaker",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.TimeToWaitBeforeTriggeringCircuitBreaker")]
         public static TransportExtensions<AzureServiceBusTransport> TimeToWaitBeforeTriggeringCircuitBreaker(this TransportExtensions<AzureServiceBusTransport> transportExtensions, TimeSpan timeToWait)
         {
             Guard.AgainstNegativeAndZero(nameof(timeToWait), timeToWait);
@@ -168,11 +148,9 @@
         /// </summary>
         /// <param name="transportExtensions"></param>
         /// <param name="subscriptionNamingConvention">The callback to apply.</param>
-        [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionNamingConvention",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionNamingConvention")]
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNamingConvention)
         {
             Guard.AgainstNull(nameof(subscriptionNamingConvention), subscriptionNamingConvention);
@@ -186,11 +164,9 @@
         /// <remarks>The naming convention callback is called for every subscribed event <see cref="Type"/>.</remarks>
         /// <param name="transportExtensions"></param>
         /// <param name="subscriptionRuleNamingConvention">The callback to apply.</param>
-        [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionRuleNamingConvention",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionRuleNamingConvention")]
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionRuleNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<Type, string> subscriptionRuleNamingConvention)
         {
             Guard.AgainstNull(nameof(subscriptionRuleNamingConvention), subscriptionRuleNamingConvention);
@@ -203,11 +179,9 @@
         /// </summary>
         /// <param name="transportExtensions"></param>
         /// <param name="webProxy">The proxy to use for communication over web sockets.</param>
-        [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.UseWebSockets",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.UseWebSockets")]
         public static TransportExtensions<AzureServiceBusTransport> UseWebSockets(this TransportExtensions<AzureServiceBusTransport> transportExtensions, IWebProxy webProxy = default)
         {
             transportExtensions.Transport.UseWebSockets = true;
@@ -223,11 +197,9 @@
         /// </summary>
         /// <param name="transportExtensions"></param>
         /// <param name="retryPolicy">A custom retry policy to be used.</param>
-        [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.RetryPolicyOptions",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.RetryPolicyOptions")]
         public static TransportExtensions<AzureServiceBusTransport> CustomRetryPolicy(this TransportExtensions<AzureServiceBusTransport> transportExtensions, ServiceBusRetryOptions retryPolicy)
         {
             Guard.AgainstNull(nameof(retryPolicy), retryPolicy);
@@ -241,11 +213,9 @@
         /// <param name="transportExtensions"></param>
         /// <param name="fullyQualifiedNamespace">The fully qualified namespace.</param>
         /// <param name="tokenCredential">The token credential to be used.</param>
-        [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport(string fullyQualifiedNamespace, TokenCredential tokenCredential)",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport(string fullyQualifiedNamespace, TokenCredential tokenCredential)")]
         public static TransportExtensions<AzureServiceBusTransport> CustomTokenCredential(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string fullyQualifiedNamespace, TokenCredential tokenCredential)
         {
             Guard.AgainstNull(nameof(tokenCredential), tokenCredential);
@@ -262,11 +232,9 @@
         /// <value>The maximum duration during which message locks are automatically renewed. The default value is 5 minutes.</value>
         /// <remarks>The message renew can continue for sometime in the background
         /// after completion of message and result in a few false MessageLockLostExceptions temporarily.</remarks>
-        [PreObsolete(
-            ReplacementTypeOrMember = "AzureServiceBusTransport.MaxAutoLockRenewalDuration",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            Note = Note)]
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.MaxAutoLockRenewalDuration")]
         public static TransportExtensions<AzureServiceBusTransport> MaxAutoLockRenewalDuration(this TransportExtensions<AzureServiceBusTransport> transportExtensions, TimeSpan maximumAutoLockRenewalDuration)
         {
             Guard.AgainstNegative(nameof(maximumAutoLockRenewalDuration), maximumAutoLockRenewalDuration);
