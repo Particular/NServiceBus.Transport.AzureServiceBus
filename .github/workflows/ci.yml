@@ -55,5 +55,3 @@ jobs:
           tag: ASBTransport
       - name: Run tests
         uses: Particular/run-tests-action@v1.6.0
-        with:
-          framework: ${{ matrix.framework }}

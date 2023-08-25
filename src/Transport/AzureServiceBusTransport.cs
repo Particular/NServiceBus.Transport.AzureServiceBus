@@ -14,7 +14,7 @@
     /// <summary>
     /// Transport definition for Azure Service Bus.
     /// </summary>
-    public class AzureServiceBusTransport : TransportDefinition
+    public partial class AzureServiceBusTransport : TransportDefinition
     {
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
@@ -136,14 +136,6 @@
         }
 
         /// <inheritdoc />
-        [ObsoleteEx(Message = "Inject the ITransportAddressResolver type to access the address translation mechanism at runtime. See the NServiceBus version 8 upgrade guide for further details.",
-                    TreatAsErrorFromVersion = "4",
-                    RemoveInVersion = "5")]
-#pragma warning disable CS0672 // Member overrides obsolete member
-        public override string ToTransportAddress(QueueAddress address) => AzureServiceBusTransportInfrastructure.TranslateAddress(address);
-#pragma warning restore CS0672 // Member overrides obsolete member
-
-        /// <inheritdoc />
         public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes() =>
             new[]
             {
@@ -151,19 +143,6 @@
                 TransportTransactionMode.ReceiveOnly,
                 TransportTransactionMode.SendsAtomicWithReceive
             };
-
-        /// <summary>
-        /// The topic name used to publish events between endpoints.
-        /// </summary>
-        [ObsoleteEx(Message = "It is possible to represent the publish and subscribe topic separately by specifying a topology.",
-            TreatAsErrorFromVersion = "4",
-            RemoveInVersion = "5",
-            ReplacementTypeOrMember = "Topology")]
-        public string TopicName
-        {
-            get => Topology.TopicToPublishTo;
-            set => Topology = TopicTopology.Single(value);
-        }
 
         /// <summary>
         /// Gets or sets the topic topology to be used.

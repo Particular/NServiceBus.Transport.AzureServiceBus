@@ -18,7 +18,7 @@ jobs:
         uses: actions/setup-dotnet@v3.2.0
         with:
           dotnet-version: 8.0.x
-          dotnet-quality: 'preview'     
+          dotnet-quality: 'preview'
       - name: Build
         run: dotnet build src --configuration Release
       - name: Sign NuGet packages
@@ -37,4 +37,4 @@ jobs:
       - name: Deploy
         uses: Particular/push-octopus-package-action@v1.1.0
         with:
-          octopus-deploy-api-key: ${{ secrets.OCTOPUS_DEPLOY_API_KEY }}		
+          octopus-deploy-api-key: ${{ secrets.OCTOPUS_DEPLOY_API_KEY }}

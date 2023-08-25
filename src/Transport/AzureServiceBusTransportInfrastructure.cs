@@ -56,7 +56,7 @@
 
         IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient receiveClient)
         {
-            string receiveAddress = TranslateAddress(receiveSettings.ReceiveAddress);
+            string receiveAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
             return new MessagePump(
                 receiveClient,
                 transportSettings,
@@ -83,10 +83,7 @@
             await defaultClient.DisposeAsync().ConfigureAwait(false);
         }
 
-        public override string ToTransportAddress(QueueAddress address) => TranslateAddress(address);
-
-        // this can be inlined once the TransportDefinition.ToTransportAddress() has been obsoleted with ERROR
-        public static string TranslateAddress(QueueAddress address)
+        public override string ToTransportAddress(QueueAddress address)
         {
             var queue = new StringBuilder(address.BaseAddress);
 

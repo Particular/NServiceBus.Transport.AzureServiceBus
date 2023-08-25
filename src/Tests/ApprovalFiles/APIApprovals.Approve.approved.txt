@@ -16,7 +16,8 @@ namespace NServiceBus
         public System.Func<System.Type, string> SubscriptionRuleNamingConvention { get; set; }
         public System.TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
         [System.Obsolete("It is possible to represent the publish and subscribe topic separately by specify" +
-            "ing a topology. Use `Topology` instead. Will be removed in version 5.0.0.", true)]
+            "ing a topology. Use `Topology` instead. The member currently throws a NotImpleme" +
+            "ntedException. Will be removed in version 5.0.0.", true)]
         public string TopicName { get; set; }
         public NServiceBus.TopicTopology Topology { get; set; }
         public bool UseWebSockets { get; set; }
@@ -25,7 +26,8 @@ namespace NServiceBus
         public override System.Threading.Tasks.Task<NServiceBus.Transport.TransportInfrastructure> Initialize(NServiceBus.Transport.HostSettings hostSettings, NServiceBus.Transport.ReceiveSettings[] receivers, string[] sendingAddresses, System.Threading.CancellationToken cancellationToken = default) { }
         [System.Obsolete("Inject the ITransportAddressResolver type to access the address translation mecha" +
             "nism at runtime. See the NServiceBus version 8 upgrade guide for further details" +
-            ". Will be removed in version 5.0.0.", true)]
+            ". The member currently throws a NotImplementedException. Will be removed in vers" +
+            "ion 5.0.0.", true)]
         public override string ToTransportAddress(NServiceBus.Transport.QueueAddress address) { }
     }
     public static class AzureServiceBusTransportSettingsExtensions
