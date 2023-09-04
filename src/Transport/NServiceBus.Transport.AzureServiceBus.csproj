@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="[7.13.1, 8.0.0)" />
-    <PackageReference Include="NServiceBus" Version="9.0.0-alpha.1" />
+    <PackageReference Include="NServiceBus" Version="9.0.0-alpha.2" />
     <PackageReference Include="Particular.Packaging" Version="3.0.0" PrivateAssets="All" />
   </ItemGroup>
 
