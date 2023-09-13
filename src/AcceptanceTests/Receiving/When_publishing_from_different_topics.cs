@@ -2,8 +2,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
 {
     using System.Threading.Tasks;
     using AcceptanceTesting;
-    using NServiceBus.AcceptanceTests;
-    using NServiceBus.AcceptanceTests.EndpointTemplates;
+    using AcceptanceTesting.EndpointTemplates;
     using NUnit.Framework;
 
     // Makes sure we have enough forwarding hops available to support the hierarchy

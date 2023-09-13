@@ -2,8 +2,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
 {
     using System.Threading.Tasks;
     using AcceptanceTesting;
-    using NServiceBus.AcceptanceTests;
-    using NServiceBus.AcceptanceTests.EndpointTemplates;
+    using AcceptanceTesting.EndpointTemplates;
     using NUnit.Framework;
 
     public class When_publishing_sendonly_and_subscribing_on_different_topics : NServiceBusAcceptanceTest

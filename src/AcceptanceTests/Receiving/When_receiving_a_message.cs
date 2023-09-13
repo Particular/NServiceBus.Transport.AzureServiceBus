@@ -4,7 +4,7 @@
     using System.Threading.Tasks;
     using AcceptanceTesting;
     using Azure.Messaging.ServiceBus;
-    using NServiceBus.AcceptanceTests.EndpointTemplates;
+    using AcceptanceTesting.EndpointTemplates;
     using NUnit.Framework;
     using Pipeline;
 

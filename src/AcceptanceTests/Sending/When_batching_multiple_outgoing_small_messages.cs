@@ -9,8 +9,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
     using AcceptanceTesting;
     using AcceptanceTesting.Customization;
     using Logging;
-    using NServiceBus.AcceptanceTests;
-    using NServiceBus.AcceptanceTests.EndpointTemplates;
+    using AcceptanceTesting.EndpointTemplates;
     using NUnit.Framework;
 
     public class When_batching_multiple_outgoing_small_messages : NServiceBusAcceptanceTest

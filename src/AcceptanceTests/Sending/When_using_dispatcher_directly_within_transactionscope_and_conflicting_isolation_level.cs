@@ -3,8 +3,7 @@ using System.Threading.Tasks;
 using System.Transactions;
 using NServiceBus;
 using NServiceBus.AcceptanceTesting;
-using NServiceBus.AcceptanceTests;
-using NServiceBus.AcceptanceTests.EndpointTemplates;
+using NServiceBus.AcceptanceTesting.EndpointTemplates;
 using NServiceBus.Features;
 using NUnit.Framework;
 

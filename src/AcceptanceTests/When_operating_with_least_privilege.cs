@@ -6,8 +6,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
     using Azure.Messaging.ServiceBus;
     using Azure.Messaging.ServiceBus.Administration;
     using Features;
-    using NServiceBus.AcceptanceTests;
-    using NServiceBus.AcceptanceTests.EndpointTemplates;
+    using AcceptanceTesting.EndpointTemplates;
     using NServiceBus.Configuration.AdvancedExtensibility;
     using NUnit.Framework;
 

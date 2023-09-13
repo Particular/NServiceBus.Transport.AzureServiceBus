@@ -5,8 +5,8 @@
     using System.Runtime.Serialization;
     using System.Threading.Tasks;
     using System.Xml;
-    using NServiceBus.AcceptanceTesting;
-    using NServiceBus.AcceptanceTests.EndpointTemplates;
+    using AcceptanceTesting;
+    using AcceptanceTesting.EndpointTemplates;
     using NUnit.Framework;
 
     class When_receiving_a_message_from_legacy_asb
