@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Messaging.ServiceBus.Administration;
 using NServiceBus;
 using NServiceBus.Transport;
 using NServiceBus.TransportTests;
@@ -39,7 +40,8 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
                         return sb.ToString();
                     }
                 }
-            }
+            },
+            SubscriptionRuleFilterConvention = eventType => new CorrelationRuleFilter(eventType.FullName)
         };
         return transport;
     }
