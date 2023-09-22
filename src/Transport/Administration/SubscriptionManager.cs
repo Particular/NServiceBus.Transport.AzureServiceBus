@@ -63,13 +63,13 @@
             CancellationToken cancellationToken)
         {
             var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType);
-            var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
 
             // on an entity with forwarding enabled it is not possible to do GetRules so we first have to delete and then create
 
             try
             {
-                await ruleManager.CreateRuleAsync(new CreateRuleOptions(ruleName, new SqlRuleFilter(sqlExpression)), cancellationToken)
+                var rule = transportSettings.SubscriptionRuleFilterConvention(eventType);
+                await ruleManager.CreateRuleAsync(new CreateRuleOptions(ruleName, rule), cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
