@@ -8,6 +8,7 @@
     using System.Threading.Tasks;
     using Azure.Core;
     using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using Transport;
     using Transport.AzureServiceBus;
 
@@ -343,6 +344,21 @@
             }
         }
         IWebProxy webProxy;
+
+        /// <summary>
+        /// Overrides the default subscription rule filter convention.
+        /// </summary>
+        public Func<Type, RuleFilter> SubscriptionRuleFilterConvention
+        {
+            get => subscriptionRuleFilterConventions;
+            set
+            {
+                Guard.AgainstNull(nameof(SubscriptionRuleFilterConvention), value);
+                subscriptionRuleFilterConventions = value;
+            }
+        }
+
+        Func<Type, RuleFilter> subscriptionRuleFilterConventions = eventType => new SqlRuleFilter($"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'");
 
         internal string ConnectionString { get; set; }
 
