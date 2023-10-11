@@ -7,8 +7,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
 
     public class FakeReceiver : ServiceBusReceiver
     {
-        readonly List<(ServiceBusReceivedMessage, IDictionary<string, object> propertiesToModify)> abandonedMessages = new();
-        readonly List<ServiceBusReceivedMessage> completedMessages = new();
+        readonly List<(ServiceBusReceivedMessage, IDictionary<string, object> propertiesToModify)> abandonedMessages = [];
+        readonly List<ServiceBusReceivedMessage> completedMessages = [];
 
         public IReadOnlyCollection<(ServiceBusReceivedMessage, IDictionary<string, object> propertiesToModify)> AbandonedMessages
             => abandonedMessages;
