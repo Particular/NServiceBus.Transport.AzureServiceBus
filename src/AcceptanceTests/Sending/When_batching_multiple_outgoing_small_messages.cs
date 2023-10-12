@@ -88,7 +88,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
         {
             public List<string> MessageIdsForBatching { get; set; }
             public List<string> MessageIdsForImmediateDispatch { get; set; }
-            public ConcurrentBag<string> MessageIdsReceived { get; } = new ConcurrentBag<string>();
+            public ConcurrentBag<string> MessageIdsReceived { get; } = [];
         }
 
         public class Sender : EndpointConfigurationBuilder

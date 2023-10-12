@@ -9,11 +9,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
 
     public class FakeSender : ServiceBusSender
     {
-        readonly List<ServiceBusMessage> sentMessages = new List<ServiceBusMessage>();
-        readonly List<ServiceBusMessageBatch> batchedMessages = new List<ServiceBusMessageBatch>();
+        readonly List<ServiceBusMessage> sentMessages = [];
+        readonly List<ServiceBusMessageBatch> batchedMessages = [];
         readonly ConditionalWeakTable<ServiceBusMessageBatch, IReadOnlyCollection<ServiceBusMessage>>
             batchToBackingStore =
-                new ConditionalWeakTable<ServiceBusMessageBatch, IReadOnlyCollection<ServiceBusMessage>>();
+                [];
 
         public IReadOnlyCollection<ServiceBusMessage> IndividuallySentMessages => sentMessages;
         public IReadOnlyCollection<ServiceBusMessageBatch> BatchSentMessages => batchedMessages;

@@ -5,8 +5,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
 
     public class FakeServiceBusClient : ServiceBusClient
     {
-        public Dictionary<string, FakeSender> Senders { get; } = new Dictionary<string, FakeSender>();
-        public Dictionary<string, FakeProcessor> Processors { get; } = new Dictionary<string, FakeProcessor>();
+        public Dictionary<string, FakeSender> Senders { get; } = [];
+        public Dictionary<string, FakeProcessor> Processors { get; } = [];
 
         public override ServiceBusSender CreateSender(string queueOrTopicName)
         {

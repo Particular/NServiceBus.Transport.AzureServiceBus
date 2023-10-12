@@ -16,7 +16,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         const int MaxMessageThresholdForTransaction = 100;
 
         static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
-        static readonly Dictionary<string, List<IOutgoingTransportOperation>> emptyDestinationAndOperations = new();
+        static readonly Dictionary<string, List<IOutgoingTransportOperation>> emptyDestinationAndOperations = [];
 
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;

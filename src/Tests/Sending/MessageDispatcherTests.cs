@@ -21,18 +21,18 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Isolated);
 
             var operation2 =
                 new TransportOperation(new OutgoingMessage("SomeOtherId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Isolated);
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction());
@@ -52,18 +52,18 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeEvent)),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Isolated);
 
             var operation2 =
                 new TransportOperation(new OutgoingMessage("SomeOtherId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeEvent)),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Isolated);
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction());
@@ -83,18 +83,18 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Isolated);
 
             var operation2 =
                 new TransportOperation(new OutgoingMessage("SomeOtherId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeOtherDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Isolated);
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction());
@@ -117,18 +117,18 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeEvent)),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Isolated);
 
             var operation2 =
                 new TransportOperation(new OutgoingMessage("SomeOtherId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeOtherEvent)),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Isolated);
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction());
@@ -148,18 +148,18 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             var operation2 =
                 new TransportOperation(new OutgoingMessage("SomeOtherId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction());
@@ -181,18 +181,18 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeEvent)),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             var operation2 =
                 new TransportOperation(new OutgoingMessage("SomeOtherId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeEvent)),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction());
@@ -214,18 +214,18 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             var operation2 =
                 new TransportOperation(new OutgoingMessage("SomeOtherId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeOtherDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction());
@@ -253,18 +253,18 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeEvent)),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             var operation2 =
                 new TransportOperation(new OutgoingMessage("SomeOtherId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeOtherEvent)),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction());
@@ -286,34 +286,34 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("Operation1",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Isolated);
 
             var operation2 =
                 new TransportOperation(new OutgoingMessage("Operation2",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeEvent)),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Isolated);
 
             var operation3 =
                 new TransportOperation(new OutgoingMessage("Operation3",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeOtherDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             var operation4 =
                 new TransportOperation(new OutgoingMessage("Operation4",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeOtherEvent)),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2, operation3, operation4), new TransportTransaction());
@@ -349,10 +349,10 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             Assert.ThrowsAsync<ServiceBusException>(async () => await dispatcher.Dispatch(new TransportOperations(operation1), new TransportTransaction()));
@@ -370,10 +370,10 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             var azureServiceBusTransaction = new AzureServiceBusTransportTransaction(transactionalClient,
@@ -423,7 +423,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                         new Dictionary<string, string> { { "Number", i.ToString() } },
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default));
             }
 
@@ -462,7 +462,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                         new Dictionary<string, string> { { "Number", i.ToString() } },
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default));
             }
 
@@ -491,10 +491,10 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
-                        new Dictionary<string, string>(),
+                        [],
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
-                    new DispatchProperties(),
+                    [],
                     DispatchConsistency.Default);
 
             var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
