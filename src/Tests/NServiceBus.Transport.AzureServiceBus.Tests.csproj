@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Force the latest version of the transitive dependencies">
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.16.1" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.17.1" />
   </ItemGroup>
 
 </Project>
