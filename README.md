@@ -1,7 +1,6 @@
 # NServiceBus.Transport.AzureServiceBus
 
-NServiceBus.Transport.AzureServiceBus enables the use of the Azure Service Bus Brokered Messaging service as the underlying transport used by NServiceBus. 
-This transport uses the [Azure.Messaging.ServiceBus NuGet package](https://www.nuget.org/packages/Azure.Messaging.ServiceBus/).
+NServiceBus.Transport.AzureServiceBus enables the use of the [Azure Service Bus Brokered Messaging](https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview) service as the underlying transport used by NServiceBus. This transport uses the [Azure.Messaging.ServiceBus NuGet package](https://www.nuget.org/packages/Azure.Messaging.ServiceBus/).
 
 It is part of the [Particular Service Platform](https://particular.net/service-platform), which includes [NServiceBus](https://particular.net/nservicebus) and tools to build, monitor, and debug distributed systems.
 
