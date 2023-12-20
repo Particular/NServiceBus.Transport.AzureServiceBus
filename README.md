@@ -1,20 +1,20 @@
-# Azure Service Bus Transport for NServiceBus
+# NServiceBus.Transport.AzureServiceBus
 
-The Azure ServiceBus transport for NServiceBus enables the use of the Azure Service Bus Brokered Messaging service as the underlying transport used by NServiceBus. 
-This transport uses the [Azure.Messaging.ServiceBus](https://www.nuget.org/packages/Azure.Messaging.ServiceBus/) NuGet package.
+NServiceBus.Transport.AzureServiceBus enables the use of the [Azure Service Bus Brokered Messaging](https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview) service as the underlying transport used by NServiceBus. This transport uses the [Azure.Messaging.ServiceBus NuGet package](https://www.nuget.org/packages/Azure.Messaging.ServiceBus/).
 
-## Documentation
+It is part of the [Particular Service Platform](https://particular.net/service-platform), which includes [NServiceBus](https://particular.net/nservicebus) and tools to build, monitor, and debug distributed systems.
 
-[Azure Service Bus transport](https://docs.particular.net/transports/azure-service-bus/)
+See the [Azure Service Bus Transport documentation](https://docs.particular.net/transports/azure-service-bus/) for more details on how to use it.
 
-[Samples](https://docs.particular.net/transports/azure-service-bus/#related-samples)
+## Running tests locally
 
-## Running the Acceptance Tests
+### Acceptance Tests
 
 Follow these steps to run the acceptance tests locally:
-* Add a new environment variable `AzureServiceBus_ConnectionString` containing a connection string to your Azure Service Bus namespace
+
+* Add a new environment variable `AzureServiceBus_ConnectionString` containing a connection string to your Azure Service Bus namespace.
 * Add a new environment variable `AzureServiceBus_ConnectionString_Restricted` containing a connection string to the same namespace with [`Send` and `Listen` rights](https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-sas#shared-access-authorization-policies) only.
 
-## Running the Unit Tests
+### Unit Tests
 
-* Add a new environment variable `AzureServiceBus_ConnectionString`containing a connection string to your Azure Service Bus namespace (could be same as for acceptance tests)
+* Add a new environment variable `AzureServiceBus_ConnectionString` containing a connection string to your Azure Service Bus namespace (can be same as for acceptance tests).
