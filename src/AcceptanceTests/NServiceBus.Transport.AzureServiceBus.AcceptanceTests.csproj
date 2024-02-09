@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>$(SolutionDir)NServiceBusTests.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>..\NServiceBusTests.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,7 +18,7 @@
     <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
   </ItemGroup>
 
-  <ItemGroup Label="Force the latest version of the transitive dependencies">
+  <ItemGroup Label="Force the latest version of the transitive dependencies where we use a range">
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.17.2" />
   </ItemGroup>
 
