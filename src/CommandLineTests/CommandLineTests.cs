@@ -1,8 +1,8 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.CommandLine.Tests
 {
     using System;
+    using System.Collections.Generic;
     using System.Diagnostics;
-    using System.Linq;
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
     using Azure.Messaging.ServiceBus.Administration;
@@ -291,46 +291,60 @@
             Assert.AreEqual(queueName, actual.UserMetadata);
 
             // rules
-            var rules = await client.GetRulesAsync(topicName, subscriptionName).ToListAsync();
+            var rules = new List<RuleProperties>();
+
+            await foreach (var rule in client.GetRulesAsync(topicName, subscriptionName))
+            {
+                rules.Add(rule);
+            }
+
             Assert.IsTrue(rules.Count == 4);
 
-            var defaultRule = rules.ElementAt(0);
+            var defaultRule = rules[0];
             Assert.AreEqual("$default", defaultRule.Name);
             Assert.AreEqual(new FalseRuleFilter().SqlExpression, ((FalseRuleFilter)defaultRule.Filter).SqlExpression);
 
-            var customRuleNameRule = rules.ElementAt(1);
+            var customRuleNameRule = rules[1];
             Assert.AreEqual("CustomRuleName", customRuleNameRule.Name);
             Assert.AreEqual(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage3%'").SqlExpression, ((SqlRuleFilter)customRuleNameRule.Filter).SqlExpression);
 
-            var myMessage1Rule = rules.ElementAt(2);
+            var myMessage1Rule = rules[2];
             Assert.AreEqual("MyMessage1", myMessage1Rule.Name);
             Assert.AreEqual(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyMessage1%'").SqlExpression, ((SqlRuleFilter)myMessage1Rule.Filter).SqlExpression);
 
-            var myMessage2WithNamespace = rules.ElementAt(3);
+            var myMessage2WithNamespace = rules[3];
             Assert.AreEqual("MyNamespace1.MyMessage2", myMessage2WithNamespace.Name);
             Assert.AreEqual(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage2%'").SqlExpression, ((SqlRuleFilter)myMessage2WithNamespace.Filter).SqlExpression);
         }
 
         async Task VerifySubscriptionContainsOnlyDefaultRule(string topicName, string subscriptionName)
         {
-            // rules
-            var rules = await client.GetRulesAsync(topicName, subscriptionName).ToListAsync();
+            var rules = new List<RuleProperties>();
+
+            await foreach (var rule in client.GetRulesAsync(topicName, subscriptionName))
+            {
+                rules.Add(rule);
+            }
 
             Assert.IsTrue(rules.Count == 1);
 
-            var defaultRule = rules.ElementAt(0);
+            var defaultRule = rules[0];
             Assert.AreEqual("$default", defaultRule.Name);
             Assert.AreEqual(new FalseRuleFilter().SqlExpression, ((FalseRuleFilter)defaultRule.Filter).SqlExpression);
         }
 
         async Task VerifySubscriptionContainsOnlyDefaultMatchAllRule(string topicName, string subscriptionName)
         {
-            // rules
-            var rules = await client.GetRulesAsync(topicName, subscriptionName).ToListAsync();
+            var rules = new List<RuleProperties>();
+
+            await foreach (var rule in client.GetRulesAsync(topicName, subscriptionName))
+            {
+                rules.Add(rule);
+            }
 
             Assert.IsTrue(rules.Count == 1);
 
-            var defaultRule = rules.ElementAt(0);
+            var defaultRule = rules[0];
             Assert.AreEqual("$default", defaultRule.Name);
             Assert.AreEqual(new TrueRuleFilter().SqlExpression, ((TrueRuleFilter)defaultRule.Filter).SqlExpression);
         }

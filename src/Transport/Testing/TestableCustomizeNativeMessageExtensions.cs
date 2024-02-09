@@ -10,7 +10,7 @@
     public static partial class TestableCustomizeNativeMessageExtensions
     {
         /// <summary>
-        /// Gets the customization of the outgoing native message sent using <see cref="NServiceBus.SendOptions"/>, <see cref="NServiceBus.PublishOptions"/> or <see cref="NServiceBus.ReplyOptions"/>.
+        /// Gets the customization of the outgoing native message sent using <see cref="SendOptions"/>, <see cref="PublishOptions"/> or <see cref="ReplyOptions"/>.
         /// </summary>
         /// <param name="options">Option being extended.</param>
         /// <returns>The customization action or null.</returns>
