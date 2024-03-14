@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         os: [ windows-2019, ubuntu-20.04 ]
-        framework: [ net6.0, net461 ]
+        framework: [ net8.0, net7.0, net6.0, net481 ]
         include:
           - os: windows-2019
             os-name: Windows
@@ -26,7 +26,7 @@ jobs:
             os-name: Linux
         exclude:
           - os: ubuntu-20.04
-            framework: net461
+            framework: net481
       fail-fast: false
     steps:
       - name: Check for secrets
