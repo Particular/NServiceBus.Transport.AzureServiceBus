@@ -8,6 +8,9 @@ on:
   workflow_dispatch:
 env:
   DOTNET_NOLOGO: true
+defaults:
+  run:
+    shell: pwsh
 jobs:
   build:
     name: ${{ matrix.os-name }}-${{ matrix.framework }}
@@ -15,7 +18,7 @@ jobs:
     strategy:
       matrix:
         os: [ windows-2019, ubuntu-20.04 ]
-        framework: [ net6.0, net472 ]
+        framework: [ net8.0, net7.0, net6.0, net481 ]
         include:
           - os: windows-2019
             os-name: Windows
@@ -23,35 +26,35 @@ jobs:
             os-name: Linux
         exclude:
           - os: ubuntu-20.04
-            framework: net472
+            framework: net481
       fail-fast: false
     steps:
       - name: Check for secrets
         env:
           SECRETS_AVAILABLE: ${{ secrets.SECRETS_AVAILABLE }}
-        shell: pwsh
         run: exit $(If ($env:SECRETS_AVAILABLE -eq 'true') { 0 } Else { 1 })
       - name: Checkout
-        uses: actions/checkout@v3.4.0
+        uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 0
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v3.0.3
+        uses: actions/setup-dotnet@v4.0.0
         with:
           dotnet-version: |
+            8.0.x
             7.0.x
             6.0.x
       - name: Build
         run: dotnet build src --configuration Release
       - name: Upload packages
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v3.1.2
+        if: runner.os == 'Linux' && matrix.framework == 'net8.0'
+        uses: actions/upload-artifact@v4.3.1
         with:
           name: NuGet packages
           path: nugets/
           retention-days: 7
       - name: Azure login
-        uses: azure/login@v1.4.6
+        uses: azure/login@v2.0.0
         with:
           creds: ${{ secrets.AZURE_ACI_CREDENTIALS }}
       - name: Setup Azure Service Bus
@@ -60,6 +63,6 @@ jobs:
           connection-string-name: AzureServiceBus_ConnectionString
           tag: ASBTransport
       - name: Run tests
-        uses: Particular/run-tests-action@v1.5.0
+        uses: Particular/run-tests-action@v1.7.0
         with:
           framework: ${{ matrix.framework }}
