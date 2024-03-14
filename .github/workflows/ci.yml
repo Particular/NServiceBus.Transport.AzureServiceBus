@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         os: [ windows-2019, ubuntu-20.04 ]
-        framework: [ net6.0, net472 ]
+        framework: [ net8.0, net7.0, net6.0, net481 ]
         include:
           - os: windows-2019
             os-name: Windows
@@ -26,7 +26,7 @@ jobs:
             os-name: Linux
         exclude:
           - os: ubuntu-20.04
-            framework: net472
+            framework: net481
       fail-fast: false
     steps:
       - name: Check for secrets
@@ -47,7 +47,7 @@ jobs:
       - name: Build
         run: dotnet build src --configuration Release
       - name: Upload packages
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.framework == 'net8.0'
         uses: actions/upload-artifact@v4.3.1
         with:
           name: NuGet packages
