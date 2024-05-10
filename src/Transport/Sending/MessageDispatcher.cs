@@ -173,8 +173,8 @@ namespace NServiceBus.Transport.AzureServiceBus
                     peekedMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
                     var message =
                         @$"Unable to add the message '#{messageCount - messagesToSend.Count}' with message id '{messageId ?? peekedMessage.MessageId}' to the the batch '#{batchCount}'.
-The message may be too large or the batch size has reached the maximum allowed messages per batch for the current tier selected for the namespace '{sender.FullyQualifiedNamespace}'.
-To mitigate this problem reduce the message size by using the data bus or upgrade to a higher Service Bus tier.";
+The message may be too large, or the batch size has reached the maximum allowed messages per batch for the current tier selected for the namespace '{sender.FullyQualifiedNamespace}'.
+To mitigate this problem reduce the message size by using the data bus or upgrade to a higher Service Bus tier. If maximum message size has been changed, ensure to restart your endpoints.";
                     throw new ServiceBusException(message, ServiceBusFailureReason.MessageSizeExceeded);
                 }
 
