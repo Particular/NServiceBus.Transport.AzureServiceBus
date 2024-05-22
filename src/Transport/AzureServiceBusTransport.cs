@@ -268,7 +268,7 @@
 
             }
         }
-        Func<string, string> subscriptionNamingConvention = name => name;
+        Func<string, string> subscriptionNamingConvention = static name => name;
 
         /// <summary>
         /// Specifies a callback to customize subscription rule names.
@@ -294,7 +294,7 @@
                 };
             }
         }
-        Func<Type, string> subscriptionRuleNamingConvention = type => type.FullName;
+        Func<Type, string> subscriptionRuleNamingConvention = static type => type.FullName;
 
         /// <summary>
         /// Configures the transport to use AMQP over WebSockets.
