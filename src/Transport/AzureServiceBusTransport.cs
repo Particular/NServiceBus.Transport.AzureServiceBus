@@ -59,6 +59,12 @@
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
             ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)
         {
+            // This check prevents an uninitialized transport template to be used.
+            if (ConnectionString == null && FullyQualifiedNamespace == null)
+            {
+                throw new Exception("The transport has not been initialized. Either provide a connection string or a fully qualified namespace and token credential.");
+            }
+
             var transportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp;
             bool enableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive;
 
@@ -262,7 +268,7 @@
 
             }
         }
-        Func<string, string> subscriptionNamingConvention = name => name;
+        Func<string, string> subscriptionNamingConvention = static name => name;
 
         /// <summary>
         /// Specifies a callback to customize subscription rule names.
@@ -288,7 +294,7 @@
                 };
             }
         }
-        Func<Type, string> subscriptionRuleNamingConvention = type => type.FullName;
+        Func<Type, string> subscriptionRuleNamingConvention = static type => type.FullName;
 
         /// <summary>
         /// Configures the transport to use AMQP over WebSockets.
