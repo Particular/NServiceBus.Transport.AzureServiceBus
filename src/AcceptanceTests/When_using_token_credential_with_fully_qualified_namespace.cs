@@ -11,7 +11,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
 
     public class When_using_token_credential_with_fully_qualified_namespace : NServiceBusAcceptanceTest
     {
-        private string fullyQualifiedNamespace;
+        string fullyQualifiedNamespace;
 
         [SetUp]
         public void Setup()
