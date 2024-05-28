@@ -31,7 +31,13 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                     {
                         var transport = c.ConfigureTransport<AzureServiceBusTransport>();
                         transport.FullyQualifiedNamespace = fullyQualifiedNamespace;
-                        transport.TokenCredential = new DefaultAzureCredential();
+                        transport.TokenCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                        {
+                            Diagnostics =
+                            {
+                                IsLoggingEnabled = true,
+                            }
+                        });
                     });
                     b.When(session => session.SendLocal(new MyCommand()));
                 })
@@ -41,7 +47,13 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                     {
                         var transport = c.ConfigureTransport<AzureServiceBusTransport>();
                         transport.FullyQualifiedNamespace = fullyQualifiedNamespace;
-                        transport.TokenCredential = new DefaultAzureCredential();
+                        transport.TokenCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                        {
+                            Diagnostics =
+                            {
+                                IsLoggingEnabled = true,
+                            }
+                        });
                     });
                 })
                 .Done(c => c.SubscriberGotEvent)
