@@ -3,6 +3,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
     using System;
     using System.Threading.Tasks;
     using AcceptanceTesting;
+    using Azure.Core.Diagnostics;
     using Azure.Identity;
     using Azure.Messaging.ServiceBus;
     using NServiceBus.AcceptanceTests;
@@ -24,6 +25,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
         [Test]
         public async Task Should_work()
         {
+            using var listener = AzureEventSourceListener.CreateConsoleLogger();
+
             var context = await Scenario.Define<Context>()
                 .WithEndpoint<Publisher>(b =>
                 {
