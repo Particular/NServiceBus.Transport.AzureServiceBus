@@ -1,0 +1,4 @@
+ComponentType: Transport
+ComponentPackages:
+  - Name: NServiceBus.Transport.AzureServiceBus
+  - Name: NServiceBus.Transport.AzureServiceBus.CommandLine
