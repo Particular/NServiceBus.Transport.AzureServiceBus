@@ -13,6 +13,7 @@ namespace NServiceBus
         public int PrefetchMultiplier { get; set; }
         public Azure.Messaging.ServiceBus.ServiceBusRetryOptions RetryPolicyOptions { get; set; }
         public System.Func<string, string> SubscriptionNamingConvention { get; set; }
+        public System.Func<System.Type, Azure.Messaging.ServiceBus.Administration.RuleFilter> SubscriptionRuleFilterConvention { get; set; }
         public System.Func<System.Type, string> SubscriptionRuleNamingConvention { get; set; }
         public System.TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
         [System.Obsolete("It is possible to represent the publish and subscribe topic separately by specify" +
