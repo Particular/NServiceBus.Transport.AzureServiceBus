@@ -125,7 +125,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 var messagesTooLargeToBeBatched = new List<ServiceBusMessage>(0);
                 foreach (var operation in operations)
                 {
-                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                     messagesToSend.Enqueue(message);
                 }
@@ -231,7 +231,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
                 foreach (var operation in operations)
                 {
-                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                     dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
                 }

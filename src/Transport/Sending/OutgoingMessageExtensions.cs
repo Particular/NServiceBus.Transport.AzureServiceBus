@@ -7,8 +7,11 @@
 
     static class OutgoingMessageExtensions
     {
-        public static ServiceBusMessage ToAzureServiceBusMessage(this OutgoingMessage outgoingMessage, DispatchProperties dispatchProperties, string incomingQueuePartitionKey)
+        public static ServiceBusMessage ToAzureServiceBusMessage(this IOutgoingTransportOperation outgoingTransportOperation, string incomingQueuePartitionKey)
         {
+            var outgoingMessage = outgoingTransportOperation.Message;
+            var message = new ServiceBusMessage(outgoingMessage.Body);
+            var dispatchProperties = outgoingTransportOperation.Properties;
 
             ApplyMessageId(message, outgoingTransportOperation);
 
@@ -16,9 +19,9 @@
 
             ApplyDeliveryConstraints(message, dispatchProperties);
 
-            ApplyCorrelationId(message, outgoingMessage.Headers);
+            ApplyCorrelationId(message, outgoingTransportOperation);
 
-            ApplyContentType(message, outgoingMessage.Headers);
+            ApplyContentType(message, outgoingTransportOperation);
 
             SetReplyToAddress(message, outgoingMessage.Headers);
 
@@ -45,17 +48,31 @@
             }
         }
 
-        static void ApplyCorrelationId(ServiceBusMessage message, Dictionary<string, string> headers)
+        static void ApplyCorrelationId(ServiceBusMessage message, IOutgoingTransportOperation outgoingTransportOperation)
         {
-            if (headers.TryGetValue(Headers.CorrelationId, out var correlationId))
+            var properties = outgoingTransportOperation.Properties;
+            var headers = outgoingTransportOperation.Message.Headers;
+
+            if (properties.TryGetValue(Headers.CorrelationId, out var correlationId))
+            {
+                message.CorrelationId = correlationId;
+            }
+            else if (headers.TryGetValue(Headers.CorrelationId, out correlationId))
             {
                 message.CorrelationId = correlationId;
             }
         }
 
-        static void ApplyContentType(ServiceBusMessage message, Dictionary<string, string> headers)
+        static void ApplyContentType(ServiceBusMessage message, IOutgoingTransportOperation outgoingTransportOperation)
         {
-            if (headers.TryGetValue(Headers.ContentType, out var contentType))
+            var properties = outgoingTransportOperation.Properties;
+            var headers = outgoingTransportOperation.Message.Headers;
+
+            if (properties.TryGetValue(Headers.ContentType, out var contentType))
+            {
+                message.ContentType = contentType;
+            }
+            else if (headers.TryGetValue(Headers.ContentType, out contentType))
             {
                 message.ContentType = contentType;
             }
