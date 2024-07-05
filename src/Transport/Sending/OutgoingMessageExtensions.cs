@@ -18,6 +18,13 @@
             // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
             message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
 
+            var disableLegacyHeaders = outgoingTransportOperation.Properties.ContainsKey(Experimental.TransportOperationExt.DisableLegacyHeadersKey);
+            if (!disableLegacyHeaders)
+            {
+                // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
+                message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
+            }
+
             message.TransactionPartitionKey = incomingQueuePartitionKey;
 
             ApplyDeliveryConstraints(message, dispatchProperties);
