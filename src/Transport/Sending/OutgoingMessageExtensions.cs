@@ -9,14 +9,8 @@
     {
         public static ServiceBusMessage ToAzureServiceBusMessage(this OutgoingMessage outgoingMessage, DispatchProperties dispatchProperties, string incomingQueuePartitionKey)
         {
-            var message = new ServiceBusMessage(outgoingMessage.Body)
-            {
-                // Cannot re-use MessageId to be compatible with ASB transport that could have native de-dup enabled
-                MessageId = Guid.NewGuid().ToString()
-            };
 
-            // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
-            message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
+            ApplyMessageId(message, outgoingTransportOperation);
 
             message.TransactionPartitionKey = incomingQueuePartitionKey;
 
@@ -80,6 +74,21 @@
             foreach (var header in headers)
             {
                 outgoingMessage.ApplicationProperties[header.Key] = header.Value;
+            }
+        }
+
+        static void ApplyMessageId(ServiceBusMessage message, IOutgoingTransportOperation outgoingTransportOperation)
+        {
+            var properties = outgoingTransportOperation.Properties;
+
+            if (properties.TryGetValue(Headers.MessageId, out var messageId))
+            {
+                message.MessageId = messageId;
+            }
+            else
+            {
+                // Cannot re-use MessageId to be compatible with ASB transport that could have native de-dup enabled
+                message.MessageId = Guid.NewGuid().ToString();
             }
         }
     }
