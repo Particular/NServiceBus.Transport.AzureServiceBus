@@ -122,7 +122,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
                 foreach (var operation in operations)
                 {
-                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                     messagesToSend.Enqueue(message);
                 }
@@ -226,7 +226,7 @@ If the maximum message size is increased, the endpoint must be restarted for the
 
                 foreach (var operation in operations)
                 {
-                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                     dispatchTasks.Add(DispatchIsolatedForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
                 }
