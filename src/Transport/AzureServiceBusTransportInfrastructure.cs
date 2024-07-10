@@ -56,6 +56,8 @@
 
         IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient receiveClient)
         {
+            var deadLetterQueue = receiveSettings is AzureServiceBusReceiveSettings { DeadLetterQueue: true };
+
             string receiveAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
             return new MessagePump(
                 receiveClient,
@@ -65,7 +67,9 @@
                 hostSettings.CriticalErrorAction,
                 receiveSettings.UsePublishSubscribe
                     ? new SubscriptionManager(receiveAddress, transportSettings, defaultClient)
-                    : null);
+                    : null,
+                deadLetterQueue
+                );
         }
 
         public override async Task Shutdown(CancellationToken cancellationToken = default)

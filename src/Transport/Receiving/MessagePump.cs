@@ -14,6 +14,7 @@
         readonly AzureServiceBusTransport transportSettings;
         readonly ReceiveSettings receiveSettings;
         readonly Action<string, Exception, CancellationToken> criticalErrorAction;
+        readonly bool deadLetterQueue;
         readonly ServiceBusClient serviceBusClient;
 
         OnMessage onMessage;
@@ -34,7 +35,9 @@
             string receiveAddress,
             ReceiveSettings receiveSettings,
             Action<string, Exception, CancellationToken> criticalErrorAction,
-            SubscriptionManager subscriptionManager)
+            SubscriptionManager subscriptionManager,
+            bool deadLetterQueue
+            )
         {
             Id = receiveSettings.Id;
             ReceiveAddress = receiveAddress;
@@ -42,6 +45,7 @@
             this.transportSettings = transportSettings;
             this.receiveSettings = receiveSettings;
             this.criticalErrorAction = criticalErrorAction;
+            this.deadLetterQueue = deadLetterQueue;
             Subscriptions = subscriptionManager;
         }
 
@@ -81,6 +85,11 @@
             if (transportSettings.MaxAutoLockRenewalDuration.HasValue)
             {
                 receiveOptions.MaxAutoLockRenewalDuration = transportSettings.MaxAutoLockRenewalDuration.Value;
+            }
+
+            if (deadLetterQueue)
+            {
+                receiveOptions.SubQueue = SubQueue.DeadLetter;
             }
 
             processor = serviceBusClient.CreateProcessor(ReceiveAddress, receiveOptions);
