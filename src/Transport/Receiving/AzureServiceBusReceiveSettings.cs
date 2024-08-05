@@ -28,4 +28,6 @@ public class AzureServiceBusReceiveSettings : ReceiveSettings
     /// Receive from dead-letter queue
     /// </summary>
     public bool DeadLetterQueue { get; init; }
+
+    public override string ToString() => $"DeadLetterQueue:{DeadLetterQueue}";
 }
