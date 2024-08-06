@@ -272,6 +272,9 @@
             // args.CancellationToken is currently not used because the v8 version that supports cancellation was designed
             // to not flip the cancellation token until the very last moment in time when the stop token is flipped.
             var contextBag = new ContextBag();
+            using var processingTokenSource = CancellationTokenSource.CreateLinkedTokenSource(messageProcessingCancellationToken);
+
+            processMessageEventArgs.MessageLockLostAsync += MessageLockLostHandler;
 
             try
             {
@@ -280,20 +283,21 @@
                     contextBag.Set(message);
                     contextBag.Set(processMessageEventArgs);
 
-                    var messageContext = new MessageContext(messageId, headers, body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
+                    var messageContext = new MessageContext(messageId, headers, body,
+                        azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
-                    await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
+                    await onMessage(messageContext, processingTokenSource.Token).ConfigureAwait(false);
 
                     await processMessageEventArgs.SafeCompleteMessageAsync(message,
                             transportSettings.TransportTransactionMode,
                             azureServiceBusTransaction,
-                            cancellationToken: messageProcessingCancellationToken)
+                            cancellationToken: processingTokenSource.Token)
                         .ConfigureAwait(false);
 
                     azureServiceBusTransaction.Commit();
                 }
             }
-            catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationToken))
+            catch (Exception ex) when (!ex.IsCausedBy(processingTokenSource.Token))
             {
                 try
                 {
@@ -302,16 +306,17 @@
                     using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
                     {
                         var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body,
-                            azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
+                            azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress,
+                            contextBag);
 
-                        result = await onError(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
+                        result = await onError(errorContext, processingTokenSource.Token).ConfigureAwait(false);
 
                         if (result == ErrorHandleResult.Handled)
                         {
                             await processMessageEventArgs.SafeCompleteMessageAsync(message,
                                     transportSettings.TransportTransactionMode,
                                     azureServiceBusTransaction,
-                                    cancellationToken: messageProcessingCancellationToken)
+                                    cancellationToken: processingTokenSource.Token)
                                 .ConfigureAwait(false);
                         }
 
@@ -322,31 +327,52 @@
                     {
                         await processMessageEventArgs.SafeAbandonMessageAsync(message,
                                 transportSettings.TransportTransactionMode,
-                                cancellationToken: messageProcessingCancellationToken)
+                                cancellationToken: processingTokenSource.Token)
                             .ConfigureAwait(false);
                     }
                 }
-                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost)
+                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient ||
+                                                            onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost)
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
                     await processMessageEventArgs.SafeAbandonMessageAsync(message,
                             transportSettings.TransportTransactionMode,
-                            cancellationToken: messageProcessingCancellationToken)
+                            cancellationToken: processingTokenSource.Token)
                         .ConfigureAwait(false);
                 }
-                catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(messageProcessingCancellationToken))
+                catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(processingTokenSource.Token))
                 {
                     throw;
                 }
                 catch (Exception onErrorEx)
                 {
-                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
+                    criticalErrorAction(
+                        $"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`",
+                        onErrorEx, processingTokenSource.Token);
 
                     await processMessageEventArgs.SafeAbandonMessageAsync(message,
                             transportSettings.TransportTransactionMode,
-                            cancellationToken: messageProcessingCancellationToken)
+                            cancellationToken: processingTokenSource.Token)
                         .ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                processMessageEventArgs.MessageLockLostAsync -= MessageLockLostHandler;
+            }
+
+            async Task MessageLockLostHandler(MessageLockLostEventArgs lockLostArgs)
+            {
+                //logger.LogInformation(lockLostArgs.Exception, "Lost the lock while processing message. Cancelling the handler");
+                try
+                {
+                    await processingTokenSource.CancelAsync().ConfigureAwait(false);
+                }
+                catch (ObjectDisposedException)
+                {
+                    // ignored
+                    //logger.LogCritical(lockLostArgs.Exception, "Lock lost handler executed but cancellation token source was already disposed.");
                 }
             }
         }

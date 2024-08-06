@@ -62,6 +62,38 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
         }
 
         [Test]
+        public async Task Should_cancel_receive_token_when_lock_expires_during_processing()
+        {
+            var fakeClient = new FakeServiceBusClient();
+            var fakeReceiver = new FakeReceiver();
+
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport(), "receiveAddress",
+                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+
+            bool pumpWasCalled = false;
+
+            await pump.Initialize(new PushRuntimeSettings(1), async (context, token) =>
+                {
+                    pumpWasCalled = true;
+                    await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                },
+                (context, token) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
+            await pump.StartReceive();
+
+            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+
+            var fakeProcessor = fakeClient.Processors["receiveAddress"];
+            var processingTask = fakeProcessor.ProcessMessage(receivedMessage, fakeReceiver);
+            await fakeProcessor.RaiseMessageLockLost(receivedMessage, new MessageLockLostEventArgs(receivedMessage, new ServiceBusException("Lock Lost", ServiceBusFailureReason.MessageLockLost)));
+
+            Assert.ThrowsAsync<TaskCanceledException>(async () => await processingTask);
+
+            Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
+            Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+            Assert.That(pumpWasCalled, Is.True);
+        }
+
+        [Test]
         public async Task Should_abandon_message_upon_failure_with_retry_required()
         {
             var fakeClient = new FakeServiceBusClient();
