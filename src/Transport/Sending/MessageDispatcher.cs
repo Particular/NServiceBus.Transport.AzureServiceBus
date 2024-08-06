@@ -120,7 +120,9 @@ namespace NServiceBus.Transport.AzureServiceBus
                 var operations = destinationAndOperations.Value;
 
                 var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
-                var messagesThatCouldntBeSent = new List<ServiceBusMessage>(operations.Count);
+                // We assume the majority of the messages will be batched and only a few will be sent individually
+                // and therefore it is OK in those rare cases for the list to grow.
+                var messagesThatCouldntBeSent = new List<ServiceBusMessage>(0);
                 foreach (var operation in operations)
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
@@ -166,7 +168,11 @@ namespace NServiceBus.Transport.AzureServiceBus
                 }
                 else
                 {
-                    // TBD Logging
+                    if (Log.IsDebugEnabled)
+                    {
+                        dequeueMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
+                        Log.Debug($"Message '{messageId ?? dequeueMessage.MessageId}' is too large for the batch '{batchCount}' and will be sent individually to destination {destination}.");
+                    }
                     messagesThatCouldntBeSent.Add(dequeueMessage);
                     continue;
                 }
