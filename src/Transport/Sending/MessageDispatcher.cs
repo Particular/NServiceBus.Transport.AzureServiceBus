@@ -120,6 +120,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 var operations = destinationAndOperations.Value;
 
                 var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
+                var messagesThatCouldntBeSent = new List<ServiceBusMessage>(operations.Count);
                 foreach (var operation in operations)
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
@@ -128,25 +129,21 @@ namespace NServiceBus.Transport.AzureServiceBus
                 }
                 // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
                 // doing the access as late as possible but still on the synchronous path.
-                dispatchTasks.Add(DispatchBatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, messagesToSend, cancellationToken));
+                dispatchTasks.Add(DispatchBatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, messagesToSend, messagesThatCouldntBeSent, cancellationToken));
+
+                foreach (var message in messagesThatCouldntBeSent)
+                {
+                    dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, message, cancellationToken));
+                }
             }
         }
 
-        async Task DispatchBatchForDestination(string destination, ServiceBusClient? client, Transaction? transaction, Queue<ServiceBusMessage> messagesToSend, CancellationToken cancellationToken)
+        async Task DispatchBatchForDestination(string destination, ServiceBusClient? client, Transaction? transaction,
+            Queue<ServiceBusMessage> messagesToSend, List<ServiceBusMessage> messagesThatCouldntBeSent,
+            CancellationToken cancellationToken)
         {
-            var messageCount = messagesToSend.Count;
             int batchCount = 0;
             var sender = messageSenderRegistry.GetMessageSender(destination, client);
-            // There are two limits for batching that unfortunately are not enforced over TryAdd.
-            //
-            // Limit 1: For transactional sends you cannot add more than 100 messages into the same batch. This limit
-            // is enforced when the batch is attempted to be sent.
-            //
-            // Limit 2: For non-transactional sends you cannot add more than 4500 messages into the same batch. This limit
-            // is enforced when the batch is attempted to be sent. There are plans to incorporate this limit into
-            // the TryAdd logic, see https://github.com/Azure/azure-sdk-for-net/issues/21451. Even though with all
-            // the headers we will probably never reach 4500 messages per batch this upper limit was added as a precaution
-            int maxItemsPerBatch = transaction == null ? 4500 : 100;
             while (messagesToSend.Count > 0)
             {
                 using ServiceBusMessageBatch messageBatch = await sender.CreateMessageBatchAsync(cancellationToken)
@@ -158,28 +155,27 @@ namespace NServiceBus.Transport.AzureServiceBus
                     logBuilder = new StringBuilder();
                 }
 
-                var peekedMessage = messagesToSend.Peek();
-                if (messageBatch.TryAddMessage(peekedMessage))
+                var dequeueMessage = messagesToSend.Dequeue();
+                if (messageBatch.TryAddMessage(dequeueMessage))
                 {
-                    var added = messagesToSend.Dequeue();
                     if (Log.IsDebugEnabled)
                     {
-                        added.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
-                        logBuilder!.Append($"{messageId ?? added.MessageId},");
+                        dequeueMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
+                        logBuilder!.Append($"{messageId ?? dequeueMessage.MessageId},");
                     }
                 }
                 else
                 {
-                    peekedMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
-                    var message =
-                        @$"Unable to add the message '#{messageCount - messagesToSend.Count}' with message id '{messageId ?? peekedMessage.MessageId}' to the the batch '#{batchCount}'.
-The message may be too large, or the batch size has reached the maximum allowed messages per batch for the current tier selected for the namespace '{sender.FullyQualifiedNamespace}'.
-To mitigate this problem, either reduce the message size by using the data bus, upgrade to a higher Service Bus tier, or increase the maximum message size.
-If the maximum message size is increased, the endpoint must be restarted for the change to take effect.";
-                    throw new ServiceBusException(message, ServiceBusFailureReason.MessageSizeExceeded);
+                    // TBD Logging
+                    messagesThatCouldntBeSent.Add(dequeueMessage);
+                    continue;
                 }
 
-                while (messagesToSend.Count > 0 && messageBatch.Count < maxItemsPerBatch && messageBatch.TryAddMessage(messagesToSend.Peek()))
+                // Trying to add as many messages as we can to the batch. TryAdd might return false due to the batch being full
+                // or the message being too large. In the case when the message is too large for the batch the next iteration
+                // will try to add it to a fresh batch and if that fails too we will add it to the list of messages that couldn't be sent
+                // trying to attempt to send them individually.
+                while (messagesToSend.Count > 0 && messageBatch.TryAddMessage(messagesToSend.Peek()))
                 {
                     var added = messagesToSend.Dequeue();
                     if (Log.IsDebugEnabled)
@@ -228,12 +224,12 @@ If the maximum message size is increased, the endpoint must be restarted for the
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
-                    dispatchTasks.Add(DispatchIsolatedForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
+                    dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
                 }
             }
         }
 
-        async Task DispatchIsolatedForDestination(string destination, ServiceBusClient? client, Transaction? transaction, ServiceBusMessage message, CancellationToken cancellationToken)
+        async Task DispatchForDestination(string destination, ServiceBusClient? client, Transaction? transaction, ServiceBusMessage message, CancellationToken cancellationToken)
         {
             var sender = messageSenderRegistry.GetMessageSender(destination, client);
             // Making sure we have a suppress scope around the sending
