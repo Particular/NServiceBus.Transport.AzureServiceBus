@@ -486,6 +486,43 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
+        public async Task Should_fallback_to_individual_send_when_a_message_cannot_be_added_to_a_batch_but_batch_all_others()
+        {
+            var defaultClient = new FakeServiceBusClient();
+            var defaultSender = new FakeSender();
+            defaultClient.Senders["SomeDestination"] = defaultSender;
+
+            defaultSender.TryAdd = msg =>
+            {
+                return (string)msg.ApplicationProperties["Number"] switch
+                {
+                    "4" or "7" => false,
+                    _ => true,
+                };
+            };
+
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+
+            var operations = new List<TransportOperation>(5);
+            for (int i = 0; i < 10; i++)
+            {
+                operations.Add(new TransportOperation(new OutgoingMessage($"SomeId{i}",
+                        new Dictionary<string, string> { { "Number", i.ToString() } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Default));
+            }
+
+            var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
+
+            await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
+
+            Assert.That(defaultSender.BatchSentMessages, Has.Count.EqualTo(3));
+            Assert.That(defaultSender.IndividuallySentMessages, Has.Count.EqualTo(2));
+        }
+
+        [Test]
         public async Task Should_use_default_connection_information_when_existing_service_bus_transaction_has_none()
         {
             var defaultClient = new FakeServiceBusClient();
