@@ -122,7 +122,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
                 // We assume the majority of the messages will be batched and only a few will be sent individually
                 // and therefore it is OK in those rare cases for the list to grow.
-                var messagesThatCouldntBeSent = new List<ServiceBusMessage>(0);
+                var messagesTooLargeToBeBatched = new List<ServiceBusMessage>(0);
                 foreach (var operation in operations)
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
@@ -131,9 +131,9 @@ namespace NServiceBus.Transport.AzureServiceBus
                 }
                 // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
                 // doing the access as late as possible but still on the synchronous path.
-                dispatchTasks.Add(DispatchBatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, messagesToSend, messagesThatCouldntBeSent, cancellationToken));
+                dispatchTasks.Add(DispatchBatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, messagesToSend, messagesTooLargeToBeBatched, cancellationToken));
 
-                foreach (var message in messagesThatCouldntBeSent)
+                foreach (var message in messagesTooLargeToBeBatched)
                 {
                     dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, message, cancellationToken));
                 }
@@ -141,7 +141,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         }
 
         async Task DispatchBatchForDestination(string destination, ServiceBusClient? client, Transaction? transaction,
-            Queue<ServiceBusMessage> messagesToSend, List<ServiceBusMessage> messagesThatCouldntBeSent,
+            Queue<ServiceBusMessage> messagesToSend, List<ServiceBusMessage> messagesTooLargeToBeBatched,
             CancellationToken cancellationToken)
         {
             int batchCount = 0;
@@ -173,7 +173,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                         dequeueMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
                         Log.Debug($"Message '{messageId ?? dequeueMessage.MessageId}' is too large for the batch '{batchCount}' and will be sent individually to destination {destination}.");
                     }
-                    messagesThatCouldntBeSent.Add(dequeueMessage);
+                    messagesTooLargeToBeBatched.Add(dequeueMessage);
                     continue;
                 }
 
