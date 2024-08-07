@@ -158,6 +158,9 @@ namespace NServiceBus.Transport.AzureServiceBus
                 }
 
                 var dequeueMessage = messagesToSend.Dequeue();
+                // In this case the batch is fresh and doesn't have any messages yet. If TryAdd returns false
+                // we know the message can never be added to any batch and therefore we collect it to be sent
+                // individually.
                 if (messageBatch.TryAddMessage(dequeueMessage))
                 {
                     if (Log.IsDebugEnabled)
