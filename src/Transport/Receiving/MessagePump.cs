@@ -366,7 +366,7 @@
 
             async Task MessageLockLostHandler(MessageLockLostEventArgs lockLostArgs)
             {
-                //logger.LogInformation(lockLostArgs.Exception, "Lost the lock while processing message. Cancelling the handler");
+                Logger.Info("Lost the lock while processing message. Cancelling the pipeline execution.", lockLostArgs.Exception);
                 try
                 {
                     await processingTokenSource.CancelAsync().ConfigureAwait(false);
@@ -374,7 +374,7 @@
                 catch (ObjectDisposedException)
                 {
                     // ignored
-                    //logger.LogCritical(lockLostArgs.Exception, "Lock lost handler executed but cancellation token source was already disposed.");
+                    Logger.Info("Lock lost handler executed but cancellation token source was already disposed.", lockLostArgs.Exception);
                 }
             }
         }
