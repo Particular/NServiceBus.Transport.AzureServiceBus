@@ -278,24 +278,22 @@
 
             try
             {
-                using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
-                {
-                    contextBag.Set(message);
-                    contextBag.Set(processMessageEventArgs);
+                using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
+                contextBag.Set(message);
+                contextBag.Set(processMessageEventArgs);
 
-                    var messageContext = new MessageContext(messageId, headers, body,
-                        azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
+                var messageContext = new MessageContext(messageId, headers, body,
+                    azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
-                    await onMessage(messageContext, processingTokenSource.Token).ConfigureAwait(false);
+                await onMessage(messageContext, processingTokenSource.Token).ConfigureAwait(false);
 
-                    await processMessageEventArgs.SafeCompleteMessageAsync(message,
-                            transportSettings.TransportTransactionMode,
-                            azureServiceBusTransaction,
-                            cancellationToken: processingTokenSource.Token)
-                        .ConfigureAwait(false);
+                await processMessageEventArgs.SafeCompleteMessageAsync(message,
+                        transportSettings.TransportTransactionMode,
+                        azureServiceBusTransaction,
+                        cancellationToken: processingTokenSource.Token)
+                    .ConfigureAwait(false);
 
-                    azureServiceBusTransaction.Commit();
-                }
+                azureServiceBusTransaction.Commit();
             }
             catch (Exception ex) when (!ex.IsCausedBy(processingTokenSource.Token))
             {
