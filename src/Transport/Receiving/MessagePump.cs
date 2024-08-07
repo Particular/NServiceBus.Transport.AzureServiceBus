@@ -347,9 +347,11 @@
                 }
                 catch (Exception onErrorEx)
                 {
+                    // Using messageProcessingCancellationToken to make sure the critical error action can continue
+                    // to execute until the message processing is stopped.
                     criticalErrorAction(
                         $"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`",
-                        onErrorEx, processingTokenSource.Token);
+                        onErrorEx, messageProcessingCancellationToken);
 
                     await processMessageEventArgs.SafeAbandonMessageAsync(message,
                             transportSettings.TransportTransactionMode,
