@@ -337,28 +337,6 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
-        public void Should_throw_when_batch_size_exceeded()
-        {
-            var client = new FakeServiceBusClient();
-            var sender = new FakeSender();
-            client.Senders["SomeDestination"] = sender;
-
-            sender.TryAdd = _ => false;
-
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), "sometopic");
-
-            var operation1 =
-                new TransportOperation(new OutgoingMessage("SomeId",
-                        [],
-                        ReadOnlyMemory<byte>.Empty),
-                    new UnicastAddressTag("SomeDestination"),
-                    [],
-                    DispatchConsistency.Default);
-
-            Assert.ThrowsAsync<ServiceBusException>(async () => await dispatcher.Dispatch(new TransportOperations(operation1), new TransportTransaction()));
-        }
-
-        [Test]
         public async Task Should_use_connection_information_of_existing_service_bus_transaction()
         {
             var defaultClient = new FakeServiceBusClient();
@@ -435,7 +413,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
-        public async Task Should_split_into_batches_of_max_4500_when_no_transactions_used()
+        public async Task Should_split_into_multiple_batches_according_to_the_sdk()
         {
             var defaultClient = new FakeServiceBusClient();
             var defaultSender = new FakeSender();
@@ -444,7 +422,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             bool firstTime = true;
             defaultSender.TryAdd = msg =>
             {
-                if ((string)msg.ApplicationProperties["Number"] != "4550" || !firstTime)
+                if ((string)msg.ApplicationProperties["Number"] != "150" || !firstTime)
                 {
                     return true;
                 }
@@ -455,8 +433,78 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
 
-            var operations = new List<TransportOperation>(4600);
-            for (int i = 0; i < 4600; i++)
+            var operations = new List<TransportOperation>(200);
+            for (int i = 0; i < 200; i++)
+            {
+                operations.Add(new TransportOperation(new OutgoingMessage($"SomeId{i}",
+                        new Dictionary<string, string> { { "Number", i.ToString() } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Default));
+            }
+
+            var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
+
+            await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
+
+            Assert.That(defaultSender.BatchSentMessages, Has.Count.EqualTo(2));
+            var firstBatch = defaultSender[defaultSender.BatchSentMessages.ElementAt(0)];
+            var secondBatch = defaultSender[defaultSender.BatchSentMessages.ElementAt(1)];
+            Assert.That(firstBatch, Has.Count.EqualTo(150));
+            Assert.That(secondBatch, Has.Count.EqualTo(50));
+        }
+
+        [Test]
+        public async Task Should_fallback_to_individual_sends_when_messages_cannot_be_added_to_batch()
+        {
+            var defaultClient = new FakeServiceBusClient();
+            var defaultSender = new FakeSender();
+            defaultClient.Senders["SomeDestination"] = defaultSender;
+
+            defaultSender.TryAdd = msg => false;
+
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+
+            var operations = new List<TransportOperation>(5);
+            for (int i = 0; i < 5; i++)
+            {
+                operations.Add(new TransportOperation(new OutgoingMessage($"SomeId{i}",
+                        new Dictionary<string, string> { { "Number", i.ToString() } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Default));
+            }
+
+            var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
+
+            await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
+
+            Assert.That(defaultSender.BatchSentMessages, Has.Count.Zero);
+            Assert.That(defaultSender.IndividuallySentMessages, Has.Count.EqualTo(5));
+        }
+
+        [Test]
+        public async Task Should_fallback_to_individual_send_when_a_message_cannot_be_added_to_a_batch_but_batch_all_others()
+        {
+            var defaultClient = new FakeServiceBusClient();
+            var defaultSender = new FakeSender();
+            defaultClient.Senders["SomeDestination"] = defaultSender;
+
+            defaultSender.TryAdd = msg =>
+            {
+                return (string)msg.ApplicationProperties["Number"] switch
+                {
+                    "4" or "7" => false,
+                    _ => true,
+                };
+            };
+
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+
+            var operations = new List<TransportOperation>(5);
+            for (int i = 0; i < 10; i++)
             {
                 operations.Add(new TransportOperation(new OutgoingMessage($"SomeId{i}",
                         new Dictionary<string, string> { { "Number", i.ToString() } },
@@ -471,12 +519,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
 
             Assert.That(defaultSender.BatchSentMessages, Has.Count.EqualTo(3));
-            var firstBatch = defaultSender[defaultSender.BatchSentMessages.ElementAt(0)];
-            var secondBatch = defaultSender[defaultSender.BatchSentMessages.ElementAt(1)];
-            var thirdBatch = defaultSender[defaultSender.BatchSentMessages.ElementAt(2)];
-            Assert.That(firstBatch, Has.Count.EqualTo(4500));
-            Assert.That(secondBatch, Has.Count.EqualTo(50));
-            Assert.That(thirdBatch, Has.Count.EqualTo(50));
+            Assert.That(defaultSender.IndividuallySentMessages, Has.Count.EqualTo(2));
         }
 
         [Test]
