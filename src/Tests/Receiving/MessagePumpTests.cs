@@ -70,11 +70,13 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var pump = new MessagePump(fakeClient, new AzureServiceBusTransport(), "receiveAddress",
                 new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
 
-            bool pumpWasCalled = false;
+            using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var pumpExecutingTaskCompletionSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            await using var _ = cancellationTokenSource.Token.Register(() => pumpExecutingTaskCompletionSource.TrySetCanceled());
 
             await pump.Initialize(new PushRuntimeSettings(1), async (context, token) =>
                 {
-                    pumpWasCalled = true;
+                    pumpExecutingTaskCompletionSource.TrySetResult();
                     await Task.Delay(Timeout.InfiniteTimeSpan, token);
                 },
                 (context, token) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
@@ -84,13 +86,13 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
 
             var fakeProcessor = fakeClient.Processors["receiveAddress"];
             var processingTask = fakeProcessor.ProcessMessage(receivedMessage, fakeReceiver);
+            await pumpExecutingTaskCompletionSource.Task;
+
             await fakeProcessor.RaiseMessageLockLost(receivedMessage, new MessageLockLostEventArgs(receivedMessage, new ServiceBusException("Lock Lost", ServiceBusFailureReason.MessageLockLost)));
 
             Assert.ThrowsAsync<TaskCanceledException>(async () => await processingTask);
-
             Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
             Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
-            Assert.That(pumpWasCalled, Is.True);
         }
 
         [Test]
