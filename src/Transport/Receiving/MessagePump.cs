@@ -272,7 +272,8 @@
             // args.CancellationToken is currently not used because the v8 version that supports cancellation was designed
             // to not flip the cancellation token until the very last moment in time when the stop token is flipped.
             var contextBag = new ContextBag();
-            using var processingTokenSource = CancellationTokenSource.CreateLinkedTokenSource(messageProcessingCancellationToken);
+            using var lockLostCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(messageProcessingCancellationToken);
+            CancellationToken lockLostCancellationToken = lockLostCancellationTokenSource.Token;
 
             processMessageEventArgs.MessageLockLostAsync += MessageLockLostHandler;
 
@@ -285,17 +286,17 @@
                 var messageContext = new MessageContext(messageId, headers, body,
                     azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
-                await onMessage(messageContext, processingTokenSource.Token).ConfigureAwait(false);
+                await onMessage(messageContext, lockLostCancellationToken).ConfigureAwait(false);
 
                 await processMessageEventArgs.SafeCompleteMessageAsync(message,
                         transportSettings.TransportTransactionMode,
                         azureServiceBusTransaction,
-                        cancellationToken: processingTokenSource.Token)
+                        cancellationToken: lockLostCancellationToken)
                     .ConfigureAwait(false);
 
                 azureServiceBusTransaction.Commit();
             }
-            catch (Exception ex) when (!ex.IsCausedBy(processingTokenSource.Token))
+            catch (Exception ex) when (!ex.IsCausedBy(lockLostCancellationToken))
             {
                 try
                 {
@@ -307,14 +308,14 @@
                             azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress,
                             contextBag);
 
-                        result = await onError(errorContext, processingTokenSource.Token).ConfigureAwait(false);
+                        result = await onError(errorContext, lockLostCancellationToken).ConfigureAwait(false);
 
                         if (result == ErrorHandleResult.Handled)
                         {
                             await processMessageEventArgs.SafeCompleteMessageAsync(message,
                                     transportSettings.TransportTransactionMode,
                                     azureServiceBusTransaction,
-                                    cancellationToken: processingTokenSource.Token)
+                                    cancellationToken: lockLostCancellationToken)
                                 .ConfigureAwait(false);
                         }
 
@@ -325,7 +326,7 @@
                     {
                         await processMessageEventArgs.SafeAbandonMessageAsync(message,
                                 transportSettings.TransportTransactionMode,
-                                cancellationToken: processingTokenSource.Token)
+                                cancellationToken: lockLostCancellationToken)
                             .ConfigureAwait(false);
                     }
                 }
@@ -336,10 +337,10 @@
 
                     await processMessageEventArgs.SafeAbandonMessageAsync(message,
                             transportSettings.TransportTransactionMode,
-                            cancellationToken: processingTokenSource.Token)
+                            cancellationToken: lockLostCancellationToken)
                         .ConfigureAwait(false);
                 }
-                catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(processingTokenSource.Token))
+                catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(lockLostCancellationToken))
                 {
                     throw;
                 }
@@ -353,7 +354,7 @@
 
                     await processMessageEventArgs.SafeAbandonMessageAsync(message,
                             transportSettings.TransportTransactionMode,
-                            cancellationToken: processingTokenSource.Token)
+                            cancellationToken: lockLostCancellationToken)
                         .ConfigureAwait(false);
                 }
             }
@@ -367,7 +368,7 @@
                 Logger.Info("Lost the lock while processing message. Cancelling the pipeline execution.", lockLostArgs.Exception);
                 try
                 {
-                    await processingTokenSource.CancelAsync().ConfigureAwait(false);
+                    await lockLostCancellationTokenSource.CancelAsync().ConfigureAwait(false);
                 }
                 catch (ObjectDisposedException)
                 {
