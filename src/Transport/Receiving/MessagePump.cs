@@ -373,7 +373,7 @@
                 catch (ObjectDisposedException)
                 {
                     // ignored
-                    Logger.Info($"Lock lost handler executed for message with id '{messageId}' but cancellation token source was already disposed.", lockLostArgs.Exception);
+                    Logger.Debug($"Lock lost handler executed for message with id '{messageId}' but cancellation token source was already disposed.", lockLostArgs.Exception);
                 }
             }
         }
