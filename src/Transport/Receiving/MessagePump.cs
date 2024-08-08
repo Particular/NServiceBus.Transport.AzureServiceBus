@@ -196,7 +196,7 @@
             }
             catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource.Token))
             {
-                Logger.Debug("Message processing canceled.", ex);
+                Logger.Debug($"Processing of the message with id '{messageId}' canceled.", ex);
             }
         }
 
@@ -333,7 +333,7 @@
                 catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient ||
                                                             onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost)
                 {
-                    Logger.Debug("Failed to execute recoverability.", onErrorEx);
+                    Logger.Debug($"Failed to execute recoverability for the message with id '{messageId}'.", onErrorEx);
 
                     await processMessageEventArgs.SafeAbandonMessageAsync(message,
                             transportSettings.TransportTransactionMode,
@@ -365,7 +365,7 @@
 
             async Task MessageLockLostHandler(MessageLockLostEventArgs lockLostArgs)
             {
-                Logger.Info("Lost the lock while processing message. Cancelling the pipeline execution.", lockLostArgs.Exception);
+                Logger.Info($"Lost the lock while processing the message with id '{messageId}'. Cancelling the pipeline execution.", lockLostArgs.Exception);
                 try
                 {
                     await lockLostCancellationTokenSource.CancelAsync().ConfigureAwait(false);
@@ -373,7 +373,7 @@
                 catch (ObjectDisposedException)
                 {
                     // ignored
-                    Logger.Info("Lock lost handler executed but cancellation token source was already disposed.", lockLostArgs.Exception);
+                    Logger.Info($"Lock lost handler executed for message with id '{messageId}' but cancellation token source was already disposed.", lockLostArgs.Exception);
                 }
             }
         }
