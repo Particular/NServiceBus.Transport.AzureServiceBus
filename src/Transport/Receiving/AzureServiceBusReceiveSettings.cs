@@ -29,5 +29,8 @@ public class AzureServiceBusReceiveSettings : ReceiveSettings
     /// </summary>
     public bool DeadLetterQueue { get; init; }
 
+    /// <summary>
+    /// Receiver configuration for diagnostics/logging purpose 
+    /// </summary>
     public override string ToString() => $"DeadLetterQueue:{DeadLetterQueue}";
 }
