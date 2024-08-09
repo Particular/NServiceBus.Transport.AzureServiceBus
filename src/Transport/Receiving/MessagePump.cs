@@ -273,7 +273,7 @@
             // to not flip the cancellation token until the very last moment in time when the stop token is flipped.
             var contextBag = new ContextBag();
             using var lockLostCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(messageProcessingCancellationToken);
-            CancellationToken lockLostCancellationToken = lockLostCancellationTokenSource.Token;
+            var lockLostCancellationToken = lockLostCancellationTokenSource.Token;
 
             processMessageEventArgs.MessageLockLostAsync += MessageLockLostHandler;
 
