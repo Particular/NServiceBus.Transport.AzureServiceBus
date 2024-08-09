@@ -196,7 +196,7 @@
             }
             catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource.Token))
             {
-                Logger.Debug("Message processing canceled.", ex);
+                Logger.Debug($"Processing of the message with id '{messageId}' canceled.", ex);
             }
         }
 
@@ -272,28 +272,31 @@
             // args.CancellationToken is currently not used because the v8 version that supports cancellation was designed
             // to not flip the cancellation token until the very last moment in time when the stop token is flipped.
             var contextBag = new ContextBag();
+            using var lockLostCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(messageProcessingCancellationToken);
+            var lockLostCancellationToken = lockLostCancellationTokenSource.Token;
+
+            processMessageEventArgs.MessageLockLostAsync += MessageLockLostHandler;
 
             try
             {
-                using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
-                {
-                    contextBag.Set(message);
-                    contextBag.Set(processMessageEventArgs);
+                using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
+                contextBag.Set(message);
+                contextBag.Set(processMessageEventArgs);
 
-                    var messageContext = new MessageContext(messageId, headers, body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
+                var messageContext = new MessageContext(messageId, headers, body,
+                    azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
-                    await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
+                await onMessage(messageContext, lockLostCancellationToken).ConfigureAwait(false);
 
-                    await processMessageEventArgs.SafeCompleteMessageAsync(message,
-                            transportSettings.TransportTransactionMode,
-                            azureServiceBusTransaction,
-                            cancellationToken: messageProcessingCancellationToken)
-                        .ConfigureAwait(false);
+                await processMessageEventArgs.SafeCompleteMessageAsync(message,
+                        transportSettings.TransportTransactionMode,
+                        azureServiceBusTransaction,
+                        cancellationToken: lockLostCancellationToken)
+                    .ConfigureAwait(false);
 
-                    azureServiceBusTransaction.Commit();
-                }
+                azureServiceBusTransaction.Commit();
             }
-            catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationToken))
+            catch (Exception ex) when (!ex.IsCausedBy(lockLostCancellationToken))
             {
                 try
                 {
@@ -302,16 +305,17 @@
                     using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
                     {
                         var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body,
-                            azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
+                            azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress,
+                            contextBag);
 
-                        result = await onError(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
+                        result = await onError(errorContext, lockLostCancellationToken).ConfigureAwait(false);
 
                         if (result == ErrorHandleResult.Handled)
                         {
                             await processMessageEventArgs.SafeCompleteMessageAsync(message,
                                     transportSettings.TransportTransactionMode,
                                     azureServiceBusTransaction,
-                                    cancellationToken: messageProcessingCancellationToken)
+                                    cancellationToken: lockLostCancellationToken)
                                 .ConfigureAwait(false);
                         }
 
@@ -322,31 +326,54 @@
                     {
                         await processMessageEventArgs.SafeAbandonMessageAsync(message,
                                 transportSettings.TransportTransactionMode,
-                                cancellationToken: messageProcessingCancellationToken)
+                                cancellationToken: lockLostCancellationToken)
                             .ConfigureAwait(false);
                     }
                 }
-                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost)
+                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient ||
+                                                            onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost)
                 {
-                    Logger.Debug("Failed to execute recoverability.", onErrorEx);
+                    Logger.Debug($"Failed to execute recoverability for the message with id '{messageId}'.", onErrorEx);
 
                     await processMessageEventArgs.SafeAbandonMessageAsync(message,
                             transportSettings.TransportTransactionMode,
-                            cancellationToken: messageProcessingCancellationToken)
+                            cancellationToken: lockLostCancellationToken)
                         .ConfigureAwait(false);
                 }
-                catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(messageProcessingCancellationToken))
+                catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(lockLostCancellationToken))
                 {
                     throw;
                 }
                 catch (Exception onErrorEx)
                 {
-                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
+                    // Using messageProcessingCancellationToken to make sure the critical error action can continue
+                    // to execute until the message processing is stopped.
+                    criticalErrorAction(
+                        $"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`",
+                        onErrorEx, messageProcessingCancellationToken);
 
                     await processMessageEventArgs.SafeAbandonMessageAsync(message,
                             transportSettings.TransportTransactionMode,
-                            cancellationToken: messageProcessingCancellationToken)
+                            cancellationToken: lockLostCancellationToken)
                         .ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                processMessageEventArgs.MessageLockLostAsync -= MessageLockLostHandler;
+            }
+
+            async Task MessageLockLostHandler(MessageLockLostEventArgs lockLostArgs)
+            {
+                Logger.Info($"Lost the lock while processing the message with id '{messageId}'. Cancelling the pipeline execution.", lockLostArgs.Exception);
+                try
+                {
+                    await lockLostCancellationTokenSource.CancelAsync().ConfigureAwait(false);
+                }
+                catch (ObjectDisposedException)
+                {
+                    // ignored
+                    Logger.Debug($"Lock lost handler executed for message with id '{messageId}' but cancellation token source was already disposed.", lockLostArgs.Exception);
                 }
             }
         }
