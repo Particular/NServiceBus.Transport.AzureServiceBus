@@ -328,7 +328,7 @@
                 rules.Add(rule);
             }
 
-            Assert.That(rules.Count, Is.EqualTo(4));
+            Assert.That(rules, Has.Count.EqualTo(4));
 
             var defaultRule = rules[0];
             Assert.Multiple(() =>
@@ -368,7 +368,7 @@
                 rules.Add(rule);
             }
 
-            Assert.That(rules.Count, Is.EqualTo(1));
+            Assert.That(rules, Has.Count.EqualTo(1));
 
             var defaultRule = rules[0];
             Assert.Multiple(() =>
@@ -387,7 +387,7 @@
                 rules.Add(rule);
             }
 
-            Assert.That(rules.Count, Is.EqualTo(1));
+            Assert.That(rules, Has.Count.EqualTo(1));
 
             var defaultRule = rules[0];
             Assert.Multiple(() =>
