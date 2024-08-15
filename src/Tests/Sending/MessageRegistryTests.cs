@@ -21,8 +21,8 @@
                 var secondMessageSenderDest1 = pool.GetMessageSender("dest1", null);
                 var secondMessageSenderDest2 = pool.GetMessageSender("dest2", null);
 
-                Assert.AreSame(firstMessageSenderDest1, secondMessageSenderDest1);
-                Assert.AreSame(firstMessageSenderDest2, secondMessageSenderDest2);
+                Assert.That(secondMessageSenderDest1, Is.SameAs(firstMessageSenderDest1));
+                Assert.That(secondMessageSenderDest2, Is.SameAs(firstMessageSenderDest2));
                 Assert.AreNotSame(firstMessageSenderDest1, firstMessageSenderDest2);
                 Assert.AreNotSame(secondMessageSenderDest1, secondMessageSenderDest2);
             }
