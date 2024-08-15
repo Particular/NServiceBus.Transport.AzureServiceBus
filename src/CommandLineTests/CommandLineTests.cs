@@ -88,7 +88,7 @@
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
-            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
         }
 
         [Test]
@@ -102,8 +102,8 @@
                 Assert.That(publishExitCode, Is.EqualTo(1));
                 Assert.That(subscribeExitCode, Is.EqualTo(1));
             });
-            StringAssert.Contains("The --topic option and the --topic-to-publish-to option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option.", publishError);
-            StringAssert.Contains("The --topic option and the--topic-to-subscribe-on option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option.", subscribeError);
+            Assert.That(publishError, Does.Contain("The --topic option and the --topic-to-publish-to option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option."));
+            Assert.That(subscribeError, Does.Contain("The --topic option and the--topic-to-subscribe-on option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option."));
         }
 
         [Test]
@@ -112,7 +112,7 @@
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic-to-subscribe-on {HierarchyTopicName} --topic-to-publish-to {HierarchyTopicName}");
 
             Assert.That(exitCode, Is.EqualTo(1));
-            StringAssert.Contains("A valid topic hierarchy requires the topic-to-publish-to option and the topic-to-subscribe-on option to be different.", error);
+            Assert.That(error, Does.Contain("A valid topic hierarchy requires the topic-to-publish-to option and the topic-to-subscribe-on option to be different."));
         }
 
         [Test]
@@ -157,7 +157,7 @@
             var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
-            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
         }
 
         [Test]
@@ -203,7 +203,7 @@
             var (_, error, exitCode) = await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
-            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
         }
 
         [Test]
@@ -229,7 +229,7 @@
             var (_, error, exitCode) = await Execute($"queue create {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
-            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
         }
 
         [Test]
@@ -273,7 +273,7 @@
             var (_, error, exitCode) = await Execute($"queue delete {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
-            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
         }
 
         [SetUp]
