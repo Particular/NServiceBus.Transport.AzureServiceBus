@@ -40,7 +40,7 @@
 
             await StopPump();
 
-            Assert.IsNull(criticalErrorDetails, $"Should not invoke critical error for {nameof(ServiceBusException)}");
+            Assert.That(criticalErrorDetails, Is.Null, $"Should not invoke critical error for {nameof(ServiceBusException)}");
         }
     }
 }
