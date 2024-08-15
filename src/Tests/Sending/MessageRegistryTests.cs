@@ -23,8 +23,8 @@
 
                 Assert.That(secondMessageSenderDest1, Is.SameAs(firstMessageSenderDest1));
                 Assert.That(secondMessageSenderDest2, Is.SameAs(firstMessageSenderDest2));
-                Assert.AreNotSame(firstMessageSenderDest1, firstMessageSenderDest2);
-                Assert.AreNotSame(secondMessageSenderDest1, secondMessageSenderDest2);
+                Assert.That(firstMessageSenderDest2, Is.Not.SameAs(firstMessageSenderDest1));
+                Assert.That(secondMessageSenderDest2, Is.Not.SameAs(secondMessageSenderDest1));
             }
             finally
             {
