@@ -28,7 +28,7 @@
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName}");
 
             Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
+            Assert.That(error == string.Empty, Is.True);
             Assert.That(output.Contains("skipping"), Is.False);
 
             await VerifyQueue(QueueName);
@@ -45,7 +45,7 @@
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName}");
 
             Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
+            Assert.That(error == string.Empty, Is.True);
             Assert.That(output.Contains("skipping"), Is.False);
 
             await VerifyQueue(QueueName);
@@ -63,7 +63,7 @@
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
 
             Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
+            Assert.That(error == string.Empty, Is.True);
             Assert.That(output.Contains("skipping"), Is.False);
 
             await VerifyQueue(QueueName);
@@ -202,7 +202,7 @@
             var (output, error, exitCode) = await Execute($"queue create {QueueName}");
 
             Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
+            Assert.That(error == string.Empty, Is.True);
             Assert.That(output.Contains("skipping"), Is.False);
 
             await VerifyQueue(QueueName);
@@ -226,8 +226,8 @@
             var (output, error, exitCode) = await Execute($"queue create {QueueName}");
 
             Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
-            Assert.IsTrue(output.Contains("skipping"));
+            Assert.That(error == string.Empty, Is.True);
+            Assert.That(output.Contains("skipping"), Is.True);
 
             await VerifyQueue(QueueName);
         }
@@ -241,7 +241,7 @@
             var (_, error, exitCode) = await Execute($"queue delete {QueueName}");
 
             Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
+            Assert.That(error == string.Empty, Is.True);
 
             await VerifyQueueExists(false);
         }
@@ -284,7 +284,7 @@
             var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
 
             Assert.AreEqual(TimeSpan.FromMinutes(5), actual.LockDuration);
-            Assert.IsTrue(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal));
+            Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
             Assert.AreEqual(false, actual.EnableDeadLetteringOnFilterEvaluationExceptions);
             Assert.AreEqual(int.MaxValue, actual.MaxDeliveryCount);
             Assert.AreEqual(true, actual.EnableBatchedOperations);
@@ -298,7 +298,7 @@
                 rules.Add(rule);
             }
 
-            Assert.IsTrue(rules.Count == 4);
+            Assert.That(rules.Count == 4, Is.True);
 
             var defaultRule = rules[0];
             Assert.AreEqual("$default", defaultRule.Name);
@@ -326,7 +326,7 @@
                 rules.Add(rule);
             }
 
-            Assert.IsTrue(rules.Count == 1);
+            Assert.That(rules.Count == 1, Is.True);
 
             var defaultRule = rules[0];
             Assert.AreEqual("$default", defaultRule.Name);
@@ -342,7 +342,7 @@
                 rules.Add(rule);
             }
 
-            Assert.IsTrue(rules.Count == 1);
+            Assert.That(rules.Count == 1, Is.True);
 
             var defaultRule = rules[0];
             Assert.AreEqual("$default", defaultRule.Name);
