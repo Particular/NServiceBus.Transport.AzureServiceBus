@@ -24,7 +24,7 @@
             var nativeMessage = new ServiceBusMessage();
             customization(nativeMessage);
 
-            Assert.AreEqual("abc", nativeMessage.Subject);
+            Assert.That(nativeMessage.Subject, Is.EqualTo("abc"));
         }
 
         [Test]

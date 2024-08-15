@@ -409,7 +409,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 "SomePartitionKey", new TransactionOptions());
 
             var ex = Assert.ThrowsAsync<Exception>(async () => await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction));
-            Assert.AreEqual($"The number of outgoing messages ({nrOfMessages}) exceeds the limits permitted by Azure Service Bus ({100}) in a single transaction", ex.Message);
+            Assert.That(ex.Message, Is.EqualTo($"The number of outgoing messages ({nrOfMessages}) exceeds the limits permitted by Azure Service Bus ({100}) in a single transaction"));
         }
 
         [Test]
