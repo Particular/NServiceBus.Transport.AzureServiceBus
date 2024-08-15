@@ -27,9 +27,12 @@
 
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName}");
 
-            Assert.That(exitCode, Is.EqualTo(0));
-            Assert.That(error, Is.EqualTo(string.Empty));
-            Assert.That(output, Does.Not.Contain("skipping"));
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
 
             await VerifyQueue(QueueName);
             await VerifyTopic(DefaultTopicName);
@@ -44,9 +47,12 @@
 
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName}");
 
-            Assert.That(exitCode, Is.EqualTo(0));
-            Assert.That(error, Is.EqualTo(string.Empty));
-            Assert.That(output, Does.Not.Contain("skipping"));
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
 
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
@@ -62,9 +68,12 @@
 
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
 
-            Assert.That(exitCode, Is.EqualTo(0));
-            Assert.That(error, Is.EqualTo(string.Empty));
-            Assert.That(output, Does.Not.Contain("skipping"));
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
 
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
@@ -88,8 +97,11 @@
             var (_, publishError, publishExitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --topic-to-publish-to {HierarchyTopicName}");
             var (_, subscribeError, subscribeExitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
 
-            Assert.That(publishExitCode, Is.EqualTo(1));
-            Assert.That(subscribeExitCode, Is.EqualTo(1));
+            Assert.Multiple(() =>
+            {
+                Assert.That(publishExitCode, Is.EqualTo(1));
+                Assert.That(subscribeExitCode, Is.EqualTo(1));
+            });
             StringAssert.Contains("The --topic option and the --topic-to-publish-to option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option.", publishError);
             StringAssert.Contains("The --topic option and the--topic-to-subscribe-on option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option.", subscribeError);
         }
@@ -201,9 +213,12 @@
 
             var (output, error, exitCode) = await Execute($"queue create {QueueName}");
 
-            Assert.That(exitCode, Is.EqualTo(0));
-            Assert.That(error, Is.EqualTo(string.Empty));
-            Assert.That(output, Does.Not.Contain("skipping"));
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
 
             await VerifyQueue(QueueName);
         }
@@ -225,9 +240,12 @@
 
             var (output, error, exitCode) = await Execute($"queue create {QueueName}");
 
-            Assert.That(exitCode, Is.EqualTo(0));
-            Assert.That(error, Is.EqualTo(string.Empty));
-            Assert.That(output.Contains("skipping"), Is.True);
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output.Contains("skipping"), Is.True);
+            });
 
             await VerifyQueue(QueueName);
         }
@@ -240,8 +258,11 @@
 
             var (_, error, exitCode) = await Execute($"queue delete {QueueName}");
 
-            Assert.That(exitCode, Is.EqualTo(0));
-            Assert.That(error, Is.EqualTo(string.Empty));
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+            });
 
             await VerifyQueueExists(false);
         }
@@ -263,32 +284,41 @@
         {
             var actual = (await client.GetQueueAsync(queueName)).Value;
 
-            Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
-            Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
-            Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
-            Assert.That(actual.EnablePartitioning, Is.EqualTo(enablePartitioning));
-            Assert.That(actual.MaxSizeInMegabytes, Is.EqualTo(size));
+            Assert.Multiple(() =>
+            {
+                Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
+                Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
+                Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
+                Assert.That(actual.EnablePartitioning, Is.EqualTo(enablePartitioning));
+                Assert.That(actual.MaxSizeInMegabytes, Is.EqualTo(size));
+            });
         }
 
         async Task VerifyTopic(string topicName, bool enablePartitioning = false, int size = 5 * 1024)
         {
             var actual = (await client.GetTopicAsync(topicName)).Value;
 
-            Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
-            Assert.That(actual.EnablePartitioning, Is.EqualTo(enablePartitioning));
-            Assert.That(actual.MaxSizeInMegabytes, Is.EqualTo(size));
+            Assert.Multiple(() =>
+            {
+                Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
+                Assert.That(actual.EnablePartitioning, Is.EqualTo(enablePartitioning));
+                Assert.That(actual.MaxSizeInMegabytes, Is.EqualTo(size));
+            });
         }
 
         async Task VerifySubscription(string topicName, string subscriptionName, string queueName)
         {
             var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
 
-            Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
-            Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
-            Assert.That(actual.EnableDeadLetteringOnFilterEvaluationExceptions, Is.EqualTo(false));
-            Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
-            Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
-            Assert.That(actual.UserMetadata, Is.EqualTo(queueName));
+            Assert.Multiple(() =>
+            {
+                Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
+                Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
+                Assert.That(actual.EnableDeadLetteringOnFilterEvaluationExceptions, Is.EqualTo(false));
+                Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
+                Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
+                Assert.That(actual.UserMetadata, Is.EqualTo(queueName));
+            });
 
             // rules
             var rules = new List<RuleProperties>();
@@ -301,20 +331,32 @@
             Assert.That(rules.Count, Is.EqualTo(4));
 
             var defaultRule = rules[0];
-            Assert.That(defaultRule.Name, Is.EqualTo("$default"));
-            Assert.That(((FalseRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new FalseRuleFilter().SqlExpression));
+            Assert.Multiple(() =>
+            {
+                Assert.That(defaultRule.Name, Is.EqualTo("$default"));
+                Assert.That(((FalseRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new FalseRuleFilter().SqlExpression));
+            });
 
             var customRuleNameRule = rules[1];
-            Assert.That(customRuleNameRule.Name, Is.EqualTo("CustomRuleName"));
-            Assert.That(((SqlRuleFilter)customRuleNameRule.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage3%'").SqlExpression));
+            Assert.Multiple(() =>
+            {
+                Assert.That(customRuleNameRule.Name, Is.EqualTo("CustomRuleName"));
+                Assert.That(((SqlRuleFilter)customRuleNameRule.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage3%'").SqlExpression));
+            });
 
             var myMessage1Rule = rules[2];
-            Assert.That(myMessage1Rule.Name, Is.EqualTo("MyMessage1"));
-            Assert.That(((SqlRuleFilter)myMessage1Rule.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyMessage1%'").SqlExpression));
+            Assert.Multiple(() =>
+            {
+                Assert.That(myMessage1Rule.Name, Is.EqualTo("MyMessage1"));
+                Assert.That(((SqlRuleFilter)myMessage1Rule.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyMessage1%'").SqlExpression));
+            });
 
             var myMessage2WithNamespace = rules[3];
-            Assert.That(myMessage2WithNamespace.Name, Is.EqualTo("MyNamespace1.MyMessage2"));
-            Assert.That(((SqlRuleFilter)myMessage2WithNamespace.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage2%'").SqlExpression));
+            Assert.Multiple(() =>
+            {
+                Assert.That(myMessage2WithNamespace.Name, Is.EqualTo("MyNamespace1.MyMessage2"));
+                Assert.That(((SqlRuleFilter)myMessage2WithNamespace.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage2%'").SqlExpression));
+            });
         }
 
         async Task VerifySubscriptionContainsOnlyDefaultRule(string topicName, string subscriptionName)
@@ -329,8 +371,11 @@
             Assert.That(rules.Count, Is.EqualTo(1));
 
             var defaultRule = rules[0];
-            Assert.That(defaultRule.Name, Is.EqualTo("$default"));
-            Assert.That(((FalseRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new FalseRuleFilter().SqlExpression));
+            Assert.Multiple(() =>
+            {
+                Assert.That(defaultRule.Name, Is.EqualTo("$default"));
+                Assert.That(((FalseRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new FalseRuleFilter().SqlExpression));
+            });
         }
 
         async Task VerifySubscriptionContainsOnlyDefaultMatchAllRule(string topicName, string subscriptionName)
@@ -345,8 +390,11 @@
             Assert.That(rules.Count, Is.EqualTo(1));
 
             var defaultRule = rules[0];
-            Assert.That(defaultRule.Name, Is.EqualTo("$default"));
-            Assert.That(((TrueRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new TrueRuleFilter().SqlExpression));
+            Assert.Multiple(() =>
+            {
+                Assert.That(defaultRule.Name, Is.EqualTo("$default"));
+                Assert.That(((TrueRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new TrueRuleFilter().SqlExpression));
+            });
         }
 
         async Task VerifyQueueExists(bool queueShouldExist)

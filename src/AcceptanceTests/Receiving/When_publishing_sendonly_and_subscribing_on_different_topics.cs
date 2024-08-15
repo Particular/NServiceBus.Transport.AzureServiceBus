@@ -18,8 +18,11 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 .Done(c => c.SubscriberOnTopicAGotTheEvent && c.SubscriberOnTopicBGotTheEvent)
                 .Run();
 
-            Assert.That(context.SubscriberOnTopicAGotTheEvent, Is.True);
-            Assert.That(context.SubscriberOnTopicBGotTheEvent, Is.True);
+            Assert.Multiple(() =>
+            {
+                Assert.That(context.SubscriberOnTopicAGotTheEvent, Is.True);
+                Assert.That(context.SubscriberOnTopicBGotTheEvent, Is.True);
+            });
         }
 
         public class Context : ScenarioContext
