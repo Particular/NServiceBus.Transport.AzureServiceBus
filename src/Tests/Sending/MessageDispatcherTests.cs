@@ -39,8 +39,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var sender = client.Senders["SomeDestination"];
 
-            Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
-            Assert.That(sender.BatchSentMessages, Is.Empty);
+            Assert.Multiple(() =>
+            {
+                Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
+                Assert.That(sender.BatchSentMessages, Is.Empty);
+            });
         }
 
         [Test]
@@ -70,8 +73,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var sender = client.Senders["sometopic"];
 
-            Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
-            Assert.That(sender.BatchSentMessages, Is.Empty);
+            Assert.Multiple(() =>
+            {
+                Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
+                Assert.That(sender.BatchSentMessages, Is.Empty);
+            });
         }
 
         [Test]
@@ -102,10 +108,13 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var someDestinationSender = client.Senders["SomeDestination"];
             var someOtherDestinationSender = client.Senders["SomeOtherDestination"];
 
-            Assert.That(someDestinationSender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(someDestinationSender.BatchSentMessages, Is.Empty);
-            Assert.That(someOtherDestinationSender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(someOtherDestinationSender.BatchSentMessages, Is.Empty);
+            Assert.Multiple(() =>
+            {
+                Assert.That(someDestinationSender.IndividuallySentMessages, Has.Count.EqualTo(1));
+                Assert.That(someDestinationSender.BatchSentMessages, Is.Empty);
+                Assert.That(someOtherDestinationSender.IndividuallySentMessages, Has.Count.EqualTo(1));
+                Assert.That(someOtherDestinationSender.BatchSentMessages, Is.Empty);
+            });
         }
 
         [Test]
@@ -135,8 +144,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var sender = client.Senders["sometopic"];
 
-            Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
-            Assert.That(sender.BatchSentMessages, Is.Empty);
+            Assert.Multiple(() =>
+            {
+                Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
+                Assert.That(sender.BatchSentMessages, Is.Empty);
+            });
         }
 
         [Test]
@@ -166,8 +178,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var sender = client.Senders["SomeDestination"];
 
-            Assert.That(sender.IndividuallySentMessages, Is.Empty);
-            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            Assert.Multiple(() =>
+            {
+                Assert.That(sender.IndividuallySentMessages, Is.Empty);
+                Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
             var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
             Assert.That(batchContent, Has.Count.EqualTo(2));
         }
@@ -199,8 +214,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var sender = client.Senders["sometopic"];
 
-            Assert.That(sender.IndividuallySentMessages, Is.Empty);
-            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            Assert.Multiple(() =>
+            {
+                Assert.That(sender.IndividuallySentMessages, Is.Empty);
+                Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
             var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
             Assert.That(batchContent, Has.Count.EqualTo(2));
         }
@@ -233,13 +251,19 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var someDestinationSender = client.Senders["SomeDestination"];
             var someOtherDestinationSender = client.Senders["SomeOtherDestination"];
 
-            Assert.That(someDestinationSender.IndividuallySentMessages, Is.Empty);
-            Assert.That(someDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
+            Assert.Multiple(() =>
+            {
+                Assert.That(someDestinationSender.IndividuallySentMessages, Is.Empty);
+                Assert.That(someDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
             var someDestinationBatchContent = someDestinationSender[someDestinationSender.BatchSentMessages.ElementAt(0)];
-            Assert.That(someDestinationBatchContent, Has.Count.EqualTo(1));
+            Assert.Multiple(() =>
+            {
+                Assert.That(someDestinationBatchContent, Has.Count.EqualTo(1));
 
-            Assert.That(someOtherDestinationSender.IndividuallySentMessages, Is.Empty);
-            Assert.That(someOtherDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
+                Assert.That(someOtherDestinationSender.IndividuallySentMessages, Is.Empty);
+                Assert.That(someOtherDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
             var someOtherDestinationBatchContent = someOtherDestinationSender[someOtherDestinationSender.BatchSentMessages.ElementAt(0)];
             Assert.That(someOtherDestinationBatchContent, Has.Count.EqualTo(1));
         }
@@ -271,8 +295,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var sender = client.Senders["sometopic"];
 
-            Assert.That(sender.IndividuallySentMessages, Is.Empty);
-            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            Assert.Multiple(() =>
+            {
+                Assert.That(sender.IndividuallySentMessages, Is.Empty);
+                Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
             var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
             Assert.That(batchContent, Has.Count.EqualTo(2));
         }
@@ -322,16 +349,22 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var someOtherDestinationSender = client.Senders["SomeOtherDestination"];
             var someTopicSender = client.Senders["sometopic"];
 
-            Assert.That(someDestinationSender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(someDestinationSender.BatchSentMessages, Is.Empty);
+            Assert.Multiple(() =>
+            {
+                Assert.That(someDestinationSender.IndividuallySentMessages, Has.Count.EqualTo(1));
+                Assert.That(someDestinationSender.BatchSentMessages, Is.Empty);
 
-            Assert.That(someOtherDestinationSender.IndividuallySentMessages, Is.Empty);
-            Assert.That(someOtherDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
+                Assert.That(someOtherDestinationSender.IndividuallySentMessages, Is.Empty);
+                Assert.That(someOtherDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
             var someOtherDestinationBatchContent = someOtherDestinationSender[someOtherDestinationSender.BatchSentMessages.ElementAt(0)];
-            Assert.That(someOtherDestinationBatchContent, Has.Count.EqualTo(1));
+            Assert.Multiple(() =>
+            {
+                Assert.That(someOtherDestinationBatchContent, Has.Count.EqualTo(1));
 
-            Assert.That(someTopicSender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(someTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
+                Assert.That(someTopicSender.IndividuallySentMessages, Has.Count.EqualTo(1));
+                Assert.That(someTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
             var someTopicSenderBatchContent = someTopicSender[someTopicSender.BatchSentMessages.ElementAt(0)];
             Assert.That(someTopicSenderBatchContent, Has.Count.EqualTo(1));
         }
@@ -363,10 +396,13 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             Assert.That(transactionalSender.BatchSentMessages, Has.Count.EqualTo(1));
             var someDestinationTransactionalBatchContent = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(0)];
-            Assert.That(someDestinationTransactionalBatchContent, Has.Exactly(1)
-                .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == "SomePartitionKey"));
-            Assert.That(defaultSender.BatchSentMessages, Is.Empty);
-            Assert.That(azureServiceBusTransaction.Transaction, Is.Not.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(someDestinationTransactionalBatchContent, Has.Exactly(1)
+                            .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == "SomePartitionKey"));
+                Assert.That(defaultSender.BatchSentMessages, Is.Empty);
+                Assert.That(azureServiceBusTransaction.Transaction, Is.Not.Null);
+            });
         }
 
         [Test]
@@ -409,7 +445,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 "SomePartitionKey", new TransactionOptions());
 
             var ex = Assert.ThrowsAsync<Exception>(async () => await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction));
-            Assert.AreEqual($"The number of outgoing messages ({nrOfMessages}) exceeds the limits permitted by Azure Service Bus ({100}) in a single transaction", ex.Message);
+            Assert.That(ex.Message, Is.EqualTo($"The number of outgoing messages ({nrOfMessages}) exceeds the limits permitted by Azure Service Bus ({100}) in a single transaction"));
         }
 
         [Test]
@@ -451,8 +487,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             Assert.That(defaultSender.BatchSentMessages, Has.Count.EqualTo(2));
             var firstBatch = defaultSender[defaultSender.BatchSentMessages.ElementAt(0)];
             var secondBatch = defaultSender[defaultSender.BatchSentMessages.ElementAt(1)];
-            Assert.That(firstBatch, Has.Count.EqualTo(150));
-            Assert.That(secondBatch, Has.Count.EqualTo(50));
+            Assert.Multiple(() =>
+            {
+                Assert.That(firstBatch, Has.Count.EqualTo(150));
+                Assert.That(secondBatch, Has.Count.EqualTo(50));
+            });
         }
 
         [Test]
@@ -481,8 +520,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
 
-            Assert.That(defaultSender.BatchSentMessages, Has.Count.Zero);
-            Assert.That(defaultSender.IndividuallySentMessages, Has.Count.EqualTo(5));
+            Assert.Multiple(() =>
+            {
+                Assert.That(defaultSender.BatchSentMessages, Has.Count.Zero);
+                Assert.That(defaultSender.IndividuallySentMessages, Has.Count.EqualTo(5));
+            });
         }
 
         [Test]
@@ -518,8 +560,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
 
-            Assert.That(defaultSender.BatchSentMessages, Has.Count.EqualTo(3));
-            Assert.That(defaultSender.IndividuallySentMessages, Has.Count.EqualTo(2));
+            Assert.Multiple(() =>
+            {
+                Assert.That(defaultSender.BatchSentMessages, Has.Count.EqualTo(3));
+                Assert.That(defaultSender.IndividuallySentMessages, Has.Count.EqualTo(2));
+            });
         }
 
         [Test]
@@ -548,10 +593,13 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             Assert.That(defaultSender.BatchSentMessages, Has.Count.EqualTo(1));
             var someOtherDestinationBatchContent = defaultSender[defaultSender.BatchSentMessages.ElementAt(0)];
-            Assert.That(someOtherDestinationBatchContent, Has.Exactly(1)
-                .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == default));
-            Assert.That(transactionalSender.BatchSentMessages, Is.Empty);
-            Assert.That(azureServiceBusTransaction.Transaction, Is.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(someOtherDestinationBatchContent, Has.Exactly(1)
+                            .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == default));
+                Assert.That(transactionalSender.BatchSentMessages, Is.Empty);
+                Assert.That(azureServiceBusTransaction.Transaction, Is.Null);
+            });
         }
 
         class SomeEvent { }

@@ -55,18 +55,18 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
 
             var logoutput = AggregateBatchLogOutput(context);
 
-            StringAssert.Contains(kickOffMessageId, logoutput, "Kickoff message was not present in any of the batches");
-            StringAssert.Contains("Sent batch '1' with '1'", logoutput, "Should have used 1 batch for the initial kickoff message but didn't");
-            StringAssert.Contains($"Sent batch '1' with '{context.MessageIdsForBatching.Count}'", logoutput, "Should have used 1 batch for the batched message dispatch but didn't");
+            Assert.That(logoutput, Does.Contain(kickOffMessageId), "Kickoff message was not present in any of the batches");
+            Assert.That(logoutput, Does.Contain("Sent batch '1' with '1'"), "Should have used 1 batch for the initial kickoff message but didn't");
+            Assert.That(logoutput, Does.Contain($"Sent batch '1' with '{context.MessageIdsForBatching.Count}'"), "Should have used 1 batch for the batched message dispatch but didn't");
 
             foreach (var messageIdForBatching in listOfMessagesForBatching)
             {
-                StringAssert.Contains(messageIdForBatching, logoutput, $"{messageIdForBatching} not found in any of the batches. Output: {logoutput}");
+                Assert.That(logoutput, Does.Contain(messageIdForBatching), $"{messageIdForBatching} not found in any of the batches. Output: {logoutput}");
             }
 
             foreach (var messageIdForImmediateDispatch in listOfMessagesForImmediateDispatch)
             {
-                StringAssert.DoesNotContain(messageIdForImmediateDispatch, logoutput, $"{messageIdForImmediateDispatch} should not be included in any of the batches. Output: {logoutput}");
+                Assert.That(logoutput, Does.Not.Contain(messageIdForImmediateDispatch), $"{messageIdForImmediateDispatch} should not be included in any of the batches. Output: {logoutput}");
             }
         }
 

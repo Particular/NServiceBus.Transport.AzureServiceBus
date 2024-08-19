@@ -27,9 +27,12 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
 
             await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
 
-            Assert.That(fakeReceiver.CompletedMessages, Has.Exactly(1)
-                .Matches<ServiceBusReceivedMessage>(message => message.MessageId == "SomeId"));
-            Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+            Assert.Multiple(() =>
+            {
+                Assert.That(fakeReceiver.CompletedMessages, Has.Exactly(1)
+                            .Matches<ServiceBusReceivedMessage>(message => message.MessageId == "SomeId"));
+                Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+            });
         }
 
         [Test]
@@ -55,10 +58,13 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
 
             await fakeClient.Processors["receiveAddress"].ProcessMessage(messageWithLostLock, fakeReceiver);
 
-            Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
-            Assert.That(fakeReceiver.AbandonedMessages, Has.Exactly(1)
-                .Matches<(ServiceBusReceivedMessage Message, IDictionary<string, object> Props)>(abandoned => abandoned.Message.MessageId == "SomeId"));
-            Assert.That(pumpWasCalled, Is.False);
+            Assert.Multiple(() =>
+            {
+                Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
+                Assert.That(fakeReceiver.AbandonedMessages, Has.Exactly(1)
+                    .Matches<(ServiceBusReceivedMessage Message, IDictionary<string, object> Props)>(abandoned => abandoned.Message.MessageId == "SomeId"));
+                Assert.That(pumpWasCalled, Is.False);
+            });
         }
 
         [Test]
@@ -78,9 +84,12 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
 
             await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
 
-            Assert.That(fakeReceiver.AbandonedMessages, Has.Exactly(1)
-                .Matches<(ServiceBusReceivedMessage Message, IDictionary<string, object> Props)>(abandoned => abandoned.Message.MessageId == "SomeId"));
-            Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
+            Assert.Multiple(() =>
+            {
+                Assert.That(fakeReceiver.AbandonedMessages, Has.Exactly(1)
+                            .Matches<(ServiceBusReceivedMessage Message, IDictionary<string, object> Props)>(abandoned => abandoned.Message.MessageId == "SomeId"));
+                Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
+            });
         }
 
         [Test]
@@ -100,9 +109,12 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
 
             await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
 
-            Assert.That(fakeReceiver.CompletedMessages, Has.Exactly(1)
-                .Matches<ServiceBusReceivedMessage>(message => message.MessageId == "SomeId"));
-            Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+            Assert.Multiple(() =>
+            {
+                Assert.That(fakeReceiver.CompletedMessages, Has.Exactly(1)
+                            .Matches<ServiceBusReceivedMessage>(message => message.MessageId == "SomeId"));
+                Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+            });
         }
     }
 }

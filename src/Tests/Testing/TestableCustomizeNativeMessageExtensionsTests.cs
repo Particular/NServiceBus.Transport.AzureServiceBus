@@ -24,7 +24,7 @@
             var nativeMessage = new ServiceBusMessage();
             customization(nativeMessage);
 
-            Assert.AreEqual("abc", nativeMessage.Subject);
+            Assert.That(nativeMessage.Subject, Is.EqualTo("abc"));
         }
 
         [Test]
@@ -39,7 +39,7 @@
             var publishedMessage = testableContext.PublishedMessages.Single();
             var customization = publishedMessage.Options.GetNativeMessageCustomization();
 
-            Assert.IsNull(customization);
+            Assert.That(customization, Is.Null);
         }
 
         class MyHandlerUsingCustomizations : IHandleMessages<MyMessage>

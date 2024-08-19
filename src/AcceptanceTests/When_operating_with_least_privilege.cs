@@ -79,7 +79,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                 .Done(c => c.SubscriberGotEvent)
                 .Run();
 
-            Assert.True(context.SubscriberGotEvent);
+            Assert.That(context.SubscriberGotEvent, Is.True);
         }
 
         public class Context : ScenarioContext
