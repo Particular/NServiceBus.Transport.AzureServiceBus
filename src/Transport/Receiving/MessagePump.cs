@@ -6,6 +6,7 @@
     using System.Threading.Tasks;
     using System.Transactions;
     using Azure.Messaging.ServiceBus;
+    using BitFaster.Caching.Lru;
     using Extensibility;
     using Logging;
 
@@ -15,6 +16,7 @@
         readonly ReceiveSettings receiveSettings;
         readonly Action<string, Exception, CancellationToken> criticalErrorAction;
         readonly ServiceBusClient serviceBusClient;
+        readonly FastConcurrentLru<string, bool> messagesToBeDeleted = new(1_000);
 
         OnMessage onMessage;
         OnError onError;
@@ -121,6 +123,30 @@
         }
 
 #pragma warning disable PS0018
+        async Task DeleteMessage(ProcessMessageEventArgs processMessageEventArgs, ServiceBusReceivedMessage message)
+#pragma warning restore PS0018
+        {
+            try
+            {
+                using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
+                {
+                    await processMessageEventArgs.SafeCompleteMessageAsync(message,
+                                transportSettings.TransportTransactionMode,
+                                azureServiceBusTransaction, CancellationToken.None)
+                            .ConfigureAwait(false);
+
+                    azureServiceBusTransaction.Commit();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"Failed to delete message with id '{message.GetMessageId()}'. This message will be returned to the queue", ex);
+
+                messagesToBeDeleted.AddOrUpdate(message.GetMessageId(), true);
+            }
+        }
+
+#pragma warning disable PS0018
         async Task OnProcessMessage(ProcessMessageEventArgs arg)
 #pragma warning restore PS0018
         {
@@ -134,6 +160,12 @@
             try
             {
                 messageId = message.GetMessageId();
+
+                if (messagesToBeDeleted.TryGet(messageId, out _))
+                {
+                    await DeleteMessage(arg, message).ConfigureAwait(false);
+                    return;
+                }
 
                 if (processor.ReceiveMode == ServiceBusReceiveMode.PeekLock && message.LockedUntil < DateTimeOffset.UtcNow)
                 {
@@ -297,6 +329,18 @@
             {
                 try
                 {
+                    if (ex is ServiceBusException serviceBusException && serviceBusException.Reason == ServiceBusFailureReason.MessageLockLost)
+                    {
+                        if (transportSettings.TransportTransactionMode == TransportTransactionMode.ReceiveOnly)
+                        {
+                            Logger.Warn($"Message with id `{messageId}` has been returned to the queue.  NServiceBus recoverability is being skipped. {serviceBusException.Message}");
+                            messagesToBeDeleted.AddOrUpdate(messageId, true);
+                            //Since the message lock was lost, we can't complete or abandon the message without throwing an error
+                            //Recoverability should be skipped
+                            return;
+                        }
+                    }
+
                     ErrorHandleResult result;
 
                     using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
@@ -326,7 +370,7 @@
                             .ConfigureAwait(false);
                     }
                 }
-                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost)
+                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient)
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
