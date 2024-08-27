@@ -329,16 +329,12 @@
             {
                 try
                 {
-                    if (ex is ServiceBusException serviceBusException && serviceBusException.Reason == ServiceBusFailureReason.MessageLockLost)
+                    if (IsReceiveOnlyMessageLockLost(ex, message))
                     {
-                        if (transportSettings.TransportTransactionMode == TransportTransactionMode.ReceiveOnly)
-                        {
-                            Logger.Warn($"Message with id `{messageId}` has been returned to the queue.  NServiceBus recoverability is being skipped. {serviceBusException.Message}");
-                            messagesToBeDeleted.AddOrUpdate(messageId, true);
-                            //Since the message lock was lost, we can't complete or abandon the message without throwing an error
-                            //Recoverability should be skipped
-                            return;
-                        }
+                        Logger.Warn($"Message with id `{message.GetMessageId()}` has been returned to the queue and marked for deletion.  NServiceBus recoverability is being skipped. {ex.Message}");
+                        //Since the message lock was lost, we can't complete or abandon the message without throwing an error
+                        //Recoverability should be skipped
+                        return;
                     }
 
                     ErrorHandleResult result;
@@ -370,8 +366,14 @@
                             .ConfigureAwait(false);
                     }
                 }
-                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient)
+                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost)
                 {
+                    if (IsReceiveOnlyMessageLockLost(ex, message))
+                    {
+                        Logger.Warn($"Message with id `{message.GetMessageId()}` has been returned to the queue and marked for deletion.- {onErrorEx.Message}");
+                        //Since the message lock was lost, we can't complete or abandon the message without throwing an error
+                        return;
+                    }
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
                     await processMessageEventArgs.SafeAbandonMessageAsync(message,
@@ -393,6 +395,18 @@
                         .ConfigureAwait(false);
                 }
             }
+        }
+
+        bool IsReceiveOnlyMessageLockLost(Exception ex, ServiceBusReceivedMessage message)
+        {
+            if (ex is ServiceBusException serviceBusException &&
+                serviceBusException.Reason == ServiceBusFailureReason.MessageLockLost &&
+                transportSettings.TransportTransactionMode == TransportTransactionMode.ReceiveOnly)
+            {
+                messagesToBeDeleted.AddOrUpdate(message.GetMessageId(), true);
+                return true;
+            }
+            return false;
         }
 
         AzureServiceBusTransportTransaction CreateTransaction(string incomingQueuePartitionKey) =>
