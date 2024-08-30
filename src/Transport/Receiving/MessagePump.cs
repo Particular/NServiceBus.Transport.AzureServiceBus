@@ -331,7 +331,7 @@
                 {
                     if (IsReceiveOnlyMessageLockLost(ex, message))
                     {
-                        Logger.Warn($"Message with id `{message.GetMessageId()}` has been returned to the queue and marked for deletion.  NServiceBus recoverability is being skipped. {ex.Message}");
+                        Logger.Warn($"Message with id `{message.GetMessageId()}` has been returned to the queue and marked for deletion on this endpoint instance.  NServiceBus recoverability is being skipped. {ex.Message}");
                         //Since the message lock was lost, we can't complete or abandon the message without throwing an error
                         //Recoverability should be skipped
                         return;
@@ -372,7 +372,7 @@
 
                     if (IsReceiveOnlyMessageLockLost(ex, message))
                     {
-                        Logger.Warn($"Message with id `{message.GetMessageId()}` has been returned to the queue and marked for deletion.- {onErrorEx.Message}");
+                        Logger.Warn($"Message with id `{message.GetMessageId()}` has been returned to the queue and marked for deletion. - {onErrorEx.Message}");
                         //Since the message lock was lost, we can't complete or abandon the message without throwing an error
                         return;
                     }
