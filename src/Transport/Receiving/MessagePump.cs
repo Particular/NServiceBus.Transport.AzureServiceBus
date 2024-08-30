@@ -368,13 +368,14 @@
                 }
                 catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost)
                 {
+                    Logger.Debug("Failed to execute recoverability.", onErrorEx);
+
                     if (IsReceiveOnlyMessageLockLost(ex, message))
                     {
                         Logger.Warn($"Message with id `{message.GetMessageId()}` has been returned to the queue and marked for deletion.- {onErrorEx.Message}");
                         //Since the message lock was lost, we can't complete or abandon the message without throwing an error
                         return;
                     }
-                    Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
                     await processMessageEventArgs.SafeAbandonMessageAsync(message,
                             transportSettings.TransportTransactionMode,
