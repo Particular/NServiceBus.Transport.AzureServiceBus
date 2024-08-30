@@ -13,7 +13,6 @@
         {
             bool onErrorCalled = false;
             var onMessageCalled = CreateTaskCompletionSource<bool>();
-            string criticalErrorDetails = null;
 
 
             await StartPump(
@@ -36,9 +35,11 @@
 
             await StopPump();
 
-            Assert.IsTrue(onMessageResult, "The message handler should have been called.");
-            Assert.IsFalse(onErrorCalled, "onError should not have been called when a MessageLostLock exception is thrown from onMessage when the transport is in receiveOnly mode.");
-            Assert.IsNull(criticalErrorDetails, $"Should not invoke critical error for {nameof(ServiceBusException)}");
+            Assert.Multiple(() =>
+            {
+                Assert.That(onMessageResult, Is.True, "The message handler should have been called.");
+                Assert.That(onErrorCalled, Is.False, "onError should not have been called when a MessageLostLock exception is thrown from onMessage when the transport is in receiveOnly mode.");
+            });
         }
 
         [TestCase(TransportTransactionMode.None)]
@@ -47,8 +48,6 @@
         {
             bool onErrorCalled = false;
             var onMessageCalled = CreateTaskCompletionSource<bool>();
-            string criticalErrorDetails = null;
-
 
             await StartPump(
                 (_, __) =>
@@ -70,9 +69,11 @@
 
             await StopPump();
 
-            Assert.IsTrue(onMessageResult, "The message handler should have been called.");
-            Assert.IsTrue(onErrorCalled, "onError should have been called when a MessageLostLock exception is thrown from onMessage when the transport is not receiveOnly mode.");
-            Assert.IsNull(criticalErrorDetails, $"Should not invoke critical error for {nameof(ServiceBusException)}");
+            Assert.Multiple(() =>
+            {
+                Assert.That(onMessageResult, Is.True, "The message handler should have been called.");
+                Assert.That(onErrorCalled, Is.True, "onError should have been called when a MessageLostLock exception is thrown from onMessage when the transport is not receiveOnly mode.");
+            });
         }
     }
 }
