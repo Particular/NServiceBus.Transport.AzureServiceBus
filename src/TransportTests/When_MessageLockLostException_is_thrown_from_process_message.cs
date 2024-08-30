@@ -38,7 +38,7 @@
             Assert.Multiple(() =>
             {
                 Assert.That(onMessageResult, Is.True, "The message handler should have been called.");
-                Assert.That(onErrorCalled, Is.False, "onError should not have been called when a MessageLostLock exception is thrown from onMessage when the transport is in receiveOnly mode.");
+                Assert.That(onErrorCalled, Is.False, "onError should not have been called when a MessageLostLock exception is thrown from processMessage when the transport is in receiveOnly mode.");
             });
         }
 
@@ -72,7 +72,7 @@
             Assert.Multiple(() =>
             {
                 Assert.That(onMessageResult, Is.True, "The message handler should have been called.");
-                Assert.That(onErrorCalled, Is.True, "onError should have been called when a MessageLostLock exception is thrown from onMessage when the transport is not receiveOnly mode.");
+                Assert.That(onErrorCalled, Is.True, "onError should have been called when a MessageLostLock exception is thrown from processMessage when the transport is not receiveOnly mode.");
             });
         }
     }
