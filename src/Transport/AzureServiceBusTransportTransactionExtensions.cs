@@ -1,3 +1,5 @@
+#nullable enable
+
 namespace NServiceBus.Transport.AzureServiceBus
 {
     using System.Transactions;
@@ -12,7 +14,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         /// providing the transaction to the scope or creating a suppress scope.
         /// </summary>
         public static TransactionScope ToTransactionScope(
-            this AzureServiceBusTransportTransaction azureServiceBusTransaction) =>
-            azureServiceBusTransaction.Transaction.ToScope();
+            this AzureServiceBusTransportTransaction? azureServiceBusTransaction) =>
+            azureServiceBusTransaction != null ? azureServiceBusTransaction.Transaction.ToScope() : default(Transaction).ToScope();
     }
 }
