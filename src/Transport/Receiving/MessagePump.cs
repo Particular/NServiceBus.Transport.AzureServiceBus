@@ -6,6 +6,7 @@
     using System.Threading.Tasks;
     using System.Transactions;
     using Azure.Messaging.ServiceBus;
+    using BitFaster.Caching.Lru;
     using Extensibility;
     using Logging;
 
@@ -15,6 +16,7 @@
         readonly ReceiveSettings receiveSettings;
         readonly Action<string, Exception, CancellationToken> criticalErrorAction;
         readonly ServiceBusClient serviceBusClient;
+        readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
 
         OnMessage onMessage;
         OnError onError;
@@ -135,28 +137,17 @@
             {
                 messageId = message.GetMessageId();
 
-                if (processor.ReceiveMode == ServiceBusReceiveMode.PeekLock && message.LockedUntil < DateTimeOffset.UtcNow)
+                // Deliberately not using the cancellation token to make sure we abandon the message even when the
+                // cancellation token is already set.
+                if (await arg.TrySafeCompleteMessageAsync(message, transportSettings.TransportTransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
                 {
-                    Logger.Warn(
-                        $"Skip handling the message with id '{messageId}' because the lock has expired at '{message.LockedUntil}'. " +
-                        "This is usually an indication that the endpoint prefetches more messages than it is able to handle within the configured" +
-                        " peek lock duration. Consider tweaking the prefetch configuration to values that are better aligned with the concurrency" +
-                        " of the endpoint and the time it takes to handle the messages.");
+                    return;
+                }
 
-                    try
-                    {
-                        // Deliberately not using the cancellation token to make sure we abandon the message even when the
-                        // cancellation token is already set.
-                        await arg.SafeAbandonMessageAsync(message,
-                                transportSettings.TransportTransactionMode,
-                                cancellationToken: CancellationToken.None)
-                            .ConfigureAwait(false);
-                    }
-                    catch (Exception abandonException)
-                    {
-                        // nothing we can do about it, message will be retried
-                        Logger.Debug($"Error abandoning the message with id '{messageId}' because the lock has expired at '{message.LockedUntil}.", abandonException);
-                    }
+                // Deliberately not using the cancellation token to make sure we abandon the message even when the
+                // cancellation token is already set.
+                if (await arg.TrySafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, CancellationToken.None).ConfigureAwait(false))
+                {
                     return;
                 }
 
@@ -165,26 +156,7 @@
             }
             catch (Exception ex)
             {
-                var tryDeadlettering = transportSettings.TransportTransactionMode != TransportTransactionMode.None;
-
-                Logger.Warn($"Poison message detected. Message {(tryDeadlettering ? "will be moved to the poison queue" : "will be discarded, transaction mode is set to None")}. Exception: {ex.Message}", ex);
-
-                if (tryDeadlettering)
-                {
-                    try
-                    {
-                        await arg.DeadLetterMessageAsync(message,
-                                deadLetterReason: "Poisoned message",
-                                deadLetterErrorDescription: ex.Message,
-                                cancellationToken: arg.CancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                    catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(arg.CancellationToken))
-                    {
-                        // nothing we can do about it, message will be retried
-                        Logger.Debug("Error dead lettering poisoned message.", deadLetterEx);
-                    }
-                }
+                await arg.SafeDeadLetterMessageAsync(message, transportSettings.TransportTransactionMode, ex, CancellationToken.None).ConfigureAwait(false);
 
                 return;
             }
@@ -287,6 +259,7 @@
                     await processMessageEventArgs.SafeCompleteMessageAsync(message,
                             transportSettings.TransportTransactionMode,
                             azureServiceBusTransaction,
+                            messagesToBeCompleted,
                             cancellationToken: messageProcessingCancellationToken)
                         .ConfigureAwait(false);
 
@@ -311,6 +284,7 @@
                             await processMessageEventArgs.SafeCompleteMessageAsync(message,
                                     transportSettings.TransportTransactionMode,
                                     azureServiceBusTransaction,
+                                    messagesToBeCompleted,
                                     cancellationToken: messageProcessingCancellationToken)
                                 .ConfigureAwait(false);
                         }
@@ -326,7 +300,7 @@
                             .ConfigureAwait(false);
                     }
                 }
-                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost)
+                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient)
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
