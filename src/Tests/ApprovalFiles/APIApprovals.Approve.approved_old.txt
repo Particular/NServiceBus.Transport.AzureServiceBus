@@ -82,6 +82,6 @@ namespace NServiceBus.Transport.AzureServiceBus
     }
     public static class AzureServiceBusTransportTransactionExtensions
     {
-        public static System.Transactions.TransactionScope ToTransactionScope(this NServiceBus.Transport.AzureServiceBus.AzureServiceBusTransportTransaction? azureServiceBusTransaction) { }
+        public static System.Transactions.TransactionScope ToTransactionScope(this NServiceBus.Transport.AzureServiceBus.AzureServiceBusTransportTransaction azureServiceBusTransaction) { }
     }
 }
