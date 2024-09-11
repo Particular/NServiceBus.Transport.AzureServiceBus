@@ -300,7 +300,7 @@
                             .ConfigureAwait(false);
                     }
                 }
-                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient)
+                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
