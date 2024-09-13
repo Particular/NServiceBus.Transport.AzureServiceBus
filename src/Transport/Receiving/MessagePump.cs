@@ -139,14 +139,14 @@
 
                 // Deliberately not using the cancellation token to make sure we abandon the message even when the
                 // cancellation token is already set.
-                if (await arg.TrySafeCompleteMessageAsync(message, transportSettings.TransportTransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
+                if (await arg.TrySafeCompleteMessage(message, transportSettings.TransportTransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
                 {
                     return;
                 }
 
                 // Deliberately not using the cancellation token to make sure we abandon the message even when the
                 // cancellation token is already set.
-                if (await arg.TrySafeAbandonMessageAsync(message, transportSettings.TransportTransactionMode, CancellationToken.None).ConfigureAwait(false))
+                if (await arg.TrySafeAbandonMessage(message, transportSettings.TransportTransactionMode, CancellationToken.None).ConfigureAwait(false))
                 {
                     return;
                 }
@@ -156,7 +156,7 @@
             }
             catch (Exception ex)
             {
-                await arg.SafeDeadLetterMessageAsync(message, transportSettings.TransportTransactionMode, ex, CancellationToken.None).ConfigureAwait(false);
+                await arg.SafeDeadLetterMessage(message, transportSettings.TransportTransactionMode, ex, CancellationToken.None).ConfigureAwait(false);
 
                 return;
             }
@@ -254,7 +254,7 @@
 
                 await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
-                await processMessageEventArgs.SafeCompleteMessageAsync(message,
+                await processMessageEventArgs.SafeCompleteMessage(message,
                         transportSettings.TransportTransactionMode,
                         azureServiceBusTransaction,
                         messagesToBeCompleted,
@@ -278,7 +278,7 @@
 
                         if (result == ErrorHandleResult.Handled)
                         {
-                            await processMessageEventArgs.SafeCompleteMessageAsync(message,
+                            await processMessageEventArgs.SafeCompleteMessage(message,
                                     transportSettings.TransportTransactionMode,
                                     azureServiceBusTransaction,
                                     messagesToBeCompleted,
@@ -291,7 +291,7 @@
 
                     if (result == ErrorHandleResult.RetryRequired)
                     {
-                        await processMessageEventArgs.SafeAbandonMessageAsync(message,
+                        await processMessageEventArgs.SafeAbandonMessage(message,
                                 transportSettings.TransportTransactionMode,
                                 cancellationToken: messageProcessingCancellationToken)
                             .ConfigureAwait(false);
@@ -301,7 +301,7 @@
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
-                    await processMessageEventArgs.SafeAbandonMessageAsync(message,
+                    await processMessageEventArgs.SafeAbandonMessage(message,
                             transportSettings.TransportTransactionMode,
                             cancellationToken: messageProcessingCancellationToken)
                         .ConfigureAwait(false);
@@ -314,7 +314,7 @@
                 {
                     criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
 
-                    await processMessageEventArgs.SafeAbandonMessageAsync(message,
+                    await processMessageEventArgs.SafeAbandonMessage(message,
                             transportSettings.TransportTransactionMode,
                             cancellationToken: messageProcessingCancellationToken)
                         .ConfigureAwait(false);

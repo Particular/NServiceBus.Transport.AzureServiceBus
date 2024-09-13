@@ -9,7 +9,7 @@
 
     static class ProcessMessageEventArgsExtensions
     {
-        public static async ValueTask<bool> TrySafeCompleteMessageAsync(this ProcessMessageEventArgs args,
+        public static async ValueTask<bool> TrySafeCompleteMessage(this ProcessMessageEventArgs args,
             ServiceBusReceivedMessage message, TransportTransactionMode transportTransactionMode,
             ICache<string, bool> messagesToBeCompleted,
             CancellationToken cancellationToken = default)
@@ -34,7 +34,7 @@
             return false;
         }
 
-        public static async ValueTask<bool> TrySafeAbandonMessageAsync(this ProcessMessageEventArgs args,
+        public static async ValueTask<bool> TrySafeAbandonMessage(this ProcessMessageEventArgs args,
             ServiceBusReceivedMessage message, TransportTransactionMode transportTransactionMode,
             CancellationToken cancellationToken = default)
         {
@@ -50,7 +50,7 @@
 
                 try
                 {
-                    await args.SafeAbandonMessageAsync(message, transportTransactionMode, cancellationToken: cancellationToken)
+                    await args.SafeAbandonMessage(message, transportTransactionMode, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                     return true;
                 }
@@ -63,7 +63,7 @@
             return false;
         }
 
-        public static async Task SafeDeadLetterMessageAsync(this ProcessMessageEventArgs args, ServiceBusReceivedMessage message,
+        public static async Task SafeDeadLetterMessage(this ProcessMessageEventArgs args, ServiceBusReceivedMessage message,
             TransportTransactionMode transportTransactionMode, Exception exception, CancellationToken cancellationToken = default)
         {
             if (transportTransactionMode != TransportTransactionMode.None)
@@ -90,7 +90,7 @@
             }
         }
 
-        public static async Task SafeCompleteMessageAsync(this ProcessMessageEventArgs args,
+        public static async Task SafeCompleteMessage(this ProcessMessageEventArgs args,
             ServiceBusReceivedMessage message, TransportTransactionMode transportTransactionMode,
             AzureServiceBusTransportTransaction azureServiceBusTransaction,
             ICache<string, bool> messagesToBeCompleted,
@@ -115,7 +115,7 @@
             }
         }
 
-        public static async Task SafeAbandonMessageAsync(this ProcessMessageEventArgs args, ServiceBusReceivedMessage message,
+        public static async Task SafeAbandonMessage(this ProcessMessageEventArgs args, ServiceBusReceivedMessage message,
             TransportTransactionMode transportTransactionMode, CancellationToken cancellationToken = default)
         {
             if (transportTransactionMode != TransportTransactionMode.None)
