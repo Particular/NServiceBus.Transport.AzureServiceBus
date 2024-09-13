@@ -72,7 +72,7 @@
             var receiveOptions = new ServiceBusProcessorOptions
             {
                 PrefetchCount = prefetchCount,
-                ReceiveMode = transportSettings.TransportTransactionMode == TransportTransactionMode.None
+                ReceiveMode = TransactionMode == TransportTransactionMode.None
                     ? ServiceBusReceiveMode.ReceiveAndDelete
                     : ServiceBusReceiveMode.PeekLock,
                 Identifier = $"Processor-{Id}-{ReceiveAddress}-{Guid.NewGuid()}",
@@ -110,6 +110,8 @@
                 .ConfigureAwait(false);
         }
 
+        TransportTransactionMode TransactionMode => transportSettings.TransportTransactionMode;
+
         int CalculatePrefetchCount()
         {
             var prefetchCount = limitations.MaxConcurrency * transportSettings.PrefetchMultiplier;
@@ -139,14 +141,14 @@
 
                 // Deliberately not using the cancellation token to make sure we abandon the message even when the
                 // cancellation token is already set.
-                if (await arg.TrySafeCompleteMessage(message, transportSettings.TransportTransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
+                if (await arg.TrySafeCompleteMessage(message, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
                 {
                     return;
                 }
 
                 // Deliberately not using the cancellation token to make sure we abandon the message even when the
                 // cancellation token is already set.
-                if (await arg.TrySafeAbandonMessage(message, transportSettings.TransportTransactionMode, CancellationToken.None).ConfigureAwait(false))
+                if (await arg.TrySafeAbandonMessage(message, TransactionMode, CancellationToken.None).ConfigureAwait(false))
                 {
                     return;
                 }
@@ -156,7 +158,7 @@
             }
             catch (Exception ex)
             {
-                await arg.SafeDeadLetterMessage(message, transportSettings.TransportTransactionMode, ex, CancellationToken.None).ConfigureAwait(false);
+                await arg.SafeDeadLetterMessage(message, TransactionMode, ex, CancellationToken.None).ConfigureAwait(false);
 
                 return;
             }
@@ -255,7 +257,7 @@
                 await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
                 await processMessageEventArgs.SafeCompleteMessage(message,
-                        transportSettings.TransportTransactionMode,
+                        TransactionMode,
                         azureServiceBusTransaction,
                         messagesToBeCompleted,
                         cancellationToken: messageProcessingCancellationToken)
@@ -279,7 +281,7 @@
                         if (result == ErrorHandleResult.Handled)
                         {
                             await processMessageEventArgs.SafeCompleteMessage(message,
-                                    transportSettings.TransportTransactionMode,
+                                    TransactionMode,
                                     azureServiceBusTransaction,
                                     messagesToBeCompleted,
                                     cancellationToken: messageProcessingCancellationToken)
@@ -292,7 +294,7 @@
                     if (result == ErrorHandleResult.RetryRequired)
                     {
                         await processMessageEventArgs.SafeAbandonMessage(message,
-                                transportSettings.TransportTransactionMode,
+                                TransactionMode,
                                 cancellationToken: messageProcessingCancellationToken)
                             .ConfigureAwait(false);
                     }
@@ -302,7 +304,7 @@
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
                     await processMessageEventArgs.SafeAbandonMessage(message,
-                            transportSettings.TransportTransactionMode,
+                            TransactionMode,
                             cancellationToken: messageProcessingCancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -311,7 +313,7 @@
                     criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
 
                     await processMessageEventArgs.SafeAbandonMessage(message,
-                            transportSettings.TransportTransactionMode,
+                            TransactionMode,
                             cancellationToken: messageProcessingCancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -319,7 +321,7 @@
         }
 
         AzureServiceBusTransportTransaction CreateTransaction(string incomingQueuePartitionKey) =>
-            transportSettings.TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
+            TransactionMode == TransportTransactionMode.SendsAtomicWithReceive
                 ? new AzureServiceBusTransportTransaction(serviceBusClient, incomingQueuePartitionKey,
                     new TransactionOptions
                     {
