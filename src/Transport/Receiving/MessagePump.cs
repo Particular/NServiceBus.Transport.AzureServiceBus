@@ -205,10 +205,10 @@
         {
             // Wiring up the stop token to trigger the cancellation token that is being
             // used inside the message handling pipeline
-            using var _ = cancellationToken
+            await using var _ = cancellationToken
                 .Register(state => (state as CancellationTokenSource)?.Cancel(),
                     messageProcessingCancellationTokenSource,
-                    useSynchronizationContext: false);
+                    useSynchronizationContext: false).ConfigureAwait(false);
             // Deliberately not passing the cancellation token forward in order to make sure
             // the processor waits until all processing handlers have returned. This makes
             // the code compliant to the previous version that uses manual receives and is aligned
@@ -244,27 +244,24 @@
             // args.CancellationToken is currently not used because the v8 version that supports cancellation was designed
             // to not flip the cancellation token until the very last moment in time when the stop token is flipped.
             var contextBag = new ContextBag();
+            contextBag.Set(message);
+            contextBag.Set(processMessageEventArgs);
 
             try
             {
-                using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
-                {
-                    contextBag.Set(message);
-                    contextBag.Set(processMessageEventArgs);
+                using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
+                var messageContext = new MessageContext(messageId, headers, body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
-                    var messageContext = new MessageContext(messageId, headers, body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
+                await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
-                    await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
+                await processMessageEventArgs.SafeCompleteMessageAsync(message,
+                        transportSettings.TransportTransactionMode,
+                        azureServiceBusTransaction,
+                        messagesToBeCompleted,
+                        cancellationToken: messageProcessingCancellationToken)
+                    .ConfigureAwait(false);
 
-                    await processMessageEventArgs.SafeCompleteMessageAsync(message,
-                            transportSettings.TransportTransactionMode,
-                            azureServiceBusTransaction,
-                            messagesToBeCompleted,
-                            cancellationToken: messageProcessingCancellationToken)
-                        .ConfigureAwait(false);
-
-                    azureServiceBusTransaction.Commit();
-                }
+                azureServiceBusTransaction.Commit();
             }
             catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationToken))
             {
