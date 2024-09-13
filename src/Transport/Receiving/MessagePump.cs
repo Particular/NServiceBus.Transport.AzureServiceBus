@@ -306,11 +306,7 @@
                             cancellationToken: messageProcessingCancellationToken)
                         .ConfigureAwait(false);
                 }
-                catch (Exception onErrorEx) when (onErrorEx.IsCausedBy(messageProcessingCancellationToken))
-                {
-                    throw;
-                }
-                catch (Exception onErrorEx)
+                catch (Exception onErrorEx) when (!onErrorEx.IsCausedBy(messageProcessingCancellationToken))
                 {
                     criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
 
