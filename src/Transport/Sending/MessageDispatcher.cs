@@ -120,9 +120,6 @@ namespace NServiceBus.Transport.AzureServiceBus
                 var operations = destinationAndOperations.Value;
 
                 var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
-                // We assume the majority of the messages will be batched and only a few will be sent individually
-                // and therefore it is OK in those rare cases for the list to grow.
-                var messagesTooLargeToBeBatched = new List<ServiceBusMessage>(0);
                 foreach (var operation in operations)
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
@@ -131,20 +128,16 @@ namespace NServiceBus.Transport.AzureServiceBus
                 }
                 // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
                 // doing the access as late as possible but still on the synchronous path.
-                dispatchTasks.Add(DispatchBatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, messagesToSend, messagesTooLargeToBeBatched, cancellationToken));
-
-                foreach (var message in messagesTooLargeToBeBatched)
-                {
-                    dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, message, cancellationToken));
-                }
+                dispatchTasks.Add(DispatchBatchOrFallbackToIndividualSendsForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, messagesToSend, cancellationToken));
             }
         }
 
-        async Task DispatchBatchForDestination(string destination, ServiceBusClient? client, Transaction? transaction,
-            Queue<ServiceBusMessage> messagesToSend, List<ServiceBusMessage> messagesTooLargeToBeBatched,
+        async Task DispatchBatchOrFallbackToIndividualSendsForDestination(string destination, ServiceBusClient? client, Transaction? transaction,
+            Queue<ServiceBusMessage> messagesToSend,
             CancellationToken cancellationToken)
         {
             int batchCount = 0;
+            List<ServiceBusMessage>? messagesTooLargeToBeBatched = null;
             var sender = messageSenderRegistry.GetMessageSender(destination, client);
             while (messagesToSend.Count > 0)
             {
@@ -176,6 +169,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                         dequeueMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
                         Log.Debug($"Message '{messageId ?? dequeueMessage.MessageId}' is too large for the batch '{batchCount}' and will be sent individually to destination {destination}.");
                     }
+                    messagesTooLargeToBeBatched ??= [];
                     messagesTooLargeToBeBatched.Add(dequeueMessage);
                     continue;
                 }
@@ -208,6 +202,28 @@ namespace NServiceBus.Transport.AzureServiceBus
                 if (Log.IsDebugEnabled)
                 {
                     Log.Debug($"Sent batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
+                }
+            }
+
+            if (messagesTooLargeToBeBatched is not null)
+            {
+                if (Log.IsDebugEnabled)
+                {
+                    Log.Debug($"Sending '{messagesTooLargeToBeBatched.Count}' that were too large for the batch individually to destination {destination}.");
+                }
+
+                var individualSendTasks = new List<Task>(messagesTooLargeToBeBatched.Count);
+                foreach (var message in messagesTooLargeToBeBatched)
+                {
+                    individualSendTasks.Add(DispatchForDestination(destination, client, transaction, message, cancellationToken));
+                }
+
+                await Task.WhenAll(individualSendTasks)
+                    .ConfigureAwait(false);
+
+                if (Log.IsDebugEnabled)
+                {
+                    Log.Debug($"Sent '{messagesTooLargeToBeBatched.Count}' that were too large for the batch individually to destination {destination}.");
                 }
             }
         }
