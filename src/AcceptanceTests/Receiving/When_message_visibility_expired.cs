@@ -1,4 +1,4 @@
-﻿namespace NServiceBus.Transport.AzureStorageQueues.AcceptanceTests
+﻿namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
 {
     using System;
     using System.Linq;
