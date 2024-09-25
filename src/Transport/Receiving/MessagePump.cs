@@ -7,6 +7,7 @@
     using System.Transactions;
     using Azure.Core;
     using Azure.Messaging.ServiceBus;
+    using BitFaster.Caching.Lru;
     using Extensibility;
     using Logging;
 
@@ -21,6 +22,7 @@
         readonly TokenCredential tokenCredential;
         bool enableCrossEntityTransactions;
         ServiceBusClient serviceBusClient;
+        readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new FastConcurrentLru<string, bool>(1_000);
 
         // Init
         Func<MessageContext, Task> onMessage;
@@ -35,7 +37,7 @@
         CancellationTokenSource messageProcessing;
         int maxConcurrency;
         ServiceBusReceiver receiver;
-        static readonly ILog logger = LogManager.GetLogger<MessagePump>();
+        static readonly ILog Logger = LogManager.GetLogger<MessagePump>();
 
         public MessagePump(string connectionString, TokenCredential tokenCredential, int prefetchMultiplier, int? overriddenPrefetchCount,
             TimeSpan timeToWaitBeforeTriggeringCircuitBreaker, ServiceBusRetryOptions retryOptions, ServiceBusTransportType transportType)
@@ -48,6 +50,8 @@
             this.retryOptions = retryOptions;
             this.transportType = transportType;
         }
+
+        TransportTransactionMode TransactionMode => pushSettings.RequiredTransactionMode;
 
         public Task Init(Func<MessageContext, Task> onMessage, Func<ErrorContext, Task<ErrorHandleResult>> onError, CriticalError criticalError, PushSettings settings)
         {
@@ -141,11 +145,11 @@
             catch (Exception ex) when (ex.IsCausedBy(messageReceivingCancellationToken))
             {
                 // private token, pump is being stopped, log the exception in case the stack trace is ever needed for debugging
-                logger.Debug("Operation canceled while stopping message pump.", ex);
+                Logger.Debug("Operation canceled while stopping message pump.", ex);
             }
             catch (Exception ex)
             {
-                logger.Error("Error receiving messages.", ex);
+                Logger.Error("Error receiving messages.", ex);
             }
             finally
             {
@@ -179,7 +183,7 @@
             }
             catch (Exception exception) when (!exception.IsCausedBy(messageReceivingCancellationToken))
             {
-                logger.Warn($"Failed to receive a message. Exception: {exception.Message}", exception);
+                Logger.Warn($"Failed to receive a message. Exception: {exception.Message}", exception);
 
                 await circuitBreaker.Failure(exception, messageReceivingCancellationToken).ConfigureAwait(false);
             }
@@ -197,64 +201,56 @@
             try
             {
                 messageId = message.GetMessageId();
+
+                if (await receiver.TrySafeCompleteMessage(message, TransactionMode, messagesToBeCompleted).ConfigureAwait(false))
+                {
+                    return;
+                }
+
+                if (await receiver.TrySafeAbandonMessage(message, TransactionMode).ConfigureAwait(false))
+                {
+                    return;
+                }
+
                 headers = message.GetNServiceBusHeaders();
                 body = message.GetBody();
             }
             catch (Exception exception)
             {
-                var tryDeadlettering = pushSettings.RequiredTransactionMode != TransportTransactionMode.None;
-
-                logger.Warn($"Poison message detected. " +
-                    $"Message {(tryDeadlettering ? "will be moved to the poison queue" : "will be discarded, transaction mode is set to None")}. " +
-                    $"Exception: {exception.Message}", exception);
-
-                if (tryDeadlettering)
-                {
-                    try
-                    {
-                        await receiver.DeadLetterMessageAsync(message, deadLetterReason: "Poisoned message", deadLetterErrorDescription: exception.Message, cancellationToken: messageReceivingCancellationToken).ConfigureAwait(false);
-                    }
-                    catch (Exception deadLetterException) when (!deadLetterException.IsCausedBy(messageReceivingCancellationToken))
-                    {
-                        // nothing we can do about it, message will be retried
-                        logger.Warn($"Failed to deadletter a message. Exception: {deadLetterException.Message}", deadLetterException);
-                    }
-                }
+                await receiver.SafeDeadLetterMessage(message, TransactionMode, exception).ConfigureAwait(false);
 
                 return;
             }
 
             try
             {
-                using (var receiveCancellationTokenSource = new CancellationTokenSource())
-                using (var transaction = CreateTransaction())
+                using var receiveCancellationTokenSource = new CancellationTokenSource();
+                using var transaction = CreateTransaction();
+                var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
+
+                var contextBag = new ContextBag();
+                contextBag.Set(message);
+                contextBag.Set(receiver);
+                contextBag.GetOrCreate<NativeMessageCustomizer>();
+
+                var messageContext = new MessageContext(messageId, headers, body.ToArray(), transportTransaction,
+                    receiveCancellationTokenSource, contextBag);
+
+                await onMessage(messageContext).ConfigureAwait(false);
+
+                if (receiveCancellationTokenSource.IsCancellationRequested == false)
                 {
-                    var transportTransaction = CreateTransportTransaction(message.PartitionKey, transaction);
+                    await receiver.SafeCompleteMessage(message, TransactionMode, messagesToBeCompleted, transaction)
+                        .ConfigureAwait(false);
 
-                    var contextBag = new ContextBag();
-                    contextBag.Set(message);
-                    contextBag.Set(receiver);
-                    contextBag.GetOrCreate<NativeMessageCustomizer>();
+                    transaction?.Commit();
+                }
 
-                    var messageContext = new MessageContext(messageId, headers, body.ToArray(), transportTransaction,
-                        receiveCancellationTokenSource, contextBag);
+                if (receiveCancellationTokenSource.IsCancellationRequested)
+                {
+                    await receiver.SafeAbandonMessage(message, TransactionMode).ConfigureAwait(false);
 
-                    await onMessage(messageContext).ConfigureAwait(false);
-
-                    if (receiveCancellationTokenSource.IsCancellationRequested == false)
-                    {
-                        await receiver.SafeCompleteMessageAsync(message, pushSettings.RequiredTransactionMode, transaction)
-                            .ConfigureAwait(false);
-
-                        transaction?.Commit();
-                    }
-
-                    if (receiveCancellationTokenSource.IsCancellationRequested)
-                    {
-                        await receiver.SafeAbandonMessageAsync(message, pushSettings.RequiredTransactionMode).ConfigureAwait(false);
-
-                        transaction?.Rollback();
-                    }
+                    transaction?.Rollback();
                 }
             }
             catch (Exception exception)
@@ -273,7 +269,7 @@
 
                         if (result == ErrorHandleResult.Handled)
                         {
-                            await receiver.SafeCompleteMessageAsync(message, pushSettings.RequiredTransactionMode, transaction).ConfigureAwait(false);
+                            await receiver.SafeCompleteMessage(message, TransactionMode, messagesToBeCompleted, transaction).ConfigureAwait(false);
                         }
 
                         transaction?.Commit();
@@ -281,32 +277,33 @@
 
                     if (result == ErrorHandleResult.RetryRequired)
                     {
-                        await receiver.SafeAbandonMessageAsync(message, pushSettings.RequiredTransactionMode).ConfigureAwait(false);
+                        await receiver.SafeAbandonMessage(message, TransactionMode).ConfigureAwait(false);
                     }
                 }
                 catch (ServiceBusException onErrorException) when (onErrorException.Reason == ServiceBusFailureReason.MessageLockLost || onErrorException.Reason == ServiceBusFailureReason.ServiceTimeout)
                 {
-                    logger.Error("Failed to execute recoverability.", onErrorException);
+                    Logger.Error("Failed to execute recoverability.", onErrorException);
+
+                    await receiver.SafeAbandonMessage(message, TransactionMode)
+                        .ConfigureAwait(false);
                 }
                 catch (Exception onErrorException)
                 {
                     criticalError.Raise($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorException);
 
-                    await receiver.SafeAbandonMessageAsync(message, pushSettings.RequiredTransactionMode).ConfigureAwait(false);
+                    await receiver.SafeAbandonMessage(message, TransactionMode).ConfigureAwait(false);
                 }
             }
         }
 
-        CommittableTransaction CreateTransaction()
-        {
-            return pushSettings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
+        CommittableTransaction CreateTransaction() =>
+            pushSettings.RequiredTransactionMode == TransportTransactionMode.SendsAtomicWithReceive
                 ? new CommittableTransaction(new TransactionOptions
                 {
                     IsolationLevel = IsolationLevel.Serializable,
                     Timeout = TransactionManager.MaximumTimeout
                 })
                 : null;
-        }
 
         TransportTransaction CreateTransportTransaction(string incomingQueuePartitionKey, CommittableTransaction transaction)
         {
