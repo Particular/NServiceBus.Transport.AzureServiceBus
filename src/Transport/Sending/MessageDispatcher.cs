@@ -88,12 +88,15 @@ namespace NServiceBus.Transport.AzureServiceBus
                 throw new Exception($"The number of outgoing messages ({numberOfDefaultOperations}) exceeds the limits permitted by Azure Service Bus ({MaxMessageThresholdForTransaction}) in a single transaction");
             }
 
-            var isolatedOperationsTask = AddIsolatedOperationsTo(isolatedOperationsPerDestination ?? emptyDestinationAndOperations, numberOfIsolatedOperations, transaction, azureServiceBusTransaction, cancellationToken);
-            var batchedOperationsTask = AddBatchedOperationsTo(defaultOperationsPerDestination ?? emptyDestinationAndOperations, numberOfDefaultOperations, transaction, azureServiceBusTransaction, cancellationToken);
+            Task[] dispatchTasks =
+            [
+                AddIsolatedOperationsTo(isolatedOperationsPerDestination ?? emptyDestinationAndOperations, numberOfIsolatedOperations, transaction, azureServiceBusTransaction, cancellationToken),
+                AddBatchedOperationsTo(defaultOperationsPerDestination ?? emptyDestinationAndOperations, numberOfDefaultOperations, transaction, azureServiceBusTransaction, cancellationToken)
+            ];
 
             try
             {
-                await Task.WhenAll(isolatedOperationsTask, batchedOperationsTask).ConfigureAwait(false);
+                await Task.WhenAll(dispatchTasks).ConfigureAwait(false);
             }
             catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
             {
