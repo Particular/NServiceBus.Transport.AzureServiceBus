@@ -90,8 +90,8 @@ namespace NServiceBus.Transport.AzureServiceBus
 
             Task[] dispatchTasks =
             [
-                AddIsolatedOperationsTo(isolatedOperationsPerDestination ?? emptyDestinationAndOperations, numberOfIsolatedOperations, transaction, azureServiceBusTransaction, cancellationToken),
-                AddBatchedOperationsTo(defaultOperationsPerDestination ?? emptyDestinationAndOperations, numberOfDefaultOperations, transaction, azureServiceBusTransaction, cancellationToken)
+                DispatchIsolatedOperations(isolatedOperationsPerDestination ?? emptyDestinationAndOperations, numberOfIsolatedOperations, transaction, azureServiceBusTransaction, cancellationToken),
+                DispatchBatchedOperations(defaultOperationsPerDestination ?? emptyDestinationAndOperations, numberOfDefaultOperations, transaction, azureServiceBusTransaction, cancellationToken)
             ];
 
             try
@@ -107,7 +107,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
         // The parameters of this method are deliberately mutable and of the original collection type to make sure
         // no boxing occurs
-        Task AddBatchedOperationsTo(
+        Task DispatchBatchedOperations(
             Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
             int numberOfTransportOperations,
             TransportTransaction transportTransaction,
@@ -238,7 +238,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
         // The parameters of this method are deliberately mutable and of the original collection type to make sure
         // no boxing occurs
-        Task AddIsolatedOperationsTo(
+        Task DispatchIsolatedOperations(
             Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
             int numberOfTransportOperations,
             TransportTransaction transportTransaction,
