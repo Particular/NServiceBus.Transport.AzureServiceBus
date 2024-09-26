@@ -44,7 +44,6 @@ namespace NServiceBus.Transport.AzureServiceBus
             Dictionary<string, List<IOutgoingTransportOperation>>? defaultOperationsPerDestination = null;
             var numberOfDefaultOperations = 0;
             var numberOfIsolatedOperations = 0;
-            var numberOfDefaultOperationDestinations = 0;
 
             foreach (var operation in transportOperations)
             {
@@ -59,8 +58,6 @@ namespace NServiceBus.Transport.AzureServiceBus
                         if (!defaultOperationsPerDestination.ContainsKey(destination))
                         {
                             defaultOperationsPerDestination[destination] = [operation];
-                            // because we batch only the number of destinations are relevant
-                            numberOfDefaultOperationDestinations++;
                         }
                         else
                         {
@@ -91,14 +88,15 @@ namespace NServiceBus.Transport.AzureServiceBus
                 throw new Exception($"The number of outgoing messages ({numberOfDefaultOperations}) exceeds the limits permitted by Azure Service Bus ({MaxMessageThresholdForTransaction}) in a single transaction");
             }
 
-            var concurrentDispatchTasks =
-                new List<Task>(numberOfIsolatedOperations + numberOfDefaultOperationDestinations);
-            AddIsolatedOperationsTo(concurrentDispatchTasks, isolatedOperationsPerDestination ?? emptyDestinationAndOperations, transaction, azureServiceBusTransaction, cancellationToken);
-            AddBatchedOperationsTo(concurrentDispatchTasks, defaultOperationsPerDestination ?? emptyDestinationAndOperations, transaction, azureServiceBusTransaction, cancellationToken);
+            Task[] dispatchTasks =
+            [
+                DispatchIsolatedOperations(isolatedOperationsPerDestination ?? emptyDestinationAndOperations, numberOfIsolatedOperations, transaction, azureServiceBusTransaction, cancellationToken),
+                DispatchBatchedOperations(defaultOperationsPerDestination ?? emptyDestinationAndOperations, numberOfDefaultOperations, transaction, azureServiceBusTransaction, cancellationToken)
+            ];
 
             try
             {
-                await Task.WhenAll(concurrentDispatchTasks).ConfigureAwait(false);
+                await Task.WhenAll(dispatchTasks).ConfigureAwait(false);
             }
             catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
             {
@@ -109,11 +107,18 @@ namespace NServiceBus.Transport.AzureServiceBus
 
         // The parameters of this method are deliberately mutable and of the original collection type to make sure
         // no boxing occurs
-        void AddBatchedOperationsTo(List<Task> dispatchTasks,
+        Task DispatchBatchedOperations(
             Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
+            int numberOfTransportOperations,
             TransportTransaction transportTransaction,
             AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction, CancellationToken cancellationToken)
         {
+            if (numberOfTransportOperations == 0)
+            {
+                return Task.CompletedTask;
+            }
+
+            var dispatchTasks = new List<Task>(transportOperationsPerDestination.Count);
             foreach (var destinationAndOperations in transportOperationsPerDestination)
             {
                 var destination = destinationAndOperations.Key;
@@ -127,9 +132,12 @@ namespace NServiceBus.Transport.AzureServiceBus
                     messagesToSend.Enqueue(message);
                 }
                 // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
-                // doing the access as late as possible but still on the synchronous path.
+                // doing the access as late as possible but still on the synchronous path. Initializing the transaction
+                // as late as possible is important because it will start the transaction timer. If the transaction
+                // is started too early it might shorten the overall transaction time available.
                 dispatchTasks.Add(DispatchBatchOrFallbackToIndividualSendsForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, messagesToSend, cancellationToken));
             }
+            return Task.WhenAll(dispatchTasks);
         }
 
         async Task DispatchBatchOrFallbackToIndividualSendsForDestination(string destination, ServiceBusClient? client, Transaction? transaction,
@@ -230,16 +238,23 @@ namespace NServiceBus.Transport.AzureServiceBus
 
         // The parameters of this method are deliberately mutable and of the original collection type to make sure
         // no boxing occurs
-        void AddIsolatedOperationsTo(List<Task> dispatchTasks,
+        Task DispatchIsolatedOperations(
             Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
+            int numberOfTransportOperations,
             TransportTransaction transportTransaction,
             AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
             CancellationToken cancellationToken)
         {
+            if (numberOfTransportOperations == 0)
+            {
+                return Task.CompletedTask;
+            }
+
             // It is OK to use the pumps client and partition key (keeps things compliant as before) but
             // isolated dispatches should never use the committable transaction regardless whether it is present
             // or not.
             Transaction? noTransaction = default;
+            var dispatchTasks = new List<Task>(numberOfTransportOperations);
             foreach (var destinationAndOperations in transportOperationsPerDestination)
             {
                 var destination = destinationAndOperations.Key;
@@ -252,6 +267,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                     dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
                 }
             }
+            return Task.WhenAll(dispatchTasks);
         }
 
         async Task DispatchForDestination(string destination, ServiceBusClient? client, Transaction? transaction, ServiceBusMessage message, CancellationToken cancellationToken)
