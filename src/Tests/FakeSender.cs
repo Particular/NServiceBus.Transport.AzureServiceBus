@@ -27,27 +27,27 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             set => throw new NotSupportedException();
         }
 
-        public override ValueTask<ServiceBusMessageBatch> CreateMessageBatchAsync(CancellationToken cancellationToken = default)
+        public override async ValueTask<ServiceBusMessageBatch> CreateMessageBatchAsync(CancellationToken cancellationToken = default)
         {
             var batchMessageStore = new List<ServiceBusMessage>();
             ServiceBusMessageBatch serviceBusMessageBatch = ServiceBusModelFactory.ServiceBusMessageBatch(256 * 1024, batchMessageStore, tryAddCallback: TryAdd);
             batchToBackingStore.Add(serviceBusMessageBatch, batchMessageStore);
-            return new ValueTask<ServiceBusMessageBatch>(
-                serviceBusMessageBatch);
+            await Task.Yield();
+            return serviceBusMessageBatch;
         }
 
-        public override Task SendMessageAsync(ServiceBusMessage message, CancellationToken cancellationToken = default)
+        public override async Task SendMessageAsync(ServiceBusMessage message, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             sentMessages.Add(message);
-            return Task.CompletedTask;
+            await Task.Yield();
         }
 
-        public override Task SendMessagesAsync(ServiceBusMessageBatch messageBatch, CancellationToken cancellationToken = default)
+        public override async Task SendMessagesAsync(ServiceBusMessageBatch messageBatch, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             batchedMessages.Add(messageBatch);
-            return Task.CompletedTask;
+            await Task.Yield();
         }
     }
 }
