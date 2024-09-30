@@ -38,7 +38,7 @@
             ReceiveSettings receiveSettings,
             Action<string, Exception, CancellationToken> criticalErrorAction,
             SubscriptionManager subscriptionManager,
-            bool deadLetterQueue
+            bool deadLetterQueue = false
             )
         {
             Id = receiveSettings.Id;
