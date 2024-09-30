@@ -29,6 +29,7 @@
                 return;
             }
 
+            Volatile.Write(ref failureCount, 0);
             timer.Change(Timeout.Infinite, Timeout.Infinite);
             Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
             disarmedAction();
