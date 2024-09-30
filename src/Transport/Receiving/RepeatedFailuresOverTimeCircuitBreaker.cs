@@ -23,9 +23,8 @@
 
         public void Success()
         {
-            var oldValue = Interlocked.Exchange(ref failureCount, 0);
-
-            if (oldValue == 0)
+            // If the failure count was already zero, replace it with zero (no change) and then return original
+            if (Interlocked.CompareExchange(ref failureCount, 0, 0) == 0)
             {
                 return;
             }
