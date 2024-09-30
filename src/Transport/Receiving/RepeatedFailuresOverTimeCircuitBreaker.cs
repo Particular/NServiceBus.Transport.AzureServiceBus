@@ -1,4 +1,4 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus
+namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
     using System.Threading;
@@ -23,40 +23,50 @@
 
         public void Success()
         {
-            var oldValue = Interlocked.Exchange(ref failureCount, 0);
-
-            if (oldValue == 0)
+            // If the failure count was already zero, replace it with zero (no change) and then return original
+            if (Interlocked.CompareExchange(ref failureCount, 0, 0) == 0)
             {
                 return;
             }
 
-            timer.Change(Timeout.Infinite, Timeout.Infinite);
-            Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
+            DisarmTimer();
             disarmedAction();
-            triggered = false;
+            Volatile.Write(ref triggered, false);
         }
 
         public Task Failure(Exception exception, CancellationToken cancellationToken = default)
         {
-            lastException = exception;
-            var newValue = Interlocked.Increment(ref failureCount);
+            Interlocked.Exchange(ref lastException, exception);
 
-            if (newValue == 1)
+            var newFailureCount = Interlocked.Increment(ref failureCount);
+
+            if (newFailureCount == 1)
             {
                 armedAction();
-                timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
+                _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
                 Logger.WarnFormat("The circuit breaker for {0} is now in the armed state", name);
             }
 
-            //If the circuit breaker has been triggered, wait for 10 seconds before proceeding to prevent flooding the logs and hammering the ServiceBus
-            var delay = triggered ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(1);
+            if (Interlocked.CompareExchange(ref failureCount, 0, 0) == 0)
+            {
+                DisarmTimer();
+                return Task.CompletedTask;
+            }
+
+            // If the circuit breaker has been triggered, wait for 10 seconds before proceeding to prevent flooding the logs and hammering the ServiceBus
+            var delay = Volatile.Read(ref triggered) ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(1);
 
             return Task.Delay(delay, cancellationToken);
         }
 
-        public void Dispose()
+        public void Dispose() => timer?.Dispose();
+
+        void DisarmTimer()
         {
-            timer?.Dispose();
+            if (timer.Change(Timeout.Infinite, Timeout.Infinite))
+            {
+                Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
+            }
         }
 
         void CircuitBreakerTriggered(object state)
@@ -64,13 +74,13 @@
             if (Interlocked.Read(ref failureCount) > 0)
             {
                 Logger.WarnFormat("The circuit breaker for {0} will now be triggered", name);
-                triggered = true;
+                Volatile.Write(ref triggered, true);
                 triggerAction(lastException);
             }
         }
 
         long failureCount;
-        volatile bool triggered;
+        bool triggered;
         Exception lastException;
 
         readonly string name;
