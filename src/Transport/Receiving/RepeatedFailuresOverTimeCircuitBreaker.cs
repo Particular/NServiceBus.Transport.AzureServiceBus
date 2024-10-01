@@ -1,11 +1,11 @@
-namespace NServiceBus.Transport.AzureServiceBus
+﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
     using System.Threading;
     using System.Threading.Tasks;
     using Logging;
 
-    class RepeatedFailuresOverTimeCircuitBreaker
+    sealed class RepeatedFailuresOverTimeCircuitBreaker
     {
         public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering,
             Action<Exception> triggerAction,
@@ -23,64 +23,49 @@ namespace NServiceBus.Transport.AzureServiceBus
 
         public void Success()
         {
-            // If the failure count was already zero, replace it with zero (no change) and then return original
-            if (Interlocked.CompareExchange(ref failureCount, 0, 0) == 0)
-            {
-                return;
-            }
+            var previousState = Interlocked.CompareExchange(ref circuitBreakerState, Disarmed, Armed);
 
-            DisarmTimer();
-            disarmedAction();
-            Volatile.Write(ref triggered, false);
+            // If the circuit breaker was Armed or triggered before, disarm it
+            if (previousState == Armed || Interlocked.CompareExchange(ref circuitBreakerState, Disarmed, Triggered) == Triggered)
+            {
+                _ = timer.Change(Timeout.Infinite, Timeout.Infinite);
+                Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
+                disarmedAction();
+            }
         }
 
         public Task Failure(Exception exception, CancellationToken cancellationToken = default)
         {
-            Interlocked.Exchange(ref lastException, exception);
+            _ = Interlocked.Exchange(ref lastException, exception);
 
-            var newFailureCount = Interlocked.Increment(ref failureCount);
+            // Atomically set state to Armed if it was previously Disarmed
+            var previousState = Interlocked.CompareExchange(ref circuitBreakerState, Armed, Disarmed);
 
-            if (newFailureCount == 1)
+            if (previousState == Disarmed)
             {
                 armedAction();
                 _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
                 Logger.WarnFormat("The circuit breaker for {0} is now in the armed state", name);
             }
 
-            if (Interlocked.CompareExchange(ref failureCount, 0, 0) == 0)
-            {
-                DisarmTimer();
-                return Task.CompletedTask;
-            }
-
             // If the circuit breaker has been triggered, wait for 10 seconds before proceeding to prevent flooding the logs and hammering the ServiceBus
-            var delay = Volatile.Read(ref triggered) ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(1);
-
-            return Task.Delay(delay, cancellationToken);
+            return Task.Delay(previousState == Triggered ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(1), cancellationToken);
         }
 
         public void Dispose() => timer?.Dispose();
 
-        void DisarmTimer()
-        {
-            if (timer.Change(Timeout.Infinite, Timeout.Infinite))
-            {
-                Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
-            }
-        }
-
         void CircuitBreakerTriggered(object state)
         {
-            if (Interlocked.Read(ref failureCount) > 0)
+            if (Interlocked.CompareExchange(ref circuitBreakerState, Triggered, Armed) != Armed)
             {
-                Logger.WarnFormat("The circuit breaker for {0} will now be triggered", name);
-                Volatile.Write(ref triggered, true);
-                triggerAction(lastException);
+                return;
             }
+
+            Logger.WarnFormat("The circuit breaker for {0} will now be triggered", name);
+            triggerAction(lastException);
         }
 
-        long failureCount;
-        bool triggered;
+        int circuitBreakerState = Disarmed;
         Exception lastException;
 
         readonly string name;
@@ -89,6 +74,10 @@ namespace NServiceBus.Transport.AzureServiceBus
         readonly Action<Exception> triggerAction;
         readonly Action armedAction;
         readonly Action disarmedAction;
+
+        const int Disarmed = 0;
+        const int Armed = 1;
+        const int Triggered = 2;
 
         static readonly TimeSpan NoPeriodicTriggering = TimeSpan.FromMilliseconds(-1);
         static readonly ILog Logger = LogManager.GetLogger<RepeatedFailuresOverTimeCircuitBreaker>();
