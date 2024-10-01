@@ -21,48 +21,149 @@
             timer = new Timer(CircuitBreakerTriggered);
         }
 
-        public void Success()
-        {
-            var previousState = Interlocked.CompareExchange(ref circuitBreakerState, Disarmed, Armed);
-
-            // If the circuit breaker was Armed or triggered before, disarm it
-            if (previousState == Armed || Interlocked.CompareExchange(ref circuitBreakerState, Disarmed, Triggered) == Triggered)
-            {
-                _ = timer.Change(Timeout.Infinite, Timeout.Infinite);
-                Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
-                disarmedAction();
-            }
-        }
+        public void Success() => DisarmIfArmedOrTriggered();
 
         public Task Failure(Exception exception, CancellationToken cancellationToken = default)
         {
-            _ = Interlocked.Exchange(ref lastException, exception);
+            UpdateLastException(exception);
 
-            // Atomically set state to Armed if it was previously Disarmed
-            var previousState = Interlocked.CompareExchange(ref circuitBreakerState, Armed, Disarmed);
+            ArmIfDisarmed(exception);
 
-            if (previousState == Disarmed)
-            {
-                armedAction();
-                _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
-                Logger.WarnFormat("The circuit breaker for {0} is now in the armed state due to {1}", name, exception);
-            }
-
-            // If the circuit breaker has been triggered, wait for 10 seconds before proceeding to prevent flooding the logs and hammering the ServiceBus
-            return Task.Delay(previousState == Triggered ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(1), cancellationToken);
+            return DelayIfTriggered(cancellationToken);
         }
 
         public void Dispose() => timer?.Dispose();
 
-        void CircuitBreakerTriggered(object state)
+        void CircuitBreakerTriggered(object state) => TriggerIfArmed();
+
+        void DisarmIfArmedOrTriggered()
         {
-            if (Interlocked.CompareExchange(ref circuitBreakerState, Triggered, Armed) != Armed)
+            if (TryDisarmIfArmed() || TryDisarmIfTriggered())
             {
-                return;
+                Disarm();
             }
 
-            Logger.WarnFormat("The circuit breaker for {0} will now be triggered with exception {1}", name, lastException);
-            triggerAction(lastException);
+            bool TryDisarmIfArmed()
+            {
+                return Interlocked.CompareExchange(ref circuitBreakerState, Disarmed, Armed) == Armed;
+            }
+
+            bool TryDisarmIfTriggered()
+            {
+                return Interlocked.CompareExchange(ref circuitBreakerState, Disarmed, Triggered) == Triggered;
+            }
+
+            void Disarm()
+            {
+                DisableTriggerTimer();
+                LogDisarmed();
+                OnDisarmed();
+            }
+
+            void LogDisarmed()
+            {
+                Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
+            }
+
+            void OnDisarmed()
+            {
+                disarmedAction?.Invoke();
+            }
+
+            void DisableTriggerTimer()
+            {
+                _ = timer.Change(Timeout.Infinite, Timeout.Infinite);
+            }
+        }
+
+        void UpdateLastException(Exception exception)
+        {
+            _ = Interlocked.Exchange(ref lastException, exception);
+        }
+
+        void ArmIfDisarmed(Exception exception)
+        {
+            if (TryArmIfDisarmed())
+            {
+                Arm();
+            }
+
+            bool TryArmIfDisarmed()
+            {
+                return Interlocked.CompareExchange(ref circuitBreakerState, Armed, Disarmed) == Disarmed;
+            }
+
+            void Arm()
+            {
+                SetTimeToTrigger();
+
+                LogArmed(exception);
+
+                OnArmed();
+            }
+
+            void OnArmed() => armedAction?.Invoke();
+
+            void SetTimeToTrigger()
+            {
+                _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
+            }
+
+            void LogArmed(Exception exception)
+            {
+                Logger.WarnFormat("The circuit breaker for {0} is now in the armed state due to {1}", name, exception);
+            }
+        }
+
+        Task DelayIfTriggered(CancellationToken cancellationToken)
+        {
+            if (IsTriggered())
+            {
+                return DelayFor10Seconds();
+            }
+
+            return DelayFor1Second();
+
+            bool IsTriggered()
+            {
+                return Interlocked.CompareExchange(ref circuitBreakerState, Triggered, Triggered) == Triggered;
+            }
+
+            Task DelayFor10Seconds()
+            {
+                return Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+            }
+
+            Task DelayFor1Second()
+            {
+                return Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+            }
+        }
+
+        void TriggerIfArmed()
+        {
+            if (TryTriggerIfArmed())
+            {
+                LogTriggered();
+
+                OnTriggered();
+            }
+
+            bool TryTriggerIfArmed()
+            {
+                return Interlocked.CompareExchange(ref circuitBreakerState, Triggered, Armed) == Armed;
+            }
+
+            void LogTriggered()
+            {
+                Logger.WarnFormat("The circuit breaker for {0} will now be triggered with exception {1}", name, lastException);
+            }
+
+            void OnTriggered()
+            {
+                triggerAction?.Invoke(lastException);
+            }
+
         }
 
         int circuitBreakerState = Disarmed;
