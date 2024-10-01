@@ -45,7 +45,7 @@
             {
                 armedAction();
                 _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
-                Logger.WarnFormat("The circuit breaker for {0} is now in the armed state", name);
+                Logger.WarnFormat("The circuit breaker for {0} is now in the armed state due to {1}", name, exception);
             }
 
             // If the circuit breaker has been triggered, wait for 10 seconds before proceeding to prevent flooding the logs and hammering the ServiceBus
@@ -61,7 +61,7 @@
                 return;
             }
 
-            Logger.WarnFormat("The circuit breaker for {0} will now be triggered", name);
+            Logger.WarnFormat("The circuit breaker for {0} will now be triggered with exception {1}", name, lastException);
             triggerAction(lastException);
         }
 
