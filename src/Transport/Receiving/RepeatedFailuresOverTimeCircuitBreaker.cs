@@ -1,4 +1,6 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus
+﻿#nullable enable
+
+namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
     using System.Threading;
@@ -28,15 +30,15 @@
         /// <param name="timeToWaitWhenArmed">How long to delay on each failure when in the Armed state. Defaults to 1 second.</param>
         public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering,
             Action<Exception> triggerAction,
-            Action armedAction = null,
-            Action disarmedAction = null,
+            Action? armedAction = null,
+            Action? disarmedAction = null,
             TimeSpan? timeToWaitWhenTriggered = default,
             TimeSpan? timeToWaitWhenArmed = default)
         {
             this.name = name;
             this.triggerAction = triggerAction;
-            this.armedAction = armedAction;
-            this.disarmedAction = disarmedAction;
+            this.armedAction = armedAction ?? (static () => { });
+            this.disarmedAction = disarmedAction ?? (static () => { });
             this.timeToWaitBeforeTriggering = timeToWaitBeforeTriggering;
             this.timeToWaitWhenTriggered = timeToWaitWhenTriggered ?? TimeSpan.FromSeconds(10);
             this.timeToWaitWhenArmed = timeToWaitWhenArmed ?? TimeSpan.FromSeconds(1);
@@ -50,21 +52,23 @@
         public void Success()
         {
             // Check the status of the circuit breaker, exiting early outside the lock if already disarmed
-            var previousState = circuitBreakerState;
-            if (previousState != Disarmed)
+            if (Volatile.Read(ref circuitBreakerState) == Disarmed)
             {
-                lock (timer)
+                return;
+            }
+
+            lock (stateLock)
+            {
+                // Recheck state after obtaining the lock
+                if (circuitBreakerState == Disarmed)
                 {
-                    // Recheck state after obtaining the lock
-                    previousState = circuitBreakerState;
-                    if (previousState != Disarmed)
-                    {
-                        circuitBreakerState = Disarmed;
-                        _ = timer.Change(Timeout.Infinite, Timeout.Infinite);
-                        Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
-                        disarmedAction?.Invoke();
-                    }
+                    return;
                 }
+
+                circuitBreakerState = Disarmed;
+                _ = timer.Change(Timeout.Infinite, Timeout.Infinite);
+                Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
+                disarmedAction();
             }
         }
 
@@ -79,44 +83,61 @@
             _ = Interlocked.Exchange(ref lastException, exception);
 
             // Check the status of the circuit breaker, exiting early outside the lock if already armed or triggered
-            var previousState = circuitBreakerState;
-            if (previousState == Disarmed)
+            var previousState = Volatile.Read(ref circuitBreakerState);
+            if (previousState != Disarmed)
             {
-                lock (timer)
-                {
-                    // Recheck state after obtaining the lock
-                    previousState = circuitBreakerState;
-                    if (previousState == Disarmed)
-                    {
-                        circuitBreakerState = Armed;
-                        armedAction?.Invoke();
-                        _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
-                        Logger.WarnFormat("The circuit breaker for {0} is now in the armed state due to {1}", name, exception);
-                    }
-                }
+                return Delay();
             }
 
-            return Task.Delay(previousState == Triggered ? timeToWaitWhenTriggered : timeToWaitWhenArmed, cancellationToken);
+            lock (stateLock)
+            {
+                // Recheck state after obtaining the lock
+                previousState = circuitBreakerState;
+                if (previousState != Disarmed)
+                {
+                    return Delay();
+                }
+
+                circuitBreakerState = Armed;
+                armedAction();
+                _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
+                Logger.WarnFormat("The circuit breaker for {0} is now in the armed state due to {1}", name, exception);
+            }
+
+            return Delay();
+
+            Task Delay() => Task.Delay(previousState == Triggered ? timeToWaitWhenTriggered : timeToWaitWhenArmed, cancellationToken);
         }
 
         /// <summary>
         /// Disposes the resources associated with the circuit breaker.
         /// </summary>
-        public void Dispose() => timer?.Dispose();
+        public void Dispose() => timer.Dispose();
 
-        void CircuitBreakerTriggered(object state)
+        void CircuitBreakerTriggered(object? state)
         {
-            if (Interlocked.CompareExchange(ref circuitBreakerState, Triggered, Armed) != Armed)
+            var previousState = Volatile.Read(ref circuitBreakerState);
+            if (previousState == Disarmed)
             {
                 return;
             }
 
-            Logger.WarnFormat("The circuit breaker for {0} will now be triggered with exception {1}", name, lastException);
-            triggerAction(lastException);
+            lock (stateLock)
+            {
+                if (circuitBreakerState == Disarmed)
+                {
+                    return;
+                }
+
+                circuitBreakerState = Triggered;
+                Logger.WarnFormat("The circuit breaker for {0} will now be triggered with exception {1}", name, lastException);
+                triggerAction(lastException!);
+
+            }
         }
 
         int circuitBreakerState = Disarmed;
-        Exception lastException;
+        Exception? lastException;
 
         readonly string name;
         readonly Timer timer;
@@ -126,6 +147,7 @@
         readonly Action disarmedAction;
         readonly TimeSpan timeToWaitWhenTriggered;
         readonly TimeSpan timeToWaitWhenArmed;
+        readonly object stateLock = new();
 
         const int Disarmed = 0;
         const int Armed = 1;
