@@ -10,13 +10,17 @@
         public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering,
             Action<Exception> triggerAction,
             Action armedAction,
-            Action disarmedAction)
+            Action disarmedAction,
+            TimeSpan? timeToWaitWhenTriggered = default,
+            TimeSpan? timeToWaitWhenArmed = default)
         {
             this.name = name;
             this.triggerAction = triggerAction;
             this.armedAction = armedAction;
             this.disarmedAction = disarmedAction;
             this.timeToWaitBeforeTriggering = timeToWaitBeforeTriggering;
+            this.timeToWaitWhenTriggered = timeToWaitWhenTriggered ?? TimeSpan.FromSeconds(10);
+            this.timeToWaitWhenArmed = timeToWaitWhenArmed ?? TimeSpan.FromSeconds(1);
 
             timer = new Timer(CircuitBreakerTriggered);
         }
@@ -60,8 +64,7 @@
                 Logger.WarnFormat("The circuit breaker for {0} is now in the armed state due to {1}", name, exception);
             }
 
-            // If the circuit breaker has been triggered, wait for 10 seconds before proceeding to prevent flooding the logs and hammering the ServiceBus
-            return Task.Delay(previousState == Triggered ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(1), cancellationToken);
+            return Task.Delay(previousState == Triggered ? timeToWaitWhenTriggered : timeToWaitWhenArmed, cancellationToken);
         }
 
         public void Dispose() => timer?.Dispose();
@@ -86,6 +89,8 @@
         readonly Action<Exception> triggerAction;
         readonly Action armedAction;
         readonly Action disarmedAction;
+        readonly TimeSpan timeToWaitWhenTriggered;
+        readonly TimeSpan timeToWaitWhenArmed;
 
         const int Disarmed = 0;
         const int Armed = 1;
