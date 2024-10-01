@@ -193,8 +193,13 @@
 
         void UpdateProcessingCapacity(int maxConcurrency)
         {
-            processor.UpdateConcurrency(maxConcurrency);
-            processor.UpdatePrefetchCount(CalculatePrefetchCount(maxConcurrency));
+            // Updating the concurrency level and prefetch count is thread safe by design
+            // We are locking here because the circuit breaker might call this method concurrently
+            lock (processor)
+            {
+                processor.UpdateConcurrency(maxConcurrency);
+                processor.UpdatePrefetchCount(CalculatePrefetchCount(maxConcurrency));
+            }
         }
 
         public async Task StopReceive(CancellationToken cancellationToken = default)
