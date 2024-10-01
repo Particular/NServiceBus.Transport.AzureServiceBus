@@ -23,12 +23,16 @@
 
         public void Success()
         {
+            // Take a snapshot of the current state of the circuit breaker
             var previousState = circuitBreakerState;
             if (previousState is not (Armed or Triggered))
             {
                 return;
             }
 
+            // Try to transition to the disarmed state if the circuit breaker is armed or triggered
+            // and the previous state is the same that we read before. If that is not the case
+            // then another thread has already transitioned the circuit breaker to another state.
             var originalState = Interlocked.CompareExchange(ref circuitBreakerState, Disarmed, previousState);
             if (originalState != previousState)
             {
@@ -42,9 +46,13 @@
 
         public Task Failure(Exception exception, CancellationToken cancellationToken = default)
         {
+            // Atomically store the exception that caused the circuit breaker to trip
             _ = Interlocked.Exchange(ref lastException, exception);
 
+            // Take a snapshot of the current state of the circuit breaker
             var previousState = circuitBreakerState;
+            // If the circuit breaker is disarmed, try to transition to the armed state but the previous state must be disarmed
+            // otherwise another thread has already transitioned the circuit breaker to another state
             if (previousState == Disarmed && Interlocked.CompareExchange(ref circuitBreakerState, Armed, Disarmed) == Disarmed)
             {
                 armedAction();
