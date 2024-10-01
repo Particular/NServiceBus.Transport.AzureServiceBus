@@ -144,6 +144,11 @@
         {
             if (TryTriggerIfArmed())
             {
+                Trigger();
+            }
+
+            void Trigger()
+            {
                 LogTriggered();
 
                 OnTriggered();
