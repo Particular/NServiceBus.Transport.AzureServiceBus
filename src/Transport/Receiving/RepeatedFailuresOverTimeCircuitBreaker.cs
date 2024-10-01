@@ -5,53 +5,103 @@
     using System.Threading.Tasks;
     using Logging;
 
+    /// <summary>
+    /// A circuit breaker that is armed on a failure and disarmed on success. After <see cref="timeToWaitBeforeTriggering"/> in the
+    /// armed state, the <see cref="triggerAction"/> will fire. The <see cref="armedAction"/> and <see cref="disarmedAction"/> allow
+    /// changing other state when the circuit breaker is armed or disarmed.
+    /// </summary>
     sealed class RepeatedFailuresOverTimeCircuitBreaker
     {
+        /// <summary>
+        /// A circuit breaker that is armed on a failure and disarmed on success. After <see cref="timeToWaitBeforeTriggering"/> in the
+        /// armed state, the <see cref="triggerAction"/> will fire. The <see cref="armedAction"/> and <see cref="disarmedAction"/> allow
+        /// changing other state when the circuit breaker is armed or disarmed.
+        /// </summary>
+        /// <param name="name">A name that is output in log messages when the circuit breaker changes states.</param>
+        /// <param name="timeToWaitBeforeTriggering">The time to wait after the first failure before triggering.</param>
+        /// <param name="triggerAction">The action to take when the circuit breaker is triggered.</param>
+        /// <param name="armedAction">The action to execute on the first failure.
+        /// WARNING: This action is called from within a lock to serialize arming and disarming actions.</param>
+        /// <param name="disarmedAction">The action to execute when a success disarms the circuit breaker.
+        /// WARNING: This action is called from within a lock to serialize arming and disarming actions.</param>
+        /// <param name="timeToWaitWhenTriggered">How long to delay on each failure when in the Triggered state. Defaults to 10 seconds.</param>
+        /// <param name="timeToWaitWhenArmed">How long to delay on each failure when in the Armed state. Defaults to 1 second.</param>
         public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering,
             Action<Exception> triggerAction,
-            Action armedAction,
-            Action disarmedAction)
+            Action armedAction = null,
+            Action disarmedAction = null,
+            TimeSpan? timeToWaitWhenTriggered = default,
+            TimeSpan? timeToWaitWhenArmed = default)
         {
             this.name = name;
             this.triggerAction = triggerAction;
             this.armedAction = armedAction;
             this.disarmedAction = disarmedAction;
             this.timeToWaitBeforeTriggering = timeToWaitBeforeTriggering;
+            this.timeToWaitWhenTriggered = timeToWaitWhenTriggered ?? TimeSpan.FromSeconds(10);
+            this.timeToWaitWhenArmed = timeToWaitWhenArmed ?? TimeSpan.FromSeconds(1);
 
             timer = new Timer(CircuitBreakerTriggered);
         }
 
+        /// <summary>
+        /// Log a success, disarming the circuit breaker if it was previously armed.
+        /// </summary>
         public void Success()
         {
-            var previousState = Interlocked.CompareExchange(ref circuitBreakerState, Disarmed, Armed);
-
-            // If the circuit breaker was Armed or triggered before, disarm it
-            if (previousState == Armed || Interlocked.CompareExchange(ref circuitBreakerState, Disarmed, Triggered) == Triggered)
+            // Check the status of the circuit breaker, exiting early outside the lock if already disarmed
+            var previousState = circuitBreakerState;
+            if (previousState != Disarmed)
             {
-                _ = timer.Change(Timeout.Infinite, Timeout.Infinite);
-                Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
-                disarmedAction();
+                lock (timer)
+                {
+                    // Recheck state after obtaining the lock
+                    previousState = circuitBreakerState;
+                    if (previousState != Disarmed)
+                    {
+                        circuitBreakerState = Disarmed;
+                        _ = timer.Change(Timeout.Infinite, Timeout.Infinite);
+                        Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
+                        disarmedAction?.Invoke();
+                    }
+                }
             }
         }
 
+        /// <summary>
+        /// Log a failure, arming the circuit breaker if it was previously disarmed.
+        /// </summary>
+        /// <param name="exception">The exception that caused the failure.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
         public Task Failure(Exception exception, CancellationToken cancellationToken = default)
         {
+            // Atomically store the exception that caused the circuit breaker to trip
             _ = Interlocked.Exchange(ref lastException, exception);
 
-            // Atomically set state to Armed if it was previously Disarmed
-            var previousState = Interlocked.CompareExchange(ref circuitBreakerState, Armed, Disarmed);
-
+            // Check the status of the circuit breaker, exiting early outside the lock if already armed or triggered
+            var previousState = circuitBreakerState;
             if (previousState == Disarmed)
             {
-                armedAction();
-                _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
-                Logger.WarnFormat("The circuit breaker for {0} is now in the armed state due to {1}", name, exception);
+                lock (timer)
+                {
+                    // Recheck state after obtaining the lock
+                    previousState = circuitBreakerState;
+                    if (previousState == Disarmed)
+                    {
+                        circuitBreakerState = Armed;
+                        armedAction?.Invoke();
+                        _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
+                        Logger.WarnFormat("The circuit breaker for {0} is now in the armed state due to {1}", name, exception);
+                    }
+                }
             }
 
-            // If the circuit breaker has been triggered, wait for 10 seconds before proceeding to prevent flooding the logs and hammering the ServiceBus
-            return Task.Delay(previousState == Triggered ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(1), cancellationToken);
+            return Task.Delay(previousState == Triggered ? timeToWaitWhenTriggered : timeToWaitWhenArmed, cancellationToken);
         }
 
+        /// <summary>
+        /// Disposes the resources associated with the circuit breaker.
+        /// </summary>
         public void Dispose() => timer?.Dispose();
 
         void CircuitBreakerTriggered(object state)
@@ -74,6 +124,8 @@
         readonly Action<Exception> triggerAction;
         readonly Action armedAction;
         readonly Action disarmedAction;
+        readonly TimeSpan timeToWaitWhenTriggered;
+        readonly TimeSpan timeToWaitWhenArmed;
 
         const int Disarmed = 0;
         const int Armed = 1;
