@@ -23,25 +23,29 @@
 
         public void Success()
         {
-            var previousState = Interlocked.CompareExchange(ref circuitBreakerState, Disarmed, Armed);
-
-            // If the circuit breaker was Armed or triggered before, disarm it
-            if (previousState == Armed || Interlocked.CompareExchange(ref circuitBreakerState, Disarmed, Triggered) == Triggered)
+            var previousState = circuitBreakerState;
+            if (previousState is not (Armed or Triggered))
             {
-                _ = timer.Change(Timeout.Infinite, Timeout.Infinite);
-                Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
-                disarmedAction();
+                return;
             }
+
+            var originalState = Interlocked.CompareExchange(ref circuitBreakerState, Disarmed, previousState);
+            if (originalState != previousState)
+            {
+                return;
+            }
+
+            _ = timer.Change(Timeout.Infinite, Timeout.Infinite);
+            Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
+            disarmedAction();
         }
 
         public Task Failure(Exception exception, CancellationToken cancellationToken = default)
         {
             _ = Interlocked.Exchange(ref lastException, exception);
 
-            // Atomically set state to Armed if it was previously Disarmed
-            var previousState = Interlocked.CompareExchange(ref circuitBreakerState, Armed, Disarmed);
-
-            if (previousState == Disarmed)
+            var previousState = circuitBreakerState;
+            if (previousState == Disarmed && Interlocked.CompareExchange(ref circuitBreakerState, Armed, Disarmed) == Disarmed)
             {
                 armedAction();
                 _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
