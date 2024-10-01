@@ -65,11 +65,13 @@
             this.criticalError = criticalError;
             pushSettings = settings;
 
+            Action noOp = () => { };
+
             circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{settings.InputQueue}'",
                 timeToWaitBeforeTriggeringCircuitBreaker, ex =>
                 {
                     criticalError.Raise("Failed to receive message from Azure Service Bus.", ex);
-                });
+                }, noOp, noOp);
 
             return Task.CompletedTask;
         }
