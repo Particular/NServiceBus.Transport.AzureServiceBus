@@ -67,11 +67,9 @@
 
         public async Task StartReceive(CancellationToken cancellationToken = default)
         {
-            int prefetchCount = CalculatePrefetchCount();
-
             var receiveOptions = new ServiceBusProcessorOptions
             {
-                PrefetchCount = prefetchCount,
+                PrefetchCount = CalculatePrefetchCount(limitations.MaxConcurrency),
                 ReceiveMode = TransactionMode == TransportTransactionMode.None
                     ? ServiceBusReceiveMode.ReceiveAndDelete
                     : ServiceBusReceiveMode.PeekLock,
@@ -96,10 +94,8 @@
                 {
                     criticalErrorAction("Failed to receive message from Azure Service Bus.", ex,
                         messageProcessingCancellationTokenSource.Token);
-                }, () =>
-                    //We don't have to update the prefetch count since we are failing to receive anyway
-                    processor.UpdateConcurrency(1),
-                () => processor.UpdateConcurrency(limitations.MaxConcurrency));
+                }, () => UpdateProcessingCapacity(1),
+                () => UpdateProcessingCapacity(limitations.MaxConcurrency));
 
             await processor.StartProcessingAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -107,9 +103,9 @@
 
         TransportTransactionMode TransactionMode => transportSettings.TransportTransactionMode;
 
-        int CalculatePrefetchCount()
+        int CalculatePrefetchCount(int maxConcurrency)
         {
-            var prefetchCount = limitations.MaxConcurrency * transportSettings.PrefetchMultiplier;
+            var prefetchCount = maxConcurrency * transportSettings.PrefetchMultiplier;
 
             if (transportSettings.PrefetchCount.HasValue)
             {
@@ -190,12 +186,15 @@
         {
             limitations = newLimitations;
 
-            processor.UpdateConcurrency(limitations.MaxConcurrency);
-
-            int prefetchCount = CalculatePrefetchCount();
-            processor.UpdatePrefetchCount(prefetchCount);
+            UpdateProcessingCapacity(limitations.MaxConcurrency);
 
             return Task.CompletedTask;
+        }
+
+        void UpdateProcessingCapacity(int maxConcurrency)
+        {
+            processor.UpdateConcurrency(maxConcurrency);
+            processor.UpdatePrefetchCount(CalculatePrefetchCount(maxConcurrency));
         }
 
         public async Task StopReceive(CancellationToken cancellationToken = default)
