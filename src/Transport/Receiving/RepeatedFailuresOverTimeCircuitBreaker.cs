@@ -66,6 +66,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 }
 
                 circuitBreakerState = Disarmed;
+
                 _ = timer.Change(Timeout.Infinite, Timeout.Infinite);
                 Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
                 disarmedAction();
@@ -82,9 +83,8 @@ namespace NServiceBus.Transport.AzureServiceBus
             // Atomically store the exception that caused the circuit breaker to trip
             _ = Interlocked.Exchange(ref lastException, exception);
 
-            // Check the status of the circuit breaker, exiting early outside the lock if already armed or triggered
             var previousState = Volatile.Read(ref circuitBreakerState);
-            if (previousState != Disarmed)
+            if (previousState is Armed or Triggered)
             {
                 return Delay();
             }
@@ -93,12 +93,15 @@ namespace NServiceBus.Transport.AzureServiceBus
             {
                 // Recheck state after obtaining the lock
                 previousState = circuitBreakerState;
-                if (previousState != Disarmed)
+                if (previousState is Armed or Triggered)
                 {
                     return Delay();
                 }
 
                 circuitBreakerState = Armed;
+
+                // Executing the action first before starting the timer to ensure that the action is executed before the timer fires
+                // and the time of the action is not included in the time to wait before triggering.
                 armedAction();
                 _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
                 Logger.WarnFormat("The circuit breaker for {0} is now in the armed state due to {1}", name, exception);
@@ -124,6 +127,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
             lock (stateLock)
             {
+                // Recheck state after obtaining the lock
                 if (circuitBreakerState == Disarmed)
                 {
                     return;
@@ -132,7 +136,6 @@ namespace NServiceBus.Transport.AzureServiceBus
                 circuitBreakerState = Triggered;
                 Logger.WarnFormat("The circuit breaker for {0} will now be triggered with exception {1}", name, lastException);
                 triggerAction(lastException!);
-
             }
         }
 
