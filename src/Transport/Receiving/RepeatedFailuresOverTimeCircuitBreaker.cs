@@ -23,11 +23,23 @@ namespace NServiceBus.Transport.AzureServiceBus
         /// <param name="timeToWaitBeforeTriggering">The time to wait after the first failure before triggering.</param>
         /// <param name="triggerAction">The action to take when the circuit breaker is triggered.</param>
         /// <param name="armedAction">The action to execute on the first failure.
-        /// WARNING: This action is called from within a lock to serialize arming and disarming actions.</param>
+        /// <b>Warning:</b> This action is also invoked from within a lock. Any long-running, blocking, or I/O-bound code should be avoided 
+        /// within this action, as it can prevent other threads from proceeding, potentially leading to contention or performance bottlenecks.
+        /// </param>
         /// <param name="disarmedAction">The action to execute when a success disarms the circuit breaker.
-        /// WARNING: This action is called from within a lock to serialize arming and disarming actions.</param>
+        /// <b>Warning:</b> This action is also invoked from within a lock. Any long-running, blocking, or I/O-bound code should be avoided 
+        /// within this action, as it can prevent other threads from proceeding, potentially leading to contention or performance bottlenecks.
+        /// </param>
         /// <param name="timeToWaitWhenTriggered">How long to delay on each failure when in the Triggered state. Defaults to 10 seconds.</param>
         /// <param name="timeToWaitWhenArmed">How long to delay on each failure when in the Armed state. Defaults to 1 second.</param>
+        /// <remarks>
+        /// The <see cref="armedAction"/> and <see cref="disarmedAction"/> are invoked from within a lock to ensure that arming and disarming
+        /// actions are serialized and do not execute concurrently. As a result, care must be taken to ensure that these actions do not 
+        /// introduce delays or deadlocks by performing lengthy operations or synchronously waiting on external resources. 
+        /// 
+        /// <b>Best practice:</b> If the logic inside these actions involves blocking or long-running tasks, consider offloading 
+        /// the work to a background task or thread that doesn't hold the lock.
+        /// </remarks>
         public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering,
             Action<Exception> triggerAction,
             Action? armedAction = null,
