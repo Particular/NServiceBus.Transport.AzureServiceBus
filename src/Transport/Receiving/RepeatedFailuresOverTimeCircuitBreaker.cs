@@ -23,21 +23,21 @@ namespace NServiceBus.Transport.AzureServiceBus
         /// <param name="timeToWaitBeforeTriggering">The time to wait after the first failure before triggering.</param>
         /// <param name="triggerAction">The action to take when the circuit breaker is triggered.</param>
         /// <param name="armedAction">The action to execute on the first failure.
-        /// <b>Warning:</b> This action is also invoked from within a lock. Any long-running, blocking, or I/O-bound code should be avoided 
+        /// <b>Warning:</b> This action is also invoked from within a lock. Any long-running, blocking, or I/O-bound code should be avoided
         /// within this action, as it can prevent other threads from proceeding, potentially leading to contention or performance bottlenecks.
         /// </param>
         /// <param name="disarmedAction">The action to execute when a success disarms the circuit breaker.
-        /// <b>Warning:</b> This action is also invoked from within a lock. Any long-running, blocking, or I/O-bound code should be avoided 
+        /// <b>Warning:</b> This action is also invoked from within a lock. Any long-running, blocking, or I/O-bound code should be avoided
         /// within this action, as it can prevent other threads from proceeding, potentially leading to contention or performance bottlenecks.
         /// </param>
         /// <param name="timeToWaitWhenTriggered">How long to delay on each failure when in the Triggered state. Defaults to 10 seconds.</param>
         /// <param name="timeToWaitWhenArmed">How long to delay on each failure when in the Armed state. Defaults to 1 second.</param>
         /// <remarks>
         /// The <see cref="armedAction"/> and <see cref="disarmedAction"/> are invoked from within a lock to ensure that arming and disarming
-        /// actions are serialized and do not execute concurrently. As a result, care must be taken to ensure that these actions do not 
-        /// introduce delays or deadlocks by performing lengthy operations or synchronously waiting on external resources. 
-        /// 
-        /// <b>Best practice:</b> If the logic inside these actions involves blocking or long-running tasks, consider offloading 
+        /// actions are serialized and do not execute concurrently. As a result, care must be taken to ensure that these actions do not
+        /// introduce delays or deadlocks by performing lengthy operations or synchronously waiting on external resources.
+        ///
+        /// <b>Best practice:</b> If the logic inside these actions involves blocking or long-running tasks, consider offloading
         /// the work to a background task or thread that doesn't hold the lock.
         /// </remarks>
         public RepeatedFailuresOverTimeCircuitBreaker(
@@ -51,8 +51,8 @@ namespace NServiceBus.Transport.AzureServiceBus
         {
             this.name = name;
             this.triggerAction = triggerAction;
-            this.armedAction = armedAction ?? (static () => { });
-            this.disarmedAction = disarmedAction ?? (static () => { });
+            this.armedAction = armedAction ?? (() => { });
+            this.disarmedAction = disarmedAction ?? (() => { });
             this.timeToWaitBeforeTriggering = timeToWaitBeforeTriggering;
             this.timeToWaitWhenTriggered = timeToWaitWhenTriggered ?? TimeSpan.FromSeconds(10);
             this.timeToWaitWhenArmed = timeToWaitWhenArmed ?? TimeSpan.FromSeconds(1);
@@ -106,7 +106,7 @@ namespace NServiceBus.Transport.AzureServiceBus
             _ = Interlocked.Exchange(ref lastException, exception);
 
             var previousState = Volatile.Read(ref circuitBreakerState);
-            if (previousState is Armed or Triggered)
+            if (previousState is Armed || previousState is Triggered)
             {
                 return Delay();
             }
@@ -115,7 +115,7 @@ namespace NServiceBus.Transport.AzureServiceBus
             {
                 // Recheck state after obtaining the lock
                 previousState = circuitBreakerState;
-                if (previousState is Armed or Triggered)
+                if (previousState is Armed || previousState is Triggered)
                 {
                     return Delay();
                 }
@@ -197,7 +197,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         readonly Action disarmedAction;
         readonly TimeSpan timeToWaitWhenTriggered;
         readonly TimeSpan timeToWaitWhenArmed;
-        readonly object stateLock = new();
+        readonly object stateLock = new object();
 
         const int Disarmed = 0;
         const int Armed = 1;

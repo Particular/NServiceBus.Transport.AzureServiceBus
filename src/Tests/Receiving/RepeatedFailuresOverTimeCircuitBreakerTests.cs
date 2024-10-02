@@ -41,7 +41,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker(
                 "TestCircuitBreaker",
                 TimeSpan.FromMilliseconds(100),
-                ex => { },
+                x => { },
                 () => { },
                 () => throw new Exception("Exception from disarmed action"),
                 timeToWaitWhenTriggered: TimeSpan.Zero,
@@ -80,7 +80,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker(
                 "TestCircuitBreaker",
                 TimeSpan.FromMilliseconds(100),
-                ex => { },
+                x => { },
                 () => throw new Exception("Exception from armed action"),
                 () => { },
                 timeToWaitWhenTriggered: TimeSpan.Zero,
