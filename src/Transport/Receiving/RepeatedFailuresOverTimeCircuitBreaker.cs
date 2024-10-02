@@ -69,7 +69,15 @@ namespace NServiceBus.Transport.AzureServiceBus
 
                 _ = timer.Change(Timeout.Infinite, Timeout.Infinite);
                 Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
-                disarmedAction();
+                try
+                {
+                    disarmedAction();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"The circuit breaker for {name} was unable to execute the disarm action", ex);
+                    throw;
+                }
             }
         }
 
@@ -100,9 +108,18 @@ namespace NServiceBus.Transport.AzureServiceBus
 
                 circuitBreakerState = Armed;
 
-                // Executing the action first before starting the timer to ensure that the action is executed before the timer fires
-                // and the time of the action is not included in the time to wait before triggering.
-                armedAction();
+                try
+                {
+                    // Executing the action first before starting the timer to ensure that the action is executed before the timer fires
+                    // and the time of the action is not included in the time to wait before triggering.
+                    armedAction();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"The circuit breaker for {name} was unable to execute the arm action", new AggregateException(ex, exception));
+                    throw;
+                }
+
                 _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
                 Logger.WarnFormat("The circuit breaker for {0} is now in the armed state due to {1}", name, exception);
             }
@@ -135,7 +152,15 @@ namespace NServiceBus.Transport.AzureServiceBus
 
                 circuitBreakerState = Triggered;
                 Logger.WarnFormat("The circuit breaker for {0} will now be triggered with exception {1}", name, lastException);
-                triggerAction(lastException!);
+
+                try
+                {
+                    triggerAction(lastException!);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Fatal($"The circuit breaker for {name} was unable to execute the trigger action", new AggregateException(ex, lastException!));
+                }
             }
         }
 
