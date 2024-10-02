@@ -40,7 +40,9 @@ namespace NServiceBus.Transport.AzureServiceBus
         /// <b>Best practice:</b> If the logic inside these actions involves blocking or long-running tasks, consider offloading 
         /// the work to a background task or thread that doesn't hold the lock.
         /// </remarks>
-        public RepeatedFailuresOverTimeCircuitBreaker(string name, TimeSpan timeToWaitBeforeTriggering,
+        public RepeatedFailuresOverTimeCircuitBreaker(
+            string name,
+            TimeSpan timeToWaitBeforeTriggering,
             Action<Exception> triggerAction,
             Action? armedAction = null,
             Action? disarmedAction = null,
@@ -80,14 +82,14 @@ namespace NServiceBus.Transport.AzureServiceBus
                 circuitBreakerState = Disarmed;
 
                 _ = timer.Change(Timeout.Infinite, Timeout.Infinite);
-                Logger.InfoFormat("The circuit breaker for {0} is now disarmed", name);
+                Logger.InfoFormat("The circuit breaker for '{0}' is now disarmed.", name);
                 try
                 {
                     disarmedAction();
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"The circuit breaker for {name} was unable to execute the disarm action", ex);
+                    Logger.Error($"The circuit breaker for '{name}' was unable to execute the disarm action.", ex);
                     throw;
                 }
             }
@@ -128,17 +130,25 @@ namespace NServiceBus.Transport.AzureServiceBus
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"The circuit breaker for {name} was unable to execute the arm action", new AggregateException(ex, exception));
+                    Logger.Error($"The circuit breaker for '{name}' was unable to execute the arm action.", new AggregateException(ex, exception));
                     throw;
                 }
 
                 _ = timer.Change(timeToWaitBeforeTriggering, NoPeriodicTriggering);
-                Logger.WarnFormat("The circuit breaker for {0} is now in the armed state due to {1}", name, exception);
+                Logger.WarnFormat("The circuit breaker for '{0}' is now in the armed state due to '{1}' and might trigger in '{2}' when not disarmed.", name, exception, timeToWaitBeforeTriggering);
             }
 
             return Delay();
 
-            Task Delay() => Task.Delay(previousState == Triggered ? timeToWaitWhenTriggered : timeToWaitWhenArmed, cancellationToken);
+            Task Delay()
+            {
+                var timeToWait = previousState == Triggered ? timeToWaitWhenTriggered : timeToWaitWhenArmed;
+                if (Logger.IsDebugEnabled)
+                {
+                    Logger.DebugFormat("The circuit breaker for '{0}' is delaying the operation by '{1}'.", name, timeToWait);
+                }
+                return Task.Delay(timeToWait, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -163,7 +173,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 }
 
                 circuitBreakerState = Triggered;
-                Logger.WarnFormat("The circuit breaker for {0} will now be triggered with exception {1}", name, lastException);
+                Logger.WarnFormat("The circuit breaker for '{0}' will now be triggered with exception '{1}'.", name, lastException);
 
                 try
                 {
@@ -171,7 +181,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 }
                 catch (Exception ex)
                 {
-                    Logger.Fatal($"The circuit breaker for {name} was unable to execute the trigger action", new AggregateException(ex, lastException!));
+                    Logger.Fatal($"The circuit breaker for '{name}' was unable to execute the trigger action.", new AggregateException(ex, lastException!));
                 }
             }
         }
