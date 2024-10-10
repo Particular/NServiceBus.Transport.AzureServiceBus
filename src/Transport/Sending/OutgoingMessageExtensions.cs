@@ -3,7 +3,6 @@
     using System;
     using System.Collections.Generic;
     using Azure.Messaging.ServiceBus;
-    using Configuration;
 
     static class OutgoingMessageExtensions
     {
