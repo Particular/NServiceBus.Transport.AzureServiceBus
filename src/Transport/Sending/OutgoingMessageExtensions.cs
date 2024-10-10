@@ -3,28 +3,24 @@
     using System;
     using System.Collections.Generic;
     using Azure.Messaging.ServiceBus;
-    using Configuration;
 
     static class OutgoingMessageExtensions
     {
-        public static ServiceBusMessage ToAzureServiceBusMessage(this OutgoingMessage outgoingMessage, DispatchProperties dispatchProperties, string incomingQueuePartitionKey)
+        public static ServiceBusMessage ToAzureServiceBusMessage(this IOutgoingTransportOperation outgoingTransportOperation, string incomingQueuePartitionKey)
         {
-            var message = new ServiceBusMessage(outgoingMessage.Body)
-            {
-                // Cannot re-use MessageId to be compatible with ASB transport that could have native de-dup enabled
-                MessageId = Guid.NewGuid().ToString()
-            };
+            var outgoingMessage = outgoingTransportOperation.Message;
+            var message = new ServiceBusMessage(outgoingMessage.Body);
+            var dispatchProperties = outgoingTransportOperation.Properties;
 
-            // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
-            message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
+            ApplyMessageId(message, outgoingTransportOperation);
 
             message.TransactionPartitionKey = incomingQueuePartitionKey;
 
             ApplyDeliveryConstraints(message, dispatchProperties);
 
-            ApplyCorrelationId(message, outgoingMessage.Headers);
+            ApplyCorrelationId(message, outgoingTransportOperation);
 
-            ApplyContentType(message, outgoingMessage.Headers);
+            ApplyContentType(message, outgoingTransportOperation);
 
             SetReplyToAddress(message, outgoingMessage.Headers);
 
@@ -51,17 +47,31 @@
             }
         }
 
-        static void ApplyCorrelationId(ServiceBusMessage message, Dictionary<string, string> headers)
+        static void ApplyCorrelationId(ServiceBusMessage message, IOutgoingTransportOperation outgoingTransportOperation)
         {
-            if (headers.TryGetValue(Headers.CorrelationId, out var correlationId))
+            var properties = outgoingTransportOperation.Properties;
+            var headers = outgoingTransportOperation.Message.Headers;
+
+            if (properties.TryGetValue(Headers.CorrelationId, out var correlationId))
+            {
+                message.CorrelationId = correlationId;
+            }
+            else if (headers.TryGetValue(Headers.CorrelationId, out correlationId))
             {
                 message.CorrelationId = correlationId;
             }
         }
 
-        static void ApplyContentType(ServiceBusMessage message, Dictionary<string, string> headers)
+        static void ApplyContentType(ServiceBusMessage message, IOutgoingTransportOperation outgoingTransportOperation)
         {
-            if (headers.TryGetValue(Headers.ContentType, out var contentType))
+            var properties = outgoingTransportOperation.Properties;
+            var headers = outgoingTransportOperation.Message.Headers;
+
+            if (properties.TryGetValue(Headers.ContentType, out var contentType))
+            {
+                message.ContentType = contentType;
+            }
+            else if (headers.TryGetValue(Headers.ContentType, out contentType))
             {
                 message.ContentType = contentType;
             }
@@ -80,6 +90,21 @@
             foreach (var header in headers)
             {
                 outgoingMessage.ApplicationProperties[header.Key] = header.Value;
+            }
+        }
+
+        static void ApplyMessageId(ServiceBusMessage message, IOutgoingTransportOperation outgoingTransportOperation)
+        {
+            var properties = outgoingTransportOperation.Properties;
+
+            if (properties.TryGetValue(Headers.MessageId, out var messageId))
+            {
+                message.MessageId = messageId;
+            }
+            else
+            {
+                // Cannot re-use MessageId to be compatible with ASB transport that could have native de-dup enabled
+                message.MessageId = Guid.NewGuid().ToString();
             }
         }
     }
