@@ -72,6 +72,11 @@ namespace NServiceBus.Testing
 }
 namespace NServiceBus.Transport.AzureServiceBus
 {
+    public class AzureServiceBusReceiveSettings : NServiceBus.Transport.ReceiveSettings
+    {
+        public AzureServiceBusReceiveSettings(string id, NServiceBus.Transport.QueueAddress receiveAddress, bool usePublishSubscribe, bool purgeOnStartup, string errorQueue) { }
+        public bool DeadLetterQueue { get; init; }
+    }
     public sealed class AzureServiceBusTransportTransaction : System.IDisposable
     {
         public AzureServiceBusTransportTransaction(NServiceBus.Transport.TransportTransaction? transportTransaction = null) { }
