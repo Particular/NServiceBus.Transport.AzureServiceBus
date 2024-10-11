@@ -127,7 +127,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
                 foreach (var operation in operations)
                 {
-                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                    var message = operation.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                     messagesToSend.Enqueue(message);
                 }
@@ -262,7 +262,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
                 foreach (var operation in operations)
                 {
-                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                    var message = operation.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                     dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
                 }
