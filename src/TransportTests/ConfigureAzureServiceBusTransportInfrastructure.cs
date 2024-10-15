@@ -12,6 +12,10 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
     public TransportDefinition CreateTransportDefinition()
     {
         var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            throw new InvalidOperationException("envvar AzureServiceBus_ConnectionString not set");
+        }
         var transport = new AzureServiceBusTransport(connectionString)
         {
             SubscriptionNamingConvention = name =>
