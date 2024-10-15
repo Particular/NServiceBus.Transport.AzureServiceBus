@@ -7,7 +7,10 @@
 
     static class OutgoingMessageExtensions
     {
-        public static ServiceBusMessage ToAzureServiceBusMessage(this IOutgoingTransportOperation outgoingTransportOperation, DispatchProperties dispatchProperties, string incomingQueuePartitionKey)
+        public static ServiceBusMessage ToAzureServiceBusMessage(
+            this IOutgoingTransportOperation outgoingTransportOperation,
+            string incomingQueuePartitionKey
+            )
         {
             var outgoingMessage = outgoingTransportOperation.Message;
             var message = new ServiceBusMessage(outgoingMessage.Body)
@@ -25,7 +28,7 @@
 
             message.TransactionPartitionKey = incomingQueuePartitionKey;
 
-            ApplyDeliveryConstraints(message, dispatchProperties);
+            ApplyDeliveryConstraints(message, outgoingTransportOperation.Properties);
 
             ApplyCorrelationId(message, outgoingMessage.Headers);
 
