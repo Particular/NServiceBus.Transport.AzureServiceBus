@@ -26,7 +26,11 @@
 
             messageSenderRegistry = new MessageSenderRegistry(defaultClient);
 
-            Dispatcher = new MessageDispatcher(messageSenderRegistry, transportSettings.Topology.TopicToPublishTo);
+            Dispatcher = new MessageDispatcher(
+                messageSenderRegistry,
+                transportSettings.Topology.TopicToPublishTo,
+                transportSettings.disableLegacyHeaders
+                );
             Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
             {
                 var (receiveSettings, _) = settingsAndClient;

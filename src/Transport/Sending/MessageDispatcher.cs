@@ -20,11 +20,13 @@ namespace NServiceBus.Transport.AzureServiceBus
 
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
+        readonly bool disableLegacyHeaders;
 
-        public MessageDispatcher(MessageSenderRegistry messageSenderRegistry, string topicName)
+        public MessageDispatcher(MessageSenderRegistry messageSenderRegistry, string topicName, bool disableLegacyHeaders = false)
         {
             this.messageSenderRegistry = messageSenderRegistry;
             this.topicName = topicName;
+            this.disableLegacyHeaders = disableLegacyHeaders;
         }
 
         public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
@@ -47,6 +49,15 @@ namespace NServiceBus.Transport.AzureServiceBus
 
             foreach (var operation in transportOperations)
             {
+                if (disableLegacyHeaders)
+                {
+                    var p = operation.Properties;
+                    if (!p.ContainsKey(TransportOperationExt.DisableLegacyHeadersKey))
+                    {
+                        p.Add(TransportOperationExt.DisableLegacyHeadersKey, bool.TrueString);
+                    }
+                }
+
                 var destination = operation.ExtractDestination(defaultMulticastRoute: topicName);
                 switch (operation.RequiredDispatchConsistency)
                 {

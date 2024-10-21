@@ -333,5 +333,14 @@
 
         internal string FullyQualifiedNamespace { get; set; }
         internal TokenCredential TokenCredential { get; set; }
+
+        /// <summary>
+        /// Disable legacy headers for wire compatibility with NServiceBus.AzureServiceBus
+        /// </summary>
+        public void DisableLegacyHeaders()
+        {
+            disableLegacyHeaders = true;
+        }
+        internal bool disableLegacyHeaders;
     }
 }
