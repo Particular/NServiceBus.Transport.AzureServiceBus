@@ -1,5 +1,6 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
+    using System;
     using System.Linq;
     using System.Text;
     using System.Threading;
@@ -14,14 +15,22 @@
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly HostSettings hostSettings;
         readonly ServiceBusClient defaultClient;
+        readonly Action<ReceiveSettings, ServiceBusProcessorOptions> customizeServiceBusProcessorOptions;
         readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
 
-        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs, ServiceBusClient defaultClient)
+        public AzureServiceBusTransportInfrastructure(
+            AzureServiceBusTransport transportSettings,
+            HostSettings hostSettings,
+            (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
+            ServiceBusClient defaultClient,
+            Action<ReceiveSettings, ServiceBusProcessorOptions> customizeServiceBusProcessorOptions = null
+            )
         {
             this.transportSettings = transportSettings;
 
             this.hostSettings = hostSettings;
             this.defaultClient = defaultClient;
+            this.customizeServiceBusProcessorOptions = customizeServiceBusProcessorOptions;
             this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
 
             messageSenderRegistry = new MessageSenderRegistry(defaultClient);
@@ -56,8 +65,6 @@
 
         IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient receiveClient)
         {
-            var deadLetterQueue = receiveSettings is AzureServiceBusReceiveSettings { DeadLetterQueue: true };
-
             string receiveAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
             return new MessagePump(
                 receiveClient,
@@ -68,7 +75,7 @@
                 receiveSettings.UsePublishSubscribe
                     ? new SubscriptionManager(receiveAddress, transportSettings, defaultClient)
                     : null,
-                deadLetterQueue
+                customizeServiceBusProcessorOptions
                 );
         }
 

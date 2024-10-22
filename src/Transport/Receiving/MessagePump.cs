@@ -15,7 +15,7 @@
         readonly AzureServiceBusTransport transportSettings;
         readonly ReceiveSettings receiveSettings;
         readonly Action<string, Exception, CancellationToken> criticalErrorAction;
-        readonly bool deadLetterQueue;
+        readonly Action<ReceiveSettings, ServiceBusProcessorOptions> customizeServiceBusProcessorOptions;
         readonly ServiceBusClient serviceBusClient;
         readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
 
@@ -38,8 +38,8 @@
             ReceiveSettings receiveSettings,
             Action<string, Exception, CancellationToken> criticalErrorAction,
             SubscriptionManager subscriptionManager,
-            bool deadLetterQueue = false
-            )
+            Action<ReceiveSettings, ServiceBusProcessorOptions> customizeServiceBusProcessorOptions = null
+        )
         {
             Id = receiveSettings.Id;
             ReceiveAddress = receiveAddress;
@@ -47,7 +47,7 @@
             this.transportSettings = transportSettings;
             this.receiveSettings = receiveSettings;
             this.criticalErrorAction = criticalErrorAction;
-            this.deadLetterQueue = deadLetterQueue;
+            this.customizeServiceBusProcessorOptions = customizeServiceBusProcessorOptions;
             Subscriptions = subscriptionManager;
         }
 
@@ -87,10 +87,7 @@
                 receiveOptions.MaxAutoLockRenewalDuration = transportSettings.MaxAutoLockRenewalDuration.Value;
             }
 
-            if (deadLetterQueue)
-            {
-                receiveOptions.SubQueue = SubQueue.DeadLetter;
-            }
+            customizeServiceBusProcessorOptions?.Invoke(receiveSettings, receiveOptions);
 
             processor = serviceBusClient.CreateProcessor(ReceiveAddress, receiveOptions);
             processor.ProcessErrorAsync += OnProcessorError;
@@ -141,14 +138,16 @@
 
                 // Deliberately not using the cancellation token to make sure we abandon the message even when the
                 // cancellation token is already set.
-                if (await arg.TrySafeCompleteMessage(message, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
+                if (await arg.TrySafeCompleteMessage(message, TransactionMode, messagesToBeCompleted,
+                        CancellationToken.None).ConfigureAwait(false))
                 {
                     return;
                 }
 
                 // Deliberately not using the cancellation token to make sure we abandon the message even when the
                 // cancellation token is already set.
-                if (await arg.TrySafeAbandonMessage(message, TransactionMode, CancellationToken.None).ConfigureAwait(false))
+                if (await arg.TrySafeAbandonMessage(message, TransactionMode, CancellationToken.None)
+                        .ConfigureAwait(false))
                 {
                     return;
                 }
@@ -158,7 +157,8 @@
             }
             catch (Exception ex)
             {
-                await arg.SafeDeadLetterMessage(message, TransactionMode, ex, CancellationToken.None).ConfigureAwait(false);
+                await arg.SafeDeadLetterMessage(message, TransactionMode, ex, CancellationToken.None)
+                    .ConfigureAwait(false);
 
                 return;
             }
@@ -166,7 +166,8 @@
             // need to catch OCE here because we are switching token
             try
             {
-                await ProcessMessage(message, arg, messageId, headers, body, messageProcessingCancellationTokenSource.Token).ConfigureAwait(false);
+                await ProcessMessage(message, arg, messageId, headers, body,
+                    messageProcessingCancellationTokenSource.Token).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource.Token))
             {
@@ -178,7 +179,8 @@
         async Task OnProcessorError(ProcessErrorEventArgs processErrorEventArgs)
 #pragma warning restore PS0018
         {
-            string message = $"Failed to receive a message on pump '{processErrorEventArgs.Identifier}' listening on '{processErrorEventArgs.EntityPath}' connected to '{processErrorEventArgs.FullyQualifiedNamespace}' due to '{processErrorEventArgs.ErrorSource}'. Exception: {processErrorEventArgs.Exception}";
+            string message =
+                $"Failed to receive a message on pump '{processErrorEventArgs.Identifier}' listening on '{processErrorEventArgs.EntityPath}' connected to '{processErrorEventArgs.FullyQualifiedNamespace}' due to '{processErrorEventArgs.ErrorSource}'. Exception: {processErrorEventArgs.Exception}";
             // Making sure transient exceptions do not trigger the circuit breaker.
             if (processErrorEventArgs.Exception is ServiceBusException { IsTransient: true })
             {
@@ -255,7 +257,8 @@
             try
             {
                 using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
-                var messageContext = new MessageContext(messageId, headers, body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
+                var messageContext = new MessageContext(messageId, headers, body,
+                    azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
                 await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
@@ -277,7 +280,8 @@
                     using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
                     {
                         var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body,
-                            azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
+                            azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress,
+                            contextBag);
 
                         result = await onError(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
@@ -302,7 +306,8 @@
                             .ConfigureAwait(false);
                     }
                 }
-                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
+                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient ||
+                                                            onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
                 {
                     Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
@@ -313,7 +318,9 @@
                 }
                 catch (Exception onErrorEx) when (!onErrorEx.IsCausedBy(messageProcessingCancellationToken))
                 {
-                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
+                    criticalErrorAction(
+                        $"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`",
+                        onErrorEx, messageProcessingCancellationToken);
 
                     await processMessageEventArgs.SafeAbandonMessage(message,
                             TransactionMode,
