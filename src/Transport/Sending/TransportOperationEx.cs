@@ -5,13 +5,13 @@ namespace NServiceBus.Transport.AzureServiceBus;
 /// </summary>
 public static class TransportOperationExt
 {
-    internal const string DisableLegacyHeadersKey = "DisableLegacyHeaders";
+    internal const string DisableLegacyTransportCompatibilityHeadersKey = "DisableLegacyTransportCompatibility";
 
     /// <summary>
     /// Disable generation of `NServiceBus.Transport.Encoding` header for backwards compatibility with "NServiceBus.AzureServiceBus"
     /// </summary>
-    public static void DisableLegacyHeaders(this TransportOperation instance)
+    public static void DisableLegacyTransportCompatibility(this TransportOperation instance)
     {
-        instance.Properties.Add(DisableLegacyHeadersKey, bool.TrueString);
+        instance.Properties.Add(DisableLegacyTransportCompatibilityHeadersKey, bool.TrueString);
     }
 }

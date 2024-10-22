@@ -29,7 +29,7 @@
             Dispatcher = new MessageDispatcher(
                 messageSenderRegistry,
                 transportSettings.Topology.TopicToPublishTo,
-                transportSettings.disableLegacyHeaders
+                transportSettings.disableLegacyTransportCompatibility
                 );
             Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
             {

@@ -19,7 +19,7 @@ public class LegacyHeadersTests
         var outgoingMessage = transportOperations.UnicastTransportOperations[0];
 
         // Act
-        transportOperation.DisableLegacyHeaders();
+        transportOperation.DisableLegacyTransportCompatibility();
         var serviceBusMessage = OutgoingMessageExtensions.ToAzureServiceBusMessage(outgoingMessage, incomingQueuePartitionKey: Dummy);
 
         Assert.That(serviceBusMessage.ApplicationProperties.Keys, Has.No.Member(TransportEncoding));

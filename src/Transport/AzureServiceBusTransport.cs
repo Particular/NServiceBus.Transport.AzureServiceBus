@@ -337,10 +337,10 @@
         /// <summary>
         /// Disable legacy headers for wire compatibility with NServiceBus.AzureServiceBus
         /// </summary>
-        public void DisableLegacyHeaders()
+        public void DisableLegacyTransportCompatibility()
         {
-            disableLegacyHeaders = true;
+            disableLegacyTransportCompatibility = true;
         }
-        internal bool disableLegacyHeaders;
+        internal bool disableLegacyTransportCompatibility;
     }
 }

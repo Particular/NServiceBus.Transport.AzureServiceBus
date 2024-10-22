@@ -22,6 +22,7 @@ namespace NServiceBus
         public NServiceBus.TopicTopology Topology { get; set; }
         public bool UseWebSockets { get; set; }
         public System.Net.IWebProxy WebProxy { get; set; }
+        public void DisableLegacyTransportCompatibility() { }
         public override System.Collections.Generic.IReadOnlyCollection<NServiceBus.TransportTransactionMode> GetSupportedTransactionModes() { }
         public override System.Threading.Tasks.Task<NServiceBus.Transport.TransportInfrastructure> Initialize(NServiceBus.Transport.HostSettings hostSettings, NServiceBus.Transport.ReceiveSettings[] receivers, string[] sendingAddresses, System.Threading.CancellationToken cancellationToken = default) { }
     }
@@ -86,6 +87,6 @@ namespace NServiceBus.Transport.AzureServiceBus
     }
     public static class TransportOperationExt
     {
-        public static void DisableLegacyHeaders(this NServiceBus.Transport.TransportOperation instance) { }
+        public static void DisableLegacyTransportCompatibility(this NServiceBus.Transport.TransportOperation instance) { }
     }
 }
