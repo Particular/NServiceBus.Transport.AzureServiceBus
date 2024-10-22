@@ -335,7 +335,7 @@
         internal TokenCredential TokenCredential { get; set; }
 
         /// <summary>
-        /// 
+        /// Ability to customize native ServiceBusProcessorOptions 
         /// </summary>
         public Action<ReceiveSettings, ServiceBusProcessorOptions> CustomizeServiceBusProcessorOptions;
     }
