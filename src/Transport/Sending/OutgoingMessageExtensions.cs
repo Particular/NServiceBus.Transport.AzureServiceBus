@@ -19,7 +19,7 @@
                 MessageId = Guid.NewGuid().ToString()
             };
 
-            var disableLegacyTransportCompatibility = outgoingTransportOperation.Properties.ContainsKey(TransportOperationExt.DisableLegacyTransportCompatibilityHeadersKey);
+            var disableLegacyTransportCompatibility = outgoingTransportOperation.Properties.ContainsKey(TransportOperationExt.DoNotSendTransportEncodingHeaderKey);
             if (!disableLegacyTransportCompatibility)
             {
                 // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport

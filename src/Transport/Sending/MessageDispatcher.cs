@@ -20,13 +20,13 @@ namespace NServiceBus.Transport.AzureServiceBus
 
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
-        readonly bool disableLegacyTransportCompatibility;
+        readonly bool doNotSendTransportEncodingHeader;
 
-        public MessageDispatcher(MessageSenderRegistry messageSenderRegistry, string topicName, bool disableLegacyTransportCompatibility = false)
+        public MessageDispatcher(MessageSenderRegistry messageSenderRegistry, string topicName, bool doNotSendTransportEncodingHeader = false)
         {
             this.messageSenderRegistry = messageSenderRegistry;
             this.topicName = topicName;
-            this.disableLegacyTransportCompatibility = disableLegacyTransportCompatibility;
+            this.doNotSendTransportEncodingHeader = doNotSendTransportEncodingHeader;
         }
 
         public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
@@ -49,12 +49,12 @@ namespace NServiceBus.Transport.AzureServiceBus
 
             foreach (var operation in transportOperations)
             {
-                if (disableLegacyTransportCompatibility)
+                if (doNotSendTransportEncodingHeader)
                 {
                     var p = operation.Properties;
-                    if (!p.ContainsKey(TransportOperationExt.DisableLegacyTransportCompatibilityHeadersKey))
+                    if (!p.ContainsKey(TransportOperationExt.DoNotSendTransportEncodingHeaderKey))
                     {
-                        p.Add(TransportOperationExt.DisableLegacyTransportCompatibilityHeadersKey, bool.TrueString);
+                        p.Add(TransportOperationExt.DoNotSendTransportEncodingHeaderKey, bool.TrueString);
                     }
                 }
 

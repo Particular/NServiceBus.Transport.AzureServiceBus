@@ -335,12 +335,8 @@
         internal TokenCredential TokenCredential { get; set; }
 
         /// <summary>
-        /// Disable legacy headers for wire compatibility with NServiceBus.AzureServiceBus
+        /// When set will not add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus
         /// </summary>
-        public void DisableLegacyTransportCompatibility()
-        {
-            disableLegacyTransportCompatibility = true;
-        }
-        internal bool disableLegacyTransportCompatibility;
+        public bool DoNotSendTransportEncodingHeader { get; set; }
     }
 }
