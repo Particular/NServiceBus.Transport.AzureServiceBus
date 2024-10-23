@@ -230,7 +230,7 @@
         /// value should be greater than the longest message lock duration.
         /// </summary>
         /// <param name="transportExtensions"></param>
-        /// <value>The maximum duration during which message locks are automatically renewed. The default value is 5 minutes.</value>
+        /// <param name="maximumAutoLockRenewalDuration">he maximum duration during which message locks are automatically renewed. The default value is 5 minutes..</param>
         /// <remarks>The message renew can continue for sometime in the background
         /// after completion of message and result in a few false MessageLockLostExceptions temporarily.</remarks>
         [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
