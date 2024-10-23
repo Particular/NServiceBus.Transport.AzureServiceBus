@@ -329,14 +329,14 @@
         }
         IWebProxy webProxy;
 
+        /// <summary>
+        /// When set will not add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
+        /// </summary>
+        public bool DoNotSendTransportEncodingHeader { get; set; }
+
         internal string ConnectionString { get; set; }
 
         internal string FullyQualifiedNamespace { get; set; }
         internal TokenCredential TokenCredential { get; set; }
-
-        /// <summary>
-        /// When set will not add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus
-        /// </summary>
-        public bool DoNotSendTransportEncodingHeader { get; set; }
     }
 }

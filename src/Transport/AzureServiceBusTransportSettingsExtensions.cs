@@ -229,6 +229,7 @@
         /// Overrides the default maximum duration within which the lock will be renewed automatically. This
         /// value should be greater than the longest message lock duration.
         /// </summary>
+        /// <param name="transportExtensions"></param>
         /// <value>The maximum duration during which message locks are automatically renewed. The default value is 5 minutes.</value>
         /// <remarks>The message renew can continue for sometime in the background
         /// after completion of message and result in a few false MessageLockLostExceptions temporarily.</remarks>
@@ -239,6 +240,19 @@
         {
             Guard.AgainstNegative(nameof(maximumAutoLockRenewalDuration), maximumAutoLockRenewalDuration);
             transportExtensions.Transport.MaxAutoLockRenewalDuration = maximumAutoLockRenewalDuration;
+            return transportExtensions;
+        }
+
+        /// <summary>
+        /// When set will not add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
+        /// </summary>
+        /// <param name="transportExtensions"></param>
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "AzureServiceBusTransport.DoNotSendTransportEncodingHeader")]
+        public static TransportExtensions<AzureServiceBusTransport> DoNotSendTransportEncodingHeader(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
+        {
+            transportExtensions.Transport.DoNotSendTransportEncodingHeader = true;
             return transportExtensions;
         }
     }
