@@ -145,7 +145,7 @@
 
                 // Deliberately not using the cancellation token to make sure we abandon the message even when the
                 // cancellation token is already set.
-                if (await arg.TrySafeAbandonMessage(message, TransactionMode, CancellationToken.None)ConfigureAwait(false))
+                if (await arg.TrySafeAbandonMessage(message, TransactionMode, CancellationToken.None).ConfigureAwait(false))
                 {
                     return;
                 }
