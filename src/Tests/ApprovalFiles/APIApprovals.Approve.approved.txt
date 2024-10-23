@@ -86,8 +86,4 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         public static System.Transactions.TransactionScope ToTransactionScope(this NServiceBus.Transport.AzureServiceBus.AzureServiceBusTransportTransaction azureServiceBusTransaction) { }
     }
-    public static class TransportOperationExt
-    {
-        public static void DoNotSendTransportEncodingHeader(this NServiceBus.Transport.TransportOperation instance) { }
-    }
 }

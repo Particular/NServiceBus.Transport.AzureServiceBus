@@ -49,15 +49,6 @@ namespace NServiceBus.Transport.AzureServiceBus
 
             foreach (var operation in transportOperations)
             {
-                if (doNotSendTransportEncodingHeader)
-                {
-                    var p = operation.Properties;
-                    if (!p.ContainsKey(TransportOperationExt.DoNotSendTransportEncodingHeaderKey))
-                    {
-                        p.Add(TransportOperationExt.DoNotSendTransportEncodingHeaderKey, bool.TrueString);
-                    }
-                }
-
                 var destination = operation.ExtractDestination(defaultMulticastRoute: topicName);
                 switch (operation.RequiredDispatchConsistency)
                 {
@@ -138,7 +129,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
                 foreach (var operation in operations)
                 {
-                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, doNotSendTransportEncodingHeader);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                     messagesToSend.Enqueue(message);
                 }
@@ -273,7 +264,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
                 foreach (var operation in operations)
                 {
-                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, doNotSendTransportEncodingHeader);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                     dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
                 }
