@@ -332,6 +332,9 @@
         /// <summary>
         /// When set will not add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
         /// </summary>
+        [ObsoleteEx(Message = "Next versions of the transport will be default no longer send the transport encoding header for wire compatibility by default requiring an opt-in for the header to be sent.",
+            TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6")]
         public bool DoNotSendTransportEncodingHeader { get; set; }
 
         internal string ConnectionString { get; set; }

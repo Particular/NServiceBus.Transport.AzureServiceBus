@@ -247,9 +247,9 @@
         /// When set will not add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
         /// </summary>
         /// <param name="transportExtensions"></param>
-        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
-            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
-            ReplacementTypeOrMember = "AzureServiceBusTransport.DoNotSendTransportEncodingHeader")]
+        [ObsoleteEx(Message = "Next versions of the transport will be default no longer send the transport encoding header for wire compatibility by default requiring an opt-in for the header to be sent.",
+            TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6")]
         public static TransportExtensions<AzureServiceBusTransport> DoNotSendTransportEncodingHeader(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
         {
             transportExtensions.Transport.DoNotSendTransportEncodingHeader = true;
