@@ -9,6 +9,7 @@ namespace NServiceBus
         public bool EnablePartitioning { get; set; }
         public int EntityMaximumSize { get; set; }
         public System.TimeSpan? MaxAutoLockRenewalDuration { get; set; }
+        public NativeMessageCustomizerCallback NativeMessageCustomization { get; set; }
         public int? PrefetchCount { get; set; }
         public int PrefetchMultiplier { get; set; }
         public Azure.Messaging.ServiceBus.ServiceBusRetryOptions RetryPolicyOptions { get; set; }
@@ -85,3 +86,4 @@ namespace NServiceBus.Transport.AzureServiceBus
         public static System.Transactions.TransactionScope ToTransactionScope(this NServiceBus.Transport.AzureServiceBus.AzureServiceBusTransportTransaction azureServiceBusTransaction) { }
     }
 }
+public delegate void NativeMessageCustomizerCallback(NServiceBus.Transport.IOutgoingTransportOperation message, Azure.Messaging.ServiceBus.ServiceBusMessage nativeMessage);
