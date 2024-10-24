@@ -20,11 +20,17 @@ namespace NServiceBus.Transport.AzureServiceBus
 
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
+        readonly NativeMessageCustomizerCallback? customizerCallback;
 
-        public MessageDispatcher(MessageSenderRegistry messageSenderRegistry, string topicName)
+        public MessageDispatcher(
+            MessageSenderRegistry messageSenderRegistry,
+            string topicName,
+            NativeMessageCustomizerCallback? customizerCallback = null
+        )
         {
             this.messageSenderRegistry = messageSenderRegistry;
             this.topicName = topicName;
+            this.customizerCallback = customizerCallback;
         }
 
         public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
@@ -111,7 +117,8 @@ namespace NServiceBus.Transport.AzureServiceBus
             Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
             int numberOfTransportOperations,
             TransportTransaction transportTransaction,
-            AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction, CancellationToken cancellationToken)
+            AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
+            CancellationToken cancellationToken)
         {
             if (numberOfTransportOperations == 0)
             {
@@ -264,14 +271,22 @@ namespace NServiceBus.Transport.AzureServiceBus
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
-                    dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
+                    dispatchTasks.Add(DispatchForDestination(operation, destination,azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
                 }
             }
+
             return Task.WhenAll(dispatchTasks);
         }
 
-        async Task DispatchForDestination(string destination, ServiceBusClient? client, Transaction? transaction, ServiceBusMessage message, CancellationToken cancellationToken)
+        async Task DispatchForDestination(
+            IOutgoingTransportOperation operation, string destination,
+            ServiceBusClient? client, Transaction? transaction, ServiceBusMessage message,
+            CancellationToken cancellationToken)
         {
+            if (null != customizerCallback)
+            {
+                await customizerCallback(operation, message).ConfigureAwait(false);
+            }
             var sender = messageSenderRegistry.GetMessageSender(destination, client);
             // Making sure we have a suppress scope around the sending
             using var scope = transaction.ToScope();
