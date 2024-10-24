@@ -1,0 +1,4 @@
+using Azure.Messaging.ServiceBus;
+using NServiceBus.Transport;
+
+public delegate void CustomizeServiceBusProcessorOptions(ReceiveSettings receiveSettings, ServiceBusProcessorOptions processorOptions);

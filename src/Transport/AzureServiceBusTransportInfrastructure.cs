@@ -1,6 +1,5 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
-    using System;
     using System.Linq;
     using System.Text;
     using System.Threading;
@@ -15,7 +14,7 @@
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly HostSettings hostSettings;
         readonly ServiceBusClient defaultClient;
-        readonly Action<ReceiveSettings, ServiceBusProcessorOptions> customizeServiceBusProcessorOptions;
+        readonly CustomizeServiceBusProcessorOptions customizeServiceBusProcessorOptions;
         readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
 
         public AzureServiceBusTransportInfrastructure(
@@ -23,7 +22,7 @@
             HostSettings hostSettings,
             (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
             ServiceBusClient defaultClient,
-            Action<ReceiveSettings, ServiceBusProcessorOptions> customizeServiceBusProcessorOptions = null
+            CustomizeServiceBusProcessorOptions customizeServiceBusProcessorOptions = null
             )
         {
             this.transportSettings = transportSettings;

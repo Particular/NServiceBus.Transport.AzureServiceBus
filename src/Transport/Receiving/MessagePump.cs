@@ -15,7 +15,7 @@
         readonly AzureServiceBusTransport transportSettings;
         readonly ReceiveSettings receiveSettings;
         readonly Action<string, Exception, CancellationToken> criticalErrorAction;
-        readonly Action<ReceiveSettings, ServiceBusProcessorOptions> customizeServiceBusProcessorOptions;
+        readonly CustomizeServiceBusProcessorOptions customizeServiceBusProcessorOptions;
         readonly ServiceBusClient serviceBusClient;
         readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
 
@@ -38,7 +38,7 @@
             ReceiveSettings receiveSettings,
             Action<string, Exception, CancellationToken> criticalErrorAction,
             SubscriptionManager subscriptionManager,
-            Action<ReceiveSettings, ServiceBusProcessorOptions> customizeServiceBusProcessorOptions = null
+            CustomizeServiceBusProcessorOptions customizeServiceBusProcessorOptions = null
         )
         {
             Id = receiveSettings.Id;

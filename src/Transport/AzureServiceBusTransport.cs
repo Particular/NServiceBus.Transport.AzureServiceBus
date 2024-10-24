@@ -337,6 +337,6 @@
         /// <summary>
         /// Ability to customize native ServiceBusProcessorOptions 
         /// </summary>
-        public Action<ReceiveSettings, ServiceBusProcessorOptions> CustomizeServiceBusProcessorOptions;
+        public CustomizeServiceBusProcessorOptions ServiceBusProcessorOptionsCustomizer { get; set; }
     }
 }
