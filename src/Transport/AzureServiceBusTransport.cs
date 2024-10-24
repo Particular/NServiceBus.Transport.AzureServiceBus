@@ -334,6 +334,9 @@
         internal string FullyQualifiedNamespace { get; set; }
         internal TokenCredential TokenCredential { get; set; }
 
+        /// <summary>
+        /// Register call that allows to customize the native ServiceBusMessage just before it is dispatched to the Azure Service Bus SDK client
+        /// </summary>
         public NativeMessageCustomizerCallback NativeMessageCustomization { get; set; }
     }
 }
