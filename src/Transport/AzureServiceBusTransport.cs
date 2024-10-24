@@ -1,6 +1,4 @@
-﻿using NServiceBus;
-
-namespace NServiceBus
+﻿namespace NServiceBus
 {
     using System;
     using System.Collections.Generic;
@@ -336,6 +334,6 @@ namespace NServiceBus
         internal string FullyQualifiedNamespace { get; set; }
         internal TokenCredential TokenCredential { get; set; }
 
-        public NativeMessageCustomizerCallback NativeMessageCustomization {get; set;}
+        public NativeMessageCustomizerCallback NativeMessageCustomization { get; set; }
     }
 }

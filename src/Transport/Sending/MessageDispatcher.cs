@@ -136,6 +136,8 @@ namespace NServiceBus.Transport.AzureServiceBus
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
+                    customizerCallback?.Invoke(operation, message);
+
                     messagesToSend.Enqueue(message);
                 }
                 // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
@@ -271,22 +273,16 @@ namespace NServiceBus.Transport.AzureServiceBus
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
-                    dispatchTasks.Add(DispatchForDestination(operation, destination,azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
+                    customizerCallback?.Invoke(operation, message);
+                    dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
                 }
             }
 
             return Task.WhenAll(dispatchTasks);
         }
 
-        async Task DispatchForDestination(
-            IOutgoingTransportOperation operation, string destination,
-            ServiceBusClient? client, Transaction? transaction, ServiceBusMessage message,
-            CancellationToken cancellationToken)
+        async Task DispatchForDestination(string destination, ServiceBusClient? client, Transaction? transaction, ServiceBusMessage message, CancellationToken cancellationToken)
         {
-            if (null != customizerCallback)
-            {
-                await customizerCallback(operation, message).ConfigureAwait(false);
-            }
             var sender = messageSenderRegistry.GetMessageSender(destination, client);
             // Making sure we have a suppress scope around the sending
             using var scope = transaction.ToScope();
