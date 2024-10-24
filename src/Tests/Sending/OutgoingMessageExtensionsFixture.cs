@@ -1,55 +1,55 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending;
-
-using System;
-using NServiceBus.Routing;
-using NUnit.Framework;
-
-[TestFixture]
-public class LegacyHeadersTests
+﻿namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 {
-    const string TransportEncoding = "NServiceBus.Transport.Encoding";
-    const string Dummy = "DUMMY";
+    using System;
+    using NServiceBus.Routing;
+    using NUnit.Framework;
 
-    [Test]
-    public void Should_not_contain_legacy_header_when_disabled()
+    [TestFixture]
+    public class OutgoingMessageExtensionsTests
     {
-        // Arrange
-        TransportOperation transportOperation = CreateTransportOperation();
-        var transportOperations = new TransportOperations(transportOperation);
-        var outgoingMessage = transportOperations.UnicastTransportOperations[0];
+        const string TransportEncoding = "NServiceBus.Transport.Encoding";
+        const string Dummy = "DUMMY";
 
-        // Act
-        transportOperation.DoNotSendTransportEncodingHeader();
-        var serviceBusMessage = OutgoingMessageExtensions.ToAzureServiceBusMessage(outgoingMessage, incomingQueuePartitionKey: Dummy);
+        [Test]
+        public void Should_not_contain_legacy_header_when_disabled()
+        {
+            // Arrange
+            TransportOperation transportOperation = CreateTransportOperation();
+            var transportOperations = new TransportOperations(transportOperation);
+            var outgoingMessage = transportOperations.UnicastTransportOperations[0];
 
-        Assert.That(serviceBusMessage.ApplicationProperties.Keys, Has.No.Member(TransportEncoding));
-    }
+            // Act
+            var serviceBusMessage = outgoingMessage.ToAzureServiceBusMessage(incomingQueuePartitionKey: Dummy, doNotSendTransportEncodingHeader: true);
+
+            Assert.That(serviceBusMessage.ApplicationProperties.Keys, Has.No.Member(TransportEncoding));
+        }
 
 
-    [Test]
-    public void Should_contain_legacy_header_by_default()
-    {
-        // Arrange
-        TransportOperation transportOperation = CreateTransportOperation();
-        var transportOperations = new TransportOperations(transportOperation);
-        var outgoingMessage = transportOperations.UnicastTransportOperations[0];
+        [Test]
+        public void Should_contain_legacy_header_by_default()
+        {
+            // Arrange
+            TransportOperation transportOperation = CreateTransportOperation();
+            var transportOperations = new TransportOperations(transportOperation);
+            var outgoingMessage = transportOperations.UnicastTransportOperations[0];
 
-        // Act
-        var serviceBusMessage = OutgoingMessageExtensions.ToAzureServiceBusMessage(outgoingMessage, incomingQueuePartitionKey: Dummy);
+            // Act
+            var serviceBusMessage = outgoingMessage.ToAzureServiceBusMessage(incomingQueuePartitionKey: Dummy);
 
-        Assert.That(serviceBusMessage.ApplicationProperties.Keys, Has.Member(TransportEncoding));
-    }
+            Assert.That(serviceBusMessage.ApplicationProperties.Keys, Has.Member(TransportEncoding));
+        }
 
-    static TransportOperation CreateTransportOperation()
-    {
-        var messageId = Guid.NewGuid().ToString();
-        var message = new OutgoingMessage(messageId, [], Array.Empty<byte>());
-        var transportOperation = new TransportOperation(
-            message,
-            addressTag: new UnicastAddressTag(Dummy),
-            properties: null,
-            DispatchConsistency.Default
+        static TransportOperation CreateTransportOperation()
+        {
+            var messageId = Guid.NewGuid().ToString();
+            var message = new OutgoingMessage(messageId, [], ReadOnlyMemory<byte>.Empty);
+            var transportOperation = new TransportOperation(
+                message,
+                addressTag: new UnicastAddressTag(Dummy),
+                properties: null,
+                DispatchConsistency.Default
             );
-        return transportOperation;
+            return transportOperation;
+        }
     }
 }

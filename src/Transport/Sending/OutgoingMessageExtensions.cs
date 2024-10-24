@@ -9,8 +9,8 @@
     {
         public static ServiceBusMessage ToAzureServiceBusMessage(
             this IOutgoingTransportOperation outgoingTransportOperation,
-            string incomingQueuePartitionKey
-            )
+            string incomingQueuePartitionKey,
+            bool doNotSendTransportEncodingHeader = false)
         {
             var outgoingMessage = outgoingTransportOperation.Message;
             var message = new ServiceBusMessage(outgoingMessage.Body)
@@ -19,8 +19,7 @@
                 MessageId = Guid.NewGuid().ToString()
             };
 
-            var doNotSendTransportEncodingHeaderKey = outgoingTransportOperation.Properties.ContainsKey(TransportOperationExt.DoNotSendTransportEncodingHeaderKey);
-            if (!doNotSendTransportEncodingHeaderKey)
+            if (!doNotSendTransportEncodingHeader)
             {
                 // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
                 message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
