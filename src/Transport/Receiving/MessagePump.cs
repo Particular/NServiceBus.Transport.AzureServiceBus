@@ -15,6 +15,7 @@
         readonly AzureServiceBusTransport transportSettings;
         readonly ReceiveSettings receiveSettings;
         readonly Action<string, Exception, CancellationToken> criticalErrorAction;
+        readonly CustomizeServiceBusProcessorOptions customizeServiceBusProcessorOptions;
         readonly ServiceBusClient serviceBusClient;
         readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
 
@@ -36,7 +37,9 @@
             string receiveAddress,
             ReceiveSettings receiveSettings,
             Action<string, Exception, CancellationToken> criticalErrorAction,
-            SubscriptionManager subscriptionManager)
+            SubscriptionManager subscriptionManager,
+            CustomizeServiceBusProcessorOptions customizeServiceBusProcessorOptions = null
+        )
         {
             Id = receiveSettings.Id;
             ReceiveAddress = receiveAddress;
@@ -44,6 +47,7 @@
             this.transportSettings = transportSettings;
             this.receiveSettings = receiveSettings;
             this.criticalErrorAction = criticalErrorAction;
+            this.customizeServiceBusProcessorOptions = customizeServiceBusProcessorOptions;
             Subscriptions = subscriptionManager;
         }
 
@@ -82,6 +86,8 @@
             {
                 receiveOptions.MaxAutoLockRenewalDuration = transportSettings.MaxAutoLockRenewalDuration.Value;
             }
+
+            customizeServiceBusProcessorOptions?.Invoke(receiveSettings, receiveOptions);
 
             processor = serviceBusClient.CreateProcessor(ReceiveAddress, receiveOptions);
             processor.ProcessErrorAsync += OnProcessorError;

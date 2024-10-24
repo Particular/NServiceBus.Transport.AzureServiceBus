@@ -14,14 +14,22 @@
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly HostSettings hostSettings;
         readonly ServiceBusClient defaultClient;
+        readonly CustomizeServiceBusProcessorOptions customizeServiceBusProcessorOptions;
         readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
 
-        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs, ServiceBusClient defaultClient)
+        public AzureServiceBusTransportInfrastructure(
+            AzureServiceBusTransport transportSettings,
+            HostSettings hostSettings,
+            (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
+            ServiceBusClient defaultClient,
+            CustomizeServiceBusProcessorOptions customizeServiceBusProcessorOptions = null
+            )
         {
             this.transportSettings = transportSettings;
 
             this.hostSettings = hostSettings;
             this.defaultClient = defaultClient;
+            this.customizeServiceBusProcessorOptions = customizeServiceBusProcessorOptions;
             this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
 
             messageSenderRegistry = new MessageSenderRegistry(defaultClient);
@@ -65,7 +73,9 @@
                 hostSettings.CriticalErrorAction,
                 receiveSettings.UsePublishSubscribe
                     ? new SubscriptionManager(receiveAddress, transportSettings, defaultClient)
-                    : null);
+                    : null,
+                customizeServiceBusProcessorOptions
+                );
         }
 
         public override async Task Shutdown(CancellationToken cancellationToken = default)

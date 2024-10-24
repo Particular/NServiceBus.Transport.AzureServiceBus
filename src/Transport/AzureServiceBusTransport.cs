@@ -333,5 +333,10 @@
 
         internal string FullyQualifiedNamespace { get; set; }
         internal TokenCredential TokenCredential { get; set; }
+
+        /// <summary>
+        /// Ability to customize native ServiceBusProcessorOptions 
+        /// </summary>
+        public CustomizeServiceBusProcessorOptions ServiceBusProcessorOptionsCustomizer { get; set; }
     }
 }
