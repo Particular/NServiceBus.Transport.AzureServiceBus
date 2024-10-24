@@ -20,11 +20,13 @@ namespace NServiceBus.Transport.AzureServiceBus
 
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
+        readonly bool doNotSendTransportEncodingHeader;
 
-        public MessageDispatcher(MessageSenderRegistry messageSenderRegistry, string topicName)
+        public MessageDispatcher(MessageSenderRegistry messageSenderRegistry, string topicName, bool doNotSendTransportEncodingHeader = false)
         {
             this.messageSenderRegistry = messageSenderRegistry;
             this.topicName = topicName;
+            this.doNotSendTransportEncodingHeader = doNotSendTransportEncodingHeader;
         }
 
         public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
@@ -127,7 +129,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
                 foreach (var operation in operations)
                 {
-                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, doNotSendTransportEncodingHeader);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                     messagesToSend.Enqueue(message);
                 }
@@ -262,7 +264,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
                 foreach (var operation in operations)
                 {
-                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, doNotSendTransportEncodingHeader);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                     dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
                 }
