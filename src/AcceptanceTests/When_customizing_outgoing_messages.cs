@@ -34,9 +34,8 @@ namespace NServiceBus.Transport.RabbitMQ.AcceptanceTests
             public Receiver() =>
                 EndpointSetup<DefaultServer>(endpointConfiguration =>
                 {
-                    var t = (AzureServiceBusTransport)endpointConfiguration.ConfigureTransport();
-                    t.OutgoingNativeMessageCustomization =
-                        (_, message) => message.Subject = TestSubject;
+                    var transport = endpointConfiguration.ConfigureTransport<AzureServiceBusTransport>();
+                    transport.OutgoingNativeMessageCustomization = (_, message) => message.Subject = TestSubject;
                 });
 
             class MyEventHandler(Context testContext) : IHandleMessages<Message>
