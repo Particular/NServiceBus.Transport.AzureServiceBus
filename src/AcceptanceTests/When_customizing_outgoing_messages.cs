@@ -22,30 +22,25 @@ namespace NServiceBus.Transport.RabbitMQ.AcceptanceTests
             Assert.That(scenario.ReceivedMessage.Subject, Is.EqualTo(TestSubject));
         }
 
+        class Context : ScenarioContext
+        {
+            public bool MessageReceived { get; set; }
+
+            public ServiceBusReceivedMessage ReceivedMessage { get; set; }
+        }
+
         public class Receiver : EndpointConfigurationBuilder
         {
-            public Receiver()
-            {
+            public Receiver() =>
                 EndpointSetup<DefaultServer>(endpointConfiguration =>
                 {
                     var t = (AzureServiceBusTransport)endpointConfiguration.ConfigureTransport();
                     t.OutgoingNativeMessageCustomization =
-                        (operation, message) =>
-                        {
-                            message.Subject = TestSubject;
-                        };
+                        (_, message) => message.Subject = TestSubject;
                 });
-            }
 
-            class MyEventHandler : IHandleMessages<Message>
+            class MyEventHandler(Context testContext) : IHandleMessages<Message>
             {
-                Context testContext;
-
-                public MyEventHandler(Context testContext)
-                {
-                    this.testContext = testContext;
-                }
-
                 public Task Handle(Message message, IMessageHandlerContext context)
                 {
                     testContext.ReceivedMessage = context.Extensions.Get<ServiceBusReceivedMessage>();
@@ -58,13 +53,6 @@ namespace NServiceBus.Transport.RabbitMQ.AcceptanceTests
 
         public class Message : IMessage
         {
-        }
-
-        class Context : ScenarioContext
-        {
-            public bool MessageReceived { get; set; }
-
-            public ServiceBusReceivedMessage ReceivedMessage { get; set; }
         }
     }
 }
