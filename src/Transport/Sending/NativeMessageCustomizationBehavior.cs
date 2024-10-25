@@ -39,7 +39,7 @@
             var customizationId = Guid.NewGuid().ToString();
             customizer.Customizations.TryAdd(customizationId, customization);
 
-            // Store they key to the customization in the dispatch properties that are passed to the transport
+            // Store the key to the customization in the dispatch properties that are passed to the transport
             context.Extensions.Get<DispatchProperties>()[CustomizationKey] = customizationId;
 
             return next();

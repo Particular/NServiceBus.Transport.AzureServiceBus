@@ -20,11 +20,17 @@ namespace NServiceBus.Transport.AzureServiceBus
 
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
+        readonly OutgoingNativeMessageCustomizationAction customizerCallback;
 
-        public MessageDispatcher(MessageSenderRegistry messageSenderRegistry, string topicName)
+        public MessageDispatcher(
+            MessageSenderRegistry messageSenderRegistry,
+            string topicName,
+            OutgoingNativeMessageCustomizationAction? customizerCallback = null
+        )
         {
             this.messageSenderRegistry = messageSenderRegistry;
             this.topicName = topicName;
+            this.customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
         }
 
         public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
@@ -112,7 +118,8 @@ namespace NServiceBus.Transport.AzureServiceBus
         void AddBatchedOperationsTo(List<Task> dispatchTasks,
             Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
             TransportTransaction transportTransaction,
-            AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction, CancellationToken cancellationToken)
+            AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
+            CancellationToken cancellationToken)
         {
             foreach (var destinationAndOperations in transportOperationsPerDestination)
             {
@@ -124,6 +131,8 @@ namespace NServiceBus.Transport.AzureServiceBus
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
+                    customizerCallback(operation, message);
+
                     messagesToSend.Enqueue(message);
                 }
                 // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
@@ -249,6 +258,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 {
                     var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
+                    customizerCallback(operation, message);
                     dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
                 }
             }
