@@ -30,12 +30,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         {
             this.messageSenderRegistry = messageSenderRegistry;
             this.topicName = topicName;
-            this.customizerCallback = customizerCallback ?? NoopNativeMessageCustomizerCallback;
-        }
-
-        static void NoopNativeMessageCustomizerCallback(IOutgoingTransportOperation message, ServiceBusMessage nativeMessage)
-        {
-            // Noop callback to not require a null check
+            this.customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
         }
 
         public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
