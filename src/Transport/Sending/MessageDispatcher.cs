@@ -20,17 +20,20 @@ namespace NServiceBus.Transport.AzureServiceBus
 
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly string topicName;
+        readonly bool doNotSendTransportEncodingHeader;
         readonly OutgoingNativeMessageCustomizationAction customizerCallback;
 
         public MessageDispatcher(
             MessageSenderRegistry messageSenderRegistry,
             string topicName,
-            OutgoingNativeMessageCustomizationAction? customizerCallback = null
+            OutgoingNativeMessageCustomizationAction? customizerCallback = null,
+            bool doNotSendTransportEncodingHeader = false
         )
         {
             this.messageSenderRegistry = messageSenderRegistry;
             this.topicName = topicName;
             this.customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
+            this.doNotSendTransportEncodingHeader = doNotSendTransportEncodingHeader;
         }
 
         public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
@@ -118,7 +121,8 @@ namespace NServiceBus.Transport.AzureServiceBus
             int numberOfTransportOperations,
             TransportTransaction transportTransaction,
             AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             if (numberOfTransportOperations == 0)
             {
@@ -134,7 +138,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
                 foreach (var operation in operations)
                 {
-                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, doNotSendTransportEncodingHeader);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                     customizerCallback(operation, message);
 
@@ -271,7 +275,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
                 foreach (var operation in operations)
                 {
-                    var message = operation.Message.ToAzureServiceBusMessage(operation.Properties, azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, doNotSendTransportEncodingHeader);
                     operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                     customizerCallback(operation, message);
                     dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
