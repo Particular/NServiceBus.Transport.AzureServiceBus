@@ -7,20 +7,28 @@
 
     static class OutgoingMessageExtensions
     {
-        public static ServiceBusMessage ToAzureServiceBusMessage(this OutgoingMessage outgoingMessage, DispatchProperties dispatchProperties, string incomingQueuePartitionKey)
+        public static ServiceBusMessage ToAzureServiceBusMessage(
+            this IOutgoingTransportOperation outgoingTransportOperation,
+            string incomingQueuePartitionKey,
+            bool doNotSendTransportEncodingHeader = false
+        )
         {
+            var outgoingMessage = outgoingTransportOperation.Message;
             var message = new ServiceBusMessage(outgoingMessage.Body)
             {
                 // Cannot re-use MessageId to be compatible with ASB transport that could have native de-dup enabled
                 MessageId = Guid.NewGuid().ToString()
             };
 
-            // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
-            message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
+            if (!doNotSendTransportEncodingHeader)
+            {
+                // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
+                message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
+            }
 
             message.TransactionPartitionKey = incomingQueuePartitionKey;
 
-            ApplyDeliveryConstraints(message, dispatchProperties);
+            ApplyDeliveryConstraints(message, outgoingTransportOperation.Properties);
 
             ApplyCorrelationId(message, outgoingMessage.Headers);
 

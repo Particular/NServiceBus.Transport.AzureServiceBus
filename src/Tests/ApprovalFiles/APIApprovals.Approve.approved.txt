@@ -6,6 +6,11 @@ namespace NServiceBus
     {
         public AzureServiceBusTransport(string connectionString) { }
         public AzureServiceBusTransport(string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential) { }
+        [System.Obsolete("Next versions of the transport will by default no longer send the transport encod" +
+            "ing header for wire compatibility, requiring an opt-in for the header to be sent" +
+            ". Will be treated as an error from version 5.0.0. Will be removed in version 6.0" +
+            ".0.", false)]
+        public bool DoNotSendTransportEncodingHeader { get; set; }
         public bool EnablePartitioning { get; set; }
         public int EntityMaximumSize { get; set; }
         public System.TimeSpan? MaxAutoLockRenewalDuration { get; set; }
@@ -32,6 +37,11 @@ namespace NServiceBus
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string connectionString) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Messaging.ServiceBus.ServiceBusRetryOptions retryPolicy) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenCredential(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential) { }
+        [System.Obsolete("Next versions of the transport will by default no longer send the transport encod" +
+            "ing header for wire compatibility, requiring an opt-in for the header to be sent" +
+            ". Will be treated as an error from version 5.0.0. Will be removed in version 6.0" +
+            ".0.", false)]
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> DoNotSendTransportEncodingHeader(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EnablePartitioning(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EntityMaximumSize(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int maximumSizeInGB) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> MaxAutoLockRenewalDuration(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan maximumAutoLockRenewalDuration) { }
