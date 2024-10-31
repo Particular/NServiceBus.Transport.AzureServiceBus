@@ -9,14 +9,15 @@ using NServiceBus.TransportTests;
 
 public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTransportInfrastructure
 {
+    public static readonly string ConnectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
+
     public TransportDefinition CreateTransportDefinition()
     {
-        var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
-        if (string.IsNullOrEmpty(connectionString))
+        if (string.IsNullOrEmpty(ConnectionString))
         {
             throw new InvalidOperationException("envvar AzureServiceBus_ConnectionString not set");
         }
-        var transport = new AzureServiceBusTransport(connectionString)
+        var transport = new AzureServiceBusTransport(ConnectionString)
         {
             SubscriptionNamingConvention = name =>
             {
