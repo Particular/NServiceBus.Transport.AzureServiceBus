@@ -3,6 +3,7 @@
   <PropertyGroup>
     <ParticularAnalyzersVersion>0.9.0</ParticularAnalyzersVersion>
     <AutomaticVersionRangesEnabled>false</AutomaticVersionRangesEnabled>
+    <NuGetAuditMode>direct</NuGetAuditMode>
   </PropertyGroup>
 
   <PropertyGroup>
