@@ -1,5 +1,6 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus
 {
+    using System;
     using System.Linq;
     using System.Text;
     using System.Threading;
@@ -16,7 +17,12 @@
         readonly ServiceBusClient defaultClient;
         readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
 
-        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs, ServiceBusClient defaultClient)
+        public AzureServiceBusTransportInfrastructure(
+            AzureServiceBusTransport transportSettings,
+            HostSettings hostSettings,
+            (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
+            ServiceBusClient defaultClient
+            )
         {
             this.transportSettings = transportSettings;
 
@@ -62,6 +68,8 @@
         IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient receiveClient)
         {
             string receiveAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
+            SubQueue subQueue = ToSubQueue(receiveSettings.ReceiveAddress);
+
             return new MessagePump(
                 receiveClient,
                 transportSettings,
@@ -70,7 +78,9 @@
                 hostSettings.CriticalErrorAction,
                 receiveSettings.UsePublishSubscribe
                     ? new SubscriptionManager(receiveAddress, transportSettings, defaultClient)
-                    : null);
+                    : null,
+                subQueue
+                );
         }
 
         public override async Task Shutdown(CancellationToken cancellationToken = default)
@@ -99,10 +109,20 @@
 
             if (address.Qualifier != null)
             {
-                queue.Append($".{address.Qualifier}");
+                if (!QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase))
+                {
+                    queue.Append($".{address.Qualifier}");
+                }
             }
 
             return queue.ToString();
+        }
+
+        static SubQueue ToSubQueue(QueueAddress address)
+        {
+            return QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase)
+                ? SubQueue.DeadLetter
+                : SubQueue.None;
         }
     }
 }
