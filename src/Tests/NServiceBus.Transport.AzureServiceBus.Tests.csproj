@@ -11,11 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.18.1" />
-    <PackageReference Include="BitFaster.Caching" Version="2.5.2" />
-    <PackageReference Include="NServiceBus" Version="9.1.1" />
     <PackageReference Include="NServiceBus.Testing" Version="9.0.0" />
-    <PackageReference Include="Particular.Approvals" Version="1.0.0" />
+    <PackageReference Include="Particular.Approvals" Version="2.0.0" />
     <PackageReference Include="PublicApiGenerator" Version="11.1.0" />
   </ItemGroup>
 
