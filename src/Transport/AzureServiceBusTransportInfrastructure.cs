@@ -110,22 +110,17 @@
                 queue.Append($"-{address.Discriminator}");
             }
 
-            if (address.Qualifier != null)
+            if (address.Qualifier != null && !QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase))
             {
-                if (!QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase))
-                {
-                    queue.Append($".{address.Qualifier}");
-                }
+                queue.Append($".{address.Qualifier}");
             }
 
             return queue.ToString();
         }
 
-        static SubQueue ToSubQueue(QueueAddress address)
-        {
-            return QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase)
+        static SubQueue ToSubQueue(QueueAddress address) =>
+            QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase)
                 ? SubQueue.DeadLetter
                 : SubQueue.None;
-        }
     }
 }
