@@ -85,6 +85,9 @@
 
         public override async Task Shutdown(CancellationToken cancellationToken = default)
         {
+            await Task.WhenAll(Receivers.Values.Select(r => r.StopReceive(cancellationToken)))
+                .ConfigureAwait(false);
+
             if (messageSenderRegistry != null)
             {
                 await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
