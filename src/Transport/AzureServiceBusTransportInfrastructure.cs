@@ -1,4 +1,6 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus
+﻿#nullable enable
+
+namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
     using System.Linq;
@@ -88,10 +90,7 @@
             await Task.WhenAll(Receivers.Values.Select(r => r.StopReceive(cancellationToken)))
                 .ConfigureAwait(false);
 
-            if (messageSenderRegistry != null)
-            {
-                await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
-            }
+            await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
 
             foreach (var (_, serviceBusClient) in receiveSettingsAndClientPairs)
             {
