@@ -1,5 +1,8 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus
+﻿#nullable enable
+
+namespace NServiceBus.Transport.AzureServiceBus
 {
+    using System;
     using System.Linq;
     using System.Text;
     using System.Threading;
@@ -16,7 +19,12 @@
         readonly ServiceBusClient defaultClient;
         readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
 
-        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs, ServiceBusClient defaultClient)
+        public AzureServiceBusTransportInfrastructure(
+            AzureServiceBusTransport transportSettings,
+            HostSettings hostSettings,
+            (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
+            ServiceBusClient defaultClient
+            )
         {
             this.transportSettings = transportSettings;
 
@@ -26,7 +34,12 @@
 
             messageSenderRegistry = new MessageSenderRegistry(defaultClient);
 
-            Dispatcher = new MessageDispatcher(messageSenderRegistry, transportSettings.Topology.TopicToPublishTo);
+            Dispatcher = new MessageDispatcher(
+                messageSenderRegistry,
+                transportSettings.Topology.TopicToPublishTo,
+                transportSettings.OutgoingNativeMessageCustomization,
+                transportSettings.DoNotSendTransportEncodingHeader
+                );
             Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
             {
                 var (receiveSettings, _) = settingsAndClient;
@@ -57,6 +70,8 @@
         IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient receiveClient)
         {
             string receiveAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
+            SubQueue subQueue = ToSubQueue(receiveSettings.ReceiveAddress);
+
             return new MessagePump(
                 receiveClient,
                 transportSettings,
@@ -65,15 +80,17 @@
                 hostSettings.CriticalErrorAction,
                 receiveSettings.UsePublishSubscribe
                     ? new SubscriptionManager(receiveAddress, transportSettings, defaultClient)
-                    : null);
+                    : null,
+                subQueue
+                );
         }
 
         public override async Task Shutdown(CancellationToken cancellationToken = default)
         {
-            if (messageSenderRegistry != null)
-            {
-                await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
-            }
+            await Task.WhenAll(Receivers.Values.Select(r => r.StopReceive(cancellationToken)))
+                .ConfigureAwait(false);
+
+            await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
 
             foreach (var (_, serviceBusClient) in receiveSettingsAndClientPairs)
             {
@@ -92,12 +109,20 @@
                 queue.Append($"-{address.Discriminator}");
             }
 
-            if (address.Qualifier != null)
+            if (address.Qualifier != null && !QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase))
             {
-                queue.Append($".{address.Qualifier}");
+                if (!QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase))
+                {
+                    queue.Append($".{address.Qualifier}");
+                }
             }
 
             return queue.ToString();
         }
+
+        static SubQueue ToSubQueue(QueueAddress address) =>
+            QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase)
+                ? SubQueue.DeadLetter
+                : SubQueue.None;
     }
 }
