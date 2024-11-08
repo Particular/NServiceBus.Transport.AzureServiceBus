@@ -1,4 +1,6 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus
+﻿#nullable enable
+
+namespace NServiceBus.Transport.AzureServiceBus
 {
     using System.Linq;
     using System.Text;
@@ -16,7 +18,12 @@
         readonly ServiceBusClient defaultClient;
         readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
 
-        public AzureServiceBusTransportInfrastructure(AzureServiceBusTransport transportSettings, HostSettings hostSettings, (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs, ServiceBusClient defaultClient)
+        public AzureServiceBusTransportInfrastructure(
+            AzureServiceBusTransport transportSettings,
+            HostSettings hostSettings,
+            (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
+            ServiceBusClient defaultClient
+            )
         {
             this.transportSettings = transportSettings;
 
@@ -26,7 +33,10 @@
 
             messageSenderRegistry = new MessageSenderRegistry(defaultClient);
 
-            Dispatcher = new MessageDispatcher(messageSenderRegistry, transportSettings.Topology.TopicToPublishTo);
+            Dispatcher = new MessageDispatcher(
+                messageSenderRegistry,
+                transportSettings.Topology.TopicToPublishTo
+                );
             Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
             {
                 var (receiveSettings, _) = settingsAndClient;
@@ -65,15 +75,16 @@
                 hostSettings.CriticalErrorAction,
                 receiveSettings.UsePublishSubscribe
                     ? new SubscriptionManager(receiveAddress, transportSettings, defaultClient)
-                    : null);
+                    : null
+                );
         }
 
         public override async Task Shutdown(CancellationToken cancellationToken = default)
         {
-            if (messageSenderRegistry != null)
-            {
-                await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
-            }
+            await Task.WhenAll(Receivers.Values.Select(r => r.StopReceive(cancellationToken)))
+                .ConfigureAwait(false);
+
+            await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
 
             foreach (var (_, serviceBusClient) in receiveSettingsAndClientPairs)
             {
