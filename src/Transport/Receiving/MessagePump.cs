@@ -250,7 +250,7 @@
                 circuitBreaker?.Dispose();
                 Logger.Debug("Circuit breaker disposed.");
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
             {
                 Logger.Error("An error occurred while trying to stop the receiver.", ex);
                 throw;
