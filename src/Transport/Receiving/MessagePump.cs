@@ -199,37 +199,62 @@
 
         public async Task StopReceive(CancellationToken cancellationToken = default)
         {
-            // Wiring up the stop token to trigger the cancellation token that is being
-            // used inside the message handling pipeline
-            await using var _ = cancellationToken
-                .Register(state => (state as CancellationTokenSource)?.Cancel(),
-                    messageProcessingCancellationTokenSource,
-                    useSynchronizationContext: false).ConfigureAwait(false);
-            // Deliberately not passing the cancellation token forward in order to make sure
-            // the processor waits until all processing handlers have returned. This makes
-            // the code compliant to the previous version that uses manual receives and is aligned
-            // with how the cancellation token support was initially designed.
-            await processor.StopProcessingAsync(CancellationToken.None)
-                .ConfigureAwait(false);
+            if (messageProcessingCancellationTokenSource is null)
+            {
+                // Receiver hasn't been started or is already stopped
+                return;
+            }
 
             try
             {
-                await processor.CloseAsync(cancellationToken)
+                Logger.Debug("Registering cancellation token");
+                // Wiring up the stop token to trigger the cancellation token that is being
+                // used inside the message handling pipeline
+                await using var _ = cancellationToken
+                    .Register(state => (state as CancellationTokenSource)?.Cancel(),
+                        messageProcessingCancellationTokenSource,
+                        useSynchronizationContext: false).ConfigureAwait(false);
+                Logger.Debug("Cancellation token registered.");
+
+
+                // Deliberately not passing the cancellation token forward in order to make sure
+                // the processor waits until all processing handlers have returned. This makes
+                // the code compliant to the previous version that uses manual receives and is aligned
+                // with how the cancellation token support was initially designed.
+                await processor.StopProcessingAsync(CancellationToken.None)
                     .ConfigureAwait(false);
+                Logger.Info("Processor stopped processing.");
+
+                try
+                {
+                    await processor.CloseAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    Logger.Info("Processor closed successfully.");
+                }
+                catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
+                {
+                    Logger.Debug($"Operation canceled while stopping the receiver {processor.EntityPath}.", ex);
+                }
+
+                processor.ProcessErrorAsync -= OnProcessorError;
+                processor.ProcessMessageAsync -= OnProcessMessage;
+                Logger.Debug("Processor event handlers detached.");
+
+                await processor.DisposeAsync().ConfigureAwait(false);
+                Logger.Debug("Processor disposed.");
+
+                messageProcessingCancellationTokenSource?.Dispose();
+                messageProcessingCancellationTokenSource = null;
+                Logger.Debug("Message processing cancellation token source disposed.");
+
+                circuitBreaker?.Dispose();
+                Logger.Debug("Circuit breaker disposed.");
             }
-            catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
+            catch (Exception ex)
             {
-                Logger.Debug($"Operation canceled while stopping the receiver {processor.EntityPath}.", ex);
+                Logger.Error("An error occurred while trying to stop the receiver.", ex);
+                throw;
             }
-
-            processor.ProcessErrorAsync -= OnProcessorError;
-            processor.ProcessMessageAsync -= OnProcessMessage;
-
-            await processor.DisposeAsync().ConfigureAwait(false);
-
-            messageProcessingCancellationTokenSource?.Dispose();
-            messageProcessingCancellationTokenSource = null;
-            circuitBreaker?.Dispose();
         }
 
         async Task ProcessMessage(ServiceBusReceivedMessage message,
