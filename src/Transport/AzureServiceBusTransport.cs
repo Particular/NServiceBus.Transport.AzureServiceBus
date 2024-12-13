@@ -97,11 +97,12 @@
                 ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
                 : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient);
+            var namespacePermissions = new NamespacePermissions(TokenCredential, FullyQualifiedNamespace, ConnectionString);
+
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, namespacePermissions);
 
             if (hostSettings.SetupInfrastructure)
             {
-                var namespacePermissions = new NamespacePermissions(TokenCredential, FullyQualifiedNamespace, ConnectionString);
                 var adminClient = await namespacePermissions.CanManage(cancellationToken)
                     .ConfigureAwait(false);
 

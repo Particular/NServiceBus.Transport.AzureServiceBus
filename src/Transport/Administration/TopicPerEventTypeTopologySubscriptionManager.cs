@@ -14,17 +14,17 @@
     {
         static readonly ILog Logger = LogManager.GetLogger<TopicPerEventTypeTopologySubscriptionManager>();
 
-        readonly ServiceBusAdministrationClient client;
+        readonly NamespacePermissions namespacePermissions;
         readonly string subscribingQueue;
         readonly string subscriptionName;
 
         public TopicPerEventTypeTopologySubscriptionManager(
             string subscribingQueue,
             AzureServiceBusTransport transportSettings,
-            ServiceBusAdministrationClient client)
+            NamespacePermissions namespacePermissions)
         {
             this.subscribingQueue = subscribingQueue;
-            this.client = client;
+            this.namespacePermissions = namespacePermissions;
 
             subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
         }
@@ -36,9 +36,24 @@
                 return;
             }
 
+            ServiceBusAdministrationClient client;
+            try
+            {
+                client = await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (!e.IsCausedBy(cancellationToken))
+            {
+                return;
+            }
+            catch (Exception e) when (e.InnerException is UnauthorizedAccessException unauthorizedAccessException)
+            {
+                Logger.InfoFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
+                return;
+            }
+
             if (eventTypes.Length == 1)
             {
-                await SubscribeEvent(eventTypes[0], cancellationToken)
+                await SubscribeEvent(client, eventTypes[0], cancellationToken)
                     .ConfigureAwait(false);
             }
             else
@@ -46,14 +61,14 @@
                 var subscribeTasks = new List<Task>(eventTypes.Length);
                 foreach (var eventType in eventTypes)
                 {
-                    subscribeTasks.Add(SubscribeEvent(eventType, cancellationToken));
+                    subscribeTasks.Add(SubscribeEvent(client, eventType, cancellationToken));
                 }
                 await Task.WhenAll(subscribeTasks)
                     .ConfigureAwait(false);
             }
         }
 
-        async Task SubscribeEvent(MessageMetadata eventType, CancellationToken cancellationToken)
+        async Task SubscribeEvent(ServiceBusAdministrationClient client, MessageMetadata eventType, CancellationToken cancellationToken)
         {
             // TODO: There is no convention nor mapping here currently.
             // TODO: Is it a good idea to use the subscriptionName as the endpoint name?
@@ -87,6 +102,21 @@
 
         public async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
         {
+            ServiceBusAdministrationClient client;
+            try
+            {
+                client = await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (!e.IsCausedBy(cancellationToken))
+            {
+                return;
+            }
+            catch (Exception e) when (e.InnerException is UnauthorizedAccessException unauthorizedAccessException)
+            {
+                Logger.InfoFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
+                return;
+            }
+
             try
             {
                 // TODO: There is no convention nor mapping here currently.
@@ -95,6 +125,10 @@
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
+            }
+            catch (UnauthorizedAccessException unauthorizedAccessException)
+            {
+                Logger.InfoFormat("Subscription {0} could not be deleted. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
             }
         }
     }

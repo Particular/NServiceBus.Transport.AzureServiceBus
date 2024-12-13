@@ -1,3 +1,5 @@
+#nullable enable
+
 namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
@@ -26,12 +28,12 @@ namespace NServiceBus.Transport.AzureServiceBus
             action(message);
         }
 
-        public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation, string defaultMulticastRoute)
+        public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation, string? defaultMulticastRoute)
         {
             switch (outgoingTransportOperation)
             {
-                case MulticastTransportOperation:
-                    return defaultMulticastRoute;
+                case MulticastTransportOperation multicastTransportOperation:
+                    return (defaultMulticastRoute ?? multicastTransportOperation.MessageType.FullName) ?? throw new InvalidOperationException("Multicast route is not defined.");
                 case UnicastTransportOperation unicastTransportOperation:
                     var destination = unicastTransportOperation.Destination;
 
