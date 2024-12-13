@@ -60,6 +60,11 @@ namespace NServiceBus
             return hierarchy;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        public static TopicTopology TopicPerEventType => new();
+
         /// <inheritdoc />
         public bool Equals(TopicTopology other) => string.Equals(TopicToPublishTo, other.TopicToPublishTo, StringComparison.OrdinalIgnoreCase) && string.Equals(TopicToSubscribeOn, other.TopicToSubscribeOn, StringComparison.OrdinalIgnoreCase);
 

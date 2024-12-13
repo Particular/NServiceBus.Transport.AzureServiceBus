@@ -17,19 +17,22 @@ namespace NServiceBus.Transport.AzureServiceBus
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly HostSettings hostSettings;
         readonly ServiceBusClient defaultClient;
+        readonly NamespacePermissions namespacePermissions;
         readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
 
         public AzureServiceBusTransportInfrastructure(
             AzureServiceBusTransport transportSettings,
             HostSettings hostSettings,
             (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
-            ServiceBusClient defaultClient
+            ServiceBusClient defaultClient,
+            NamespacePermissions namespacePermissions
             )
         {
             this.transportSettings = transportSettings;
 
             this.hostSettings = hostSettings;
             this.defaultClient = defaultClient;
+            this.namespacePermissions = namespacePermissions;
             this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
 
             messageSenderRegistry = new MessageSenderRegistry(defaultClient);
@@ -79,7 +82,9 @@ namespace NServiceBus.Transport.AzureServiceBus
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
                 receiveSettings.UsePublishSubscribe
-                    ? new ForwardingTopologySubscriptionManager(receiveAddress, transportSettings, defaultClient)
+                    ? transportSettings.Topology.TopicToSubscribeOn is not null ?
+                        new ForwardingTopologySubscriptionManager(receiveAddress, transportSettings, defaultClient) :
+                        new TopicPerEventTypeTopologySubscriptionManager(receiveAddress, transportSettings, namespacePermissions)
                     : null,
                 subQueue
                 );
