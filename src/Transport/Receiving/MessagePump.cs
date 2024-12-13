@@ -37,7 +37,7 @@
             string receiveAddress,
             ReceiveSettings receiveSettings,
             Action<string, Exception, CancellationToken> criticalErrorAction,
-            SubscriptionManager subscriptionManager,
+            ForwardingTopologySubscriptionManager forwardingTopologySubscriptionManager,
             SubQueue subQueue = SubQueue.None
         )
         {
@@ -48,7 +48,7 @@
             this.receiveSettings = receiveSettings;
             this.criticalErrorAction = criticalErrorAction;
             this.subQueue = subQueue;
-            Subscriptions = subscriptionManager;
+            Subscriptions = forwardingTopologySubscriptionManager;
         }
 
         public Task Initialize(

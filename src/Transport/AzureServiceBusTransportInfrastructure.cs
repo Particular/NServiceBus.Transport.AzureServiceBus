@@ -79,7 +79,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
                 receiveSettings.UsePublishSubscribe
-                    ? new SubscriptionManager(receiveAddress, transportSettings, defaultClient)
+                    ? new ForwardingTopologySubscriptionManager(receiveAddress, transportSettings, defaultClient)
                     : null,
                 subQueue
                 );
