@@ -10,16 +10,16 @@
     using NServiceBus.Logging;
     using Unicast.Messages;
 
-    class SubscriptionManager : ISubscriptionManager
+    class ForwardingTopologySubscriptionManager : ISubscriptionManager
     {
-        static readonly ILog Logger = LogManager.GetLogger<SubscriptionManager>();
+        static readonly ILog Logger = LogManager.GetLogger<ForwardingTopologySubscriptionManager>();
 
         readonly AzureServiceBusTransport transportSettings;
         readonly ServiceBusClient client;
         readonly string subscribingQueue;
         readonly string subscriptionName;
 
-        public SubscriptionManager(
+        public ForwardingTopologySubscriptionManager(
             string subscribingQueue,
             AzureServiceBusTransport transportSettings,
             ServiceBusClient client)

@@ -115,7 +115,7 @@
 
                 foreach (IMessageReceiver messageReceiver in infrastructure.Receivers.Values)
                 {
-                    if (messageReceiver.Subscriptions is SubscriptionManager subscriptionManager)
+                    if (messageReceiver.Subscriptions is ForwardingTopologySubscriptionManager subscriptionManager)
                     {
                         await subscriptionManager.CreateSubscription(adminClient, cancellationToken).ConfigureAwait(false);
                     }
@@ -273,6 +273,8 @@
         /// <summary>
         /// Specifies a callback to customize subscription rule names.
         /// </summary>
+        /// TODO: We need to figure out whether this needs to be moved because these conventions are only ever
+        /// called for the forwarding cases.
         public Func<Type, string> SubscriptionRuleNamingConvention
         {
             get => subscriptionRuleNamingConvention;
