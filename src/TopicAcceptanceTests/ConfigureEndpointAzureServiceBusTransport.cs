@@ -4,9 +4,11 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using NServiceBus;
+using NServiceBus.AcceptanceTesting;
 using NServiceBus.AcceptanceTesting.Support;
 using NServiceBus.MessageMutator;
 using NServiceBus.Transport.AzureServiceBus.AcceptanceTests;
+using NServiceBus.Transport.AzureServiceBus.Topic.AcceptanceTests;
 
 public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestExecution
 {
@@ -30,6 +32,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         configuration.RegisterComponents(c => c.AddSingleton<IMutateOutgoingTransportMessages, TestIndependenceMutator>());
 
         configuration.Pipeline.Register("TestIndependenceBehavior", typeof(TestIndependenceSkipBehavior), "Skips messages not created during the current test.");
+        configuration.Pipeline.Register(provider => new DelayPublishUntilAllEndpointsAreStartedBehavior(provider.GetRequiredService<ScenarioContext>()), "Delays message publishing until all endpoints are started.");
 
         return Task.CompletedTask;
     }
