@@ -17,6 +17,7 @@
         readonly NamespacePermissions namespacePermissions;
         readonly string subscribingQueue;
         readonly string subscriptionName;
+        readonly AzureServiceBusTransport transportSettings;
 
         public TopicPerEventTypeTopologySubscriptionManager(
             string subscribingQueue,
@@ -27,6 +28,7 @@
             this.namespacePermissions = namespacePermissions;
 
             subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
+            this.transportSettings = transportSettings;
         }
 
         public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken = default)
@@ -72,7 +74,33 @@
         {
             // TODO: There is no convention nor mapping here currently.
             // TODO: Is it a good idea to use the subscriptionName as the endpoint name?
-            var subscription = new CreateSubscriptionOptions(eventType.MessageType.FullName.Replace("+", "."), subscriptionName)
+            string topicName = eventType.MessageType.FullName.Replace("+", ".");
+
+            var topicOptions = new CreateTopicOptions(topicName)
+            {
+                EnableBatchedOperations = true,
+                EnablePartitioning = transportSettings.EnablePartitioning,
+                MaxSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
+            };
+
+            try
+            {
+                await client.CreateTopicAsync(topicOptions, cancellationToken).ConfigureAwait(false);
+            }
+            catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+            {
+                // ignored due to race conditions
+            }
+            catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
+            {
+                Logger.Info($"Topic creation for topic {topicOptions.Name} is already in progress");
+            }
+            catch (UnauthorizedAccessException unauthorizedAccessException)
+            {
+                Logger.InfoFormat("Topic {0} could not be created. Reason: {1}", topicOptions.Name, unauthorizedAccessException.Message);
+            }
+
+            var subscriptionOptions = new CreateSubscriptionOptions(topicName, subscriptionName)
             {
                 LockDuration = TimeSpan.FromMinutes(5),
                 ForwardTo = subscribingQueue,
@@ -84,7 +112,7 @@
 
             try
             {
-                await client.CreateSubscriptionAsync(subscription, cancellationToken).ConfigureAwait(false);
+                await client.CreateSubscriptionAsync(subscriptionOptions, cancellationToken).ConfigureAwait(false);
             }
             catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
@@ -92,7 +120,7 @@
             }
             catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
             {
-                Logger.Info($"Default subscription rule for topic {subscription.TopicName} is already in progress");
+                Logger.Info($"Default subscription creation for topic {subscriptionOptions.TopicName} is already in progress");
             }
             catch (UnauthorizedAccessException unauthorizedAccessException)
             {
