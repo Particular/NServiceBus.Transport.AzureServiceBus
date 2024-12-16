@@ -72,7 +72,7 @@
         {
             // TODO: There is no convention nor mapping here currently.
             // TODO: Is it a good idea to use the subscriptionName as the endpoint name?
-            var subscription = new CreateSubscriptionOptions(eventType.MessageType.FullName, subscriptionName)
+            var subscription = new CreateSubscriptionOptions(eventType.MessageType.FullName.Replace("+", "."), subscriptionName)
             {
                 LockDuration = TimeSpan.FromMinutes(5),
                 ForwardTo = subscribingQueue,

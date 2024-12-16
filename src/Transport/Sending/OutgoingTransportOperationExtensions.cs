@@ -33,7 +33,7 @@ namespace NServiceBus.Transport.AzureServiceBus
             switch (outgoingTransportOperation)
             {
                 case MulticastTransportOperation multicastTransportOperation:
-                    return (defaultMulticastRoute ?? multicastTransportOperation.MessageType.FullName) ?? throw new InvalidOperationException("Multicast route is not defined.");
+                    return (defaultMulticastRoute ?? multicastTransportOperation.MessageType.FullName?.Replace("+", ".")) ?? throw new InvalidOperationException("Multicast route is not defined.");
                 case UnicastTransportOperation unicastTransportOperation:
                     var destination = unicastTransportOperation.Destination;
 
