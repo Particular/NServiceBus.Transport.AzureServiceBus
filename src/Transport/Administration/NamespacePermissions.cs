@@ -12,21 +12,33 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         readonly ServiceBusAdministrationClient adminClient;
 
-        public NamespacePermissions(TokenCredential? tokenCredential, string fullyQualifiedNamespace, string connectionString)
-            => adminClient = tokenCredential != null ? new ServiceBusAdministrationClient(fullyQualifiedNamespace, tokenCredential) : new ServiceBusAdministrationClient(connectionString);
+        readonly Lazy<Task<ServiceBusAdministrationClient>> manageClient;
 
-        public async ValueTask<ServiceBusAdministrationClient> CanManage(CancellationToken cancellationToken = default)
+        public NamespacePermissions(TokenCredential? tokenCredential, string fullyQualifiedNamespace, string connectionString)
         {
-            try
+            adminClient = tokenCredential != null
+                ? new ServiceBusAdministrationClient(fullyQualifiedNamespace, tokenCredential)
+                : new ServiceBusAdministrationClient(connectionString);
+
+            manageClient = new Lazy<Task<ServiceBusAdministrationClient>>(async () =>
             {
-                await adminClient.QueueExistsAsync("$nservicebus-verification-queue", cancellationToken)
-                    .ConfigureAwait(false);
-                return adminClient;
-            }
-            catch (UnauthorizedAccessException e)
-            {
-                throw new Exception("Management rights are required to run this endpoint. Verify that the SAS policy has the Manage claim.", e);
-            }
+                try
+                {
+                    await adminClient.QueueExistsAsync("$nservicebus-verification-queue")
+                        .ConfigureAwait(false);
+                    return adminClient;
+                }
+                catch (UnauthorizedAccessException e)
+                {
+                    throw new Exception("Management rights are required to run this endpoint. Verify that the SAS policy has the Manage claim.", e);
+                }
+            }, LazyThreadSafetyMode.ExecutionAndPublication);
+        }
+
+        public Task<ServiceBusAdministrationClient> CanManage(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return manageClient.Value;
         }
     }
 }

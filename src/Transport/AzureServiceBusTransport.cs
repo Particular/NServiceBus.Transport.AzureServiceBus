@@ -97,25 +97,34 @@
                 ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
                 : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient);
+            var namespacePermissions = new NamespacePermissions(TokenCredential, FullyQualifiedNamespace, ConnectionString);
+
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, namespacePermissions);
 
             if (hostSettings.SetupInfrastructure)
             {
-                var namespacePermissions = new NamespacePermissions(TokenCredential, FullyQualifiedNamespace, ConnectionString);
                 var adminClient = await namespacePermissions.CanManage(cancellationToken)
                     .ConfigureAwait(false);
 
-                var queueCreator = new QueueCreator(this);
                 var allQueues = infrastructure.Receivers
                     .Select(r => r.Value.ReceiveAddress)
                     .Concat(sendingAddresses)
                     .ToArray();
 
-                await queueCreator.CreateQueues(adminClient, allQueues, cancellationToken).ConfigureAwait(false);
+                if (Topology.TopicToSubscribeOn is null)
+                {
+                    var queueCreator = new TopicPerEventTypeTopologyCreator(this);
+                    await queueCreator.Create(adminClient, allQueues, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    var queueCreator = new ForwardingTopologyCreator(this);
+                    await queueCreator.Create(adminClient, allQueues, cancellationToken).ConfigureAwait(false);
+                }
 
                 foreach (IMessageReceiver messageReceiver in infrastructure.Receivers.Values)
                 {
-                    if (messageReceiver.Subscriptions is SubscriptionManager subscriptionManager)
+                    if (messageReceiver.Subscriptions is ForwardingTopologySubscriptionManager subscriptionManager)
                     {
                         await subscriptionManager.CreateSubscription(adminClient, cancellationToken).ConfigureAwait(false);
                     }
@@ -169,6 +178,8 @@
             }
         }
         int entityMaximumSize = 5;
+
+        internal int EntityMaximumSizeInMegabytes => EntityMaximumSize * 1024;
 
         /// <summary>
         /// Enables entity partitioning when creating queues and topics.
@@ -273,6 +284,8 @@
         /// <summary>
         /// Specifies a callback to customize subscription rule names.
         /// </summary>
+        /// TODO: We need to figure out whether this needs to be moved because these conventions are only ever
+        /// called for the forwarding cases.
         public Func<Type, string> SubscriptionRuleNamingConvention
         {
             get => subscriptionRuleNamingConvention;

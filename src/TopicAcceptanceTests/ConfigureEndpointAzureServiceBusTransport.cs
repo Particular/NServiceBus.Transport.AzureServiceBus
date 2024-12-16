@@ -22,7 +22,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         var transport = new AzureServiceBusTransport(connectionString)
         {
             SubscriptionNamingConvention = name => Shorten(name),
-            SubscriptionRuleNamingConvention = eventType => Shorten(eventType.FullName)
+            Topology = TopicTopology.TopicPerEventType
         };
 
         configuration.UseTransport(transport);
