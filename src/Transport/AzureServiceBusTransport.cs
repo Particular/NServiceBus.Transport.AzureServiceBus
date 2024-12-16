@@ -106,13 +106,21 @@
                 var adminClient = await namespacePermissions.CanManage(cancellationToken)
                     .ConfigureAwait(false);
 
-                var queueCreator = new QueueCreator(this);
                 var allQueues = infrastructure.Receivers
                     .Select(r => r.Value.ReceiveAddress)
                     .Concat(sendingAddresses)
                     .ToArray();
 
-                await queueCreator.CreateQueues(adminClient, allQueues, cancellationToken).ConfigureAwait(false);
+                if (Topology.TopicToSubscribeOn is null)
+                {
+                    var queueCreator = new TopicPerEventTypeTopologyCreator(this);
+                    await queueCreator.Create(adminClient, allQueues, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    var queueCreator = new ForwardingTopologyCreator(this);
+                    await queueCreator.Create(adminClient, allQueues, cancellationToken).ConfigureAwait(false);
+                }
 
                 foreach (IMessageReceiver messageReceiver in infrastructure.Receivers.Values)
                 {
@@ -170,6 +178,8 @@
             }
         }
         int entityMaximumSize = 5;
+
+        internal int EntityMaximumSizeInMegabytes => EntityMaximumSize * 1024;
 
         /// <summary>
         /// Enables entity partitioning when creating queues and topics.
