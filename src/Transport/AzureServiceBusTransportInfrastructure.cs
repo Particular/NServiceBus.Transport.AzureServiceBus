@@ -2,7 +2,6 @@
 
 namespace NServiceBus.Transport.AzureServiceBus
 {
-    using System;
     using System.Linq;
     using System.Text;
     using System.Threading;
@@ -36,10 +35,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
             Dispatcher = new MessageDispatcher(
                 messageSenderRegistry,
-                transportSettings.Topology.TopicToPublishTo,
-                transportSettings.OutgoingNativeMessageCustomization,
-                transportSettings.DoNotSendTransportEncodingHeader
-                );
+                transportSettings.Topology.TopicToPublishTo);
             Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
             {
                 var (receiveSettings, _) = settingsAndClient;
@@ -70,7 +66,6 @@ namespace NServiceBus.Transport.AzureServiceBus
         IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient receiveClient)
         {
             string receiveAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
-            SubQueue subQueue = ToSubQueue(receiveSettings.ReceiveAddress);
 
             return new MessagePump(
                 receiveClient,
@@ -80,8 +75,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 hostSettings.CriticalErrorAction,
                 receiveSettings.UsePublishSubscribe
                     ? new SubscriptionManager(receiveAddress, transportSettings, defaultClient)
-                    : null,
-                subQueue
+                    : null
                 );
         }
 
@@ -109,20 +103,13 @@ namespace NServiceBus.Transport.AzureServiceBus
                 queue.Append($"-{address.Discriminator}");
             }
 
-            if (address.Qualifier != null && !QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase))
+            if (address.Qualifier != null)
             {
-                if (!QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase))
-                {
-                    queue.Append($".{address.Qualifier}");
-                }
+
+                queue.Append($".{address.Qualifier}");
             }
 
             return queue.ToString();
         }
-
-        static SubQueue ToSubQueue(QueueAddress address) =>
-            QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase)
-                ? SubQueue.DeadLetter
-                : SubQueue.None;
     }
 }
