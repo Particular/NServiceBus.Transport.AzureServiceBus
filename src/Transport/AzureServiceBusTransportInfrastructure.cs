@@ -105,7 +105,6 @@ namespace NServiceBus.Transport.AzureServiceBus
 
             if (address.Qualifier != null)
             {
-
                 queue.Append($".{address.Qualifier}");
             }
 
