@@ -199,6 +199,12 @@
 
         public async Task StopReceive(CancellationToken cancellationToken = default)
         {
+            if (messageProcessingCancellationTokenSource is null)
+            {
+                // Receiver hasn't been started or is already stopped
+                return;
+            }
+
             // Wiring up the stop token to trigger the cancellation token that is being
             // used inside the message handling pipeline
             await using var _ = cancellationToken
