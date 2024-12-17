@@ -1,6 +1,6 @@
 #nullable enable
 
-﻿namespace NServiceBus.Transport.AzureServiceBus
+namespace NServiceBus.Transport.AzureServiceBus
 {
     using System.Linq;
     using System.Text;
