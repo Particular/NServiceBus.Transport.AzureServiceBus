@@ -8,6 +8,7 @@
     using System.Threading.Tasks;
     using Azure.Core;
     using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using Transport;
     using Transport.AzureServiceBus;
 
@@ -97,13 +98,15 @@
                 ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
                 : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
-            var namespacePermissions = new NamespacePermissions(TokenCredential, FullyQualifiedNamespace, ConnectionString);
+            var administrationClient = TokenCredential != null
+                ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
+                : new ServiceBusAdministrationClient(ConnectionString);
 
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, namespacePermissions);
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient);
 
             if (hostSettings.SetupInfrastructure)
             {
-                var adminClient = await namespacePermissions.CanManage(cancellationToken)
+                await administrationClient.AssertNamespaceManageRightsAvailable(cancellationToken)
                     .ConfigureAwait(false);
 
                 var allQueues = infrastructure.Receivers
@@ -114,24 +117,28 @@
                 if (Topology.TopicToSubscribeOn is null)
                 {
                     var queueCreator = new TopicPerEventTypeTopologyCreator(this);
-                    await queueCreator.Create(adminClient, allQueues, cancellationToken).ConfigureAwait(false);
+                    await queueCreator.Create(administrationClient, allQueues, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
                     var queueCreator = new ForwardingTopologyCreator(this);
-                    await queueCreator.Create(adminClient, allQueues, cancellationToken).ConfigureAwait(false);
+                    await queueCreator.Create(administrationClient, allQueues, cancellationToken).ConfigureAwait(false);
                 }
 
                 foreach (IMessageReceiver messageReceiver in infrastructure.Receivers.Values)
                 {
                     if (messageReceiver.Subscriptions is ForwardingTopologySubscriptionManager subscriptionManager)
                     {
-                        await subscriptionManager.CreateSubscription(adminClient, cancellationToken).ConfigureAwait(false);
+                        await subscriptionManager.CreateSubscription(administrationClient, cancellationToken)
+                            .ConfigureAwait(false);
                     }
                 }
+
+                return infrastructure;
             }
 
             return infrastructure;
+
         }
 
         void ApplyRetryPolicyOptionsIfNeeded(ServiceBusClientOptions options)

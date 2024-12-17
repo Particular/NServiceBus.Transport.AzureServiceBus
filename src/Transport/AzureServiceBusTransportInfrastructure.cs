@@ -8,6 +8,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     using System.Threading;
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using Transport;
 
     sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
@@ -17,7 +18,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly HostSettings hostSettings;
         readonly ServiceBusClient defaultClient;
-        readonly NamespacePermissions namespacePermissions;
+        readonly ServiceBusAdministrationClient administrationClient;
         readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
 
         public AzureServiceBusTransportInfrastructure(
@@ -25,14 +26,14 @@ namespace NServiceBus.Transport.AzureServiceBus
             HostSettings hostSettings,
             (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
             ServiceBusClient defaultClient,
-            NamespacePermissions namespacePermissions
+            ServiceBusAdministrationClient administrationClient
             )
         {
             this.transportSettings = transportSettings;
 
             this.hostSettings = hostSettings;
             this.defaultClient = defaultClient;
-            this.namespacePermissions = namespacePermissions;
+            this.administrationClient = administrationClient;
             this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
 
             messageSenderRegistry = new MessageSenderRegistry(defaultClient);
@@ -84,7 +85,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 receiveSettings.UsePublishSubscribe
                     ? transportSettings.Topology.TopicToSubscribeOn is not null ?
                         new ForwardingTopologySubscriptionManager(receiveAddress, transportSettings, defaultClient) :
-                        new TopicPerEventTypeTopologySubscriptionManager(receiveAddress, transportSettings, namespacePermissions)
+                        new TopicPerEventTypeTopologySubscriptionManager(receiveAddress, transportSettings, hostSettings.SetupInfrastructure, administrationClient)
                     : null,
                 subQueue
                 );

@@ -14,7 +14,8 @@
     {
         static readonly ILog Logger = LogManager.GetLogger<TopicPerEventTypeTopologySubscriptionManager>();
 
-        readonly NamespacePermissions namespacePermissions;
+        readonly bool setupInfrastructure;
+        readonly ServiceBusAdministrationClient administrationClient;
         readonly string subscribingQueue;
         readonly string subscriptionName;
         readonly AzureServiceBusTransport transportSettings;
@@ -22,10 +23,12 @@
         public TopicPerEventTypeTopologySubscriptionManager(
             string subscribingQueue,
             AzureServiceBusTransport transportSettings,
-            NamespacePermissions namespacePermissions)
+            bool setupInfrastructure,
+            ServiceBusAdministrationClient administrationClient)
         {
             this.subscribingQueue = subscribingQueue;
-            this.namespacePermissions = namespacePermissions;
+            this.setupInfrastructure = setupInfrastructure;
+            this.administrationClient = administrationClient;
 
             subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
             this.transportSettings = transportSettings;
@@ -38,24 +41,9 @@
                 return;
             }
 
-            ServiceBusAdministrationClient client;
-            try
-            {
-                client = await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception e) when (!e.IsCausedBy(cancellationToken))
-            {
-                return;
-            }
-            catch (Exception e) when (e.InnerException is UnauthorizedAccessException unauthorizedAccessException)
-            {
-                Logger.InfoFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
-                return;
-            }
-
             if (eventTypes.Length == 1)
             {
-                await SubscribeEvent(client, eventTypes[0], cancellationToken)
+                await SubscribeEvent(administrationClient, eventTypes[0], cancellationToken)
                     .ConfigureAwait(false);
             }
             else
@@ -63,7 +51,7 @@
                 var subscribeTasks = new List<Task>(eventTypes.Length);
                 foreach (var eventType in eventTypes)
                 {
-                    subscribeTasks.Add(SubscribeEvent(client, eventType, cancellationToken));
+                    subscribeTasks.Add(SubscribeEvent(administrationClient, eventType, cancellationToken));
                 }
                 await Task.WhenAll(subscribeTasks)
                     .ConfigureAwait(false);
@@ -76,28 +64,33 @@
             // TODO: Is it a good idea to use the subscriptionName as the endpoint name?
             string topicName = eventType.MessageType.FullName.Replace("+", ".");
 
-            var topicOptions = new CreateTopicOptions(topicName)
+            if (setupInfrastructure)
             {
-                EnableBatchedOperations = true,
-                EnablePartitioning = transportSettings.EnablePartitioning,
-                MaxSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
-            };
+                var topicOptions = new CreateTopicOptions(topicName)
+                {
+                    EnableBatchedOperations = true,
+                    EnablePartitioning = transportSettings.EnablePartitioning,
+                    MaxSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
+                };
 
-            try
-            {
-                await client.CreateTopicAsync(topicOptions, cancellationToken).ConfigureAwait(false);
-            }
-            catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
-            {
-                // ignored due to race conditions
-            }
-            catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
-            {
-                Logger.Info($"Topic creation for topic {topicOptions.Name} is already in progress");
-            }
-            catch (UnauthorizedAccessException unauthorizedAccessException)
-            {
-                Logger.InfoFormat("Topic {0} could not be created. Reason: {1}", topicOptions.Name, unauthorizedAccessException.Message);
+                try
+                {
+                    await client.CreateTopicAsync(topicOptions, cancellationToken).ConfigureAwait(false);
+                }
+                catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+                {
+                    // ignored due to race conditions
+                }
+                catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
+                {
+                    Logger.Info($"Topic creation for topic {topicOptions.Name} is already in progress");
+                }
+                catch (UnauthorizedAccessException unauthorizedAccessException)
+                {
+                    // TODO: Check the log level
+                    Logger.WarnFormat("Topic {0} could not be created. Reason: {1}", topicOptions.Name, unauthorizedAccessException.Message);
+                    throw;
+                }
             }
 
             var subscriptionOptions = new CreateSubscriptionOptions(topicName, subscriptionName)
@@ -124,32 +117,19 @@
             }
             catch (UnauthorizedAccessException unauthorizedAccessException)
             {
-                Logger.InfoFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
+                // TODO: Check the log level
+                Logger.WarnFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
+                throw;
             }
         }
 
         public async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
         {
-            ServiceBusAdministrationClient client;
-            try
-            {
-                client = await namespacePermissions.CanManage(cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception e) when (!e.IsCausedBy(cancellationToken))
-            {
-                return;
-            }
-            catch (Exception e) when (e.InnerException is UnauthorizedAccessException unauthorizedAccessException)
-            {
-                Logger.InfoFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
-                return;
-            }
-
             try
             {
                 // TODO: There is no convention nor mapping here currently.
                 // TODO: Is it a good idea to use the subscriptionName as the endpoint name?
-                await client.DeleteSubscriptionAsync(eventType.MessageType.FullName, subscriptionName, cancellationToken).ConfigureAwait(false);
+                await administrationClient.DeleteSubscriptionAsync(eventType.MessageType.FullName, subscriptionName, cancellationToken).ConfigureAwait(false);
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
