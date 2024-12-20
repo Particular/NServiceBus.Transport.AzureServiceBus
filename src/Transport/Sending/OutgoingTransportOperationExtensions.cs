@@ -8,7 +8,8 @@ namespace NServiceBus.Transport.AzureServiceBus
 
     static class OutgoingTransportOperationExtensions
     {
-        public static void ApplyCustomizationToOutgoingNativeMessage(this IOutgoingTransportOperation transportOperation,
+        public static void ApplyCustomizationToOutgoingNativeMessage(
+            this IOutgoingTransportOperation transportOperation,
             ServiceBusMessage message, TransportTransaction transportTransaction, ILog logger)
         {
             if (!transportOperation.Properties.TryGetValue(NativeMessageCustomizationBehavior.CustomizationKey,
@@ -28,12 +29,13 @@ namespace NServiceBus.Transport.AzureServiceBus
             action(message);
         }
 
-        public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation, string? defaultMulticastRoute)
+        public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation,
+            TopologyOptions topologyOptions)
         {
             switch (outgoingTransportOperation)
             {
                 case MulticastTransportOperation multicastTransportOperation:
-                    return (defaultMulticastRoute ?? multicastTransportOperation.MessageType.FullName?.Replace("+", ".")) ?? throw new InvalidOperationException("Multicast route is not defined.");
+                    return topologyOptions.GetPublishDestination(multicastTransportOperation.MessageType);
                 case UnicastTransportOperation unicastTransportOperation:
                     var destination = unicastTransportOperation.Destination;
 
@@ -42,8 +44,9 @@ namespace NServiceBus.Transport.AzureServiceBus
 
                     if (index > 0)
                     {
-                        destination = destination.Substring(0, index);
+                        destination = destination[..index];
                     }
+
                     return destination;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));

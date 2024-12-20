@@ -40,7 +40,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
             Dispatcher = new MessageDispatcher(
                 messageSenderRegistry,
-                transportSettings.Topology.TopicToPublishTo,
+                transportSettings.Topology.Options,
                 transportSettings.OutgoingNativeMessageCustomization,
                 transportSettings.DoNotSendTransportEncodingHeader
                 );
@@ -83,9 +83,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
                 receiveSettings.UsePublishSubscribe
-                    ? transportSettings.Topology.TopicToSubscribeOn is not null ?
-                        new ForwardingTopologySubscriptionManager(receiveAddress, transportSettings, defaultClient) :
-                        new TopicPerEventTypeTopologySubscriptionManager(receiveAddress, transportSettings, hostSettings.SetupInfrastructure, administrationClient)
+                    ? new SubscriptionManager(receiveAddress, transportSettings, hostSettings.SetupInfrastructure, administrationClient)
                     : null,
                 subQueue
                 );

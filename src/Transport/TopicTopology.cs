@@ -1,12 +1,170 @@
+#nullable enable
+
 namespace NServiceBus
 {
     using System;
+    using System.Collections.Concurrent;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Text.Json.Serialization;
     using Transport.AzureServiceBus;
 
     /// <summary>
     /// Represents the topic topology used by <see cref="AzureServiceBusTransport"/>.
     /// </summary>
-    public readonly struct TopicTopology : IEquatable<TopicTopology>
+    public class TopicTopology
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="options"></param>
+        protected TopicTopology(TopologyOptions? options = null) => Options = options ?? new TopologyOptions();
+
+        internal TopologyOptions Options { get; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="options"></param>
+        /// <returns></returns>
+        public static TopicTopology FromOptions(TopologyOptions options) => new(options);
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public static TopicTopology Default => new();
+
+        /// <summary>
+        /// Returns the default bundle topology uses <c>bundle-1</c> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
+        /// </summary>
+        public static MigrationTopology DefaultBundle => Single("bundle-1");
+
+        /// <summary>
+        /// Returns a topology using a single topic with the <paramref name="topicName"/> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
+        /// </summary>
+        /// <param name="topicName">The topic name.</param>
+        public static MigrationTopology Single(string topicName) => new(topicName, topicName);
+
+        /// <summary>
+        /// Returns a topology using a distinct name for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
+        /// </summary>
+        /// <param name="topicToPublishTo">The topic name to publish to.</param>
+        /// <param name="topicToSubscribeOn">The topic name to subscribe to.</param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="topicToPublishTo"/> is equal to <paramref name="topicToSubscribeOn"/>.</exception>
+        public static MigrationTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn)
+        {
+            var hierarchy = new MigrationTopology(topicToPublishTo, topicToSubscribeOn);
+            if (!hierarchy.IsHierarchy)
+            {
+                throw new ArgumentException($"The '{nameof(topicToPublishTo)}' cannot be equal to '{nameof(topicToSubscribeOn)}'. Choose different names.");
+            }
+            return hierarchy;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public static TopicTopology TopicPerEventType => new();
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="topicName"></param>
+        /// <typeparam name="TEventType"></typeparam>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void PublishTo<TEventType>(string topicName)
+        {
+            // TODO Last one wins?
+            Options.PublishedEventToTopicsMap[typeof(TEventType).FullName ?? throw new InvalidOperationException()] = topicName;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="topicName"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void PublishTo(Type type, string topicName)
+        {
+            // TODO Last one wins?
+            Options.PublishedEventToTopicsMap[type.FullName ?? throw new InvalidOperationException()] = topicName;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="topicName"></param>
+        /// <typeparam name="TEventType"></typeparam>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void SubscribeTo<TEventType>(string topicName)
+        {
+            Options.SubscribedEventToTopicsMap[typeof(TEventType).FullName ?? throw new InvalidOperationException()].Add(topicName);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="topicName"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void SubscribeTo(Type type, string topicName)
+        {
+            Options.SubscribedEventToTopicsMap[type.FullName ?? throw new InvalidOperationException()].Add(topicName);
+        }
+    }
+
+    /// <summary>
+    /// TODO we probably need some kind of validation method that checks against invalid configurations?
+    /// </summary>
+    public class TopologyOptions
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+        public Dictionary<string, string> PublishedEventToTopicsMap { get; } = [];
+
+        /// <summary>
+        /// 
+        /// </summary>
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+        public Dictionary<string, HashSet<string>> SubscribedEventToTopicsMap { get; } = [];
+
+        /// <summary>
+        /// 
+        /// </summary>
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+        public Dictionary<string, (string TopicToPublishTo, string TopicToSubscribeOn)> EventsToTopicMigrationMap { get; } = [];
+
+        internal string GetPublishDestination(Type eventType)
+        {
+            var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
+            return publishedEventToTopicsCache.GetOrAdd(eventTypeFullName, static (fullName, @this) =>
+                @this.EventsToTopicMigrationMap.TryGetValue(fullName,
+                    out var extractDestination)
+                    ? extractDestination.TopicToPublishTo
+                    : @this.PublishedEventToTopicsMap.GetValueOrDefault(fullName, fullName), this);
+        }
+
+        internal (string Topic, bool RequiresRule)[] GetSubscribeDestinations(Type eventType)
+        {
+            var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
+            return subscribedEventToTopicsCache.GetOrAdd(eventTypeFullName, static (fullName, @this) =>
+                @this.EventsToTopicMigrationMap.TryGetValue(fullName,
+                out var extractDestination)
+                ? [(extractDestination.TopicToSubscribeOn, true)]
+                : @this.SubscribedEventToTopicsMap.GetValueOrDefault(fullName, [fullName]).Select(x => (x, false)).ToArray(), this);
+        }
+
+        readonly ConcurrentDictionary<string, string> publishedEventToTopicsCache = new();
+        readonly ConcurrentDictionary<string, (string Topic, bool RequiresRule)[]> subscribedEventToTopicsCache = new();
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public class MigrationTopology : TopicTopology
     {
         /// <summary>
         /// Gets the topic name of the topic where all events are published to.
@@ -23,7 +181,7 @@ namespace NServiceBus
         /// </summary>
         public bool IsHierarchy => !string.Equals(TopicToPublishTo, TopicToSubscribeOn, StringComparison.OrdinalIgnoreCase);
 
-        TopicTopology(string topicToPublishTo, string topicToSubscribeOn)
+        internal MigrationTopology(string topicToPublishTo, string topicToSubscribeOn)
         {
             Guard.AgainstNullAndEmpty(nameof(topicToPublishTo), topicToPublishTo);
             Guard.AgainstNullAndEmpty(nameof(topicToSubscribeOn), topicToSubscribeOn);
@@ -33,57 +191,43 @@ namespace NServiceBus
         }
 
         /// <summary>
-        /// Returns the default bundle topology uses <c>bundle-1</c> for <see cref="TopicToPublishTo"/> and <see cref="TopicToSubscribeOn"/>
+        /// 
         /// </summary>
-        public static TopicTopology DefaultBundle => Single("bundle-1");
-
-        /// <summary>
-        /// Returns a topology using a single topic with the <paramref name="topicName"/> for <see cref="TopicToPublishTo"/> and <see cref="TopicToSubscribeOn"/>
-        /// </summary>
-        /// <param name="topicName">The topic name.</param>
-        public static TopicTopology Single(string topicName) => new(topicName, topicName);
-
-        /// <summary>
-        /// Returns a topology using a distinct name for <see cref="TopicToPublishTo"/> and <see cref="TopicToSubscribeOn"/>
-        /// </summary>
-        /// <param name="topicToPublishTo">The topic name to publish to.</param>
-        /// <param name="topicToSubscribeOn">The topic name to subscribe to.</param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="topicToPublishTo"/> is equal to <paramref name="topicToSubscribeOn"/>.</exception>
-        public static TopicTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn)
+        /// <typeparam name="TEventType"></typeparam>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void PublishToDefaultTopic<TEventType>()
         {
-            var hierarchy = new TopicTopology(topicToPublishTo, topicToSubscribeOn);
-            if (!hierarchy.IsHierarchy)
-            {
-                throw new ArgumentException($"The '{nameof(topicToPublishTo)}' cannot be equal to '{nameof(topicToSubscribeOn)}'. Choose different names.");
-            }
-            return hierarchy;
+            _ = Options.EventsToTopicMigrationMap.TryAdd(typeof(TEventType).FullName ?? throw new InvalidOperationException(), (TopicToPublishTo, TopicToSubscribeOn));
         }
 
         /// <summary>
         /// 
         /// </summary>
-        public static TopicTopology TopicPerEventType => new();
-
-        /// <inheritdoc />
-        public bool Equals(TopicTopology other) => string.Equals(TopicToPublishTo, other.TopicToPublishTo, StringComparison.OrdinalIgnoreCase) && string.Equals(TopicToSubscribeOn, other.TopicToSubscribeOn, StringComparison.OrdinalIgnoreCase);
-
-        /// <inheritdoc />
-        public override bool Equals(object obj) => obj is TopicTopology other && Equals(other);
-
-        /// <inheritdoc />
-        public override int GetHashCode()
+        /// <param name="type"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void PublishToDefaultTopic(Type type)
         {
-            unchecked
-            {
-                return (StringComparer.OrdinalIgnoreCase.GetHashCode(TopicToPublishTo) * 397) ^ StringComparer.OrdinalIgnoreCase.GetHashCode(TopicToSubscribeOn);
-            }
+            _ = Options.EventsToTopicMigrationMap.TryAdd(type.FullName ?? throw new InvalidOperationException(), (TopicToPublishTo, TopicToSubscribeOn));
         }
 
-#pragma warning disable CS1591
-        public static bool operator ==(TopicTopology left, TopicTopology right) => left.Equals(right);
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="TEventType"></typeparam>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void SubscribeToDefaultTopic<TEventType>()
+        {
+            _ = Options.EventsToTopicMigrationMap.TryAdd(typeof(TEventType).FullName ?? throw new InvalidOperationException(), (TopicToPublishTo, TopicToSubscribeOn));
+        }
 
-        public static bool operator !=(TopicTopology left, TopicTopology right) => !left.Equals(right);
-#pragma warning restore CS1591
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="type"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void SubscribeToDefaultTopic(Type type)
+        {
+            _ = Options.EventsToTopicMigrationMap.TryAdd(type.FullName ?? throw new InvalidOperationException(), (TopicToPublishTo, TopicToSubscribeOn));
+        }
     }
 }

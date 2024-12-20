@@ -21,6 +21,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 
         var transport = new AzureServiceBusTransport(connectionString)
         {
+            Topology = TopicTopology.DefaultBundle,
             SubscriptionNamingConvention = name => Shorten(name),
             SubscriptionRuleNamingConvention = eventType => Shorten(eventType.FullName)
         };

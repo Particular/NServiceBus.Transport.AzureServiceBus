@@ -1,22 +1,22 @@
-﻿#nullable enable
+namespace NServiceBus.Transport.AzureServiceBus;
 
-namespace NServiceBus.Transport.AzureServiceBus
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Azure.Messaging.ServiceBus;
+using Azure.Messaging.ServiceBus.Administration;
+using Logging;
+
+class TopologyCreator(AzureServiceBusTransport transportSettings)
 {
-    using System;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Azure.Messaging.ServiceBus;
-    using Azure.Messaging.ServiceBus.Administration;
-    using NServiceBus.Logging;
+    static readonly ILog Logger = LogManager.GetLogger<TopologyCreator>();
 
-    class ForwardingTopologyCreator(AzureServiceBusTransport transportSettings)
+    public async Task Create(ServiceBusAdministrationClient adminClient, string[] queues,
+        CancellationToken cancellationToken = default)
     {
-        static readonly ILog Logger = LogManager.GetLogger<ForwardingTopologyCreator>();
-
-        public async Task Create(ServiceBusAdministrationClient adminClient, string[] queues, CancellationToken cancellationToken = default)
+        if (transportSettings.Topology is MigrationTopology migrationTopology)
         {
-            var topology = transportSettings.Topology;
-            var topicToPublishTo = new CreateTopicOptions(topology.TopicToPublishTo)
+            var topicToPublishTo = new CreateTopicOptions(migrationTopology.TopicToPublishTo)
             {
                 EnableBatchedOperations = true,
                 EnablePartitioning = transportSettings.EnablePartitioning,
@@ -36,9 +36,9 @@ namespace NServiceBus.Transport.AzureServiceBus
                 Logger.Info($"Topic creation for {topicToPublishTo.Name} is already in progress");
             }
 
-            if (topology.IsHierarchy)
+            if (migrationTopology.IsHierarchy)
             {
-                var topicToSubscribeOn = new CreateTopicOptions(topology.TopicToSubscribeOn)
+                var topicToSubscribeOn = new CreateTopicOptions(migrationTopology.TopicToSubscribeOn)
                 {
                     EnableBatchedOperations = true,
                     EnablePartitioning = transportSettings.EnablePartitioning,
@@ -58,14 +58,14 @@ namespace NServiceBus.Transport.AzureServiceBus
                     Logger.Info($"Topic creation for {topicToSubscribeOn.Name} is already in progress");
                 }
 
-                var subscription = new CreateSubscriptionOptions(topology.TopicToPublishTo, $"forwardTo-{topology.TopicToSubscribeOn}")
+                var subscription = new CreateSubscriptionOptions(migrationTopology.TopicToPublishTo, $"forwardTo-{migrationTopology.TopicToSubscribeOn}")
                 {
                     LockDuration = TimeSpan.FromMinutes(5),
-                    ForwardTo = topology.TopicToSubscribeOn,
+                    ForwardTo = migrationTopology.TopicToSubscribeOn,
                     EnableDeadLetteringOnFilterEvaluationExceptions = false,
                     MaxDeliveryCount = int.MaxValue,
                     EnableBatchedOperations = true,
-                    UserMetadata = topology.TopicToSubscribeOn
+                    UserMetadata = migrationTopology.TopicToSubscribeOn
                 };
 
                 try
@@ -82,9 +82,9 @@ namespace NServiceBus.Transport.AzureServiceBus
                     Logger.Info($"Default subscription rule for topic {subscription.TopicName} is already in progress");
                 }
             }
-
-            var queueCreator = new QueueCreator(transportSettings);
-            await queueCreator.Create(adminClient, queues, cancellationToken).ConfigureAwait(false);
         }
+
+        var queueCreator = new QueueCreator(transportSettings);
+        await queueCreator.Create(adminClient, queues, cancellationToken).ConfigureAwait(false);
     }
 }
