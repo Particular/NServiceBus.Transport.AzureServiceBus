@@ -114,20 +114,12 @@
                     .Concat(sendingAddresses)
                     .ToArray();
 
-                if (Topology.TopicToSubscribeOn is null)
-                {
-                    var queueCreator = new TopicPerEventTypeTopologyCreator(this);
-                    await queueCreator.Create(administrationClient, allQueues, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    var queueCreator = new ForwardingTopologyCreator(this);
-                    await queueCreator.Create(administrationClient, allQueues, cancellationToken).ConfigureAwait(false);
-                }
+                var queueCreator = new TopologyCreator(this);
+                await queueCreator.Create(administrationClient, allQueues, cancellationToken).ConfigureAwait(false);
 
                 foreach (IMessageReceiver messageReceiver in infrastructure.Receivers.Values)
                 {
-                    if (messageReceiver.Subscriptions is ForwardingTopologySubscriptionManager subscriptionManager)
+                    if (messageReceiver.Subscriptions is SubscriptionManager subscriptionManager)
                     {
                         await subscriptionManager.CreateSubscription(administrationClient, cancellationToken)
                             .ConfigureAwait(false);
@@ -169,8 +161,8 @@
         /// <summary>
         /// Gets or sets the topic topology to be used.
         /// </summary>
-        /// <remarks>The default is <see cref="TopicTopology.DefaultBundle"/></remarks>
-        public TopicTopology Topology { get; set; } = TopicTopology.DefaultBundle;
+        /// <remarks>The default is <see cref="TopicTopology.Default"/></remarks>
+        public TopicTopology Topology { get; set; } = TopicTopology.Default;
 
         /// <summary>
         /// The maximum size used when creating queues and topics in GB.
