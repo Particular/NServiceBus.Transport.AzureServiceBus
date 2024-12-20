@@ -37,7 +37,7 @@
             string receiveAddress,
             ReceiveSettings receiveSettings,
             Action<string, Exception, CancellationToken> criticalErrorAction,
-            SubscriptionManager subscriptionManager,
+            ISubscriptionManager subscriptionManager,
             SubQueue subQueue = SubQueue.None
         )
         {

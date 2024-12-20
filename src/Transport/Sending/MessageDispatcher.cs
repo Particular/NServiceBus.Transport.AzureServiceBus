@@ -19,19 +19,19 @@ namespace NServiceBus.Transport.AzureServiceBus
         static readonly Dictionary<string, List<IOutgoingTransportOperation>> emptyDestinationAndOperations = [];
 
         readonly MessageSenderRegistry messageSenderRegistry;
-        readonly string topicName;
+        readonly TopologyOptions topologyOptions;
         readonly bool doNotSendTransportEncodingHeader;
         readonly OutgoingNativeMessageCustomizationAction customizerCallback;
 
         public MessageDispatcher(
             MessageSenderRegistry messageSenderRegistry,
-            string topicName,
+            TopologyOptions topologyOptions,
             OutgoingNativeMessageCustomizationAction? customizerCallback = null,
             bool doNotSendTransportEncodingHeader = false
         )
         {
             this.messageSenderRegistry = messageSenderRegistry;
-            this.topicName = topicName;
+            this.topologyOptions = topologyOptions;
             this.customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
             this.doNotSendTransportEncodingHeader = doNotSendTransportEncodingHeader;
         }
@@ -56,7 +56,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
             foreach (var operation in transportOperations)
             {
-                var destination = operation.ExtractDestination(defaultMulticastRoute: topicName);
+                var destination = operation.ExtractDestination(topologyOptions);
                 switch (operation.RequiredDispatchConsistency)
                 {
                     case DispatchConsistency.Default:
