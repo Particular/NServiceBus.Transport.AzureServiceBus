@@ -24,16 +24,12 @@
                         msg.ApplicationProperties["NServiceBus.Transport.Encoding"] = "wcf/byte-array";
 
                         var serializer = new DataContractSerializer(typeof(byte[]));
-                        using (var stream = new MemoryStream())
-                        {
-                            using (var writer = XmlDictionaryWriter.CreateBinaryWriter(stream))
-                            {
-                                serializer.WriteObject(writer, msg.Body.ToArray());
-                                writer.Flush();
+                        using var stream = new MemoryStream();
+                        using var writer = XmlDictionaryWriter.CreateBinaryWriter(stream);
+                        serializer.WriteObject(writer, msg.Body.ToArray());
+                        writer.Flush();
 
-                                msg.Body = new BinaryData(stream.ToArray());
-                            }
-                        }
+                        msg.Body = new BinaryData(stream.ToArray());
                     });
                     return session.Send(new Message(), sendOptions);
                 }))
@@ -48,20 +44,10 @@
 
         public class Endpoint : EndpointConfigurationBuilder
         {
-            public Endpoint()
+            public Endpoint() => EndpointSetup<DefaultServer>();
+
+            public class Handler(Context testContext) : IHandleMessages<Message>
             {
-                EndpointSetup<DefaultServer>();
-            }
-
-            public class Handler : IHandleMessages<Message>
-            {
-                Context testContext;
-
-                public Handler(Context testContext)
-                {
-                    this.testContext = testContext;
-                }
-
                 public Task Handle(Message request, IMessageHandlerContext context)
                 {
                     testContext.MessageRecieved = true;
@@ -71,6 +57,6 @@
             }
         }
 
-        public class Message : IMessage { }
+        public class Message : IMessage;
     }
 }
