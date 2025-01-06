@@ -37,7 +37,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 EndpointSetup<DefaultPublisher>(b =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Single("bundle-a");
+                    MigrationTopology transportTopology = TopicTopology.Single("bundle-a");
+                    transportTopology.SubscribeToDefaultTopic<MyEvent>();
+                    transport.Topology = transportTopology;
                     b.SendOnly();
                 });
         }
@@ -49,21 +51,19 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Hierarchy("bundle-a", "bundle-b");
-                });
+                    MigrationTopology transportTopology = TopicTopology.Hierarchy("bundle-a", "bundle-b");
+                    transportTopology.SubscribeToDefaultTopic<MyEvent>();
+                    transport.Topology = transportTopology;
+                }, metadata => metadata.RegisterPublisherFor<MyEvent>(typeof(SendOnlyPublisherOnTopicA)));
 
-            public class MyHandler : IHandleMessages<MyEvent>
+            public class MyHandler(Context testContext) : IHandleMessages<MyEvent>
             {
-                public MyHandler(Context context) => testContext = context;
-
                 public Task Handle(MyEvent message, IMessageHandlerContext context)
                 {
                     testContext.SubscriberOnTopicAGotTheEvent = true;
 
                     return Task.CompletedTask;
                 }
-
-                Context testContext;
             }
         }
 
@@ -74,26 +74,22 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Hierarchy("bundle-a", "bundle-c");
-                });
+                    MigrationTopology transportTopology = TopicTopology.Hierarchy("bundle-a", "bundle-c");
+                    transportTopology.SubscribeToDefaultTopic<MyEvent>();
+                    transport.Topology = transportTopology;
+                }, metadata => metadata.RegisterPublisherFor<MyEvent>(typeof(SendOnlyPublisherOnTopicA)));
 
-            public class MyHandler : IHandleMessages<MyEvent>
+            public class MyHandler(Context testContext) : IHandleMessages<MyEvent>
             {
-                public MyHandler(Context context) => testContext = context;
-
                 public Task Handle(MyEvent message, IMessageHandlerContext context)
                 {
                     testContext.SubscriberOnTopicBGotTheEvent = true;
 
                     return Task.CompletedTask;
                 }
-
-                Context testContext;
             }
         }
 
-        public class MyEvent : IEvent
-        {
-        }
+        public class MyEvent : IEvent;
     }
 }

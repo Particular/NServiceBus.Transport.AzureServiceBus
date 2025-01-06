@@ -38,7 +38,15 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 EndpointSetup<DefaultPublisher>(b =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Single("bundle-a");
+                    var topology = TopicTopology.Single("bundle-a");
+                    topology.SubscribeToDefaultTopic<EventFromTopicB>();
+                    topology.SubscribeToDefaultTopic<EventFromTopicC>();
+                    topology.PublishToDefaultTopic<EventFromTopicA>();
+                    transport.Topology = topology;
+                }, metadata =>
+                {
+                    metadata.RegisterPublisherFor<EventFromTopicB>(typeof(SubscriberOnTopicB));
+                    metadata.RegisterPublisherFor<EventFromTopicC>(typeof(SubscriberOnTopicC));
                 });
 
             public class MyHandler : IHandleMessages<MyCommand>
@@ -47,30 +55,22 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     => context.Publish(new EventFromTopicA());
             }
 
-            public class EventFromTopicBHandler : IHandleMessages<EventFromTopicB>
+            public class EventFromTopicBHandler(Context testContext) : IHandleMessages<EventFromTopicB>
             {
-                public EventFromTopicBHandler(Context context) => testContext = context;
-
                 public Task Handle(EventFromTopicB message, IMessageHandlerContext context)
                 {
                     testContext.PublisherGotEventFromSubscriberOnTopicB = true;
                     return Task.CompletedTask;
                 }
-
-                Context testContext;
             }
 
-            public class EventFromTopicCHandler : IHandleMessages<EventFromTopicC>
+            public class EventFromTopicCHandler(Context testContext) : IHandleMessages<EventFromTopicC>
             {
-                public EventFromTopicCHandler(Context context) => testContext = context;
-
                 public Task Handle(EventFromTopicC message, IMessageHandlerContext context)
                 {
                     testContext.PublisherGotEventFromSubscriberOnTopicC = true;
                     return Task.CompletedTask;
                 }
-
-                Context testContext;
             }
         }
 
@@ -81,8 +81,11 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Hierarchy("bundle-a", "bundle-b");
-                });
+                    var topology = TopicTopology.Hierarchy("bundle-a", "bundle-b");
+                    topology.SubscribeToDefaultTopic<EventFromTopicA>();
+                    topology.PublishToDefaultTopic<EventFromTopicB>();
+                    transport.Topology = topology;
+                }, metadata => metadata.RegisterPublisherFor<EventFromTopicA>(typeof(PublisherOnTopicA)));
 
             public class MyHandler : IHandleMessages<EventFromTopicA>
             {
@@ -98,8 +101,11 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Hierarchy("bundle-a", "bundle-c");
-                });
+                    var topology = TopicTopology.Hierarchy("bundle-a", "bundle-c");
+                    topology.SubscribeToDefaultTopic<EventFromTopicA>();
+                    topology.PublishToDefaultTopic<EventFromTopicC>();
+                    transport.Topology = topology;
+                }, metadata => metadata.RegisterPublisherFor<EventFromTopicA>(typeof(PublisherOnTopicA)));
 
             public class MyHandler : IHandleMessages<EventFromTopicA>
             {
