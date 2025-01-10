@@ -65,11 +65,6 @@ namespace NServiceBus
         /// <summary>
         /// 
         /// </summary>
-        public static TopicTopology TopicPerEventType => new();
-
-        /// <summary>
-        /// 
-        /// </summary>
         /// <param name="topicName"></param>
         /// <typeparam name="TEventType"></typeparam>
         /// <exception cref="InvalidOperationException"></exception>
