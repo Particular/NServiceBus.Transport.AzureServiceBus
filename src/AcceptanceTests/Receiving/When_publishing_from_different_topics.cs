@@ -45,8 +45,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     transport.Topology = topology;
                 }, metadata =>
                 {
-                    metadata.RegisterPublisherFor<EventFromTopicB>(typeof(SubscriberOnTopicB));
-                    metadata.RegisterPublisherFor<EventFromTopicC>(typeof(SubscriberOnTopicC));
+                    metadata.RegisterSelfAsPublisherFor<EventFromTopicA>(this);
                 });
 
             public class MyHandler : IHandleMessages<MyCommand>
@@ -85,7 +84,11 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     topology.SubscribeToDefaultTopic<EventFromTopicA>();
                     topology.PublishToDefaultTopic<EventFromTopicB>();
                     transport.Topology = topology;
-                }, metadata => metadata.RegisterPublisherFor<EventFromTopicA>(typeof(PublisherOnTopicA)));
+                }, metadata =>
+                {
+                    metadata.RegisterPublisherFor<EventFromTopicA>(typeof(PublisherOnTopicA));
+                    metadata.RegisterSelfAsPublisherFor<EventFromTopicB>(this);
+                });
 
             public class MyHandler : IHandleMessages<EventFromTopicA>
             {
@@ -105,7 +108,11 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     topology.SubscribeToDefaultTopic<EventFromTopicA>();
                     topology.PublishToDefaultTopic<EventFromTopicC>();
                     transport.Topology = topology;
-                }, metadata => metadata.RegisterPublisherFor<EventFromTopicA>(typeof(PublisherOnTopicA)));
+                }, metadata =>
+                {
+                    metadata.RegisterPublisherFor<EventFromTopicA>(typeof(PublisherOnTopicA));
+                    metadata.RegisterSelfAsPublisherFor<EventFromTopicC>(this);
+                });
 
             public class MyHandler : IHandleMessages<EventFromTopicA>
             {
