@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,8 +20,16 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
             throw new InvalidOperationException("envvar AzureServiceBus_ConnectionString not set");
         }
 
+        var topology = TopicTopology.Default;
+        foreach (var eventType in publisherMetadata.Publishers.SelectMany(p => p.Events))
+        {
+            topology.PublishTo(eventType, eventType.FullName.Replace("+", "."));
+            topology.SubscribeTo(eventType, eventType.FullName.Replace("+", "."));
+        }
+
         var transport = new AzureServiceBusTransport(connectionString)
         {
+            Topology = topology,
             SubscriptionNamingConvention = name => Shorten(name),
         };
 
