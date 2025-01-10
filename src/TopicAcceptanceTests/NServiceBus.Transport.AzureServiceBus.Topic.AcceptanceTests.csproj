@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.13.1" />
-    <PackageReference Include="NServiceBus.AcceptanceTests.Sources" Version="9.2.3" GeneratePathProperty="true" />
+    <PackageReference Include="NServiceBus.AcceptanceTests.Sources" Version="9.2.4-alpha.1" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>
