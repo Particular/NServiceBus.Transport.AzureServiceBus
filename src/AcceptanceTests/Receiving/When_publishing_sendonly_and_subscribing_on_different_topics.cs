@@ -41,7 +41,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     transportTopology.SubscribeToDefaultTopic<MyEvent>();
                     transport.Topology = transportTopology;
                     b.SendOnly();
-                });
+                }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent>(this));
         }
 
         public class SubscriberOnTopicB : EndpointConfigurationBuilder
