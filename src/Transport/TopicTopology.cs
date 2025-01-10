@@ -97,10 +97,7 @@ namespace NServiceBus
         /// <param name="topicName"></param>
         /// <typeparam name="TEventType"></typeparam>
         /// <exception cref="InvalidOperationException"></exception>
-        public void SubscribeTo<TEventType>(string topicName)
-        {
-            Options.SubscribedEventToTopicsMap[typeof(TEventType).FullName ?? throw new InvalidOperationException()].Add(topicName);
-        }
+        public void SubscribeTo<TEventType>(string topicName) => SubscribeTo(typeof(TEventType), topicName);
 
         /// <summary>
         /// 
@@ -110,7 +107,18 @@ namespace NServiceBus
         /// <exception cref="InvalidOperationException"></exception>
         public void SubscribeTo(Type type, string topicName)
         {
-            Options.SubscribedEventToTopicsMap[type.FullName ?? throw new InvalidOperationException()].Add(topicName);
+            ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
+            ArgumentException.ThrowIfNullOrWhiteSpace(type.FullName);
+
+            var eventTypeFullName = type.FullName;
+            if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
+            {
+                topics.Add(topicName);
+            }
+            else
+            {
+                Options.SubscribedEventToTopicsMap[eventTypeFullName] = [topicName];
+            }
         }
     }
 
