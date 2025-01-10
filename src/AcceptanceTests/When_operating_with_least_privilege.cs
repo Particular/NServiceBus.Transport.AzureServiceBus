@@ -93,8 +93,11 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                 EndpointSetup<DefaultPublisher>(b =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Single(DedicatedTopic);
-                });
+                    var topology = TopicTopology.Single(DedicatedTopic);
+                    topology.PublishToDefaultTopic<MyEvent>();
+
+                    transport.Topology = topology;
+                }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent>(this));
 
             public class MyHandler : IHandleMessages<MyCommand>
             {
@@ -110,8 +113,11 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Single(DedicatedTopic);
-                });
+                    var topology = TopicTopology.Single(DedicatedTopic);
+                    topology.SubscribeToDefaultTopic<MyEvent>();
+
+                    transport.Topology = topology;
+                }, metadata => metadata.RegisterPublisherFor<MyEvent, Publisher>());
 
             public class MyHandler : IHandleMessages<MyEvent>
             {
