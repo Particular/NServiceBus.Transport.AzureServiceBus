@@ -1,13 +1,50 @@
 namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
 {
+    using System;
     using System.Threading.Tasks;
     using AcceptanceTesting;
+    using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using NServiceBus.AcceptanceTests;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
 
     public class When_publishing_sendonly_and_subscribing_on_different_topics : NServiceBusAcceptanceTest
     {
+        [SetUp]
+        public async Task Setup()
+        {
+            var adminClient =
+                new ServiceBusAdministrationClient(
+                    Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+            try
+            {
+                // makes sure during local development the topic gets cleared before each test run
+                await adminClient.DeleteTopicAsync("bundle-a");
+            }
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            {
+            }
+
+            try
+            {
+                // makes sure during local development the topic gets cleared before each test run
+                await adminClient.DeleteTopicAsync("bundle-b");
+            }
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            {
+            }
+
+            try
+            {
+                // makes sure during local development the topic gets cleared before each test run
+                await adminClient.DeleteTopicAsync("bundle-c");
+            }
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            {
+            }
+        }
+
         [Test]
         public async Task Should_be_delivered_to_all_subscribers()
         {
