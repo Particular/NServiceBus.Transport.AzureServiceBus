@@ -43,7 +43,7 @@
 
             if (eventTypes.Length == 1)
             {
-                await SubscribeEvent(administrationClient, eventTypes[0], cancellationToken)
+                await SubscribeEvent(eventTypes[0], cancellationToken)
                     .ConfigureAwait(false);
             }
             else
@@ -51,22 +51,32 @@
                 var subscribeTasks = new List<Task>(eventTypes.Length);
                 foreach (var eventType in eventTypes)
                 {
-                    subscribeTasks.Add(SubscribeEvent(administrationClient, eventType, cancellationToken));
+                    subscribeTasks.Add(SubscribeEvent(eventType, cancellationToken));
                 }
                 await Task.WhenAll(subscribeTasks)
                     .ConfigureAwait(false);
             }
         }
 
-        async Task SubscribeEvent(ServiceBusAdministrationClient client, MessageMetadata messageMetadata, CancellationToken cancellationToken)
+        async Task SubscribeEvent(MessageMetadata messageMetadata, CancellationToken cancellationToken)
         {
             // TODO: There is no convention nor mapping here currently.
             // TODO: Is it a good idea to use the subscriptionName as the endpoint name?
-            string topicName = transportSettings.Topology.Options.GetPublishDestination(messageMetadata.MessageType);
 
+            var topicsToSubscribeOn = transportSettings.Topology.Options.GetSubscribeDestinations(messageMetadata.MessageType);
+            var subscribeTasks = new List<Task>(topicsToSubscribeOn.Length);
+            foreach (var topicInfo in topicsToSubscribeOn)
+            {
+                subscribeTasks.Add(CreateSubscription(administrationClient, topicInfo, messageMetadata, cancellationToken));
+            }
+            await Task.WhenAll(subscribeTasks).ConfigureAwait(false);
+        }
+
+        async Task CreateSubscription(ServiceBusAdministrationClient client, (string Topic, bool RequiresRule) topicInfo, MessageMetadata messageMetadata, CancellationToken cancellationToken)
+        {
             if (setupInfrastructure)
             {
-                var topicOptions = new CreateTopicOptions(topicName)
+                var topicOptions = new CreateTopicOptions(topicInfo.Topic)
                 {
                     EnableBatchedOperations = true,
                     EnablePartitioning = transportSettings.EnablePartitioning,
@@ -93,17 +103,6 @@
                 }
             }
 
-            var topicsToSubscribeOn = transportSettings.Topology.Options.GetSubscribeDestinations(messageMetadata.MessageType);
-            var subscribeTasks = new List<Task>(topicsToSubscribeOn.Length);
-            foreach (var topicInfo in topicsToSubscribeOn)
-            {
-                subscribeTasks.Add(CreateSubscription(administrationClient, topicInfo, messageMetadata, cancellationToken));
-            }
-            await Task.WhenAll(subscribeTasks).ConfigureAwait(false);
-        }
-
-        async Task CreateSubscription(ServiceBusAdministrationClient client, (string Topic, bool RequiresRule) topicInfo, MessageMetadata messageMetadata, CancellationToken cancellationToken)
-        {
             var subscriptionOptions = new CreateSubscriptionOptions(topicInfo.Topic, subscriptionName)
             {
                 LockDuration = TimeSpan.FromMinutes(5),
