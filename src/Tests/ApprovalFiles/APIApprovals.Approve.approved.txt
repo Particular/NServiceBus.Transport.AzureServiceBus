@@ -59,19 +59,41 @@ namespace NServiceBus
     {
         public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
     }
-    public readonly struct TopicTopology : System.IEquatable<NServiceBus.TopicTopology>
+    public class MigrationTopology : NServiceBus.TopicTopology
     {
         public bool IsHierarchy { get; }
         public string TopicToPublishTo { get; }
         public string TopicToSubscribeOn { get; }
-        public static NServiceBus.TopicTopology DefaultBundle { get; }
-        public bool Equals(NServiceBus.TopicTopology other) { }
-        public override bool Equals(object obj) { }
-        public override int GetHashCode() { }
-        public static NServiceBus.TopicTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
-        public static NServiceBus.TopicTopology Single(string topicName) { }
-        public static bool operator !=(NServiceBus.TopicTopology left, NServiceBus.TopicTopology right) { }
-        public static bool operator ==(NServiceBus.TopicTopology left, NServiceBus.TopicTopology right) { }
+        public void PublishToDefaultTopic(System.Type type) { }
+        public void PublishToDefaultTopic<TEventType>() { }
+        public void SubscribeToDefaultTopic(System.Type type) { }
+        public void SubscribeToDefaultTopic<TEventType>() { }
+    }
+    public class TopicTopology
+    {
+        protected TopicTopology(NServiceBus.TopologyOptions? options = null) { }
+        public static NServiceBus.TopicTopology Default { get; }
+        public static NServiceBus.MigrationTopology DefaultBundle { get; }
+        public void PublishTo(System.Type type, string topicName) { }
+        public void PublishTo<TEventType>(string topicName) { }
+        public void SubscribeTo(System.Type type, string topicName) { }
+        public void SubscribeTo<TEventType>(string topicName) { }
+        public static NServiceBus.TopicTopology FromOptions(NServiceBus.TopologyOptions options) { }
+        public static NServiceBus.MigrationTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
+        public static NServiceBus.MigrationTopology Single(string topicName) { }
+    }
+    public class TopologyOptions
+    {
+        public TopologyOptions() { }
+        [System.Runtime.CompilerServices.TupleElementNames(new string[] {
+                "TopicToPublishTo",
+                "TopicToSubscribeOn"})]
+        [System.Text.Json.Serialization.JsonObjectCreationHandling(System.Text.Json.Serialization.JsonObjectCreationHandling.Populate)]
+        public System.Collections.Generic.Dictionary<string, System.ValueTuple<string, string>> EventsToTopicMigrationMap { get; }
+        [System.Text.Json.Serialization.JsonObjectCreationHandling(System.Text.Json.Serialization.JsonObjectCreationHandling.Populate)]
+        public System.Collections.Generic.Dictionary<string, string> PublishedEventToTopicsMap { get; }
+        [System.Text.Json.Serialization.JsonObjectCreationHandling(System.Text.Json.Serialization.JsonObjectCreationHandling.Populate)]
+        public System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>> SubscribedEventToTopicsMap { get; }
     }
 }
 namespace NServiceBus.Testing
