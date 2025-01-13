@@ -27,12 +27,12 @@ namespace NServiceBus
         /// </summary>
         /// <param name="options"></param>
         /// <returns></returns>
-        public static TopicTopology FromOptions(TopologyOptions options) => new(options);
+        public static MigrationTopology FromOptions(TopologyOptions options) => new(options);
 
         /// <summary>
         /// 
         /// </summary>
-        public static TopicTopology Default => new();
+        public static TopicPerEventTopology Default => new();
 
         /// <summary>
         /// Returns the default bundle topology uses <c>bundle-1</c> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
@@ -61,7 +61,57 @@ namespace NServiceBus
             }
             return hierarchy;
         }
+    }
 
+    /// <summary>
+    /// TODO we probably need some kind of validation method that checks against invalid configurations?
+    /// </summary>
+    public class TopologyOptions
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+        public Dictionary<string, string> PublishedEventToTopicsMap { get; } = [];
+
+        /// <summary>
+        /// 
+        /// </summary>
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+        public Dictionary<string, HashSet<string>> SubscribedEventToTopicsMap { get; } = [];
+
+        /// <summary>
+        /// 
+        /// </summary>
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+        public Dictionary<string, (string TopicToPublishTo, string TopicToSubscribeOn)> EventsToTopicMigrationMap { get; } = [];
+
+        internal string GetPublishDestination(Type eventType)
+        {
+            var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
+            return publishedEventToTopicsCache.GetOrAdd(eventTypeFullName, static (fullName, @this) =>
+                @this.EventsToTopicMigrationMap.TryGetValue(fullName,
+                    out var extractDestination)
+                    ? extractDestination.TopicToPublishTo
+                    : @this.PublishedEventToTopicsMap.GetValueOrDefault(fullName, fullName), this);
+        }
+
+        internal (string Topic, bool RequiresRule)[] GetSubscribeDestinations(Type eventType)
+        {
+            var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
+            return subscribedEventToTopicsCache.GetOrAdd(eventTypeFullName, static (fullName, @this) =>
+                @this.EventsToTopicMigrationMap.TryGetValue(fullName,
+                out var extractDestination)
+                ? [(extractDestination.TopicToSubscribeOn, true)]
+                : @this.SubscribedEventToTopicsMap.GetValueOrDefault(fullName, [fullName]).Select(x => (x, false)).ToArray(), this);
+        }
+
+        readonly ConcurrentDictionary<string, string> publishedEventToTopicsCache = new();
+        readonly ConcurrentDictionary<string, (string Topic, bool RequiresRule)[]> subscribedEventToTopicsCache = new();
+    }
+
+    public class TopicPerEventTopology : TopicTopology
+    {
         /// <summary>
         /// 
         /// </summary>
@@ -118,53 +168,6 @@ namespace NServiceBus
     }
 
     /// <summary>
-    /// TODO we probably need some kind of validation method that checks against invalid configurations?
-    /// </summary>
-    public class TopologyOptions
-    {
-        /// <summary>
-        /// 
-        /// </summary>
-        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-        public Dictionary<string, string> PublishedEventToTopicsMap { get; } = [];
-
-        /// <summary>
-        /// 
-        /// </summary>
-        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-        public Dictionary<string, HashSet<string>> SubscribedEventToTopicsMap { get; } = [];
-
-        /// <summary>
-        /// 
-        /// </summary>
-        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-        public Dictionary<string, (string TopicToPublishTo, string TopicToSubscribeOn)> EventsToTopicMigrationMap { get; } = [];
-
-        internal string GetPublishDestination(Type eventType)
-        {
-            var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
-            return publishedEventToTopicsCache.GetOrAdd(eventTypeFullName, static (fullName, @this) =>
-                @this.EventsToTopicMigrationMap.TryGetValue(fullName,
-                    out var extractDestination)
-                    ? extractDestination.TopicToPublishTo
-                    : @this.PublishedEventToTopicsMap.GetValueOrDefault(fullName, fullName), this);
-        }
-
-        internal (string Topic, bool RequiresRule)[] GetSubscribeDestinations(Type eventType)
-        {
-            var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
-            return subscribedEventToTopicsCache.GetOrAdd(eventTypeFullName, static (fullName, @this) =>
-                @this.EventsToTopicMigrationMap.TryGetValue(fullName,
-                out var extractDestination)
-                ? [(extractDestination.TopicToSubscribeOn, true)]
-                : @this.SubscribedEventToTopicsMap.GetValueOrDefault(fullName, [fullName]).Select(x => (x, false)).ToArray(), this);
-        }
-
-        readonly ConcurrentDictionary<string, string> publishedEventToTopicsCache = new();
-        readonly ConcurrentDictionary<string, (string Topic, bool RequiresRule)[]> subscribedEventToTopicsCache = new();
-    }
-
-    /// <summary>
     /// 
     /// </summary>
     public class MigrationTopology : TopicTopology
@@ -191,6 +194,68 @@ namespace NServiceBus
 
             TopicToPublishTo = topicToPublishTo;
             TopicToSubscribeOn = topicToSubscribeOn;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="options"></param>
+        public MigrationTopology(TopologyOptions options) : base(options)
+        {
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="topicName"></param>
+        /// <typeparam name="TEventType"></typeparam>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void PublishTo<TEventType>(string topicName)
+        {
+            // TODO Last one wins?
+            Options.PublishedEventToTopicsMap[typeof(TEventType).FullName ?? throw new InvalidOperationException()] = topicName;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="topicName"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void PublishTo(Type type, string topicName)
+        {
+            // TODO Last one wins?
+            Options.PublishedEventToTopicsMap[type.FullName ?? throw new InvalidOperationException()] = topicName;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="topicName"></param>
+        /// <typeparam name="TEventType"></typeparam>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void SubscribeTo<TEventType>(string topicName) => SubscribeTo(typeof(TEventType), topicName);
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="topicName"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void SubscribeTo(Type type, string topicName)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
+            ArgumentException.ThrowIfNullOrWhiteSpace(type.FullName);
+
+            var eventTypeFullName = type.FullName;
+            if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
+            {
+                topics.Add(topicName);
+            }
+            else
+            {
+                Options.SubscribedEventToTopicsMap[eventTypeFullName] = [topicName];
+            }
         }
 
         /// <summary>
