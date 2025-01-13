@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NServiceBus.TransportTests.Sources" Version="9.2.3" GeneratePathProperty="true" />
+    <PackageReference Include="NServiceBus.TransportTests.Sources" Version="9.2.4" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>
