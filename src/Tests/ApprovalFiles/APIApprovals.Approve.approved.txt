@@ -61,24 +61,33 @@ namespace NServiceBus
     }
     public class MigrationTopology : NServiceBus.TopicTopology
     {
+        public MigrationTopology(NServiceBus.TopologyOptions options) { }
         public bool IsHierarchy { get; }
         public string TopicToPublishTo { get; }
         public string TopicToSubscribeOn { get; }
+        public void PublishTo(System.Type type, string topicName) { }
+        public void PublishTo<TEventType>(string topicName) { }
         public void PublishToDefaultTopic(System.Type type) { }
         public void PublishToDefaultTopic<TEventType>() { }
+        public void SubscribeTo(System.Type type, string topicName) { }
+        public void SubscribeTo<TEventType>(string topicName) { }
         public void SubscribeToDefaultTopic(System.Type type) { }
         public void SubscribeToDefaultTopic<TEventType>() { }
     }
-    public class TopicTopology
+    public class TopicPerEventTopology : NServiceBus.TopicTopology
     {
-        protected TopicTopology(NServiceBus.TopologyOptions? options = null) { }
-        public static NServiceBus.TopicTopology Default { get; }
-        public static NServiceBus.MigrationTopology DefaultBundle { get; }
+        public TopicPerEventTopology() { }
         public void PublishTo(System.Type type, string topicName) { }
         public void PublishTo<TEventType>(string topicName) { }
         public void SubscribeTo(System.Type type, string topicName) { }
         public void SubscribeTo<TEventType>(string topicName) { }
-        public static NServiceBus.TopicTopology FromOptions(NServiceBus.TopologyOptions options) { }
+    }
+    public class TopicTopology
+    {
+        protected TopicTopology(NServiceBus.TopologyOptions? options = null) { }
+        public static NServiceBus.TopicPerEventTopology Default { get; }
+        public static NServiceBus.MigrationTopology DefaultBundle { get; }
+        public static NServiceBus.MigrationTopology FromOptions(NServiceBus.TopologyOptions options) { }
         public static NServiceBus.MigrationTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
         public static NServiceBus.MigrationTopology Single(string topicName) { }
     }
