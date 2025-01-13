@@ -8,6 +8,7 @@ using NServiceBus;
 using NServiceBus.AcceptanceTesting.Customization;
 using NServiceBus.AcceptanceTesting.Support;
 using NServiceBus.AcceptanceTests.Routing;
+using NServiceBus.AcceptanceTests.Routing.NativePublishSubscribe;
 using NServiceBus.AcceptanceTests.Sagas;
 using NServiceBus.AcceptanceTests.Versioning;
 using NServiceBus.MessageMutator;
@@ -54,6 +55,17 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 
     static void ApplyMappingsToSupportMultipleInheritance(string endpointName, TopicPerEventTopology topology)
     {
+        if (endpointName == Conventions.EndpointNamingConvention(typeof(MultiSubscribeToPolymorphicEvent.Subscriber)))
+        {
+            topology.SubscribeTo<MultiSubscribeToPolymorphicEvent.IMyEvent>(GetTopicName(typeof(MultiSubscribeToPolymorphicEvent.MyEvent1)));
+            topology.SubscribeTo<MultiSubscribeToPolymorphicEvent.IMyEvent>(GetTopicName(typeof(MultiSubscribeToPolymorphicEvent.MyEvent2)));
+        }
+
+        if (endpointName == Conventions.EndpointNamingConvention(typeof(When_subscribing_to_a_base_event.GeneralSubscriber)))
+        {
+            topology.SubscribeTo<When_subscribing_to_a_base_event.IBaseEvent>(GetTopicName(typeof(When_subscribing_to_a_base_event.SpecificEvent)));
+        }
+
         if (endpointName == Conventions.EndpointNamingConvention(
                 typeof(When_publishing_an_event_implementing_two_unrelated_interfaces.Subscriber)))
         {
