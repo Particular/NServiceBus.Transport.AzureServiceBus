@@ -68,6 +68,7 @@ namespace NServiceBus
     /// </summary>
     public class TopologyOptions
     {
+
         /// <summary>
         /// 
         /// </summary>
@@ -110,6 +111,9 @@ namespace NServiceBus
         readonly ConcurrentDictionary<string, (string Topic, bool RequiresRule)[]> subscribedEventToTopicsCache = new();
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     public class TopicPerEventTopology : TopicTopology
     {
         /// <summary>
@@ -202,6 +206,9 @@ namespace NServiceBus
         /// <param name="options"></param>
         public MigrationTopology(TopologyOptions options) : base(options)
         {
+            //TODO: This obviously would not work so we need to rethink the shape of topology options
+            TopicToPublishTo = options.EventsToTopicMigrationMap.Values.First().TopicToPublishTo;
+            TopicToSubscribeOn = options.EventsToTopicMigrationMap.Values.First().TopicToSubscribeOn;
         }
 
         /// <summary>
