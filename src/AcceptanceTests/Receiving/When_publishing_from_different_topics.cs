@@ -1,7 +1,10 @@
 namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
 {
+    using System;
     using System.Threading.Tasks;
     using AcceptanceTesting;
+    using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using NServiceBus.AcceptanceTests;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
@@ -9,6 +12,40 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
     // Makes sure we have enough forwarding hops available to support the hierarchy
     public class When_publishing_from_different_topics : NServiceBusAcceptanceTest
     {
+        [SetUp]
+        public async Task Setup()
+        {
+            var adminClient =
+                new ServiceBusAdministrationClient(
+                    Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+            try
+            {
+                // makes sure during local development the topic gets cleared before each test run
+                await adminClient.DeleteTopicAsync("bundle-a");
+            }
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            {
+            }
+
+            try
+            {
+                // makes sure during local development the topic gets cleared before each test run
+                await adminClient.DeleteTopicAsync("bundle-b");
+            }
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            {
+            }
+
+            try
+            {
+                // makes sure during local development the topic gets cleared before each test run
+                await adminClient.DeleteTopicAsync("bundle-c");
+            }
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            {
+            }
+        }
+
         [Test]
         public async Task Should_be_delivered_to_all_subscribers_and_back_to_the_publisher()
         {
@@ -46,6 +83,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 }, metadata =>
                 {
                     metadata.RegisterSelfAsPublisherFor<EventFromTopicA>(this);
+                    metadata.RegisterPublisherFor<EventFromTopicB, SubscriberOnTopicB>();
+                    metadata.RegisterPublisherFor<EventFromTopicC, SubscriberOnTopicC>();
                 });
 
             public class MyHandler : IHandleMessages<MyCommand>
@@ -86,7 +125,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     transport.Topology = topology;
                 }, metadata =>
                 {
-                    metadata.RegisterPublisherFor<EventFromTopicA>(typeof(PublisherOnTopicA));
+                    metadata.RegisterPublisherFor<EventFromTopicA, PublisherOnTopicA>();
                     metadata.RegisterSelfAsPublisherFor<EventFromTopicB>(this);
                 });
 
@@ -110,7 +149,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     transport.Topology = topology;
                 }, metadata =>
                 {
-                    metadata.RegisterPublisherFor<EventFromTopicA>(typeof(PublisherOnTopicA));
+                    metadata.RegisterPublisherFor<EventFromTopicA, PublisherOnTopicA>();
                     metadata.RegisterSelfAsPublisherFor<EventFromTopicC>(this);
                 });
 
