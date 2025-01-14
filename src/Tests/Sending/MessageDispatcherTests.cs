@@ -130,11 +130,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
                 new TopologyOptions
                 {
-                    EventsToTopicMigrationMap =
+                    PublishedEventToTopicsMap =
                     {
-                        { typeof(SomeEvent).FullName, ("sometopic", "sometopic") },
-                        { typeof(SomeOtherEvent).FullName, ("sometopic", "sometopic") }
-                    }
+                        { typeof(SomeEvent).FullName, "sometopic" },
+                        { typeof(SomeOtherEvent).FullName, "sometopic" }
+                    },
                 });
 
             var operation1 =
@@ -208,7 +208,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
                 new TopologyOptions
                 {
-                    EventsToTopicMigrationMap = { { typeof(SomeEvent).FullName, ("sometopic", "sometopic") } }
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
                 });
 
             var operation1 =
@@ -289,18 +289,18 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
         [Test]
         public async Task
-            Should_dispatch_multicast_default_dispatches_together_as_batch_regardless_of_the_event_to_the_topic()
+            Should_dispatch_multicast_default_dispatches_together_as_batch_per_destination()
         {
             var client = new FakeServiceBusClient();
 
             var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
                 new TopologyOptions
                 {
-                    EventsToTopicMigrationMap =
+                    PublishedEventToTopicsMap =
                     {
-                        { typeof(SomeEvent).FullName, ("sometopic", "sometopic") },
-                        { typeof(SomeOtherEvent).FullName, ("sometopic", "sometopic") }
-                    }
+                        { typeof(SomeEvent).FullName, "sometopic" },
+                        { typeof(SomeOtherEvent).FullName, "someothertopic" }
+                    },
                 });
 
             var operation1 =
@@ -321,15 +321,26 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction());
 
-            var sender = client.Senders["sometopic"];
+            var someTopicSender = client.Senders["sometopic"];
+            var someOtherTopicSender = client.Senders["someothertopic"];
 
             Assert.Multiple(() =>
             {
-                Assert.That(sender.IndividuallySentMessages, Is.Empty);
-                Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+                Assert.That(someTopicSender.IndividuallySentMessages, Is.Empty);
+                Assert.That(someTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
             });
-            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
-            Assert.That(batchContent, Has.Count.EqualTo(2));
+            var someTopicBatchContent =
+                someTopicSender[someTopicSender.BatchSentMessages.ElementAt(0)];
+            Assert.Multiple(() =>
+            {
+                Assert.That(someTopicBatchContent, Has.Count.EqualTo(1));
+
+                Assert.That(someOtherTopicSender.IndividuallySentMessages, Is.Empty);
+                Assert.That(someOtherTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
+            var someOtherTopicBatchContent =
+                someOtherTopicSender[someOtherTopicSender.BatchSentMessages.ElementAt(0)];
+            Assert.That(someOtherTopicBatchContent, Has.Count.EqualTo(1));
         }
 
         [Test]
@@ -340,11 +351,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
                 new TopologyOptions
                 {
-                    EventsToTopicMigrationMap =
+                    PublishedEventToTopicsMap =
                     {
-                        { typeof(SomeEvent).FullName, ("sometopic", "sometopic") },
-                        { typeof(SomeOtherEvent).FullName, ("sometopic", "sometopic") }
-                    }
+                        { typeof(SomeEvent).FullName, "sometopic" },
+                        { typeof(SomeOtherEvent).FullName, "someothertopic" }
+                    },
                 });
 
             var operation1 =
@@ -385,6 +396,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var someDestinationSender = client.Senders["SomeDestination"];
             var someOtherDestinationSender = client.Senders["SomeOtherDestination"];
             var someTopicSender = client.Senders["sometopic"];
+            var someOtherTopicSender = client.Senders["someothertopic"];
 
             Assert.Multiple(() =>
             {
@@ -401,10 +413,13 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 Assert.That(someOtherDestinationBatchContent, Has.Count.EqualTo(1));
 
                 Assert.That(someTopicSender.IndividuallySentMessages, Has.Count.EqualTo(1));
-                Assert.That(someTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
+                Assert.That(someTopicSender.BatchSentMessages, Has.Count.Zero);
+
+                Assert.That(someOtherTopicSender.IndividuallySentMessages, Has.Count.Zero);
+                Assert.That(someOtherTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
             });
-            var someTopicSenderBatchContent = someTopicSender[someTopicSender.BatchSentMessages.ElementAt(0)];
-            Assert.That(someTopicSenderBatchContent, Has.Count.EqualTo(1));
+            var someOtherTopicSenderBatchContent = someOtherTopicSender[someOtherTopicSender.BatchSentMessages.ElementAt(0)];
+            Assert.That(someOtherTopicSenderBatchContent, Has.Count.EqualTo(1));
         }
 
         [Test]
