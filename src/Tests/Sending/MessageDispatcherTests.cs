@@ -47,6 +47,30 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
+        public void Should_rethrow_when_unicast_dispatch_destination_not_available()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), new TopologyOptions());
+
+            var sender = new FakeSender
+            {
+                SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
+            };
+            client.Senders["SomeDestination"] = sender;
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction()), Throws.InstanceOf<ServiceBusException>());
+        }
+
+        [Test]
         public async Task Should_dispatch_multicast_isolated_dispatches_individually()
         {
             var client = new FakeServiceBusClient();
@@ -82,6 +106,34 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
                 Assert.That(sender.BatchSentMessages, Is.Empty);
             });
+        }
+
+        // With pub sub the cases of the topic not being available are similar to having a topic without any subscribers
+        [Test]
+        public void Should_swallow_when_multicast_dispatch_destination_not_available()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), new TopologyOptions()
+            {
+                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
+            });
+
+            var sender = new FakeSender
+            {
+                SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
+            };
+            client.Senders["sometopic"] = sender;
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction()), Throws.Nothing);
         }
 
         [Test]
@@ -660,7 +712,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             Assert.Multiple(() =>
             {
                 Assert.That(someOtherDestinationBatchContent, Has.Exactly(1)
-                    .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == default));
+                    .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == null));
                 Assert.That(transactionalSender.BatchSentMessages, Is.Empty);
                 Assert.That(azureServiceBusTransaction.Transaction, Is.Null);
             });
