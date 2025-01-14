@@ -162,74 +162,78 @@ namespace NServiceBus.Transport.AzureServiceBus
             var sender = messageSenderRegistry.GetMessageSender(destination, client);
             while (messagesToSend.Count > 0)
             {
-                using ServiceBusMessageBatch messageBatch = await sender.CreateMessageBatchAsync(cancellationToken)
-                    .ConfigureAwait(false);
-
-                StringBuilder? logBuilder = null;
-                if (Log.IsDebugEnabled)
-                {
-                    logBuilder = new StringBuilder();
-                }
-
-                var dequeueMessage = messagesToSend.Dequeue();
-                // In this case the batch is fresh and doesn't have any messages yet. If TryAdd returns false
-                // we know the message can never be added to any batch and therefore we collect it to be sent
-                // individually.
-                if (messageBatch.TryAddMessage(dequeueMessage))
-                {
-                    if (Log.IsDebugEnabled)
-                    {
-                        dequeueMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
-                        logBuilder!.Append($"{messageId ?? dequeueMessage.MessageId},");
-                    }
-                }
-                else
-                {
-                    if (Log.IsDebugEnabled)
-                    {
-                        dequeueMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
-                        Log.Debug($"Message '{messageId ?? dequeueMessage.MessageId}' is too large for the batch '{batchCount}' and will be sent individually to destination {destination}.");
-                    }
-                    messagesTooLargeToBeBatched ??= [];
-                    messagesTooLargeToBeBatched.Add(dequeueMessage);
-                    continue;
-                }
-
-                // Trying to add as many messages as we can to the batch. TryAdd might return false due to the batch being full
-                // or the message being too large. In the case when the message is too large for the batch the next iteration
-                // will try to add it to a fresh batch and if that fails too we will add it to the list of messages that couldn't be sent
-                // trying to attempt to send them individually.
-                while (messagesToSend.Count > 0 && messageBatch.TryAddMessage(messagesToSend.Peek()))
-                {
-                    var added = messagesToSend.Dequeue();
-                    if (Log.IsDebugEnabled)
-                    {
-                        added.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
-                        logBuilder!.Append($"{messageId ?? added.MessageId},");
-                    }
-                }
-
-                batchCount++;
-                if (Log.IsDebugEnabled)
-                {
-                    Log.Debug($"Sending batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
-                }
-
                 try
                 {
+                    using ServiceBusMessageBatch messageBatch = await sender.CreateMessageBatchAsync(cancellationToken)
+                        .ConfigureAwait(false);
+
+                    StringBuilder? logBuilder = null;
+                    if (Log.IsDebugEnabled)
+                    {
+                        logBuilder = new StringBuilder();
+                    }
+
+                    var dequeueMessage = messagesToSend.Dequeue();
+                    // In this case the batch is fresh and doesn't have any messages yet. If TryAdd returns false
+                    // we know the message can never be added to any batch and therefore we collect it to be sent
+                    // individually.
+                    if (messageBatch.TryAddMessage(dequeueMessage))
+                    {
+                        if (Log.IsDebugEnabled)
+                        {
+                            dequeueMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
+                            logBuilder!.Append($"{messageId ?? dequeueMessage.MessageId},");
+                        }
+                    }
+                    else
+                    {
+                        if (Log.IsDebugEnabled)
+                        {
+                            dequeueMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
+                            Log.Debug($"Message '{messageId ?? dequeueMessage.MessageId}' is too large for the batch '{batchCount}' and will be sent individually to destination {destination}.");
+                        }
+                        messagesTooLargeToBeBatched ??= [];
+                        messagesTooLargeToBeBatched.Add(dequeueMessage);
+                        continue;
+                    }
+
+                    // Trying to add as many messages as we can to the batch. TryAdd might return false due to the batch being full
+                    // or the message being too large. In the case when the message is too large for the batch the next iteration
+                    // will try to add it to a fresh batch and if that fails too we will add it to the list of messages that couldn't be sent
+                    // trying to attempt to send them individually.
+                    while (messagesToSend.Count > 0 && messageBatch.TryAddMessage(messagesToSend.Peek()))
+                    {
+                        var added = messagesToSend.Dequeue();
+                        if (Log.IsDebugEnabled)
+                        {
+                            added.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
+                            logBuilder!.Append($"{messageId ?? added.MessageId},");
+                        }
+                    }
+
+                    batchCount++;
+                    if (Log.IsDebugEnabled)
+                    {
+                        Log.Debug($"Sending batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
+                    }
+
                     using var scope = transaction.ToScope();
                     await sender.SendMessagesAsync(messageBatch, cancellationToken).ConfigureAwait(false);
                     //committable tx will not be committed because this scope is not the owner
                     scope.Complete();
+
+
+                    if (Log.IsDebugEnabled)
+                    {
+                        Log.Debug($"Sent batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
+                    }
                 }
+                // The catch is deliberately at this level because CreateMessageBatchAsync might also throw
+                // when it tries to establish a link to a non-existing entity.
                 catch (ServiceBusException e) when (isTopic && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
                 {
-                    Log.Debug($"Sent batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to topic {destination} failed because the destination does not exist.");
-                }
-
-                if (Log.IsDebugEnabled)
-                {
-                    Log.Debug($"Sent batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
+                    Log.Debug($"Skipping sending messages to topic {destination} because the destination does not exist.");
+                    return;
                 }
             }
 
