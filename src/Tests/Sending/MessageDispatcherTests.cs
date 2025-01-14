@@ -121,11 +121,12 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var sender = new FakeSender
             {
-                SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
+                SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound),
+                SendMessageBatchAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
             };
             client.Senders["sometopic"] = sender;
 
-            var operation =
+            var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
                         [],
                         ReadOnlyMemory<byte>.Empty),
@@ -133,7 +134,15 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                     [],
                     DispatchConsistency.Isolated);
 
-            Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction()), Throws.Nothing);
+            var operation2 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction()), Throws.Nothing);
         }
 
         [Test]
