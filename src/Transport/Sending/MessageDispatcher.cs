@@ -3,15 +3,12 @@
 namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
     using Azure.Messaging.ServiceBus;
-    using Azure.Messaging.ServiceBus.Administration;
     using Logging;
 
     class MessageDispatcher : IMessageDispatcher
@@ -21,41 +18,26 @@ namespace NServiceBus.Transport.AzureServiceBus
         static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
         static readonly Dictionary<string, List<IOutgoingTransportOperation>> emptyDestinationAndOperations = [];
 
-        readonly ConcurrentDictionary<Type, bool> topicCache = new();
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly TopologyOptions topologyOptions;
-        readonly bool setupInfrastructure;
         readonly bool doNotSendTransportEncodingHeader;
         readonly OutgoingNativeMessageCustomizationAction customizerCallback;
-        readonly AzureServiceBusTransport transportSettings;
-        readonly ServiceBusAdministrationClient administrationClient;
 
         public MessageDispatcher(
             MessageSenderRegistry messageSenderRegistry,
             TopologyOptions topologyOptions,
-            bool setupInfrastructure,
-            AzureServiceBusTransport transportSettings,
-            ServiceBusAdministrationClient administrationClient,
             OutgoingNativeMessageCustomizationAction? customizerCallback = null,
             bool doNotSendTransportEncodingHeader = false
         )
         {
             this.messageSenderRegistry = messageSenderRegistry;
             this.topologyOptions = topologyOptions;
-            this.setupInfrastructure = setupInfrastructure;
-            this.transportSettings = transportSettings;
-            this.administrationClient = administrationClient;
             this.customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
             this.doNotSendTransportEncodingHeader = doNotSendTransportEncodingHeader;
         }
 
         public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
         {
-            if (setupInfrastructure)
-            {
-                await EnsureTopicsExist(outgoingMessages.MulticastTransportOperations, cancellationToken).ConfigureAwait(false);
-            }
-
             _ = transaction.TryGet(out AzureServiceBusTransportTransaction azureServiceBusTransaction);
 
             var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
@@ -129,41 +111,6 @@ namespace NServiceBus.Transport.AzureServiceBus
             {
                 Log.Error("Exception from Send.", ex);
                 throw;
-            }
-        }
-
-        async Task EnsureTopicsExist(List<MulticastTransportOperation> multicastOperations, CancellationToken cancellationToken)
-        {
-            foreach (var operation in multicastOperations.Where(x => !topicCache.ContainsKey(x.MessageType)))
-            {
-                var topic = operation.ExtractDestination(topologyOptions);
-
-                var topicOptions = new CreateTopicOptions(topic)
-                {
-                    EnableBatchedOperations = true,
-                    EnablePartitioning = transportSettings.EnablePartitioning,
-                    MaxSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
-                };
-
-                try
-                {
-                    await administrationClient.CreateTopicAsync(topicOptions, cancellationToken).ConfigureAwait(false);
-                    topicCache.AddOrUpdate(operation.MessageType, true, (type, _) => true);
-                }
-                catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
-                {
-                    // ignored due to race conditions
-                }
-                catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
-                {
-                    Log.Info($"Topic creation for topic {topicOptions.Name} is already in progress");
-                }
-                catch (UnauthorizedAccessException unauthorizedAccessException)
-                {
-                    // TODO: Check the log level
-                    Log.WarnFormat("Topic {0} could not be created. Reason: {1}", topicOptions.Name, unauthorizedAccessException.Message);
-                    throw;
-                }
             }
         }
 
