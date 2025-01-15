@@ -25,10 +25,13 @@ namespace NServiceBus
         public static TopicTopology FromOptions(TopologyOptions options) =>
             options switch
             {
-                MigrationTopologyOptions migrationTopologyOptions => new MigrationTopology(migrationTopologyOptions),
-                TopicPerEventTopologyOptions topicPerEventTopologyOptions => new TopicPerEventTopology(
-                    topicPerEventTopologyOptions),
-                _ => throw new InvalidOperationException("Unknown topology options.")
+                MigrationTopologyOptions migrationOptions => new MigrationTopology(migrationOptions),
+                TopicPerEventTopologyOptions perEventTopologyOptions => new TopicPerEventTopology(perEventTopologyOptions),
+                _ => new TopicPerEventTopology(new TopicPerEventTopologyOptions
+                {
+                    PublishedEventToTopicsMap = options.PublishedEventToTopicsMap,
+                    SubscribedEventToTopicsMap = options.SubscribedEventToTopicsMap,
+                })
             };
 
         /// <summary>
