@@ -8,6 +8,10 @@ using System;
 /// </summary>
 public class TopicPerEventTopology : TopicTopology
 {
+    internal TopicPerEventTopology(TopicPerEventTopologyOptions options) : base(options) => Options = options;
+
+    internal new TopicPerEventTopologyOptions Options { get; }
+
     /// <summary>
     /// 
     /// </summary>
