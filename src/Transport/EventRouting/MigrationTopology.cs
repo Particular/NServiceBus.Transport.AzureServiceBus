@@ -86,7 +86,7 @@ public class MigrationTopology : TopicTopology
     /// </summary>
     /// <typeparam name="TEventType"></typeparam>
     /// <exception cref="InvalidOperationException"></exception>
-    public void PublishToDefaultTopic<TEventType>()
+    public void MapToDefaultTopic<TEventType>()
     {
         _ = Options.EventsToMigrateMap.Add(typeof(TEventType).FullName ?? throw new InvalidOperationException());
     }
@@ -96,27 +96,7 @@ public class MigrationTopology : TopicTopology
     /// </summary>
     /// <param name="type"></param>
     /// <exception cref="InvalidOperationException"></exception>
-    public void PublishToDefaultTopic(Type type)
-    {
-        _ = Options.EventsToMigrateMap.Add(type.FullName ?? throw new InvalidOperationException());
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <typeparam name="TEventType"></typeparam>
-    /// <exception cref="InvalidOperationException"></exception>
-    public void SubscribeToDefaultTopic<TEventType>()
-    {
-        _ = Options.EventsToMigrateMap.Add(typeof(TEventType).FullName ?? throw new InvalidOperationException());
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="type"></param>
-    /// <exception cref="InvalidOperationException"></exception>
-    public void SubscribeToDefaultTopic(Type type)
+    public void MapToDefaultTopic(Type type)
     {
         _ = Options.EventsToMigrateMap.Add(type.FullName ?? throw new InvalidOperationException());
     }

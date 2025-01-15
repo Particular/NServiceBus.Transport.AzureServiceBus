@@ -90,7 +90,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     var topology = TopicTopology.Single(DedicatedTopic);
-                    topology.PublishToDefaultTopic<MyEvent>();
+                    topology.MapToDefaultTopic<MyEvent>();
 
                     transport.Topology = topology;
                 }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent>(this));
@@ -110,7 +110,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     var topology = TopicTopology.Single(DedicatedTopic);
-                    topology.SubscribeToDefaultTopic<MyEvent>();
+                    topology.MapToDefaultTopic<MyEvent>();
 
                     transport.Topology = topology;
                 }, metadata => metadata.RegisterPublisherFor<MyEvent, Publisher>());
