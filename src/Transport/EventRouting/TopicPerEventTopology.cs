@@ -10,7 +10,16 @@ public class TopicPerEventTopology : TopicTopology
 {
     internal TopicPerEventTopology(TopicPerEventTopologyOptions options) : base(options) => Options = options;
 
-    internal new TopicPerEventTopologyOptions Options { get; }
+    new TopicPerEventTopologyOptions Options { get; }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public string? SubscriptionName
+    {
+        get => Options.SubscriptionName;
+        set => Options.SubscriptionName = value;
+    }
 
     /// <summary>
     /// 
@@ -21,7 +30,8 @@ public class TopicPerEventTopology : TopicTopology
     public void PublishTo<TEventType>(string topicName)
     {
         // TODO Last one wins?
-        Options.PublishedEventToTopicsMap[typeof(TEventType).FullName ?? throw new InvalidOperationException()] = topicName;
+        Options.PublishedEventToTopicsMap[typeof(TEventType).FullName ?? throw new InvalidOperationException()] =
+            topicName;
     }
 
     /// <summary>
