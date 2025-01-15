@@ -7,13 +7,13 @@ namespace NServiceBus
     /// <summary>
     /// Represents the topic topology used by <see cref="AzureServiceBusTransport"/>.
     /// </summary>
-    public class TopicTopology
+    public abstract class TopicTopology
     {
         /// <summary>
         /// 
         /// </summary>
         /// <param name="options"></param>
-        protected TopicTopology(TopologyOptions? options = null) => Options = options ?? new TopologyOptions();
+        protected TopicTopology(TopologyOptions options) => Options = options;
 
         internal TopologyOptions Options { get; }
 
@@ -22,12 +22,19 @@ namespace NServiceBus
         /// </summary>
         /// <param name="options"></param>
         /// <returns></returns>
-        public static MigrationTopology FromOptions(TopologyOptions options) => new(options);
+        public static TopicTopology FromOptions(TopologyOptions options) =>
+            options switch
+            {
+                MigrationTopologyOptions migrationTopologyOptions => new MigrationTopology(migrationTopologyOptions),
+                TopicPerEventTopologyOptions topicPerEventTopologyOptions => new TopicPerEventTopology(
+                    topicPerEventTopologyOptions),
+                _ => throw new InvalidOperationException("Unknown topology options.")
+            };
 
         /// <summary>
         /// 
         /// </summary>
-        public static TopicPerEventTopology Default => new();
+        public static TopicPerEventTopology Default => new(new TopicPerEventTopologyOptions());
 
         /// <summary>
         /// Returns the default bundle topology uses <c>bundle-1</c> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
@@ -38,7 +45,11 @@ namespace NServiceBus
         /// Returns a topology using a single topic with the <paramref name="topicName"/> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
         /// </summary>
         /// <param name="topicName">The topic name.</param>
-        public static MigrationTopology Single(string topicName) => new(topicName, topicName);
+        public static MigrationTopology Single(string topicName) => new(new MigrationTopologyOptions
+        {
+            TopicToPublishTo = topicName,
+            TopicToSubscribeOn = topicName,
+        });
 
         /// <summary>
         /// Returns a topology using a distinct name for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
@@ -49,11 +60,17 @@ namespace NServiceBus
         /// <exception cref="ArgumentException">Thrown when <paramref name="topicToPublishTo"/> is equal to <paramref name="topicToSubscribeOn"/>.</exception>
         public static MigrationTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn)
         {
-            var hierarchy = new MigrationTopology(topicToPublishTo, topicToSubscribeOn);
+            var hierarchy = new MigrationTopology(new MigrationTopologyOptions
+            {
+                TopicToPublishTo = topicToPublishTo,
+                TopicToSubscribeOn = topicToSubscribeOn,
+            });
             if (!hierarchy.IsHierarchy)
             {
-                throw new ArgumentException($"The '{nameof(topicToPublishTo)}' cannot be equal to '{nameof(topicToSubscribeOn)}'. Choose different names.");
+                throw new ArgumentException(
+                    $"The '{nameof(topicToPublishTo)}' cannot be equal to '{nameof(topicToSubscribeOn)}'. Choose different names.");
             }
+
             return hierarchy;
         }
     }

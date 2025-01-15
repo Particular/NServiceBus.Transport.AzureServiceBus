@@ -78,7 +78,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
                 new TopologyOptions
                 {
-                    EventsToTopicMigrationMap = { { typeof(SomeEvent).FullName, ("sometopic", "sometopic") } }
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
                 });
 
             var operation1 =
