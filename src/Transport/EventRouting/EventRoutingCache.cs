@@ -1,6 +1,6 @@
 #nullable enable
 
-namespace NServiceBus;
+namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
 using System.Collections.Concurrent;
