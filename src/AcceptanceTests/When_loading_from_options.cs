@@ -10,7 +10,7 @@
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
 
-    public partial class When_loading_from_default_options
+    public partial class When_loading_from_options
     {
         string TopicName;
 
@@ -47,8 +47,8 @@
                             SubscriptionName = TopicName,
                             PublishedEventToTopicsMap = { { typeof(Event).FullName, TopicName } },
                             SubscribedEventToTopicsMap = { { typeof(Event).FullName, [TopicName] } }
-                        }, AzureServiceBus.TopologyOptionsSerializationContext.Default.TopologyOptions);
-                        var options = JsonSerializer.Deserialize(serializedOptions, AzureServiceBus.TopologyOptionsSerializationContext.Default.TopologyOptions);
+                        }, TopologyOptionsSerializationContext.Default.TopologyOptions);
+                        var options = JsonSerializer.Deserialize(serializedOptions, TopologyOptionsSerializationContext.Default.TopologyOptions);
                         transport.Topology = TopicTopology.FromOptions(options);
                     });
                     b.When((session, c) => session.Publish(new Event()));
@@ -70,8 +70,8 @@
                             TopicToPublishTo = TopicName,
                             TopicToSubscribeOn = TopicName,
                             EventsToMigrateMap = [typeof(Event).FullName]
-                        }, AzureServiceBus.TopologyOptionsSerializationContext.Default.TopologyOptions);
-                        var options = JsonSerializer.Deserialize(serializedOptions, AzureServiceBus.TopologyOptionsSerializationContext.Default.TopologyOptions);
+                        }, TopologyOptionsSerializationContext.Default.TopologyOptions);
+                        var options = JsonSerializer.Deserialize(serializedOptions, TopologyOptionsSerializationContext.Default.TopologyOptions);
                         transport.Topology = TopicTopology.FromOptions(options);
                     });
                     b.When((session, c) => session.Publish(new Event()));
