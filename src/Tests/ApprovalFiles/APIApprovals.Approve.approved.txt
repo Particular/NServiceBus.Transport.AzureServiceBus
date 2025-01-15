@@ -64,14 +64,12 @@ namespace NServiceBus
         public bool IsHierarchy { get; }
         public string TopicToPublishTo { get; }
         public string TopicToSubscribeOn { get; }
+        public void MapToDefaultTopic(System.Type type) { }
+        public void MapToDefaultTopic<TEventType>() { }
         public void PublishTo(System.Type type, string topicName) { }
         public void PublishTo<TEventType>(string topicName) { }
-        public void PublishToDefaultTopic(System.Type type) { }
-        public void PublishToDefaultTopic<TEventType>() { }
         public void SubscribeTo(System.Type type, string topicName) { }
         public void SubscribeTo<TEventType>(string topicName) { }
-        public void SubscribeToDefaultTopic(System.Type type) { }
-        public void SubscribeToDefaultTopic<TEventType>() { }
     }
     [System.Runtime.CompilerServices.RequiredMember]
     public class MigrationTopologyOptions : NServiceBus.TopologyOptions
@@ -91,7 +89,6 @@ namespace NServiceBus
     }
     public class TopicPerEventTopology : NServiceBus.TopicTopology
     {
-        public TopicPerEventTopology() { }
         public void PublishTo(System.Type type, string topicName) { }
         public void PublishTo<TEventType>(string topicName) { }
         public void SubscribeTo(System.Type type, string topicName) { }
