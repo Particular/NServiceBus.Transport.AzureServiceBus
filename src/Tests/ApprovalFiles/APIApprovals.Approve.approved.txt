@@ -61,7 +61,6 @@ namespace NServiceBus
     }
     public class MigrationTopology : NServiceBus.TopicTopology
     {
-        public MigrationTopology(NServiceBus.TopologyOptions options) { }
         public bool IsHierarchy { get; }
         public string TopicToPublishTo { get; }
         public string TopicToSubscribeOn { get; }
@@ -74,6 +73,22 @@ namespace NServiceBus
         public void SubscribeToDefaultTopic(System.Type type) { }
         public void SubscribeToDefaultTopic<TEventType>() { }
     }
+    [System.Runtime.CompilerServices.RequiredMember]
+    public class MigrationTopologyOptions : NServiceBus.TopologyOptions
+    {
+        [System.Obsolete("Constructors of types with required members are not supported in this version of " +
+            "your compiler.", true)]
+        [System.Runtime.CompilerServices.CompilerFeatureRequired("RequiredMembers")]
+        public MigrationTopologyOptions() { }
+        [System.Text.Json.Serialization.JsonObjectCreationHandling(System.Text.Json.Serialization.JsonObjectCreationHandling.Populate)]
+        public System.Collections.Generic.HashSet<string> EventsToMigrateMap { get; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public bool IsHierarchy { get; }
+        [System.Runtime.CompilerServices.RequiredMember]
+        public string TopicToPublishTo { get; init; }
+        [System.Runtime.CompilerServices.RequiredMember]
+        public string TopicToSubscribeOn { get; init; }
+    }
     public class TopicPerEventTopology : NServiceBus.TopicTopology
     {
         public TopicPerEventTopology() { }
@@ -82,23 +97,25 @@ namespace NServiceBus
         public void SubscribeTo(System.Type type, string topicName) { }
         public void SubscribeTo<TEventType>(string topicName) { }
     }
-    public class TopicTopology
+    public class TopicPerEventTopologyOptions : NServiceBus.TopologyOptions
     {
-        protected TopicTopology(NServiceBus.TopologyOptions? options = null) { }
+        public TopicPerEventTopologyOptions() { }
+        public string? SubscriptionName { get; init; }
+    }
+    public abstract class TopicTopology
+    {
+        protected TopicTopology(NServiceBus.TopologyOptions options) { }
         public static NServiceBus.TopicPerEventTopology Default { get; }
         public static NServiceBus.MigrationTopology DefaultBundle { get; }
-        public static NServiceBus.MigrationTopology FromOptions(NServiceBus.TopologyOptions options) { }
+        public static NServiceBus.TopicTopology FromOptions(NServiceBus.TopologyOptions options) { }
         public static NServiceBus.MigrationTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
         public static NServiceBus.MigrationTopology Single(string topicName) { }
     }
+    [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.MigrationTopologyOptions))]
+    [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.TopicPerEventTopologyOptions))]
     public class TopologyOptions
     {
         public TopologyOptions() { }
-        [System.Runtime.CompilerServices.TupleElementNames(new string[] {
-                "TopicToPublishTo",
-                "TopicToSubscribeOn"})]
-        [System.Text.Json.Serialization.JsonObjectCreationHandling(System.Text.Json.Serialization.JsonObjectCreationHandling.Populate)]
-        public System.Collections.Generic.Dictionary<string, System.ValueTuple<string, string>> EventsToTopicMigrationMap { get; }
         [System.Text.Json.Serialization.JsonObjectCreationHandling(System.Text.Json.Serialization.JsonObjectCreationHandling.Populate)]
         public System.Collections.Generic.Dictionary<string, string> PublishedEventToTopicsMap { get; }
         [System.Text.Json.Serialization.JsonObjectCreationHandling(System.Text.Json.Serialization.JsonObjectCreationHandling.Populate)]
