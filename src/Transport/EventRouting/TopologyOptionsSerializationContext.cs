@@ -1,4 +1,6 @@
-namespace NServiceBus.Transport.AzureServiceBus;
+#nullable enable
+
+namespace NServiceBus;
 
 using System.Text.Json.Serialization;
 
