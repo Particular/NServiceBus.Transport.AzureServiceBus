@@ -29,6 +29,6 @@ public class MigrationTopologyOptions : TopologyOptions
     /// <summary>
     /// 
     /// </summary>
-    [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-    public HashSet<string> EventsToMigrateMap { get; } = [];
+    [JsonInclude]
+    public HashSet<string> EventsToMigrateMap { get; init; } = [];
 }

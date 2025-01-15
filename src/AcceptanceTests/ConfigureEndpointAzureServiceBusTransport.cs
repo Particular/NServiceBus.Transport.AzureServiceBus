@@ -37,6 +37,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         {
             Topology = topology,
             SubscriptionNamingConvention = name => Shorten(name),
+            SubscriptionRuleNamingConvention = name => Shorten(name.FullName),
         };
 
         ApplyMappingsToSupportMultipleInheritance(endpointName, topology);
