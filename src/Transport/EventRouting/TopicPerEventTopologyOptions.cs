@@ -6,5 +6,8 @@ namespace NServiceBus;
 /// </summary>
 public class TopicPerEventTopologyOptions : TopologyOptions
 {
+    /// <summary>
+    /// 
+    /// </summary>
     public string? SubscriptionName { get; init; }
 }
