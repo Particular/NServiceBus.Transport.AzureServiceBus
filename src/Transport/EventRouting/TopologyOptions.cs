@@ -15,6 +15,11 @@ public class TopologyOptions
     /// <summary>
     /// 
     /// </summary>
+    public string? SubscriptionName { get; set; }
+
+    /// <summary>
+    /// 
+    /// </summary>
     [JsonInclude]
     public Dictionary<string, string> PublishedEventToTopicsMap { get; init; } = [];
 

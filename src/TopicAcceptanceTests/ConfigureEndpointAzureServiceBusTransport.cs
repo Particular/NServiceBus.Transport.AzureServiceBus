@@ -22,6 +22,8 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         }
 
         var topology = TopicTopology.DefaultBundle;
+        topology.SubscriptionName = Shorten(endpointName);
+
         foreach (var eventType in publisherMetadata.Publishers.SelectMany(p => p.Events))
         {
             topology.MapToDefaultTopic(eventType);
@@ -29,7 +31,6 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         var transport = new AzureServiceBusTransport(connectionString)
         {
             Topology = topology,
-            SubscriptionNamingConvention = name => Shorten(name),
             SubscriptionRuleNamingConvention = eventType => Shorten(eventType.FullName)
         };
 

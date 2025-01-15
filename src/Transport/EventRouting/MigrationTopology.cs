@@ -8,6 +8,8 @@ using System;
 /// </summary>
 public class MigrationTopology : TopicTopology
 {
+    internal MigrationTopology(MigrationTopologyOptions options) : base(options) => Options = options;
+
     /// <summary>
     /// Gets the topic name of the topic where all events are published to.
     /// </summary>
@@ -18,14 +20,22 @@ public class MigrationTopology : TopicTopology
     /// </summary>
     public string TopicToSubscribeOn => Options.TopicToSubscribeOn;
 
-    internal new MigrationTopologyOptions Options { get; }
 
     /// <summary>
     /// Gets whether the current topic topology represents a hierarchy.
     /// </summary>
-    public bool IsHierarchy => !string.Equals(TopicToPublishTo, TopicToSubscribeOn, StringComparison.OrdinalIgnoreCase);
+    public bool IsHierarchy => Options.IsHierarchy;
 
-    internal MigrationTopology(MigrationTopologyOptions options) : base(options) => Options = options;
+    /// <summary>
+    /// 
+    /// </summary>
+    public string? SubscriptionName
+    {
+        get => Options.SubscriptionName;
+        set => Options.SubscriptionName = value;
+    }
+
+    new MigrationTopologyOptions Options { get; }
 
     /// <summary>
     /// 

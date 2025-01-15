@@ -31,8 +31,8 @@
             this.setupInfrastructure = setupInfrastructure;
             this.administrationClient = administrationClient;
 
-            subscriptionName = transportSettings.SubscriptionNamingConvention(subscribingQueue);
             this.transportSettings = transportSettings;
+            subscriptionName = this.transportSettings.Topology.Options.SubscriptionName ?? subscribingQueue;
             // Maybe this should be passed in so that the dispatcher and the subscription manager share the same cache?
             eventRoutingCache = new EventRoutingCache(this.transportSettings.Topology.Options);
         }
