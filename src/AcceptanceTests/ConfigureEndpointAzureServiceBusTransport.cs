@@ -7,8 +7,13 @@ using Microsoft.Extensions.DependencyInjection;
 using NServiceBus;
 using NServiceBus.AcceptanceTesting.Customization;
 using NServiceBus.AcceptanceTesting.Support;
+using NServiceBus.AcceptanceTests.Routing;
+using NServiceBus.AcceptanceTests.Routing.NativePublishSubscribe;
+using NServiceBus.AcceptanceTests.Sagas;
+using NServiceBus.AcceptanceTests.Versioning;
 using NServiceBus.MessageMutator;
 using NServiceBus.Transport.AzureServiceBus.AcceptanceTests;
+using Conventions = NServiceBus.AcceptanceTesting.Customization.Conventions;
 
 public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestExecution
 {
@@ -21,17 +26,20 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
             throw new InvalidOperationException("envvar AzureServiceBus_ConnectionString not set");
         }
 
-        var topology = TopicTopology.DefaultBundle;
+        var topology = TopicTopology.Default;
         foreach (var eventType in publisherMetadata.Publishers.SelectMany(p => p.Events))
         {
-            topology.MapToDefaultTopic(eventType);
+            topology.PublishTo(eventType, GetTopicName(eventType));
+            topology.SubscribeTo(eventType, GetTopicName(eventType));
         }
+
         var transport = new AzureServiceBusTransport(connectionString)
         {
             Topology = topology,
             SubscriptionNamingConvention = name => Shorten(name),
-            SubscriptionRuleNamingConvention = eventType => Shorten(eventType.FullName)
         };
+
+        ApplyMappingsToSupportMultipleInheritance(endpointName, topology);
 
         configuration.UseTransport(transport);
 
@@ -41,6 +49,45 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         configuration.EnforcePublisherMetadataRegistration(endpointName, publisherMetadata);
 
         return Task.CompletedTask;
+    }
+
+    static string GetTopicName(Type eventType) => eventType.FullName.Replace("+", ".");
+
+    static void ApplyMappingsToSupportMultipleInheritance(string endpointName, TopicPerEventTopology topology)
+    {
+        if (endpointName == Conventions.EndpointNamingConvention(typeof(MultiSubscribeToPolymorphicEvent.Subscriber)))
+        {
+            topology.SubscribeTo<MultiSubscribeToPolymorphicEvent.IMyEvent>(GetTopicName(typeof(MultiSubscribeToPolymorphicEvent.MyEvent1)));
+            topology.SubscribeTo<MultiSubscribeToPolymorphicEvent.IMyEvent>(GetTopicName(typeof(MultiSubscribeToPolymorphicEvent.MyEvent2)));
+        }
+
+        if (endpointName == Conventions.EndpointNamingConvention(typeof(When_subscribing_to_a_base_event.GeneralSubscriber)))
+        {
+            topology.SubscribeTo<When_subscribing_to_a_base_event.IBaseEvent>(GetTopicName(typeof(When_subscribing_to_a_base_event.SpecificEvent)));
+        }
+
+        if (endpointName == Conventions.EndpointNamingConvention(
+                typeof(When_publishing_an_event_implementing_two_unrelated_interfaces.Subscriber)))
+        {
+            topology.SubscribeTo<When_publishing_an_event_implementing_two_unrelated_interfaces.IEventA>(
+                GetTopicName(typeof(When_publishing_an_event_implementing_two_unrelated_interfaces.CompositeEvent)));
+            topology.SubscribeTo<When_publishing_an_event_implementing_two_unrelated_interfaces.IEventB>(
+                GetTopicName(typeof(When_publishing_an_event_implementing_two_unrelated_interfaces.CompositeEvent)));
+        }
+
+        if (endpointName == Conventions.EndpointNamingConvention(
+                typeof(When_started_by_base_event_from_other_saga.SagaThatIsStartedByABaseEvent)))
+        {
+            topology.SubscribeTo<When_started_by_base_event_from_other_saga.IBaseEvent>(
+                GetTopicName(typeof(When_started_by_base_event_from_other_saga.ISomethingHappenedEvent)));
+        }
+
+        if (endpointName == Conventions.EndpointNamingConvention(
+                typeof(When_multiple_versions_of_a_message_is_published.V1Subscriber)))
+        {
+            topology.SubscribeTo<When_multiple_versions_of_a_message_is_published.V1Event>(
+                GetTopicName(typeof(When_multiple_versions_of_a_message_is_published.V2Event)));
+        }
     }
 
     static string Shorten(string name)
