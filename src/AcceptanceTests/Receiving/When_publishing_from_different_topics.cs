@@ -76,9 +76,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     var topology = TopicTopology.Single("bundle-a");
-                    topology.SubscribeToDefaultTopic<EventFromTopicB>();
-                    topology.SubscribeToDefaultTopic<EventFromTopicC>();
-                    topology.PublishToDefaultTopic<EventFromTopicA>();
+                    topology.MapToDefaultTopic<EventFromTopicA>();
+                    topology.MapToDefaultTopic<EventFromTopicB>();
+                    topology.MapToDefaultTopic<EventFromTopicC>();
                     transport.Topology = topology;
                 }, metadata =>
                 {
@@ -120,8 +120,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     var topology = TopicTopology.Hierarchy("bundle-a", "bundle-b");
-                    topology.SubscribeToDefaultTopic<EventFromTopicA>();
-                    topology.PublishToDefaultTopic<EventFromTopicB>();
+                    topology.MapToDefaultTopic<EventFromTopicA>();
+                    topology.MapToDefaultTopic<EventFromTopicB>();
                     transport.Topology = topology;
                 }, metadata =>
                 {
@@ -144,8 +144,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     var topology = TopicTopology.Hierarchy("bundle-a", "bundle-c");
-                    topology.SubscribeToDefaultTopic<EventFromTopicA>();
-                    topology.PublishToDefaultTopic<EventFromTopicC>();
+                    topology.MapToDefaultTopic<EventFromTopicA>();
+                    topology.MapToDefaultTopic<EventFromTopicC>();
                     transport.Topology = topology;
                 }, metadata =>
                 {

@@ -24,8 +24,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         var topology = TopicTopology.DefaultBundle;
         foreach (var eventType in publisherMetadata.Publishers.SelectMany(p => p.Events))
         {
-            topology.PublishToDefaultTopic(eventType);
-            topology.SubscribeToDefaultTopic(eventType);
+            topology.MapToDefaultTopic(eventType);
         }
         var transport = new AzureServiceBusTransport(connectionString)
         {
