@@ -42,8 +42,7 @@
 
         public class Publisher1 : EndpointConfigurationBuilder
         {
-            public Publisher1()
-            {
+            public Publisher1() =>
                 EndpointSetup<DefaultServer>(c =>
                 {
                     var topology = TopicTopology.Default;
@@ -51,13 +50,11 @@
 
                     c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                 }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent1>(this));
-            }
         }
 
         public class Publisher2 : EndpointConfigurationBuilder
         {
-            public Publisher2()
-            {
+            public Publisher2() =>
                 EndpointSetup<DefaultServer>(c =>
                 {
                     var topology = TopicTopology.Default;
@@ -65,13 +62,11 @@
 
                     c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                 }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent2>(this));
-            }
         }
 
         public class Subscriber : EndpointConfigurationBuilder
         {
-            public Subscriber()
-            {
+            public Subscriber() =>
                 EndpointSetup<DefaultServer>(c =>
                 {
                     var topology = TopicTopology.Default;
@@ -85,17 +80,9 @@
                     metadata.RegisterPublisherFor<MyEvent2, Publisher2>();
                     metadata.RegisterPublisherFor<IMyEvent>("not-used");
                 });
-            }
 
-            public class MyHandler : IHandleMessages<IMyEvent>
+            public class MyHandler(Context testContext) : IHandleMessages<IMyEvent>
             {
-                Context testContext;
-
-                public MyHandler(Context testContext)
-                {
-                    this.testContext = testContext;
-                }
-
                 public Task Handle(IMyEvent messageThatIsEnlisted, IMessageHandlerContext context)
                 {
                     testContext.AddTrace($"Got event '{messageThatIsEnlisted}'");
@@ -113,16 +100,10 @@
             }
         }
 
-        public class MyEvent1 : IMyEvent
-        {
-        }
+        public class MyEvent1 : IMyEvent;
 
-        public class MyEvent2 : IMyEvent
-        {
-        }
+        public class MyEvent2 : IMyEvent;
 
-        public interface IMyEvent : IEvent
-        {
-        }
+        public interface IMyEvent : IEvent;
     }
 }
