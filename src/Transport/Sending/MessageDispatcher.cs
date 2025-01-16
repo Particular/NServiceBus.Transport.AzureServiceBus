@@ -16,7 +16,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         const int MaxMessageThresholdForTransaction = 100;
 
         static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
-        static readonly Dictionary<string, (bool IsTopic, List<IOutgoingTransportOperation> Operations)> emptyDestinationAndOperations = [];
+        static readonly Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> emptyDestinationAndOperations = [];
 
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly bool doNotSendTransportEncodingHeader;
@@ -50,8 +50,8 @@ namespace NServiceBus.Transport.AzureServiceBus
             transportOperations.AddRange(unicastTransportOperations);
             transportOperations.AddRange(multicastTransportOperations);
 
-            Dictionary<string, (bool IsTopic, List<IOutgoingTransportOperation> Operations)>? isolatedOperationsPerDestination = null;
-            Dictionary<string, (bool IsTopic, List<IOutgoingTransportOperation> Operations)>? defaultOperationsPerDestination = null;
+            Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)>? isolatedOperationsPerDestination = null;
+            Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)>? defaultOperationsPerDestination = null;
             var numberOfDefaultOperations = 0;
             var numberOfIsolatedOperations = 0;
 
@@ -63,7 +63,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                     case DispatchConsistency.Default:
                         numberOfDefaultOperations++;
                         defaultOperationsPerDestination ??=
-                            new Dictionary<string, (bool IsTopic, List<IOutgoingTransportOperation> Operations)>(StringComparer.OrdinalIgnoreCase);
+                            new Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)>(StringComparer.OrdinalIgnoreCase);
 
                         if (!defaultOperationsPerDestination.ContainsKey(destination))
                         {
@@ -78,7 +78,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                         // every isolated operation counts
                         numberOfIsolatedOperations++;
                         isolatedOperationsPerDestination ??=
-                            new Dictionary<string, (bool IsTopic, List<IOutgoingTransportOperation> Operations)>(StringComparer.OrdinalIgnoreCase);
+                            new Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)>(StringComparer.OrdinalIgnoreCase);
                         if (!isolatedOperationsPerDestination.ContainsKey(destination))
                         {
                             isolatedOperationsPerDestination[destination] = (operation is MulticastTransportOperation, [operation]);
@@ -118,7 +118,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         // The parameters of this method are deliberately mutable and of the original collection type to make sure
         // no boxing occurs
         Task DispatchBatchedOperations(
-            Dictionary<string, (bool IsTopic, List<IOutgoingTransportOperation> Operations)> transportOperationsPerDestination,
+            Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> transportOperationsPerDestination,
             int numberOfTransportOperations,
             TransportTransaction transportTransaction,
             AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
@@ -154,7 +154,7 @@ namespace NServiceBus.Transport.AzureServiceBus
             return Task.WhenAll(dispatchTasks);
         }
 
-        async Task DispatchBatchOrFallbackToIndividualSendsForDestination(string destination, bool isTopic, ServiceBusClient? client, Transaction? transaction,
+        async Task DispatchBatchOrFallbackToIndividualSendsForDestination(string destination, bool isMulticast, ServiceBusClient? client, Transaction? transaction,
             Queue<ServiceBusMessage> messagesToSend,
             CancellationToken cancellationToken)
         {
@@ -231,7 +231,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 }
                 // The catch is deliberately at this level because CreateMessageBatchAsync might also throw
                 // when it tries to establish a link to a non-existing entity.
-                catch (ServiceBusException e) when (isTopic && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+                catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
                 {
                     Log.Debug($"Skipping sending messages to topic {destination} because the destination does not exist.");
                     return;
@@ -248,7 +248,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 var individualSendTasks = new List<Task>(messagesTooLargeToBeBatched.Count);
                 foreach (var message in messagesTooLargeToBeBatched)
                 {
-                    individualSendTasks.Add(DispatchForDestination(destination, isTopic, client, transaction, message, cancellationToken));
+                    individualSendTasks.Add(DispatchForDestination(destination, isMulticast, client, transaction, message, cancellationToken));
                 }
 
                 await Task.WhenAll(individualSendTasks)
@@ -264,7 +264,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         // The parameters of this method are deliberately mutable and of the original collection type to make sure
         // no boxing occurs
         Task DispatchIsolatedOperations(
-            Dictionary<string, (bool IsTopic, List<IOutgoingTransportOperation> Operations)> transportOperationsPerDestination,
+            Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> transportOperationsPerDestination,
             int numberOfTransportOperations,
             TransportTransaction transportTransaction,
             AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
@@ -297,7 +297,7 @@ namespace NServiceBus.Transport.AzureServiceBus
             return Task.WhenAll(dispatchTasks);
         }
 
-        async Task DispatchForDestination(string destination, bool isTopic, ServiceBusClient? client,
+        async Task DispatchForDestination(string destination, bool isMulticast, ServiceBusClient? client,
             Transaction? transaction, ServiceBusMessage message, CancellationToken cancellationToken)
         {
             var sender = messageSenderRegistry.GetMessageSender(destination, client);
@@ -308,7 +308,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 await sender.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
                 scope.Complete();
             }
-            catch (ServiceBusException e) when (isTopic && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
                 Log.Debug($"Sending message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
             }
