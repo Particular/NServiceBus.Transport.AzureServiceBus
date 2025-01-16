@@ -13,12 +13,12 @@ public class MigrationTopology : TopicTopology
     /// <summary>
     /// Gets the topic name of the topic where all events are published to.
     /// </summary>
-    public string TopicToPublishTo => Options.TopicToPublishTo;
+    public string TopicToPublishTo => Options.TopicToPublishTo!;
 
     /// <summary>
     /// Gets the topic name of the topic where all subscriptions are managed on.
     /// </summary>
-    public string TopicToSubscribeOn => Options.TopicToSubscribeOn;
+    public string TopicToSubscribeOn => Options.TopicToSubscribeOn!;
 
 
     /// <summary>

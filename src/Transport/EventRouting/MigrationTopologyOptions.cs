@@ -10,15 +10,17 @@ using System.Text.Json.Serialization;
 /// </summary>
 public class MigrationTopologyOptions : TopologyOptions
 {
+    //TODO: Change to required/init once the Fody Obsolete problem is fixed
     /// <summary>
     /// Gets the topic name of the topic where all events are published to.
     /// </summary>
-    public required string TopicToPublishTo { get; init; }
+    public string? TopicToPublishTo { get; set; }
 
+    //TODO: Change to required/init once the Fody Obsolete problem is fixed
     /// <summary>
     /// Gets the topic name of the topic where all subscriptions are managed on.
     /// </summary>
-    public required string TopicToSubscribeOn { get; init; }
+    public string? TopicToSubscribeOn { get; set; }
 
     /// <summary>
     /// Gets whether the current topic topology represents a hierarchy.
