@@ -19,7 +19,7 @@
         readonly string subscribingQueue;
         readonly string subscriptionName;
         readonly AzureServiceBusTransport transportSettings;
-        readonly EventRoutingCache eventRoutingCache;
+        readonly RoutingCache routingCache;
 
         public SubscriptionManager(
             string subscribingQueue,
@@ -34,7 +34,7 @@
             this.transportSettings = transportSettings;
             subscriptionName = this.transportSettings.Topology.Options.SubscriptionName ?? subscribingQueue;
             // Maybe this should be passed in so that the dispatcher and the subscription manager share the same cache?
-            eventRoutingCache = new EventRoutingCache(this.transportSettings.Topology.Options);
+            routingCache = new RoutingCache(this.transportSettings.Topology.Options);
         }
 
         public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken = default)
@@ -66,7 +66,7 @@
             // TODO: There is no convention nor mapping here currently.
             // TODO: Is it a good idea to use the subscriptionName as the endpoint name?
 
-            var topicsToSubscribeOn = eventRoutingCache.GetSubscribeDestinations(messageMetadata.MessageType);
+            var topicsToSubscribeOn = routingCache.GetSubscribeDestinations(messageMetadata.MessageType);
             var subscribeTasks = new List<Task>(topicsToSubscribeOn.Length);
             foreach (var topicInfo in topicsToSubscribeOn)
             {
@@ -158,7 +158,7 @@
 
         public async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
         {
-            var topicsToUnsubscribeOn = eventRoutingCache.GetSubscribeDestinations(eventType.MessageType);
+            var topicsToUnsubscribeOn = routingCache.GetSubscribeDestinations(eventType.MessageType);
             var unsubscribeTasks = new List<Task>(topicsToUnsubscribeOn.Length);
             foreach (var topicInfo in topicsToUnsubscribeOn)
             {
