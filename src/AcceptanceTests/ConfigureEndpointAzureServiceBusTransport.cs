@@ -33,10 +33,11 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
             topology.SubscribeTo(eventType, GetTopicName(eventType));
         }
 
+        topology.SubscriptionName = Shorten(endpointName);
+
         var transport = new AzureServiceBusTransport(connectionString)
         {
             Topology = topology,
-            SubscriptionNamingConvention = name => Shorten(name),
             SubscriptionRuleNamingConvention = name => Shorten(name.FullName),
         };
 
@@ -52,7 +53,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         return Task.CompletedTask;
     }
 
-    static string GetTopicName(Type eventType) => eventType.FullName.Replace("+", ".");
+    public static string GetTopicName(Type eventType) => eventType.FullName.Replace("+", ".");
 
     static void ApplyMappingsToSupportMultipleInheritance(string endpointName, TopicPerEventTopology topology)
     {
