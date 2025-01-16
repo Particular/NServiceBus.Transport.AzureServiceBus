@@ -1,3 +1,5 @@
+#nullable enable
+
 namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
@@ -6,7 +8,8 @@ namespace NServiceBus.Transport.AzureServiceBus
 
     static class OutgoingTransportOperationExtensions
     {
-        public static void ApplyCustomizationToOutgoingNativeMessage(this IOutgoingTransportOperation transportOperation,
+        public static void ApplyCustomizationToOutgoingNativeMessage(
+            this IOutgoingTransportOperation transportOperation,
             ServiceBusMessage message, TransportTransaction transportTransaction, ILog logger)
         {
             if (!transportOperation.Properties.TryGetValue(NativeMessageCustomizationBehavior.CustomizationKey,
@@ -26,12 +29,13 @@ namespace NServiceBus.Transport.AzureServiceBus
             action(message);
         }
 
-        public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation, string defaultMulticastRoute)
+        public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation,
+            EventRoutingCache eventRoutingCache)
         {
             switch (outgoingTransportOperation)
             {
-                case MulticastTransportOperation:
-                    return defaultMulticastRoute;
+                case MulticastTransportOperation multicastTransportOperation:
+                    return eventRoutingCache.GetPublishDestination(multicastTransportOperation.MessageType);
                 case UnicastTransportOperation unicastTransportOperation:
                     var destination = unicastTransportOperation.Destination;
 
@@ -40,8 +44,9 @@ namespace NServiceBus.Transport.AzureServiceBus
 
                     if (index > 0)
                     {
-                        destination = destination.Substring(0, index);
+                        destination = destination[..index];
                     }
+
                     return destination;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));

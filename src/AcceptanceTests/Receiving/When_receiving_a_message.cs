@@ -1,4 +1,4 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending.Receiving
+﻿namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
 {
     using System;
     using System.Threading.Tasks;

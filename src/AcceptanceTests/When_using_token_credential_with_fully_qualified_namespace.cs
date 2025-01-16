@@ -57,7 +57,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
 
         public class Publisher : EndpointConfigurationBuilder
         {
-            public Publisher() => EndpointSetup<DefaultPublisher>();
+            public Publisher()
+                => EndpointSetup<DefaultPublisher>(_ => { },
+                    metadata => metadata.RegisterSelfAsPublisherFor<MyEvent>(this));
 
             public class MyHandler : IHandleMessages<MyCommand>
             {
@@ -68,7 +70,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
 
         public class Subscriber : EndpointConfigurationBuilder
         {
-            public Subscriber() => EndpointSetup<DefaultServer>();
+            public Subscriber() => EndpointSetup<DefaultServer>(_ => { },
+                metadata => metadata.RegisterPublisherFor<MyEvent, Publisher>());
 
             public class MyHandler(Context testContext) : IHandleMessages<MyEvent>
             {

@@ -1,13 +1,50 @@
 namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
 {
+    using System;
     using System.Threading.Tasks;
     using AcceptanceTesting;
+    using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using NServiceBus.AcceptanceTests;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
 
     public class When_publishing_sendonly_and_subscribing_on_different_topics : NServiceBusAcceptanceTest
     {
+        [SetUp]
+        public async Task Setup()
+        {
+            var adminClient =
+                new ServiceBusAdministrationClient(
+                    Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+            try
+            {
+                // makes sure during local development the topic gets cleared before each test run
+                await adminClient.DeleteTopicAsync("bundle-a");
+            }
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            {
+            }
+
+            try
+            {
+                // makes sure during local development the topic gets cleared before each test run
+                await adminClient.DeleteTopicAsync("bundle-b");
+            }
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            {
+            }
+
+            try
+            {
+                // makes sure during local development the topic gets cleared before each test run
+                await adminClient.DeleteTopicAsync("bundle-c");
+            }
+            catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+            {
+            }
+        }
+
         [Test]
         public async Task Should_be_delivered_to_all_subscribers()
         {
@@ -37,9 +74,11 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 EndpointSetup<DefaultPublisher>(b =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Single("bundle-a");
+                    MigrationTopology transportTopology = TopicTopology.Single("bundle-a");
+                    transportTopology.MapToDefaultTopic<MyEvent>();
+                    transport.Topology = transportTopology;
                     b.SendOnly();
-                });
+                }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent>(this));
         }
 
         public class SubscriberOnTopicB : EndpointConfigurationBuilder
@@ -49,21 +88,19 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Hierarchy("bundle-a", "bundle-b");
-                });
+                    MigrationTopology transportTopology = TopicTopology.Hierarchy("bundle-a", "bundle-b");
+                    transportTopology.MapToDefaultTopic<MyEvent>();
+                    transport.Topology = transportTopology;
+                }, metadata => metadata.RegisterPublisherFor<MyEvent>(typeof(SendOnlyPublisherOnTopicA)));
 
-            public class MyHandler : IHandleMessages<MyEvent>
+            public class MyHandler(Context testContext) : IHandleMessages<MyEvent>
             {
-                public MyHandler(Context context) => testContext = context;
-
                 public Task Handle(MyEvent message, IMessageHandlerContext context)
                 {
                     testContext.SubscriberOnTopicAGotTheEvent = true;
 
                     return Task.CompletedTask;
                 }
-
-                Context testContext;
             }
         }
 
@@ -74,26 +111,22 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Hierarchy("bundle-a", "bundle-c");
-                });
+                    MigrationTopology transportTopology = TopicTopology.Hierarchy("bundle-a", "bundle-c");
+                    transportTopology.MapToDefaultTopic<MyEvent>();
+                    transport.Topology = transportTopology;
+                }, metadata => metadata.RegisterPublisherFor<MyEvent>(typeof(SendOnlyPublisherOnTopicA)));
 
-            public class MyHandler : IHandleMessages<MyEvent>
+            public class MyHandler(Context testContext) : IHandleMessages<MyEvent>
             {
-                public MyHandler(Context context) => testContext = context;
-
                 public Task Handle(MyEvent message, IMessageHandlerContext context)
                 {
                     testContext.SubscriberOnTopicBGotTheEvent = true;
 
                     return Task.CompletedTask;
                 }
-
-                Context testContext;
             }
         }
 
-        public class MyEvent : IEvent
-        {
-        }
+        public class MyEvent : IEvent;
     }
 }

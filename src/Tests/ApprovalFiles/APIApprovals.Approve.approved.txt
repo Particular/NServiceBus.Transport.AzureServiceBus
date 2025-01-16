@@ -18,6 +18,9 @@ namespace NServiceBus
         public int? PrefetchCount { get; set; }
         public int PrefetchMultiplier { get; set; }
         public Azure.Messaging.ServiceBus.ServiceBusRetryOptions RetryPolicyOptions { get; set; }
+        [System.Obsolete("The subscription name can be set on the topology. Use `Topology` instead. The mem" +
+            "ber currently throws a NotImplementedException. Will be removed in version 5.0.0" +
+            ".", true)]
         public System.Func<string, string> SubscriptionNamingConvention { get; set; }
         public System.Func<System.Type, string> SubscriptionRuleNamingConvention { get; set; }
         public System.TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
@@ -59,19 +62,86 @@ namespace NServiceBus
     {
         public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
     }
-    public readonly struct TopicTopology : System.IEquatable<NServiceBus.TopicTopology>
+    public class MigrationTopology : NServiceBus.TopicTopology
     {
         public bool IsHierarchy { get; }
+        public string? SubscriptionName { get; set; }
         public string TopicToPublishTo { get; }
         public string TopicToSubscribeOn { get; }
-        public static NServiceBus.TopicTopology DefaultBundle { get; }
-        public bool Equals(NServiceBus.TopicTopology other) { }
-        public override bool Equals(object obj) { }
-        public override int GetHashCode() { }
-        public static NServiceBus.TopicTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
-        public static NServiceBus.TopicTopology Single(string topicName) { }
-        public static bool operator !=(NServiceBus.TopicTopology left, NServiceBus.TopicTopology right) { }
-        public static bool operator ==(NServiceBus.TopicTopology left, NServiceBus.TopicTopology right) { }
+        public void MapToDefaultTopic(System.Type type) { }
+        public void MapToDefaultTopic<TEventType>() { }
+        public void PublishTo(System.Type type, string topicName) { }
+        public void PublishTo<TEventType>(string topicName) { }
+        public void SubscribeTo(System.Type type, string topicName) { }
+        public void SubscribeTo<TEventType>(string topicName) { }
+    }
+    [System.Runtime.CompilerServices.RequiredMember]
+    public class MigrationTopologyOptions : NServiceBus.TopologyOptions
+    {
+        [System.Obsolete("Constructors of types with required members are not supported in this version of " +
+            "your compiler.", true)]
+        [System.Runtime.CompilerServices.CompilerFeatureRequired("RequiredMembers")]
+        public MigrationTopologyOptions() { }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public bool IsHierarchy { get; }
+        [System.Text.Json.Serialization.JsonInclude]
+        public System.Collections.Generic.HashSet<string> EventsToMigrateMap { get; init; }
+        [System.Runtime.CompilerServices.RequiredMember]
+        public string TopicToPublishTo { get; init; }
+        [System.Runtime.CompilerServices.RequiredMember]
+        public string TopicToSubscribeOn { get; init; }
+    }
+    public class TopicPerEventTopology : NServiceBus.TopicTopology
+    {
+        public string? SubscriptionName { get; set; }
+        public void PublishTo(System.Type type, string topicName) { }
+        public void PublishTo<TEventType>(string topicName) { }
+        public void SubscribeTo(System.Type type, string topicName) { }
+        public void SubscribeTo<TEventType>(string topicName) { }
+    }
+    public class TopicPerEventTopologyOptions : NServiceBus.TopologyOptions
+    {
+        public TopicPerEventTopologyOptions() { }
+    }
+    public abstract class TopicTopology
+    {
+        protected TopicTopology(NServiceBus.TopologyOptions options) { }
+        public static NServiceBus.TopicPerEventTopology Default { get; }
+        public static NServiceBus.MigrationTopology DefaultBundle { get; }
+        public static NServiceBus.TopicTopology FromOptions(NServiceBus.TopologyOptions options) { }
+        public static NServiceBus.MigrationTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
+        public static NServiceBus.MigrationTopology Single(string topicName) { }
+    }
+    [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.MigrationTopologyOptions), "migration-topology-options")]
+    [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.TopicPerEventTopologyOptions), "topic-per-event-topology-options")]
+    [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.TopologyOptions), "topology-options")]
+    public class TopologyOptions
+    {
+        public TopologyOptions() { }
+        public string? SubscriptionName { get; set; }
+        [System.Text.Json.Serialization.JsonInclude]
+        public System.Collections.Generic.Dictionary<string, string> PublishedEventToTopicsMap { get; init; }
+        [System.Text.Json.Serialization.JsonInclude]
+        public System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>> SubscribedEventToTopicsMap { get; init; }
+    }
+    [System.Text.Json.Serialization.JsonSerializable(typeof(NServiceBus.MigrationTopologyOptions))]
+    [System.Text.Json.Serialization.JsonSerializable(typeof(NServiceBus.TopicPerEventTopologyOptions))]
+    [System.Text.Json.Serialization.JsonSerializable(typeof(NServiceBus.TopologyOptions))]
+    [System.Text.Json.Serialization.JsonSourceGenerationOptions(WriteIndented=true)]
+    public class TopologyOptionsSerializationContext : System.Text.Json.Serialization.JsonSerializerContext, System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver
+    {
+        public TopologyOptionsSerializationContext() { }
+        public TopologyOptionsSerializationContext(System.Text.Json.JsonSerializerOptions options) { }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>>> DictionaryStringHashSetString { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<string, string>> DictionaryStringString { get; }
+        protected override System.Text.Json.JsonSerializerOptions? GeneratedSerializerOptions { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.HashSet<string>> HashSetString { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.MigrationTopologyOptions> MigrationTopologyOptions { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<string> String { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.TopicPerEventTopologyOptions> TopicPerEventTopologyOptions { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.TopologyOptions> TopologyOptions { get; }
+        public static NServiceBus.TopologyOptionsSerializationContext Default { get; }
+        public override System.Text.Json.Serialization.Metadata.JsonTypeInfo? GetTypeInfo(System.Type type) { }
     }
 }
 namespace NServiceBus.Testing
