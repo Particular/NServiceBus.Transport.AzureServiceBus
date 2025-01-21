@@ -43,22 +43,21 @@ public class MigrationTopology : TopicTopology
     /// <param name="topicName"></param>
     /// <typeparam name="TEventType"></typeparam>
     /// <exception cref="InvalidOperationException"></exception>
-    public void PublishTo<TEventType>(string topicName)
-    {
-        // TODO Last one wins?
-        Options.PublishedEventToTopicsMap[typeof(TEventType).FullName ?? throw new InvalidOperationException()] = topicName;
-    }
+    public void PublishTo<TEventType>(string topicName) => PublishTo(typeof(TEventType), topicName);
 
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="type"></param>
+    /// <param name="eventType"></param>
     /// <param name="topicName"></param>
     /// <exception cref="InvalidOperationException"></exception>
-    public void PublishTo(Type type, string topicName)
+    public void PublishTo(Type eventType, string topicName)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
+
         // TODO Last one wins?
-        Options.PublishedEventToTopicsMap[type.FullName ?? throw new InvalidOperationException()] = topicName;
+        Options.PublishedEventToTopicsMap[eventType.FullName ?? throw new InvalidOperationException()] = topicName;
     }
 
     /// <summary>
@@ -72,15 +71,15 @@ public class MigrationTopology : TopicTopology
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="type"></param>
+    /// <param name="eventType"></param>
     /// <param name="topicName"></param>
     /// <exception cref="InvalidOperationException"></exception>
-    public void SubscribeTo(Type type, string topicName)
+    public void SubscribeTo(Type eventType, string topicName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(type.FullName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
-        var eventTypeFullName = type.FullName;
+        var eventTypeFullName = eventType.FullName;
         if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
         {
             topics.Add(topicName);
@@ -96,18 +95,38 @@ public class MigrationTopology : TopicTopology
     /// </summary>
     /// <typeparam name="TEventType"></typeparam>
     /// <exception cref="InvalidOperationException"></exception>
-    public void MapToDefaultTopic<TEventType>()
+    public void MapToDefaultTopic<TEventType>() => MapToDefaultTopic(typeof(TEventType));
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="eventType"></param>
+    /// <exception cref="InvalidOperationException"></exception>
+    public void MapToDefaultTopic(Type eventType)
     {
-        _ = Options.EventsToMigrateMap.Add(typeof(TEventType).FullName ?? throw new InvalidOperationException());
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
+
+        _ = Options.EventsToMigrateMap.Add(eventType.FullName);
     }
 
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="type"></param>
+    /// <param name="ruleName"></param>
+    /// <typeparam name="TEventType"></typeparam>
+    public void OverrideRuleNameFor<TEventType>(string ruleName) => OverrideRuleNameFor(typeof(TEventType), ruleName);
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="eventType"></param>
+    /// <param name="ruleName"></param>
     /// <exception cref="InvalidOperationException"></exception>
-    public void MapToDefaultTopic(Type type)
+    public void OverrideRuleNameFor(Type eventType, string ruleName)
     {
-        _ = Options.EventsToMigrateMap.Add(type.FullName ?? throw new InvalidOperationException());
+        ArgumentException.ThrowIfNullOrWhiteSpace(ruleName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
+
+        Options.SubscribedEventToRuleNameMap[eventType.FullName] = ruleName;
     }
 }

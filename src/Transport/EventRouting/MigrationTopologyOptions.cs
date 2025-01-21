@@ -33,4 +33,10 @@ public class MigrationTopologyOptions : TopologyOptions
     /// </summary>
     [JsonInclude]
     public HashSet<string> EventsToMigrateMap { get; init; } = [];
+
+    /// <summary>
+    /// 
+    /// </summary>
+    [JsonInclude]
+    public Dictionary<string, string> SubscribedEventToRuleNameMap { get; init; } = [];
 }

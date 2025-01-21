@@ -53,11 +53,10 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
     {
         var transportInfrastructure = await transportDefinition.Initialize(
             hostSettings,
-            new[]
-            {
-                new ReceiveSettings(inputQueueName.ToString(), inputQueueName, true, false, errorQueueName),
-            },
-            Array.Empty<string>(),
+            [
+                new ReceiveSettings(inputQueueName.ToString(), inputQueueName, true, false, errorQueueName)
+            ],
+            [],
             cancellationToken);
 
         return transportInfrastructure;

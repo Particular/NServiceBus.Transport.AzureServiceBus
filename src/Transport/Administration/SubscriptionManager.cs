@@ -137,7 +137,7 @@
 
             if (topicInfo.RequiresRule)
             {
-                var ruleName = transportSettings.SubscriptionRuleNamingConvention(messageMetadata.MessageType);
+                var ruleName = eventRoutingCache.GetSubscriptionRuleName(messageMetadata.MessageType);
                 var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{messageMetadata.MessageType.FullName}%'";
 
                 // Previously we used the rule manager here too

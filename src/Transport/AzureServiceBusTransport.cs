@@ -254,34 +254,6 @@
         TimeSpan? maxAutoLockRenewalDuration;
 
         /// <summary>
-        /// Specifies a callback to customize subscription rule names.
-        /// </summary>
-        /// TODO: We need to figure out whether this needs to be moved because these conventions are only ever
-        /// called for the forwarding cases.
-        public Func<Type, string> SubscriptionRuleNamingConvention
-        {
-            get => subscriptionRuleNamingConvention;
-            set
-            {
-                Guard.AgainstNull(nameof(SubscriptionRuleNamingConvention), value);
-
-                // wrap the custom convention:
-                subscriptionRuleNamingConvention = eventType =>
-                {
-                    try
-                    {
-                        return value(eventType);
-                    }
-                    catch (Exception exception)
-                    {
-                        throw new Exception("Custom subscription rule naming convention threw an exception", exception);
-                    }
-                };
-            }
-        }
-        Func<Type, string> subscriptionRuleNamingConvention = static type => type.FullName;
-
-        /// <summary>
         /// Configures the transport to use AMQP over WebSockets.
         /// </summary>
         public bool UseWebSockets { get; set; }

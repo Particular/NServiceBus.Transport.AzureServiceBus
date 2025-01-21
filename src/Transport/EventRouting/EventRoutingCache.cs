@@ -15,11 +15,13 @@ class EventRoutingCache
         SubscribedEventToTopicsMap = topologyOptions.SubscribedEventToTopicsMap;
 
         var migrationTopologyOptions = topologyOptions as MigrationTopologyOptions;
+        SubscribedEventToRuleNameMap = migrationTopologyOptions?.SubscribedEventToRuleNameMap ?? [];
         EventsToMigrateMap = migrationTopologyOptions?.EventsToMigrateMap ?? [];
         TopicToPublishTo = migrationTopologyOptions?.TopicToPublishTo;
         TopicToSubscribeOn = migrationTopologyOptions?.TopicToSubscribeOn;
     }
     public Dictionary<string, string> PublishedEventToTopicsMap { get; }
+    public Dictionary<string, string> SubscribedEventToRuleNameMap { get; }
 
     public Dictionary<string, HashSet<string>> SubscribedEventToTopicsMap { get; }
 
@@ -44,6 +46,12 @@ class EventRoutingCache
             @this.EventsToMigrateMap.Contains(fullName)
                 ? [(@this.TopicToSubscribeOn!, true)]
                 : @this.SubscribedEventToTopicsMap.GetValueOrDefault(fullName, [fullName]).Select(x => (x, false)).ToArray(), this);
+    }
+
+    internal string GetSubscriptionRuleName(Type eventType)
+    {
+        var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
+        return SubscribedEventToRuleNameMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName);
     }
 
     readonly ConcurrentDictionary<string, string> publishedEventToTopicsCache = new();

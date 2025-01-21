@@ -27,23 +27,20 @@ public class TopicPerEventTopology : TopicTopology
     /// <param name="topicName"></param>
     /// <typeparam name="TEventType"></typeparam>
     /// <exception cref="InvalidOperationException"></exception>
-    public void PublishTo<TEventType>(string topicName)
-    {
-        // TODO Last one wins?
-        Options.PublishedEventToTopicsMap[typeof(TEventType).FullName ?? throw new InvalidOperationException()] =
-            topicName;
-    }
-
+    public void PublishTo<TEventType>(string topicName) => PublishTo(typeof(TEventType), topicName);
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="type"></param>
+    /// <param name="eventType"></param>
     /// <param name="topicName"></param>
     /// <exception cref="InvalidOperationException"></exception>
-    public void PublishTo(Type type, string topicName)
+    public void PublishTo(Type eventType, string topicName)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
+
         // TODO Last one wins?
-        Options.PublishedEventToTopicsMap[type.FullName ?? throw new InvalidOperationException()] = topicName;
+        Options.PublishedEventToTopicsMap[eventType.FullName ?? throw new InvalidOperationException()] = topicName;
     }
 
     /// <summary>
@@ -57,15 +54,15 @@ public class TopicPerEventTopology : TopicTopology
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="type"></param>
+    /// <param name="eventType"></param>
     /// <param name="topicName"></param>
     /// <exception cref="InvalidOperationException"></exception>
-    public void SubscribeTo(Type type, string topicName)
+    public void SubscribeTo(Type eventType, string topicName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(type.FullName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
-        var eventTypeFullName = type.FullName;
+        var eventTypeFullName = eventType.FullName;
         if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
         {
             topics.Add(topicName);
