@@ -6,20 +6,20 @@ namespace NServiceBus
 
     public partial class AzureServiceBusTransport
     {
-        [ObsoleteEx(Message = "The subscription name can be set on the topology.",
+        [ObsoleteEx(Message = "The subscription name for a given subscriber queue can be overriden on the topology.",
             TreatAsErrorFromVersion = "5",
             RemoveInVersion = "6",
-            ReplacementTypeOrMember = "Topology")]
+            ReplacementTypeOrMember = "OverrideSubscriptionNameFor")]
         public Func<string, string> SubscriptionNamingConvention
         {
             get => throw new NotImplementedException();
             set => throw new NotImplementedException();
         }
 
-        [ObsoleteEx(Message = "The subscription rule name can be set on the migration topology.",
+        [ObsoleteEx(Message = "The subscription rule name can be overriden on the migration topology.",
             TreatAsErrorFromVersion = "5",
             RemoveInVersion = "6",
-            ReplacementTypeOrMember = "Topology")]
+            ReplacementTypeOrMember = "OverrideRuleNameFor")]
         public Func<Type, string> SubscriptionRuleNamingConvention
         {
             get => throw new NotImplementedException();
@@ -29,14 +29,11 @@ namespace NServiceBus
 
     public static partial class AzureServiceBusTransportSettingsExtensions
     {
-        [ObsoleteEx(Message = "TBD",
+        [ObsoleteEx(Message = "Setting the topic name is accessible via the migration topology.",
             TreatAsErrorFromVersion = "5",
             RemoveInVersion = "6",
-            ReplacementTypeOrMember = "Topology")]
-        public static TransportExtensions<AzureServiceBusTransport> TopicName(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string topicName)
-        {
-            throw new NotImplementedException();
-        }
+            ReplacementTypeOrMember = "Topology.Single(topicName)")]
+        public static TransportExtensions<AzureServiceBusTransport> TopicName(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string topicName) => throw new NotImplementedException();
 
         [ObsoleteEx(Message = "TBD",
             TreatAsErrorFromVersion = "5",
