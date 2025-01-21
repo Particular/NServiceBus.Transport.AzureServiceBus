@@ -2,7 +2,6 @@
 {
     using System;
     using System.Text.Json;
-    using System.Text.RegularExpressions;
     using System.Threading.Tasks;
     using AcceptanceTesting;
     using Azure.Messaging.ServiceBus;
@@ -11,15 +10,14 @@
     using NUnit.Framework;
     using Conventions = NServiceBus.AcceptanceTesting.Customization.Conventions;
 
-    public partial class When_loading_from_options
+    public class When_loading_from_options
     {
         string TopicName;
 
         [SetUp]
         public async Task Setup()
         {
-            TopicName = $"Publisher{Base64Regex().Replace(Convert.ToBase64String(Guid.NewGuid().ToByteArray()), "").ToUpperInvariant()}";
-            await TestContext.Out.WriteLineAsync($"Generated name prefix: '{TopicName}'");
+            TopicName = "PublisherFromOptions";
 
             var adminClient =
                 new ServiceBusAdministrationClient(
@@ -108,8 +106,5 @@
         }
 
         public class Event : IEvent;
-
-        [GeneratedRegex("[/+=]")]
-        private static partial Regex Base64Regex();
     }
 }
