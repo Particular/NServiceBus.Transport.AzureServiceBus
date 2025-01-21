@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using NServiceBus;
@@ -22,7 +20,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         }
 
         var topology = TopicTopology.DefaultBundle;
-        topology.SubscriptionName = Shorten(endpointName);
+        topology.SubscriptionName = endpointName.Shorten();
 
         foreach (var eventType in publisherMetadata.Publishers.SelectMany(p => p.Events))
         {
@@ -31,7 +29,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         var transport = new AzureServiceBusTransport(connectionString)
         {
             Topology = topology,
-            SubscriptionRuleNamingConvention = eventType => Shorten(eventType.FullName)
+            SubscriptionRuleNamingConvention = eventType => eventType.FullName.Shorten()
         };
 
         configuration.UseTransport(transport);
@@ -44,33 +42,5 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         return Task.CompletedTask;
     }
 
-    static string Shorten(string name)
-    {
-        // originally we used to shorten only when the length of the name hax exceeded the maximum length of 50 characters
-        if (name.Length <= 50)
-        {
-            return name;
-        }
-
-        using var sha1 = SHA1.Create();
-        var nameAsBytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(name));
-        return HexStringFromBytes(nameAsBytes);
-
-        string HexStringFromBytes(byte[] bytes)
-        {
-            var sb = new StringBuilder();
-            foreach (var b in bytes)
-            {
-                var hex = b.ToString("x2");
-                sb.Append(hex);
-            }
-
-            return sb.ToString();
-        }
-    }
-
-    public Task Cleanup()
-    {
-        return Task.CompletedTask;
-    }
+    public Task Cleanup() => Task.CompletedTask;
 }
