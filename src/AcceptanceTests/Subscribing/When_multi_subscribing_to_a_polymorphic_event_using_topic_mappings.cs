@@ -74,7 +74,9 @@
                 EndpointSetup<DefaultServer>(c =>
                 {
                     var topology = TopicTopology.Default;
-                    topology.SubscriptionName = Conventions.EndpointNamingConvention(typeof(Subscriber)).Shorten();
+                    var endpointName = Conventions.EndpointNamingConvention(typeof(Subscriber));
+                    topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
+
                     topology.SubscribeTo<IMyEvent>(typeof(MyEvent1).ToTopicName());
                     topology.SubscribeTo<IMyEvent>(typeof(MyEvent2).ToTopicName());
 

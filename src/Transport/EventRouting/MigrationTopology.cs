@@ -26,15 +26,6 @@ public class MigrationTopology : TopicTopology
     /// </summary>
     public bool IsHierarchy => Options.IsHierarchy;
 
-    /// <summary>
-    /// 
-    /// </summary>
-    public string? SubscriptionName
-    {
-        get => Options.SubscriptionName;
-        set => Options.SubscriptionName = value;
-    }
-
     new MigrationTopologyOptions Options { get; }
 
     /// <summary>
@@ -128,5 +119,18 @@ public class MigrationTopology : TopicTopology
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
         Options.SubscribedEventToRuleNameMap[eventType.FullName] = ruleName;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="queueName"></param>
+    /// <param name="subscriptionName"></param>
+    public void OverrideSubscriptionNameFor(string queueName, string subscriptionName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(queueName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(subscriptionName);
+
+        Options.QueueNameToSubscriptionNameMap[queueName] = subscriptionName;
     }
 }

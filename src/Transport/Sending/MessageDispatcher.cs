@@ -21,7 +21,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly bool doNotSendTransportEncodingHeader;
         readonly OutgoingNativeMessageCustomizationAction customizerCallback;
-        readonly EventRoutingCache eventRoutingCache;
+        readonly EventRouting eventRouting;
 
         public MessageDispatcher(
             MessageSenderRegistry messageSenderRegistry,
@@ -34,7 +34,7 @@ namespace NServiceBus.Transport.AzureServiceBus
             this.customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
             this.doNotSendTransportEncodingHeader = doNotSendTransportEncodingHeader;
             // Maybe pass the cache in from the outside?
-            eventRoutingCache = new EventRoutingCache(topologyOptions);
+            eventRouting = new EventRouting(topologyOptions);
         }
 
         public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
@@ -57,7 +57,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
             foreach (var operation in transportOperations)
             {
-                var destination = operation.ExtractDestination(eventRoutingCache);
+                var destination = operation.ExtractDestination(eventRouting);
                 switch (operation.RequiredDispatchConsistency)
                 {
                     case DispatchConsistency.Default:

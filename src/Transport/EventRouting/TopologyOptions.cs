@@ -15,11 +15,6 @@ public class TopologyOptions
     /// <summary>
     /// 
     /// </summary>
-    public string? SubscriptionName { get; set; }
-
-    /// <summary>
-    /// 
-    /// </summary>
     [JsonInclude]
     public Dictionary<string, string> PublishedEventToTopicsMap { get; init; } = [];
 
@@ -28,4 +23,10 @@ public class TopologyOptions
     /// </summary>
     [JsonInclude]
     public Dictionary<string, HashSet<string>> SubscribedEventToTopicsMap { get; init; } = [];
+
+    /// <summary>
+    /// 
+    /// </summary>
+    [JsonInclude]
+    public Dictionary<string, string> QueueNameToSubscriptionNameMap { get; init; } = [];
 }

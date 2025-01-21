@@ -30,12 +30,12 @@ namespace NServiceBus.Transport.AzureServiceBus
         }
 
         public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation,
-            EventRoutingCache eventRoutingCache)
+            EventRouting eventRouting)
         {
             switch (outgoingTransportOperation)
             {
                 case MulticastTransportOperation multicastTransportOperation:
-                    return eventRoutingCache.GetPublishDestination(multicastTransportOperation.MessageType);
+                    return eventRouting.GetPublishDestination(multicastTransportOperation.MessageType);
                 case UnicastTransportOperation unicastTransportOperation:
                     var destination = unicastTransportOperation.Destination;
 

@@ -9,6 +9,7 @@
     using Azure.Messaging.ServiceBus.Administration;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
+    using Conventions = NServiceBus.AcceptanceTesting.Customization.Conventions;
 
     public partial class When_loading_from_options
     {
@@ -44,7 +45,7 @@
                         // doing a deliberate roundtrip to ensure that the options are correctly serialized and deserialized
                         var serializedOptions = JsonSerializer.Serialize(new TopicPerEventTopologyOptions
                         {
-                            SubscriptionName = TopicName,
+                            QueueNameToSubscriptionNameMap = { { Conventions.EndpointNamingConvention(typeof(Publisher)), TopicName } },
                             PublishedEventToTopicsMap = { { typeof(Event).FullName, TopicName } },
                             SubscribedEventToTopicsMap = { { typeof(Event).FullName, [TopicName] } }
                         }, TopologyOptionsSerializationContext.Default.TopologyOptions);
@@ -64,11 +65,11 @@
                     b.CustomConfig(c =>
                     {
                         var transport = c.ConfigureTransport<AzureServiceBusTransport>();
-                        transport.SubscriptionRuleNamingConvention = eventType => eventType.FullName.Shorten();
                         // doing a deliberate roundtrip to ensure that the options are correctly serialized and deserialized
                         var serializedOptions = JsonSerializer.Serialize(new MigrationTopologyOptions
                         {
-                            SubscriptionName = TopicName,
+                            QueueNameToSubscriptionNameMap = { { Conventions.EndpointNamingConvention(typeof(Publisher)), TopicName } },
+                            SubscribedEventToRuleNameMap = { { typeof(Event).FullName, typeof(Event).FullName.Shorten() } },
                             TopicToPublishTo = TopicName,
                             TopicToSubscribeOn = TopicName,
                             EventsToMigrateMap = [typeof(Event).FullName]

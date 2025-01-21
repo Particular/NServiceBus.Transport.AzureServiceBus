@@ -6,7 +6,6 @@
     using Azure.Messaging.ServiceBus.Administration;
     using Azure.Messaging.ServiceBus;
     using EndpointTemplates;
-    using Features;
     using NUnit.Framework;
 
     public class When_migrating_publisher_first : NServiceBusAcceptanceTest

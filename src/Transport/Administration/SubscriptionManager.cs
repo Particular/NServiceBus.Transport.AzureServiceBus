@@ -17,9 +17,8 @@
         readonly bool setupInfrastructure;
         readonly ServiceBusAdministrationClient administrationClient;
         readonly string subscribingQueue;
-        readonly string subscriptionName;
         readonly AzureServiceBusTransport transportSettings;
-        readonly EventRoutingCache eventRoutingCache;
+        readonly EventRouting eventRouting;
 
         public SubscriptionManager(
             string subscribingQueue,
@@ -32,9 +31,8 @@
             this.administrationClient = administrationClient;
 
             this.transportSettings = transportSettings;
-            subscriptionName = this.transportSettings.Topology.Options.SubscriptionName ?? subscribingQueue;
             // Maybe this should be passed in so that the dispatcher and the subscription manager share the same cache?
-            eventRoutingCache = new EventRoutingCache(this.transportSettings.Topology.Options);
+            eventRouting = new EventRouting(this.transportSettings.Topology.Options);
         }
 
         public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken = default)
@@ -66,7 +64,7 @@
             // TODO: There is no convention nor mapping here currently.
             // TODO: Is it a good idea to use the subscriptionName as the endpoint name?
 
-            var topicsToSubscribeOn = eventRoutingCache.GetSubscribeDestinations(messageMetadata.MessageType);
+            var topicsToSubscribeOn = eventRouting.GetSubscribeDestinations(messageMetadata.MessageType);
             var subscribeTasks = new List<Task>(topicsToSubscribeOn.Length);
             foreach (var topicInfo in topicsToSubscribeOn)
             {
@@ -106,6 +104,7 @@
                 }
             }
 
+            var subscriptionName = eventRouting.GetSubscriptionName(subscribingQueue);
             var subscriptionOptions = new CreateSubscriptionOptions(topicInfo.Topic, subscriptionName)
             {
                 LockDuration = TimeSpan.FromMinutes(5),
@@ -137,7 +136,7 @@
 
             if (topicInfo.RequiresRule)
             {
-                var ruleName = eventRoutingCache.GetSubscriptionRuleName(messageMetadata.MessageType);
+                var ruleName = eventRouting.GetSubscriptionRuleName(messageMetadata.MessageType);
                 var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{messageMetadata.MessageType.FullName}%'";
 
                 // Previously we used the rule manager here too
@@ -158,7 +157,7 @@
 
         public async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
         {
-            var topicsToUnsubscribeOn = eventRoutingCache.GetSubscribeDestinations(eventType.MessageType);
+            var topicsToUnsubscribeOn = eventRouting.GetSubscribeDestinations(eventType.MessageType);
             var unsubscribeTasks = new List<Task>(topicsToUnsubscribeOn.Length);
             foreach (var topicInfo in topicsToUnsubscribeOn)
             {
@@ -169,6 +168,8 @@
 
             async Task DeleteSubscription((string Topic, bool RequiresRule) topicInfo)
             {
+                var subscriptionName = eventRouting.GetSubscriptionName(subscribingQueue);
+
                 if (topicInfo.RequiresRule)
                 {
                     var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType.MessageType);
@@ -197,7 +198,6 @@
                 {
                     try
                     {
-                        // TODO: Is it a good idea to use the subscriptionName as the endpoint name?
                         await administrationClient.DeleteSubscriptionAsync(topicInfo.Topic, subscriptionName, cancellationToken).ConfigureAwait(false);
                     }
                     catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
@@ -215,6 +215,8 @@
         {
             if (transportSettings.Topology is MigrationTopology migrationTopology)
             {
+                var subscriptionName = eventRouting.GetSubscriptionName(subscribingQueue);
+
                 var subscription = new CreateSubscriptionOptions(migrationTopology.TopicToSubscribeOn, subscriptionName)
                 {
                     LockDuration = TimeSpan.FromMinutes(5),

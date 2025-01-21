@@ -7,12 +7,13 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 
-class EventRoutingCache
+class EventRouting
 {
-    public EventRoutingCache(TopologyOptions topologyOptions)
+    public EventRouting(TopologyOptions topologyOptions)
     {
         PublishedEventToTopicsMap = topologyOptions.PublishedEventToTopicsMap;
         SubscribedEventToTopicsMap = topologyOptions.SubscribedEventToTopicsMap;
+        QueueNameToSubscriptionNameMap = topologyOptions.QueueNameToSubscriptionNameMap;
 
         var migrationTopologyOptions = topologyOptions as MigrationTopologyOptions;
         SubscribedEventToRuleNameMap = migrationTopologyOptions?.SubscribedEventToRuleNameMap ?? [];
@@ -20,6 +21,9 @@ class EventRoutingCache
         TopicToPublishTo = migrationTopologyOptions?.TopicToPublishTo;
         TopicToSubscribeOn = migrationTopologyOptions?.TopicToSubscribeOn;
     }
+
+    public Dictionary<string, string> QueueNameToSubscriptionNameMap { get; }
+
     public Dictionary<string, string> PublishedEventToTopicsMap { get; }
     public Dictionary<string, string> SubscribedEventToRuleNameMap { get; }
 
@@ -53,6 +57,8 @@ class EventRoutingCache
         var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
         return SubscribedEventToRuleNameMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName);
     }
+
+    internal string GetSubscriptionName(string queueName) => QueueNameToSubscriptionNameMap.GetValueOrDefault(queueName, queueName);
 
     readonly ConcurrentDictionary<string, string> publishedEventToTopicsCache = new();
     readonly ConcurrentDictionary<string, (string Topic, bool RequiresRule)[]> subscribedEventToTopicsCache = new();

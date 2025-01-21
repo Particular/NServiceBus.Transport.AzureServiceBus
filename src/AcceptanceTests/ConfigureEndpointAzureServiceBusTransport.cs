@@ -25,13 +25,13 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         }
 
         var topology = TopicTopology.Default;
+        topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
+
         foreach (var eventType in publisherMetadata.Publishers.SelectMany(p => p.Events))
         {
             topology.PublishTo(eventType, eventType.ToTopicName());
             topology.SubscribeTo(eventType, eventType.ToTopicName());
         }
-
-        topology.SubscriptionName = endpointName.Shorten();
 
         var transport = new AzureServiceBusTransport(connectionString)
         {

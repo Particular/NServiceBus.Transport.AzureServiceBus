@@ -15,15 +15,6 @@ public class TopicPerEventTopology : TopicTopology
     /// <summary>
     /// 
     /// </summary>
-    public string? SubscriptionName
-    {
-        get => Options.SubscriptionName;
-        set => Options.SubscriptionName = value;
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
     /// <param name="topicName"></param>
     /// <typeparam name="TEventType"></typeparam>
     /// <exception cref="InvalidOperationException"></exception>
@@ -71,5 +62,18 @@ public class TopicPerEventTopology : TopicTopology
         {
             Options.SubscribedEventToTopicsMap[eventTypeFullName] = [topicName];
         }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="queueName"></param>
+    /// <param name="subscriptionName"></param>
+    public void OverrideSubscriptionNameFor(string queueName, string subscriptionName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(queueName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(subscriptionName);
+
+        Options.QueueNameToSubscriptionNameMap[queueName] = subscriptionName;
     }
 }
