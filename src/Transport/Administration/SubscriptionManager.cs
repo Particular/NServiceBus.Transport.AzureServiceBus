@@ -172,7 +172,7 @@
 
                 if (topicInfo.RequiresRule)
                 {
-                    var ruleName = transportSettings.SubscriptionRuleNamingConvention(eventType.MessageType);
+                    var ruleName = eventRouting.GetSubscriptionRuleName(eventType.MessageType);
 
                     try
                     {
