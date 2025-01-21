@@ -18,16 +18,14 @@ namespace NServiceBus
         public int? PrefetchCount { get; set; }
         public int PrefetchMultiplier { get; set; }
         public Azure.Messaging.ServiceBus.ServiceBusRetryOptions RetryPolicyOptions { get; set; }
-        [System.Obsolete("The subscription name can be set on the topology. Use `Topology` instead. The mem" +
-            "ber currently throws a NotImplementedException. Will be removed in version 5.0.0" +
-            ".", true)]
+        [System.Obsolete(@"The subscription name for a given subscriber queue can be overriden on the topology. Use `OverrideSubscriptionNameFor` instead. Will be treated as an error from version 5.0.0. The member currently throws a NotImplementedException. Will be removed in version 6.0.0.", false)]
         public System.Func<string, string> SubscriptionNamingConvention { get; set; }
+        [System.Obsolete("The subscription rule name can be overriden on the migration topology. Use `Overr" +
+            "ideRuleNameFor` instead. Will be treated as an error from version 5.0.0. The mem" +
+            "ber currently throws a NotImplementedException. Will be removed in version 6.0.0" +
+            ".", false)]
         public System.Func<System.Type, string> SubscriptionRuleNamingConvention { get; set; }
         public System.TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
-        [System.Obsolete("It is possible to represent the publish and subscribe topic separately by specify" +
-            "ing a topology. Use `Topology` instead. The member currently throws a NotImpleme" +
-            "ntedException. Will be removed in version 5.0.0.", true)]
-        public string TopicName { get; set; }
         public NServiceBus.TopicTopology Topology { get; set; }
         public bool UseWebSockets { get; set; }
         public System.Net.IWebProxy WebProxy { get; set; }
@@ -50,9 +48,19 @@ namespace NServiceBus
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> MaxAutoLockRenewalDuration(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan maximumAutoLockRenewalDuration) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchMultiplier(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchMultiplier) { }
+        [System.Obsolete("TBD. Use `Topology` instead. Will be treated as an error from version 5.0.0. The " +
+            "member currently throws a NotImplementedException. Will be removed in version 6." +
+            "0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> subscriptionNamingConvention) { }
+        [System.Obsolete("TBD. Use `Topology` instead. Will be treated as an error from version 5.0.0. The " +
+            "member currently throws a NotImplementedException. Will be removed in version 6." +
+            "0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionRuleNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<System.Type, string> subscriptionRuleNamingConvention) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TimeToWaitBeforeTriggeringCircuitBreaker(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan timeToWait) { }
+        [System.Obsolete("Setting the topic name is accessible via the migration topology. Use `Topology.Si" +
+            "ngle(topicName)` instead. Will be treated as an error from version 5.0.0. The me" +
+            "mber currently throws a NotImplementedException. Will be removed in version 6.0." +
+            "0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TopicName(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string topicName) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration)
             where TTransport : NServiceBus.AzureServiceBusTransport { }
@@ -65,14 +73,16 @@ namespace NServiceBus
     public class MigrationTopology : NServiceBus.TopicTopology
     {
         public bool IsHierarchy { get; }
-        public string? SubscriptionName { get; set; }
         public string TopicToPublishTo { get; }
         public string TopicToSubscribeOn { get; }
-        public void MapToDefaultTopic(System.Type type) { }
+        public void MapToDefaultTopic(System.Type eventType) { }
         public void MapToDefaultTopic<TEventType>() { }
-        public void PublishTo(System.Type type, string topicName) { }
+        public void OverrideRuleNameFor(System.Type eventType, string ruleName) { }
+        public void OverrideRuleNameFor<TEventType>(string ruleName) { }
+        public void OverrideSubscriptionNameFor(string queueName, string subscriptionName) { }
+        public void PublishTo(System.Type eventType, string topicName) { }
         public void PublishTo<TEventType>(string topicName) { }
-        public void SubscribeTo(System.Type type, string topicName) { }
+        public void SubscribeTo(System.Type eventType, string topicName) { }
         public void SubscribeTo<TEventType>(string topicName) { }
     }
     public class MigrationTopologyOptions : NServiceBus.TopologyOptions
@@ -84,13 +94,15 @@ namespace NServiceBus
         public string? TopicToSubscribeOn { get; set; }
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.HashSet<string> EventsToMigrateMap { get; init; }
+        [System.Text.Json.Serialization.JsonInclude]
+        public System.Collections.Generic.Dictionary<string, string> SubscribedEventToRuleNameMap { get; init; }
     }
     public class TopicPerEventTopology : NServiceBus.TopicTopology
     {
-        public string? SubscriptionName { get; set; }
-        public void PublishTo(System.Type type, string topicName) { }
+        public void OverrideSubscriptionNameFor(string queueName, string subscriptionName) { }
+        public void PublishTo(System.Type eventType, string topicName) { }
         public void PublishTo<TEventType>(string topicName) { }
-        public void SubscribeTo(System.Type type, string topicName) { }
+        public void SubscribeTo(System.Type eventType, string topicName) { }
         public void SubscribeTo<TEventType>(string topicName) { }
     }
     public class TopicPerEventTopologyOptions : NServiceBus.TopologyOptions
@@ -112,9 +124,10 @@ namespace NServiceBus
     public class TopologyOptions
     {
         public TopologyOptions() { }
-        public string? SubscriptionName { get; set; }
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, string> PublishedEventToTopicsMap { get; init; }
+        [System.Text.Json.Serialization.JsonInclude]
+        public System.Collections.Generic.Dictionary<string, string> QueueNameToSubscriptionNameMap { get; init; }
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>> SubscribedEventToTopicsMap { get; init; }
     }
