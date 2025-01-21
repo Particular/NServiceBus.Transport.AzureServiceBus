@@ -20,7 +20,6 @@ public class MigrationTopology : TopicTopology
     /// </summary>
     public string TopicToSubscribeOn => Options.TopicToSubscribeOn!;
 
-
     /// <summary>
     /// Gets whether the current topic topology represents a hierarchy.
     /// </summary>
@@ -48,7 +47,7 @@ public class MigrationTopology : TopicTopology
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
         // TODO Last one wins?
-        Options.PublishedEventToTopicsMap[eventType.FullName ?? throw new InvalidOperationException()] = topicName;
+        Options.PublishedEventToTopicsMap[eventType.FullName] = topicName;
     }
 
     /// <summary>

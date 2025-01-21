@@ -31,7 +31,7 @@ public class TopicPerEventTopology : TopicTopology
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
         // TODO Last one wins?
-        Options.PublishedEventToTopicsMap[eventType.FullName ?? throw new InvalidOperationException()] = topicName;
+        Options.PublishedEventToTopicsMap[eventType.FullName] = topicName;
     }
 
     /// <summary>
