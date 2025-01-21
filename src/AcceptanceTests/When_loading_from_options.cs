@@ -64,15 +64,18 @@
                     b.CustomConfig(c =>
                     {
                         var transport = c.ConfigureTransport<AzureServiceBusTransport>();
+                        transport.SubscriptionRuleNamingConvention = eventType => eventType.FullName.Shorten();
                         // doing a deliberate roundtrip to ensure that the options are correctly serialized and deserialized
                         var serializedOptions = JsonSerializer.Serialize(new MigrationTopologyOptions
                         {
+                            SubscriptionName = TopicName,
                             TopicToPublishTo = TopicName,
                             TopicToSubscribeOn = TopicName,
                             EventsToMigrateMap = [typeof(Event).FullName]
                         }, TopologyOptionsSerializationContext.Default.TopologyOptions);
                         var options = JsonSerializer.Deserialize(serializedOptions, TopologyOptionsSerializationContext.Default.TopologyOptions);
-                        transport.Topology = TopicTopology.FromOptions(options);
+                        var topology = (MigrationTopology)TopicTopology.FromOptions(options);
+                        transport.Topology = topology;
                     });
                     b.When((session, c) => session.Publish(new Event()));
                 })
