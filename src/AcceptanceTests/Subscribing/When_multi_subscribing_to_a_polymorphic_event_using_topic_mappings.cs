@@ -2,8 +2,10 @@
 {
     using System.Threading.Tasks;
     using AcceptanceTesting;
+    using AcceptanceTesting.Customization;
     using EndpointTemplates;
     using NUnit.Framework;
+    using Transport.AzureServiceBus.AcceptanceTests;
 
     public class When_multi_subscribing_to_a_polymorphic_event_using_topic_mappings : NServiceBusAcceptanceTest
     {
@@ -24,19 +26,19 @@
                     return session.Publish(new MyEvent2());
                 }))
                 .WithEndpoint<Subscriber>()
-                .Done(c => c.SubscriberGotIMyEvent && c.SubscriberGotMyEvent2)
+                .Done(c => c.SubscriberGotMyEvent1 && c.SubscriberGotMyEvent2)
                 .Run();
 
             Assert.Multiple(() =>
             {
-                Assert.That(context.SubscriberGotIMyEvent, Is.True);
+                Assert.That(context.SubscriberGotMyEvent1, Is.True);
                 Assert.That(context.SubscriberGotMyEvent2, Is.True);
             });
         }
 
         public class Context : ScenarioContext
         {
-            public bool SubscriberGotIMyEvent { get; set; }
+            public bool SubscriberGotMyEvent1 { get; set; }
             public bool SubscriberGotMyEvent2 { get; set; }
         }
 
@@ -45,10 +47,11 @@
             public Publisher1() =>
                 EndpointSetup<DefaultServer>(c =>
                 {
-                    var topology = TopicTopology.Default;
-                    topology.PublishTo<MyEvent1>(ConfigureEndpointAzureServiceBusTransport.GetTopicName(typeof(MyEvent1)));
+                    var transport = c.ConfigureTransport<AzureServiceBusTransport>();
 
-                    c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
+                    var topology = TopicTopology.Default;
+                    topology.PublishTo<MyEvent1>(typeof(MyEvent1).ToTopicName());
+                    transport.Topology = topology;
                 }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent1>(this));
         }
 
@@ -57,10 +60,11 @@
             public Publisher2() =>
                 EndpointSetup<DefaultServer>(c =>
                 {
-                    var topology = TopicTopology.Default;
-                    topology.PublishTo<MyEvent2>(ConfigureEndpointAzureServiceBusTransport.GetTopicName(typeof(MyEvent2)));
+                    var transport = c.ConfigureTransport<AzureServiceBusTransport>();
 
-                    c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
+                    var topology = TopicTopology.Default;
+                    topology.PublishTo<MyEvent2>(typeof(MyEvent2).ToTopicName());
+                    transport.Topology = topology;
                 }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent2>(this));
         }
 
@@ -70,8 +74,9 @@
                 EndpointSetup<DefaultServer>(c =>
                 {
                     var topology = TopicTopology.Default;
-                    topology.SubscribeTo<IMyEvent>(ConfigureEndpointAzureServiceBusTransport.GetTopicName(typeof(MyEvent1)));
-                    topology.SubscribeTo<IMyEvent>(ConfigureEndpointAzureServiceBusTransport.GetTopicName(typeof(MyEvent2)));
+                    topology.SubscriptionName = Conventions.EndpointNamingConvention(typeof(Subscriber)).Shorten();
+                    topology.SubscribeTo<IMyEvent>(typeof(MyEvent1).ToTopicName());
+                    topology.SubscribeTo<IMyEvent>(typeof(MyEvent2).ToTopicName());
 
                     c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                 }, metadata =>
@@ -86,13 +91,16 @@
                 public Task Handle(IMyEvent messageThatIsEnlisted, IMessageHandlerContext context)
                 {
                     testContext.AddTrace($"Got event '{messageThatIsEnlisted}'");
-                    if (messageThatIsEnlisted is MyEvent2)
+                    switch (messageThatIsEnlisted)
                     {
-                        testContext.SubscriberGotMyEvent2 = true;
-                    }
-                    else
-                    {
-                        testContext.SubscriberGotIMyEvent = true;
+                        case MyEvent1:
+                            testContext.SubscriberGotMyEvent1 = true;
+                            break;
+                        case MyEvent2:
+                            testContext.SubscriberGotMyEvent2 = true;
+                            break;
+                        default:
+                            break;
                     }
 
                     return Task.CompletedTask;
