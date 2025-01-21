@@ -2,7 +2,6 @@
 
 namespace NServiceBus.Transport.AzureServiceBus
 {
-    using System;
     using Azure.Messaging.ServiceBus;
     using Logging;
 
@@ -27,30 +26,6 @@ namespace NServiceBus.Transport.AzureServiceBus
             }
 
             action(message);
-        }
-
-        public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation,
-            EventRoutingCache eventRoutingCache)
-        {
-            switch (outgoingTransportOperation)
-            {
-                case MulticastTransportOperation multicastTransportOperation:
-                    return eventRoutingCache.GetPublishDestination(multicastTransportOperation.MessageType);
-                case UnicastTransportOperation unicastTransportOperation:
-                    var destination = unicastTransportOperation.Destination;
-
-                    // Workaround for reply-to address set by ASB transport
-                    var index = unicastTransportOperation.Destination.IndexOf('@');
-
-                    if (index > 0)
-                    {
-                        destination = destination[..index];
-                    }
-
-                    return destination;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));
-            }
         }
     }
 }

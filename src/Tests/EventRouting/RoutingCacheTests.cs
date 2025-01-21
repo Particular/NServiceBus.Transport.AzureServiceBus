@@ -5,7 +5,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests;
 using NUnit.Framework;
 
 [TestFixture]
-public class EventRoutingCacheTests
+public class RoutingCacheTests
 {
     [Test]
     public void PublishDestination_Should_return_mapped_topic_when_event_is_mapped()
@@ -18,9 +18,9 @@ public class EventRoutingCacheTests
             }
         };
 
-        var eventRoutingCache = new EventRoutingCache(topologyOptions);
+        var eventRoutingCache = new RoutingCache(topologyOptions);
 
-        var result = eventRoutingCache.GetPublishDestination(typeof(MyEvent));
+        var result = eventRoutingCache.GetDestination(typeof(MyEvent));
 
         Assert.That(result, Is.EqualTo("MyTopic"));
     }
@@ -36,7 +36,7 @@ public class EventRoutingCacheTests
             }
         };
 
-        var eventRoutingCache = new EventRoutingCache(topologyOptions);
+        var eventRoutingCache = new RoutingCache(topologyOptions);
 
         var result = eventRoutingCache.GetSubscribeDestinations(typeof(MyEvent));
 
@@ -60,7 +60,7 @@ public class EventRoutingCacheTests
             EventsToMigrateMap = { "NServiceBus.Transport.AzureServiceBus.Tests.MyEvent" }
         };
 
-        var eventRoutingCache = new EventRoutingCache(topologyOptions);
+        var eventRoutingCache = new RoutingCache(topologyOptions);
 
         var result = eventRoutingCache.GetSubscribeDestinations(typeof(MyEvent));
 
@@ -77,7 +77,7 @@ public class EventRoutingCacheTests
     {
         var topologyOptions = new TopologyOptions();
 
-        var eventRoutingCache = new EventRoutingCache(topologyOptions);
+        var eventRoutingCache = new RoutingCache(topologyOptions);
 
         var result = eventRoutingCache.GetSubscribeDestinations(typeof(MyEvent));
 
@@ -98,7 +98,7 @@ public class EventRoutingCacheTests
             TopicToSubscribeOn = "TopicToSubscribeOn",
         };
 
-        var eventRoutingCache = new EventRoutingCache(topologyOptions);
+        var eventRoutingCache = new RoutingCache(topologyOptions);
 
         var result = eventRoutingCache.GetSubscribeDestinations(typeof(MyEvent));
 
