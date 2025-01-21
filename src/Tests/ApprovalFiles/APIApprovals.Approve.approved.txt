@@ -75,21 +75,15 @@ namespace NServiceBus
         public void SubscribeTo(System.Type type, string topicName) { }
         public void SubscribeTo<TEventType>(string topicName) { }
     }
-    [System.Runtime.CompilerServices.RequiredMember]
     public class MigrationTopologyOptions : NServiceBus.TopologyOptions
     {
-        [System.Obsolete("Constructors of types with required members are not supported in this version of " +
-            "your compiler.", true)]
-        [System.Runtime.CompilerServices.CompilerFeatureRequired("RequiredMembers")]
         public MigrationTopologyOptions() { }
         [System.Text.Json.Serialization.JsonIgnore]
         public bool IsHierarchy { get; }
+        public string? TopicToPublishTo { get; set; }
+        public string? TopicToSubscribeOn { get; set; }
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.HashSet<string> EventsToMigrateMap { get; init; }
-        [System.Runtime.CompilerServices.RequiredMember]
-        public string TopicToPublishTo { get; init; }
-        [System.Runtime.CompilerServices.RequiredMember]
-        public string TopicToSubscribeOn { get; init; }
     }
     public class TopicPerEventTopology : NServiceBus.TopicTopology
     {
