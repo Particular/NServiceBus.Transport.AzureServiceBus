@@ -24,7 +24,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NServiceBus.Transport.Azure
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{95A7D609-CFE7-4E38-A7A1-074DA4587EA1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NServiceBus.Transport.AzureServiceBus.Migration.AcceptanceTests", "TopicAcceptanceTests\NServiceBus.Transport.AzureServiceBus.Migration.AcceptanceTests.csproj", "{6957BA0B-A876-4352-88F9-E2B4079592C5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NServiceBus.Transport.AzureServiceBus.Migration.AcceptanceTests", "MigrationAcceptanceTests\NServiceBus.Transport.AzureServiceBus.Migration.AcceptanceTests.csproj", "{6957BA0B-A876-4352-88F9-E2B4079592C5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
