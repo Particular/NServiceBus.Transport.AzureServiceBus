@@ -33,10 +33,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
             topology.SubscribeTo(eventType, eventType.ToTopicName());
         }
 
-        var transport = new AzureServiceBusTransport(connectionString)
-        {
-            Topology = topology,
-        };
+        var transport = new AzureServiceBusTransport(connectionString, topology);
 
         ApplyMappingsToSupportMultipleInheritance(endpointName, topology);
 

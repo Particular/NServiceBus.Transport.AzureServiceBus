@@ -13,15 +13,15 @@
     {
         /// <summary>
         /// Configure the endpoint to use the Azure Service bus transport. This configuration method will eventually be deprecated.
-        /// Consider using endpointConfiguration.UseTransport(new AzureServiceBusTransport(connectionString)) instead.
+        /// Consider using endpointConfiguration.UseTransport(new AzureServiceBusTransport(connectionString, topology)) instead.
         /// </summary>
         [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
             Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
             ReplacementTypeOrMember = "EndpointConfiguration.UseTransport(TransportDefinition)")]
-        public static TransportExtensions<AzureServiceBusTransport> UseTransport<TTransport>(this EndpointConfiguration endpointConfiguration)
+        public static TransportExtensions<AzureServiceBusTransport> UseTransport<TTransport>(this EndpointConfiguration endpointConfiguration, TopicTopology topology)
             where TTransport : AzureServiceBusTransport
         {
-            var transport = new AzureServiceBusTransport();
+            var transport = new AzureServiceBusTransport(topology);
 
             var routing = endpointConfiguration.UseTransport(transport);
 

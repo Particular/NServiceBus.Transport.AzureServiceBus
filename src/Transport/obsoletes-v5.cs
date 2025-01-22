@@ -29,6 +29,14 @@ namespace NServiceBus
 
     public static partial class AzureServiceBusTransportSettingsExtensions
     {
+        [ObsoleteEx(Message = "Selecting the transport requires to choose a topology.",
+            TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6",
+            ReplacementTypeOrMember = "UseTransport(topology)")]
+        public static TransportExtensions<AzureServiceBusTransport> UseTransport<TTransport>(this EndpointConfiguration endpointConfiguration)
+            where TTransport : AzureServiceBusTransport =>
+            throw new NotImplementedException();
+
         [ObsoleteEx(Message = "Setting the topic name is accessible via the migration topology.",
             TreatAsErrorFromVersion = "5",
             RemoveInVersion = "6",

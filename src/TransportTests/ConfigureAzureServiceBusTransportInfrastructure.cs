@@ -15,7 +15,7 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
         {
             throw new InvalidOperationException("envvar AzureServiceBus_ConnectionString not set");
         }
-        var transport = new AzureServiceBusTransport(ConnectionString);
+        var transport = new AzureServiceBusTransport(ConnectionString, TopicTopology.Default);
         return transport;
     }
 

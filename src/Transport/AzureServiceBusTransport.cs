@@ -20,7 +20,7 @@
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString) : base(
+        public AzureServiceBusTransport(string connectionString, TopicTopology topology) : base(
             defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
             supportsDelayedDelivery: true,
             supportsPublishSubscribe: true,
@@ -29,12 +29,13 @@
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
 
             ConnectionString = connectionString;
+            Topology = topology;
         }
 
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        public AzureServiceBusTransport(string fullyQualifiedNamespace, TokenCredential tokenCredential) : base(
+        public AzureServiceBusTransport(string fullyQualifiedNamespace, TokenCredential tokenCredential, TopicTopology topology) : base(
             defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
             supportsDelayedDelivery: true,
             supportsPublishSubscribe: true,
@@ -45,16 +46,16 @@
 
             FullyQualifiedNamespace = fullyQualifiedNamespace;
             TokenCredential = tokenCredential;
+            Topology = topology;
         }
 
         [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811", Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.")]
-        internal AzureServiceBusTransport() : base(
+        internal AzureServiceBusTransport(TopicTopology topology) : base(
             defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
             supportsDelayedDelivery: true,
             supportsPublishSubscribe: true,
-            supportsTTBR: true)
-        {
-        }
+            supportsTTBR: true) =>
+            Topology = topology;
 
         /// <inheritdoc />
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
@@ -151,18 +152,16 @@
 
         /// <inheritdoc />
         public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes() =>
-            new[]
-            {
-                TransportTransactionMode.None,
+        [
+            TransportTransactionMode.None,
                 TransportTransactionMode.ReceiveOnly,
                 TransportTransactionMode.SendsAtomicWithReceive
-            };
+        ];
 
         /// <summary>
-        /// Gets or sets the topic topology to be used.
+        /// Gets the topic topology used.
         /// </summary>
-        /// <remarks>The default is <see cref="TopicTopology.Default"/></remarks>
-        public TopicTopology Topology { get; set; } = TopicTopology.Default;
+        public TopicTopology Topology { get; internal set; }
 
         /// <summary>
         /// The maximum size used when creating queues and topics in GB.

@@ -27,10 +27,8 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
             topology.MapToDefaultTopic(eventType);
             topology.OverrideRuleNameFor(eventType, eventType.FullName.Shorten());
         }
-        var transport = new AzureServiceBusTransport(connectionString)
-        {
-            Topology = topology,
-        };
+
+        var transport = new AzureServiceBusTransport(connectionString, topology);
 
         configuration.UseTransport(transport);
 
