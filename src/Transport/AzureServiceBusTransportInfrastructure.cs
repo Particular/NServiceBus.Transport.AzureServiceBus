@@ -40,7 +40,7 @@ namespace NServiceBus.Transport.AzureServiceBus
 
             Dispatcher = new MessageDispatcher(
                 messageSenderRegistry,
-                transportSettings.Topology.Options,
+                transportSettings.Topology,
                 transportSettings.OutgoingNativeMessageCustomization,
                 transportSettings.DoNotSendTransportEncodingHeader
                 );

@@ -4,6 +4,7 @@ namespace NServiceBus;
 /// <summary>
 /// 
 /// </summary>
-public class TopicPerEventTopologyOptions : TopologyOptions
+/// TODO Should we kill those?
+public sealed class TopicPerEventTopologyOptions : TopologyOptions
 {
 }

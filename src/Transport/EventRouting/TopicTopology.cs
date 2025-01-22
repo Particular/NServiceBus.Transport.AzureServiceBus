@@ -77,5 +77,35 @@ namespace NServiceBus
 
             return hierarchy;
         }
+
+        // Should we make those public?
+        internal string GetPublishDestination(Type eventType)
+        {
+            var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
+            return GetPublishDestinationCore(eventTypeFullName);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="eventTypeFullName"></param>
+        /// <param name="subscribingQueueName"></param>
+        /// <returns></returns>
+        protected abstract (string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo)[] GetSubscribeDestinationsCore(
+            string eventTypeFullName, string subscribingQueueName);
+
+        internal (string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo)[] GetSubscribeDestinations(Type eventType, string subscribingQueueName)
+        {
+            var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
+            return GetSubscribeDestinationsCore(eventTypeFullName, subscribingQueueName);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="eventTypeFullName"></param>
+        /// <returns></returns>
+        protected abstract string GetPublishDestinationCore(string eventTypeFullName);
+
     }
 }

@@ -76,7 +76,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     MigrationTopology topology = TopicTopology.MigrateFromNamedSingleTopic("bundle-a");
-                    topology.MapToDefaultTopic<MyEvent>();
+                    topology.EventToMigrate<MyEvent>();
                     transport.Topology = topology;
                     b.SendOnly();
                 }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent>(this));
@@ -93,7 +93,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     string endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberOnTopicB));
                     topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
                     topology.OverrideRuleNameFor<MyEvent>(typeof(MyEvent).FullName.Shorten());
-                    topology.MapToDefaultTopic<MyEvent>();
+                    topology.EventToMigrate<MyEvent>();
                     transport.Topology = topology;
                 }, metadata => metadata.RegisterPublisherFor<MyEvent>(typeof(SendOnlyPublisherOnTopicA)));
 
@@ -119,7 +119,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     string endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberOnTopicC));
                     topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
                     topology.OverrideRuleNameFor<MyEvent>(typeof(MyEvent).FullName.Shorten());
-                    topology.MapToDefaultTopic<MyEvent>();
+                    topology.EventToMigrate<MyEvent>();
                     transport.Topology = topology;
                 }, metadata => metadata.RegisterPublisherFor<MyEvent>(typeof(SendOnlyPublisherOnTopicA)));
 

@@ -2,11 +2,14 @@
 namespace NServiceBus;
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
 /// 
 /// </summary>
-public class TopicPerEventTopology : TopicTopology
+/// TODO Should we rename this to DefaultTopicTopology?
+public sealed class TopicPerEventTopology : TopicTopology
 {
     internal TopicPerEventTopology(TopicPerEventTopologyOptions options) : base(options) => Options = options;
 
@@ -77,4 +80,16 @@ public class TopicPerEventTopology : TopicTopology
 
         Options.QueueNameToSubscriptionNameMap[queueName] = subscriptionName;
     }
+
+    /// <inheritdoc />
+    protected override string GetPublishDestinationCore(string eventTypeFullName)
+        => Options.PublishedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName);
+
+    // TODO Should we use a public type instead of this tuple?
+    /// <inheritdoc />
+    protected override (string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo)[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName) =>
+        // Not caching this Subscribe and Unsubscribe is not really on the hot path.
+        Options.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
+            .Select<string, (string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo)>(topic => (topic, Options.QueueNameToSubscriptionNameMap.GetValueOrDefault(subscribingQueueName, subscribingQueueName), null))
+            .ToArray();
 }

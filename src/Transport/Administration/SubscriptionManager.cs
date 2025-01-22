@@ -18,7 +18,6 @@
         readonly ServiceBusAdministrationClient administrationClient;
         readonly string subscribingQueue;
         readonly AzureServiceBusTransport transportSettings;
-        readonly EventRouting eventRouting;
 
         public SubscriptionManager(
             string subscribingQueue,
@@ -31,8 +30,6 @@
             this.administrationClient = administrationClient;
 
             this.transportSettings = transportSettings;
-            // Maybe this should be passed in so that the dispatcher and the subscription manager share the same cache?
-            eventRouting = new EventRouting(this.transportSettings.Topology.Options);
         }
 
         public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken = default)
@@ -61,23 +58,20 @@
 
         async Task SubscribeEvent(MessageMetadata messageMetadata, CancellationToken cancellationToken)
         {
-            // TODO: There is no convention nor mapping here currently.
-            // TODO: Is it a good idea to use the subscriptionName as the endpoint name?
-
-            var topicsToSubscribeOn = eventRouting.GetSubscribeDestinations(messageMetadata.MessageType);
-            var subscribeTasks = new List<Task>(topicsToSubscribeOn.Length);
-            foreach (var topicInfo in topicsToSubscribeOn)
+            var subscriptionInfos = transportSettings.Topology.GetSubscribeDestinations(messageMetadata.MessageType, subscribingQueue);
+            var subscribeTasks = new List<Task>(subscriptionInfos.Length);
+            foreach (var subscriptionInfo in subscriptionInfos)
             {
-                subscribeTasks.Add(CreateSubscription(administrationClient, topicInfo, messageMetadata, cancellationToken));
+                subscribeTasks.Add(CreateSubscription(administrationClient, subscriptionInfo, cancellationToken));
             }
             await Task.WhenAll(subscribeTasks).ConfigureAwait(false);
         }
 
-        async Task CreateSubscription(ServiceBusAdministrationClient client, (string Topic, bool RequiresRule) topicInfo, MessageMetadata messageMetadata, CancellationToken cancellationToken)
+        async Task CreateSubscription(ServiceBusAdministrationClient client, (string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo) subscriptionInfo, CancellationToken cancellationToken)
         {
             if (setupInfrastructure)
             {
-                var topicOptions = new CreateTopicOptions(topicInfo.Topic)
+                var topicOptions = new CreateTopicOptions(subscriptionInfo.Topic)
                 {
                     EnableBatchedOperations = true,
                     EnablePartitioning = transportSettings.EnablePartitioning,
@@ -104,8 +98,7 @@
                 }
             }
 
-            var subscriptionName = eventRouting.GetSubscriptionName(subscribingQueue);
-            var subscriptionOptions = new CreateSubscriptionOptions(topicInfo.Topic, subscriptionName)
+            var subscriptionOptions = new CreateSubscriptionOptions(subscriptionInfo.Topic, subscriptionInfo.SubscriptionName)
             {
                 LockDuration = TimeSpan.FromMinutes(5),
                 ForwardTo = subscribingQueue,
@@ -130,22 +123,20 @@
             catch (UnauthorizedAccessException unauthorizedAccessException)
             {
                 // TODO: Check the log level
-                Logger.WarnFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
+                Logger.WarnFormat("Subscription {0} could not be created. Reason: {1}", subscriptionInfo.SubscriptionName, unauthorizedAccessException.Message);
                 throw;
             }
 
-            if (topicInfo.RequiresRule)
+            if (subscriptionInfo.RuleInfo is not null)
             {
-                var ruleName = eventRouting.GetSubscriptionRuleName(messageMetadata.MessageType);
-                var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{messageMetadata.MessageType.FullName}%'";
-
                 // Previously we used the rule manager here too
                 // var ruleManager = client.CreateRuleManager(transportSettings.Topology.TopicToSubscribeOn, subscriptionName);
                 // await using (ruleManager.ConfigureAwait(false))
                 // {
                 try
                 {
-                    await administrationClient.CreateRuleAsync(topicInfo.Topic, subscriptionName, new CreateRuleOptions(ruleName, new SqlRuleFilter(sqlExpression)), cancellationToken)
+                    (string ruleName, string ruleFilter) = subscriptionInfo.RuleInfo.Value;
+                    await administrationClient.CreateRuleAsync(subscriptionInfo.Topic, subscriptionInfo.SubscriptionName, new CreateRuleOptions(ruleName, new SqlRuleFilter(ruleFilter)), cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
@@ -157,26 +148,22 @@
 
         public async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
         {
-            var topicsToUnsubscribeOn = eventRouting.GetSubscribeDestinations(eventType.MessageType);
-            var unsubscribeTasks = new List<Task>(topicsToUnsubscribeOn.Length);
-            foreach (var topicInfo in topicsToUnsubscribeOn)
+            var subscriptionInfos = transportSettings.Topology.GetSubscribeDestinations(eventType.MessageType, subscribingQueue);
+            var unsubscribeTasks = new List<Task>(subscriptionInfos.Length);
+            foreach (var subscriptionInfo in subscriptionInfos)
             {
-                unsubscribeTasks.Add(DeleteSubscription(topicInfo));
+                unsubscribeTasks.Add(DeleteSubscription(subscriptionInfo));
             }
             await Task.WhenAll(unsubscribeTasks).ConfigureAwait(false);
             return;
 
-            async Task DeleteSubscription((string Topic, bool RequiresRule) topicInfo)
+            async Task DeleteSubscription((string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo) subscriptionInfo)
             {
-                var subscriptionName = eventRouting.GetSubscriptionName(subscribingQueue);
-
-                if (topicInfo.RequiresRule)
+                if (subscriptionInfo.RuleInfo is not null)
                 {
-                    var ruleName = eventRouting.GetSubscriptionRuleName(eventType.MessageType);
-
                     try
                     {
-                        await administrationClient.DeleteRuleAsync(topicInfo.Topic, subscriptionName, ruleName, cancellationToken).ConfigureAwait(false);
+                        await administrationClient.DeleteRuleAsync(subscriptionInfo.Topic, subscriptionInfo.SubscriptionName, subscriptionInfo.RuleInfo.Value.RuleName, cancellationToken).ConfigureAwait(false);
                     }
                     catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
                     {
@@ -198,24 +185,26 @@
                 {
                     try
                     {
-                        await administrationClient.DeleteSubscriptionAsync(topicInfo.Topic, subscriptionName, cancellationToken).ConfigureAwait(false);
+                        await administrationClient.DeleteSubscriptionAsync(subscriptionInfo.Topic, subscriptionInfo.SubscriptionName, cancellationToken).ConfigureAwait(false);
                     }
                     catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
                     {
                     }
                     catch (UnauthorizedAccessException unauthorizedAccessException)
                     {
-                        Logger.InfoFormat("Subscription {0} could not be deleted. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
+                        Logger.InfoFormat("Subscription {0} could not be deleted. Reason: {1}", subscriptionInfo.SubscriptionName, unauthorizedAccessException.Message);
                     }
                 }
             }
         }
 
+        // TODO Let's double check if this is still needed because we assume we require manage rights now during subscription anyway
+        // in the new topology. Or should we maybe keep in the migration topology things consistent in terms of manage rights?
         public async Task CreateSubscription(ServiceBusAdministrationClient adminClient, CancellationToken cancellationToken = default)
         {
             if (transportSettings.Topology is MigrationTopology migrationTopology)
             {
-                var subscriptionName = eventRouting.GetSubscriptionName(subscribingQueue);
+                var subscriptionName = migrationTopology.Options.QueueNameToSubscriptionNameMap.GetValueOrDefault(subscribingQueue);
 
                 var subscription = new CreateSubscriptionOptions(migrationTopology.TopicToSubscribeOn, subscriptionName)
                 {

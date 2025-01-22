@@ -1,7 +1,10 @@
-﻿namespace NServiceBus
+﻿#nullable enable
+
+namespace NServiceBus
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
     using System.Net;
     using System.Threading;
@@ -161,7 +164,26 @@
         /// <summary>
         /// Gets the topic topology used.
         /// </summary>
-        public TopicTopology Topology { get; internal set; }
+        [MemberNotNull(nameof(topology))]
+        public TopicTopology Topology
+        {
+            get
+            {
+                ArgumentNullException.ThrowIfNull(topology);
+                return topology;
+            }
+            internal set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                if (value is not (MigrationTopology or TopicPerEventTopology))
+                {
+                    throw new ArgumentException("The provided topology is not supported.", nameof(value));
+                }
+                topology = value;
+            }
+        }
+
+        TopicTopology topology;
 
         /// <summary>
         /// The maximum size used when creating queues and topics in GB.
@@ -260,7 +282,7 @@
         /// <summary>
         /// Overrides the default retry policy.
         /// </summary>
-        public ServiceBusRetryOptions RetryPolicyOptions
+        public ServiceBusRetryOptions? RetryPolicyOptions
         {
             get => retryPolicy;
             set
@@ -269,12 +291,12 @@
                 retryPolicy = value;
             }
         }
-        ServiceBusRetryOptions retryPolicy;
+        ServiceBusRetryOptions? retryPolicy;
 
         /// <summary>
         /// The proxy to use for communication over web sockets.
         /// </summary>
-        public IWebProxy WebProxy
+        public IWebProxy? WebProxy
         {
             get => webProxy;
             set
@@ -283,7 +305,7 @@
                 webProxy = value;
             }
         }
-        IWebProxy webProxy;
+        IWebProxy? webProxy;
 
         /// <summary>
         /// When set will not add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
@@ -292,11 +314,6 @@
             TreatAsErrorFromVersion = "5",
             RemoveInVersion = "6")]
         public bool DoNotSendTransportEncodingHeader { get; set; }
-
-        internal string ConnectionString { get; set; }
-
-        internal string FullyQualifiedNamespace { get; set; }
-        internal TokenCredential TokenCredential { get; set; }
 
         /// <summary>
         /// Gets or sets the action that allows customization of the native <see cref="ServiceBusMessage"/> 
@@ -311,6 +328,11 @@
         /// with expectations elsewhere in the system.
         /// </para>
         /// </remarks>
-        public OutgoingNativeMessageCustomizationAction OutgoingNativeMessageCustomization { get; set; }
+        public OutgoingNativeMessageCustomizationAction? OutgoingNativeMessageCustomization { get; set; }
+
+        internal string? ConnectionString { get; set; }
+
+        internal string? FullyQualifiedNamespace { get; set; }
+        internal TokenCredential? TokenCredential { get; set; }
     }
 }

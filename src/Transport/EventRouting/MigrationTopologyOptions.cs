@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 /// <summary>
 /// 
 /// </summary>
-public class MigrationTopologyOptions : TopologyOptions
+public sealed class MigrationTopologyOptions : TopologyOptions
 {
     //TODO: Change to required/init once the Fody Obsolete problem is fixed
     /// <summary>
