@@ -7,6 +7,7 @@
     using Azure.Messaging.ServiceBus;
     using EndpointTemplates;
     using NUnit.Framework;
+    using Transport.AzureServiceBus.AcceptanceTests;
 
     public class When_migrating_publisher_first : NServiceBusAcceptanceTest
     {
@@ -49,6 +50,7 @@
                     b.CustomConfig(c =>
                     {
                         var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
+                        topology.OverrideRuleNameFor<MyEvent>(typeof(MyEvent).FullName.Shorten());
                         topology.MapToDefaultTopic<MyEvent>();
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
@@ -77,6 +79,7 @@
                     b.CustomConfig(c =>
                     {
                         var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
+                        topology.OverrideRuleNameFor<MyEvent>(typeof(MyEvent).FullName.Shorten());
                         topology.MapToDefaultTopic<MyEvent>();
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
