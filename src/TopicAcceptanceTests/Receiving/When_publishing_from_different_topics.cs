@@ -76,6 +76,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     var topology = TopicTopology.MigrateFromNamedSingleTopic("bundle-a");
+                    topology.OverrideRuleNameFor<EventFromTopicB>(typeof(EventFromTopicB).FullName.Shorten());
+                    topology.OverrideRuleNameFor<EventFromTopicC>(typeof(EventFromTopicC).FullName.Shorten());
                     topology.MapToDefaultTopic<EventFromTopicA>();
                     topology.MapToDefaultTopic<EventFromTopicB>();
                     topology.MapToDefaultTopic<EventFromTopicC>();
@@ -120,6 +122,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     var topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-b");
+                    topology.OverrideRuleNameFor<EventFromTopicA>(typeof(EventFromTopicA).FullName.Shorten());
                     topology.MapToDefaultTopic<EventFromTopicA>();
                     topology.MapToDefaultTopic<EventFromTopicB>();
                     transport.Topology = topology;
@@ -144,6 +147,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     var topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-c");
+                    topology.OverrideRuleNameFor<EventFromTopicA>(typeof(EventFromTopicA).FullName.Shorten());
                     topology.MapToDefaultTopic<EventFromTopicA>();
                     topology.MapToDefaultTopic<EventFromTopicC>();
                     transport.Topology = topology;
