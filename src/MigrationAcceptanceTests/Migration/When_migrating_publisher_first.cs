@@ -168,29 +168,21 @@
 
         public class Publisher : EndpointConfigurationBuilder
         {
-            public Publisher()
-            {
+            public Publisher() =>
                 EndpointSetup<DefaultServer>((c, rd) =>
                 {
                 }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent>(this));
-            }
         }
 
         public class Subscriber : EndpointConfigurationBuilder
         {
-            public Subscriber()
-            {
+            public Subscriber() =>
                 EndpointSetup<DefaultServer>((c, rd) =>
                 {
                 }, metadata => metadata.RegisterPublisherFor<MyEvent, Publisher>());
-            }
 
-            public class MyEventMessageHandler : IHandleMessages<MyEvent>
+            public class MyEventMessageHandler(Context testContext) : IHandleMessages<MyEvent>
             {
-                Context testContext;
-
-                public MyEventMessageHandler(Context context) => testContext = context;
-
                 public Task Handle(MyEvent @event, IMessageHandlerContext context)
                 {
                     testContext.GotTheEvent = true;
@@ -199,8 +191,6 @@
             }
         }
 
-        public class MyEvent : IEvent
-        {
-        }
+        public class MyEvent : IEvent;
     }
 }
