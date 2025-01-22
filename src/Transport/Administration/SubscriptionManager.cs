@@ -204,7 +204,7 @@
         {
             if (transportSettings.Topology is MigrationTopology migrationTopology)
             {
-                var subscriptionName = migrationTopology.Options.QueueNameToSubscriptionNameMap.GetValueOrDefault(subscribingQueue);
+                var subscriptionName = migrationTopology.Options.QueueNameToSubscriptionNameMap.GetValueOrDefault(subscribingQueue, subscribingQueue);
 
                 var subscription = new CreateSubscriptionOptions(migrationTopology.TopicToSubscribeOn, subscriptionName)
                 {
