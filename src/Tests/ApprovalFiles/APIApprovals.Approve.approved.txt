@@ -119,10 +119,10 @@ namespace NServiceBus
     {
         protected TopicTopology(NServiceBus.TopologyOptions options) { }
         public static NServiceBus.TopicPerEventTopology Default { get; }
-        public static NServiceBus.MigrationTopology DefaultBundle { get; }
         public static NServiceBus.TopicTopology FromOptions(NServiceBus.TopologyOptions options) { }
-        public static NServiceBus.MigrationTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
-        public static NServiceBus.MigrationTopology Single(string topicName) { }
+        public static NServiceBus.MigrationTopology MigrateFromNamedSingleTopic(string topicName) { }
+        public static NServiceBus.MigrationTopology MigrateFromSingleDefaultTopic() { }
+        public static NServiceBus.MigrationTopology MigrateFromTopicHierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
     }
     [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.MigrationTopologyOptions), "migration-topology-options")]
     [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.TopicPerEventTopologyOptions), "topic-per-event-topology-options")]

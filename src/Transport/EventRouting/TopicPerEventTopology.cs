@@ -19,6 +19,7 @@ public class TopicPerEventTopology : TopicTopology
     /// <typeparam name="TEventType"></typeparam>
     /// <exception cref="InvalidOperationException"></exception>
     public void PublishTo<TEventType>(string topicName) => PublishTo(typeof(TEventType), topicName);
+
     /// <summary>
     /// 
     /// </summary>

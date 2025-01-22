@@ -74,7 +74,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 EndpointSetup<DefaultPublisher>(b =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    MigrationTopology transportTopology = TopicTopology.Single("bundle-a");
+                    MigrationTopology transportTopology = TopicTopology.MigrateFromNamedSingleTopic("bundle-a");
                     transportTopology.MapToDefaultTopic<MyEvent>();
                     transport.Topology = transportTopology;
                     b.SendOnly();
@@ -88,7 +88,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    MigrationTopology transportTopology = TopicTopology.Hierarchy("bundle-a", "bundle-b");
+                    MigrationTopology transportTopology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-b");
                     transportTopology.MapToDefaultTopic<MyEvent>();
                     transport.Topology = transportTopology;
                 }, metadata => metadata.RegisterPublisherFor<MyEvent>(typeof(SendOnlyPublisherOnTopicA)));
@@ -111,7 +111,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    MigrationTopology transportTopology = TopicTopology.Hierarchy("bundle-a", "bundle-c");
+                    MigrationTopology transportTopology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-c");
                     transportTopology.MapToDefaultTopic<MyEvent>();
                     transport.Topology = transportTopology;
                 }, metadata => metadata.RegisterPublisherFor<MyEvent>(typeof(SendOnlyPublisherOnTopicA)));

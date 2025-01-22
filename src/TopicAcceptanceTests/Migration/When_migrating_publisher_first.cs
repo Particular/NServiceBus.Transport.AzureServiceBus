@@ -37,7 +37,7 @@
                 {
                     b.CustomConfig(c =>
                     {
-                        var topology = TopicTopology.Single(bundleTopicName);
+                        var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
                         topology.MapToDefaultTopic<MyEvent>();
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
@@ -48,7 +48,7 @@
                 {
                     b.CustomConfig(c =>
                     {
-                        var topology = TopicTopology.Single(bundleTopicName);
+                        var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
                         topology.MapToDefaultTopic<MyEvent>();
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
@@ -76,7 +76,7 @@
                 {
                     b.CustomConfig(c =>
                     {
-                        var topology = TopicTopology.Single(bundleTopicName);
+                        var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
                         topology.MapToDefaultTopic<MyEvent>();
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;

@@ -31,6 +31,7 @@ namespace NServiceBus
                 {
                     PublishedEventToTopicsMap = options.PublishedEventToTopicsMap,
                     SubscribedEventToTopicsMap = options.SubscribedEventToTopicsMap,
+                    QueueNameToSubscriptionNameMap = options.QueueNameToSubscriptionNameMap
                 })
             };
 
@@ -40,28 +41,28 @@ namespace NServiceBus
         public static TopicPerEventTopology Default => new(new TopicPerEventTopologyOptions());
 
         /// <summary>
-        /// Returns the default bundle topology uses <c>bundle-1</c> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
+        /// Returns a migration topology using a single topic named <c>bundle-1</c> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
         /// </summary>
-        public static MigrationTopology DefaultBundle => Single("bundle-1");
+        public static MigrationTopology MigrateFromSingleDefaultTopic() => MigrateFromNamedSingleTopic("bundle-1");
 
         /// <summary>
-        /// Returns a topology using a single topic with the <paramref name="topicName"/> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
+        /// Returns a migration topology using a single topic with the <paramref name="topicName"/> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
         /// </summary>
         /// <param name="topicName">The topic name.</param>
-        public static MigrationTopology Single(string topicName) => new(new MigrationTopologyOptions
+        public static MigrationTopology MigrateFromNamedSingleTopic(string topicName) => new(new MigrationTopologyOptions
         {
             TopicToPublishTo = topicName,
             TopicToSubscribeOn = topicName,
         });
 
         /// <summary>
-        /// Returns a topology using a distinct name for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
+        /// Returns a migration topology using a distinct name for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
         /// </summary>
         /// <param name="topicToPublishTo">The topic name to publish to.</param>
         /// <param name="topicToSubscribeOn">The topic name to subscribe to.</param>
         /// <returns></returns>
         /// <exception cref="ArgumentException">Thrown when <paramref name="topicToPublishTo"/> is equal to <paramref name="topicToSubscribeOn"/>.</exception>
-        public static MigrationTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn)
+        public static MigrationTopology MigrateFromTopicHierarchy(string topicToPublishTo, string topicToSubscribeOn)
         {
             var hierarchy = new MigrationTopology(new MigrationTopologyOptions
             {

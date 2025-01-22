@@ -19,7 +19,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
             throw new InvalidOperationException("envvar AzureServiceBus_ConnectionString not set");
         }
 
-        var topology = TopicTopology.DefaultBundle;
+        var topology = TopicTopology.MigrateFromSingleDefaultTopic();
         topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
 
         foreach (var eventType in publisherMetadata.Publishers.SelectMany(p => p.Events))
