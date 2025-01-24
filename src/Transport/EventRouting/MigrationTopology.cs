@@ -107,16 +107,19 @@ public sealed class MigrationTopology : TopicTopology
     }
 
     /// <summary>
-    /// 
+    /// Marks the given event type as migrated applying the default convention of publishing or subscribing the event type
+    /// under a topic name that is the FullName of the event type.
     /// </summary>
-    /// <typeparam name="TEventType"></typeparam>
+    /// <typeparam name="TEventType">The event type to be marked as migrated.</typeparam>
+    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
     public void MigratedEvent<TEventType>() => MigratedEvent(typeof(TEventType));
 
     /// <summary>
-    /// 
+    /// Marks the given event type as migrated applying the default convention of publishing or subscribing the event type
+    /// under a topic name that is the FullName of the event type.
     /// </summary>
-    /// <param name="eventType"></param>
-    /// <exception cref="NotImplementedException"></exception>
+    /// <param name="eventType">The event type to be marked as migrated.</param>
+    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
     public void MigratedEvent(Type eventType)
     {
         MigratedPublishedEvent(eventType);
@@ -124,17 +127,21 @@ public sealed class MigrationTopology : TopicTopology
     }
 
     /// <summary>
-    /// 
+    /// Marks the given event type to be migrated making sure it is published to the <see cref="TopicToPublishTo"/>
+    /// or subscribed to on the <see cref="TopicToSubscribeOn"/> as configured on the migration topology.
     /// </summary>
-    /// <typeparam name="TEventType"></typeparam>
-    /// <exception cref="InvalidOperationException"></exception>
+    /// <typeparam name="TEventType">The event type to be marked for migration.</typeparam>
+    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
+    /// <remarks>Adding the same event type multiple times automatically de-duplicates the event type.</remarks>
     public void EventToMigrate<TEventType>() => EventToMigrate(typeof(TEventType));
 
     /// <summary>
-    /// 
+    /// Marks the given event type to be migrated making sure it is published to the <see cref="TopicToPublishTo"/>
+    /// or subscribed to on the <see cref="TopicToSubscribeOn"/> as configured on the migration topology.
     /// </summary>
-    /// <param name="eventType"></param>
-    /// <exception cref="InvalidOperationException"></exception>
+    /// <param name="eventType">The event type to be marked for migration.</param>
+    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
+    /// <remarks>Adding the same event type multiple times automatically de-duplicates the event type.</remarks>
     public void EventToMigrate(Type eventType)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
