@@ -18,6 +18,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
         public IReadOnlyCollection<ServiceBusMessage> IndividuallySentMessages => sentMessages;
         public IReadOnlyCollection<ServiceBusMessageBatch> BatchSentMessages => batchedMessages;
         public Func<ServiceBusMessage, bool> TryAdd { get; set; } = _ => true;
+        public Action<ServiceBusMessage> SendMessageAction { get; set; } = _ => { };
+        public Action<ServiceBusMessageBatch> SendMessageBatchAction { get; set; } = _ => { };
 
         public override string FullyQualifiedNamespace { get; } = "FullyQualifiedNamespace";
 
@@ -38,6 +40,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
         public override Task SendMessageAsync(ServiceBusMessage message, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            SendMessageAction(message);
             sentMessages.Add(message);
             return Task.CompletedTask;
         }
@@ -45,6 +48,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
         public override Task SendMessagesAsync(ServiceBusMessageBatch messageBatch, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            SendMessageBatchAction(messageBatch);
             batchedMessages.Add(messageBatch);
             return Task.CompletedTask;
         }

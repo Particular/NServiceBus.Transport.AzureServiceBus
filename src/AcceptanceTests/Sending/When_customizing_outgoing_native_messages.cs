@@ -1,4 +1,4 @@
-namespace NServiceBus.Transport.RabbitMQ.AcceptanceTests
+namespace NServiceBus.Transport.RabbitMQ.AcceptanceTests.Sending
 {
     using System.Threading.Tasks;
     using AcceptanceTesting;
@@ -7,12 +7,12 @@ namespace NServiceBus.Transport.RabbitMQ.AcceptanceTests
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
 
-    class When_customizing_outgoing_messages : NServiceBusAcceptanceTest
+    class When_customizing_outgoing_native_messages : NServiceBusAcceptanceTest
     {
         const string TestSubject = "0192c3ad-8ab2-77a0-8a92-2be53f062e06";
 
         [Test]
-        public async Task Should_receive_custom_set_value()
+        public async Task Should_dispatch_native_message_with_the_customizations()
         {
             var scenario = await Scenario.Define<Context>()
                 .WithEndpoint<Receiver>(b => b.When((bus, c) => bus.SendLocal(new Message())))
@@ -46,8 +46,6 @@ namespace NServiceBus.Transport.RabbitMQ.AcceptanceTests
             }
         }
 
-        public class Message : IMessage
-        {
-        }
+        public class Message : IMessage;
     }
 }

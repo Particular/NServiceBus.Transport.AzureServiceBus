@@ -13,15 +13,15 @@
     {
         /// <summary>
         /// Configure the endpoint to use the Azure Service bus transport. This configuration method will eventually be deprecated.
-        /// Consider using endpointConfiguration.UseTransport(new AzureServiceBusTransport(connectionString)) instead.
+        /// Consider using endpointConfiguration.UseTransport(new AzureServiceBusTransport(connectionString, topology)) instead.
         /// </summary>
         [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
             Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
             ReplacementTypeOrMember = "EndpointConfiguration.UseTransport(TransportDefinition)")]
-        public static TransportExtensions<AzureServiceBusTransport> UseTransport<TTransport>(this EndpointConfiguration endpointConfiguration)
+        public static TransportExtensions<AzureServiceBusTransport> UseTransport<TTransport>(this EndpointConfiguration endpointConfiguration, TopicTopology topology)
             where TTransport : AzureServiceBusTransport
         {
-            var transport = new AzureServiceBusTransport();
+            var transport = new AzureServiceBusTransport(topology);
 
             var routing = endpointConfiguration.UseTransport(transport);
 
@@ -53,21 +53,6 @@
             var value = connectionString();
             Guard.AgainstNullAndEmpty(nameof(connectionString), value);
             transportExtensions.Transport.ConnectionString = value;
-            return transportExtensions;
-        }
-
-        /// <summary>
-        /// Overrides the default topic name used to publish events between endpoints.
-        /// </summary>
-        /// <param name="transportExtensions"></param>
-        /// <param name="topicName">The name of the topic used to publish events between endpoints.</param>
-        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
-            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
-            ReplacementTypeOrMember = "AzureServiceBusTransport.Topology")]
-        public static TransportExtensions<AzureServiceBusTransport> TopicName(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string topicName)
-        {
-            Guard.AgainstNullAndEmpty(nameof(topicName), topicName);
-            transportExtensions.Transport.Topology = TopicTopology.Single(topicName);
             return transportExtensions;
         }
 
@@ -140,37 +125,6 @@
         {
             Guard.AgainstNegativeAndZero(nameof(timeToWait), timeToWait);
             transportExtensions.Transport.TimeToWaitBeforeTriggeringCircuitBreaker = timeToWait;
-            return transportExtensions;
-        }
-
-        /// <summary>
-        /// Specifies a callback to customize subscription names.
-        /// </summary>
-        /// <param name="transportExtensions"></param>
-        /// <param name="subscriptionNamingConvention">The callback to apply.</param>
-        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
-            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
-            ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionNamingConvention")]
-        public static TransportExtensions<AzureServiceBusTransport> SubscriptionNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNamingConvention)
-        {
-            Guard.AgainstNull(nameof(subscriptionNamingConvention), subscriptionNamingConvention);
-            transportExtensions.Transport.SubscriptionNamingConvention = subscriptionNamingConvention;
-            return transportExtensions;
-        }
-
-        /// <summary>
-        /// Specifies a callback to customize subscription rule names.
-        /// </summary>
-        /// <remarks>The naming convention callback is called for every subscribed event <see cref="Type"/>.</remarks>
-        /// <param name="transportExtensions"></param>
-        /// <param name="subscriptionRuleNamingConvention">The callback to apply.</param>
-        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
-            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
-            ReplacementTypeOrMember = "AzureServiceBusTransport.SubscriptionRuleNamingConvention")]
-        public static TransportExtensions<AzureServiceBusTransport> SubscriptionRuleNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<Type, string> subscriptionRuleNamingConvention)
-        {
-            Guard.AgainstNull(nameof(subscriptionRuleNamingConvention), subscriptionRuleNamingConvention);
-            transportExtensions.Transport.SubscriptionRuleNamingConvention = subscriptionRuleNamingConvention;
             return transportExtensions;
         }
 

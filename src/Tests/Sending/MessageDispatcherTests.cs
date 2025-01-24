@@ -17,7 +17,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -47,11 +47,39 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
+        public void Should_rethrow_when_unicast_dispatch_destination_not_available()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), TopicTopology.FromOptions(new TopologyOptions()));
+
+            var sender = new FakeSender
+            {
+                SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
+            };
+            client.Senders["SomeDestination"] = sender;
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction()), Throws.InstanceOf<ServiceBusException>());
+        }
+
+        [Test]
         public async Task Should_dispatch_multicast_isolated_dispatches_individually()
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
+                }));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -80,12 +108,49 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             });
         }
 
+        // With pub sub the cases of the topic not being available are similar to having a topic without any subscribers
+        [Test]
+        public void Should_swallow_when_multicast_dispatch_destination_not_available()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), TopicTopology.FromOptions(new TopologyOptions()
+            {
+                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
+            }));
+
+            var sender = new FakeSender
+            {
+                SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound),
+                SendMessageBatchAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
+            };
+            client.Senders["sometopic"] = sender;
+
+            var operation1 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            var operation2 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction()), Throws.Nothing);
+        }
+
         [Test]
         public async Task Should_dispatch_unicast_isolated_dispatches_individually_per_destination()
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -118,11 +183,20 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
-        public async Task Should_dispatch_multicast_isolated_dispatches_individually_regardless_of_the_event_to_the_topic()
+        public async Task
+            Should_dispatch_multicast_isolated_dispatches_individually_regardless_of_the_event_to_the_topic()
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap =
+                    {
+                        { typeof(SomeEvent).FullName, "sometopic" },
+                        { typeof(SomeOtherEvent).FullName, "sometopic" }
+                    },
+                }));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -156,7 +230,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -192,7 +266,11 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
+                }));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -228,7 +306,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -256,7 +334,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 Assert.That(someDestinationSender.IndividuallySentMessages, Is.Empty);
                 Assert.That(someDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
             });
-            var someDestinationBatchContent = someDestinationSender[someDestinationSender.BatchSentMessages.ElementAt(0)];
+            var someDestinationBatchContent =
+                someDestinationSender[someDestinationSender.BatchSentMessages.ElementAt(0)];
             Assert.Multiple(() =>
             {
                 Assert.That(someDestinationBatchContent, Has.Count.EqualTo(1));
@@ -264,16 +343,26 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 Assert.That(someOtherDestinationSender.IndividuallySentMessages, Is.Empty);
                 Assert.That(someOtherDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
             });
-            var someOtherDestinationBatchContent = someOtherDestinationSender[someOtherDestinationSender.BatchSentMessages.ElementAt(0)];
+            var someOtherDestinationBatchContent =
+                someOtherDestinationSender[someOtherDestinationSender.BatchSentMessages.ElementAt(0)];
             Assert.That(someOtherDestinationBatchContent, Has.Count.EqualTo(1));
         }
 
         [Test]
-        public async Task Should_dispatch_multicast_default_dispatches_together_as_batch_regardless_of_the_event_to_the_topic()
+        public async Task
+            Should_dispatch_multicast_default_dispatches_together_as_batch_per_destination()
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap =
+                    {
+                        { typeof(SomeEvent).FullName, "sometopic" },
+                        { typeof(SomeOtherEvent).FullName, "someothertopic" }
+                    },
+                }));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -293,15 +382,26 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction());
 
-            var sender = client.Senders["sometopic"];
+            var someTopicSender = client.Senders["sometopic"];
+            var someOtherTopicSender = client.Senders["someothertopic"];
 
             Assert.Multiple(() =>
             {
-                Assert.That(sender.IndividuallySentMessages, Is.Empty);
-                Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+                Assert.That(someTopicSender.IndividuallySentMessages, Is.Empty);
+                Assert.That(someTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
             });
-            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
-            Assert.That(batchContent, Has.Count.EqualTo(2));
+            var someTopicBatchContent =
+                someTopicSender[someTopicSender.BatchSentMessages.ElementAt(0)];
+            Assert.Multiple(() =>
+            {
+                Assert.That(someTopicBatchContent, Has.Count.EqualTo(1));
+
+                Assert.That(someOtherTopicSender.IndividuallySentMessages, Is.Empty);
+                Assert.That(someOtherTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
+            var someOtherTopicBatchContent =
+                someOtherTopicSender[someOtherTopicSender.BatchSentMessages.ElementAt(0)];
+            Assert.That(someOtherTopicBatchContent, Has.Count.EqualTo(1));
         }
 
         [Test]
@@ -309,7 +409,15 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap =
+                    {
+                        { typeof(SomeEvent).FullName, "sometopic" },
+                        { typeof(SomeOtherEvent).FullName, "someothertopic" }
+                    },
+                }));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("Operation1",
@@ -343,11 +451,13 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                     [],
                     DispatchConsistency.Default);
 
-            await dispatcher.Dispatch(new TransportOperations(operation1, operation2, operation3, operation4), new TransportTransaction());
+            await dispatcher.Dispatch(new TransportOperations(operation1, operation2, operation3, operation4),
+                new TransportTransaction());
 
             var someDestinationSender = client.Senders["SomeDestination"];
             var someOtherDestinationSender = client.Senders["SomeOtherDestination"];
             var someTopicSender = client.Senders["sometopic"];
+            var someOtherTopicSender = client.Senders["someothertopic"];
 
             Assert.Multiple(() =>
             {
@@ -357,16 +467,20 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 Assert.That(someOtherDestinationSender.IndividuallySentMessages, Is.Empty);
                 Assert.That(someOtherDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
             });
-            var someOtherDestinationBatchContent = someOtherDestinationSender[someOtherDestinationSender.BatchSentMessages.ElementAt(0)];
+            var someOtherDestinationBatchContent =
+                someOtherDestinationSender[someOtherDestinationSender.BatchSentMessages.ElementAt(0)];
             Assert.Multiple(() =>
             {
                 Assert.That(someOtherDestinationBatchContent, Has.Count.EqualTo(1));
 
                 Assert.That(someTopicSender.IndividuallySentMessages, Has.Count.EqualTo(1));
-                Assert.That(someTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
+                Assert.That(someTopicSender.BatchSentMessages, Has.Count.Zero);
+
+                Assert.That(someOtherTopicSender.IndividuallySentMessages, Has.Count.Zero);
+                Assert.That(someOtherTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
             });
-            var someTopicSenderBatchContent = someTopicSender[someTopicSender.BatchSentMessages.ElementAt(0)];
-            Assert.That(someTopicSenderBatchContent, Has.Count.EqualTo(1));
+            var someOtherTopicSenderBatchContent = someOtherTopicSender[someOtherTopicSender.BatchSentMessages.ElementAt(0)];
+            Assert.That(someOtherTopicSenderBatchContent, Has.Count.EqualTo(1));
         }
 
         [Test]
@@ -377,7 +491,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             defaultClient.Senders["SomeDestination"] = defaultSender;
             var transactionalClient = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -390,16 +504,18 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var azureServiceBusTransaction = new AzureServiceBusTransportTransaction(transactionalClient,
                 "SomePartitionKey", new TransactionOptions());
 
-            await dispatcher.Dispatch(new TransportOperations(operation1), azureServiceBusTransaction.TransportTransaction);
+            await dispatcher.Dispatch(new TransportOperations(operation1),
+                azureServiceBusTransaction.TransportTransaction);
 
             var transactionalSender = transactionalClient.Senders["SomeDestination"];
 
             Assert.That(transactionalSender.BatchSentMessages, Has.Count.EqualTo(1));
-            var someDestinationTransactionalBatchContent = transactionalSender[transactionalSender.BatchSentMessages.ElementAt(0)];
+            var someDestinationTransactionalBatchContent =
+                transactionalSender[transactionalSender.BatchSentMessages.ElementAt(0)];
             Assert.Multiple(() =>
             {
                 Assert.That(someDestinationTransactionalBatchContent, Has.Exactly(1)
-                            .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == "SomePartitionKey"));
+                    .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == "SomePartitionKey"));
                 Assert.That(defaultSender.BatchSentMessages, Is.Empty);
                 Assert.That(azureServiceBusTransaction.Transaction, Is.Not.Null);
             });
@@ -427,7 +543,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 return false;
             };
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), TopicTopology.FromOptions(new TopologyOptions()));
 
             var nrOfMessages = 150;
             var operations = new List<TransportOperation>(nrOfMessages);
@@ -444,8 +560,12 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var azureServiceBusTransaction = new AzureServiceBusTransportTransaction(transactionalClient,
                 "SomePartitionKey", new TransactionOptions());
 
-            var ex = Assert.ThrowsAsync<Exception>(async () => await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction));
-            Assert.That(ex.Message, Is.EqualTo($"The number of outgoing messages ({nrOfMessages}) exceeds the limits permitted by Azure Service Bus ({100}) in a single transaction"));
+            var ex = Assert.ThrowsAsync<Exception>(async () =>
+                await dispatcher.Dispatch(new TransportOperations(operations.ToArray()),
+                    azureServiceBusTransaction.TransportTransaction));
+            Assert.That(ex.Message,
+                Is.EqualTo(
+                    $"The number of outgoing messages ({nrOfMessages}) exceeds the limits permitted by Azure Service Bus ({100}) in a single transaction"));
         }
 
         [Test]
@@ -467,7 +587,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 return false;
             };
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operations = new List<TransportOperation>(200);
             for (int i = 0; i < 200; i++)
@@ -482,7 +602,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
 
-            await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
+            await dispatcher.Dispatch(new TransportOperations([.. operations]),
+                azureServiceBusTransaction.TransportTransaction);
 
             Assert.That(defaultSender.BatchSentMessages, Has.Count.EqualTo(2));
             var firstBatch = defaultSender[defaultSender.BatchSentMessages.ElementAt(0)];
@@ -503,7 +624,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             defaultSender.TryAdd = msg => false;
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operations = new List<TransportOperation>(5);
             for (int i = 0; i < 5; i++)
@@ -518,7 +639,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
 
-            await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
+            await dispatcher.Dispatch(new TransportOperations([.. operations]),
+                azureServiceBusTransaction.TransportTransaction);
 
             Assert.Multiple(() =>
             {
@@ -528,7 +650,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
-        public async Task Should_fallback_to_individual_send_when_a_message_cannot_be_added_to_a_batch_but_batch_all_others()
+        public async Task
+            Should_fallback_to_individual_send_when_a_message_cannot_be_added_to_a_batch_but_batch_all_others()
         {
             var defaultClient = new FakeServiceBusClient();
             var defaultSender = new FakeSender();
@@ -543,7 +666,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 };
             };
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operations = new List<TransportOperation>(5);
             for (int i = 0; i < 10; i++)
@@ -558,7 +681,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
 
-            await dispatcher.Dispatch(new TransportOperations(operations.ToArray()), azureServiceBusTransaction.TransportTransaction);
+            await dispatcher.Dispatch(new TransportOperations(operations.ToArray()),
+                azureServiceBusTransaction.TransportTransaction);
 
             Assert.Multiple(() =>
             {
@@ -575,7 +699,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var transactionalSender = new FakeSender();
             transactionalClient.Senders["SomeDestination"] = transactionalSender;
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), "sometopic");
+            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -587,7 +711,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
 
-            await dispatcher.Dispatch(new TransportOperations(operation1), azureServiceBusTransaction.TransportTransaction);
+            await dispatcher.Dispatch(new TransportOperations(operation1),
+                azureServiceBusTransaction.TransportTransaction);
 
             var defaultSender = defaultClient.Senders["SomeDestination"];
 
@@ -596,13 +721,14 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             Assert.Multiple(() =>
             {
                 Assert.That(someOtherDestinationBatchContent, Has.Exactly(1)
-                            .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == default));
+                    .Matches<ServiceBusMessage>(msg => msg.TransactionPartitionKey == null));
                 Assert.That(transactionalSender.BatchSentMessages, Is.Empty);
                 Assert.That(azureServiceBusTransaction.Transaction, Is.Null);
             });
         }
 
-        class SomeEvent { }
-        class SomeOtherEvent { }
+        class SomeEvent;
+
+        class SomeOtherEvent;
     }
 }

@@ -36,16 +36,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
         {
             // Run the scenario first with manage rights to make sure the topic and the subscription is created
             await Scenario.Define<Context>()
-                .WithEndpoint<Publisher>(b =>
-                {
-                    // Disabling auto subscribe will make sure no rules get added
-                    b.CustomConfig(c => c.DisableFeature<AutoSubscribe>());
-                })
-                .WithEndpoint<Subscriber>(b =>
-                {
-                    // Disabling auto subscribe will make sure no rules get added
-                    b.CustomConfig(c => c.DisableFeature<AutoSubscribe>());
-                })
+                .WithEndpoint<Publisher>()
+                .WithEndpoint<Subscriber>()
                 .Done(c => c.EndpointsStarted)
                 .Run();
 
@@ -57,6 +49,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                     {
                         // least-privilege mode doesn't support installers
                         c.GetSettings().Set("Installers.Enable", false);
+                        // AutoSubscribe is not supported in least-privilege mode
+                        c.DisableFeature<AutoSubscribe>();
 
                         var transport = c.ConfigureTransport<AzureServiceBusTransport>();
                         transport.ConnectionString =
@@ -70,6 +64,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
                     {
                         // least-privilege mode doesn't support installers
                         c.GetSettings().Set("Installers.Enable", false);
+                        // AutoSubscribe is not supported in least-privilege mode
+                        c.DisableFeature<AutoSubscribe>();
 
                         var transport = c.ConfigureTransport<AzureServiceBusTransport>();
                         transport.ConnectionString =
@@ -92,9 +88,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
             public Publisher() =>
                 EndpointSetup<DefaultPublisher>(b =>
                 {
-                    var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Single(DedicatedTopic);
-                });
+                }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent>(this));
 
             public class MyHandler : IHandleMessages<MyCommand>
             {
@@ -106,12 +100,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
         public class Subscriber : EndpointConfigurationBuilder
         {
             public Subscriber()
-                => EndpointSetup<DefaultServer>(b
-                    =>
+                => EndpointSetup<DefaultServer>(b =>
                 {
-                    var transport = b.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.Topology = TopicTopology.Single(DedicatedTopic);
-                });
+                }, metadata => metadata.RegisterPublisherFor<MyEvent, Publisher>());
 
             public class MyHandler : IHandleMessages<MyEvent>
             {

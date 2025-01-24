@@ -1,13 +1,17 @@
-﻿namespace NServiceBus
+﻿#nullable enable
+
+namespace NServiceBus
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
     using System.Net;
     using System.Threading;
     using System.Threading.Tasks;
     using Azure.Core;
     using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using Transport;
     using Transport.AzureServiceBus;
 
@@ -19,7 +23,7 @@
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString) : base(
+        public AzureServiceBusTransport(string connectionString, TopicTopology topology) : base(
             defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
             supportsDelayedDelivery: true,
             supportsPublishSubscribe: true,
@@ -28,12 +32,13 @@
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
 
             ConnectionString = connectionString;
+            Topology = topology;
         }
 
         /// <summary>
         /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
         /// </summary>
-        public AzureServiceBusTransport(string fullyQualifiedNamespace, TokenCredential tokenCredential) : base(
+        public AzureServiceBusTransport(string fullyQualifiedNamespace, TokenCredential tokenCredential, TopicTopology topology) : base(
             defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
             supportsDelayedDelivery: true,
             supportsPublishSubscribe: true,
@@ -44,16 +49,16 @@
 
             FullyQualifiedNamespace = fullyQualifiedNamespace;
             TokenCredential = tokenCredential;
+            Topology = topology;
         }
 
         [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811", Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.")]
-        internal AzureServiceBusTransport() : base(
+        internal AzureServiceBusTransport(TopicTopology topology) : base(
             defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
             supportsDelayedDelivery: true,
             supportsPublishSubscribe: true,
-            supportsTTBR: true)
-        {
-        }
+            supportsTTBR: true) =>
+            Topology = topology;
 
         /// <inheritdoc />
         public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
@@ -64,6 +69,8 @@
             {
                 throw new Exception("The transport has not been initialized. Either provide a connection string or a fully qualified namespace and token credential.");
             }
+
+            Topology.Validate();
 
             var transportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp;
             bool enableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive;
@@ -97,32 +104,39 @@
                 ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
                 : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
-            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient);
+            var administrationClient = TokenCredential != null
+                ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
+                : new ServiceBusAdministrationClient(ConnectionString);
+
+            var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient);
 
             if (hostSettings.SetupInfrastructure)
             {
-                var namespacePermissions = new NamespacePermissions(TokenCredential, FullyQualifiedNamespace, ConnectionString);
-                var adminClient = await namespacePermissions.CanManage(cancellationToken)
+                await administrationClient.AssertNamespaceManageRightsAvailable(cancellationToken)
                     .ConfigureAwait(false);
 
-                var queueCreator = new QueueCreator(this);
                 var allQueues = infrastructure.Receivers
                     .Select(r => r.Value.ReceiveAddress)
                     .Concat(sendingAddresses)
                     .ToArray();
 
-                await queueCreator.CreateQueues(adminClient, allQueues, cancellationToken).ConfigureAwait(false);
+                var queueCreator = new TopologyCreator(this);
+                await queueCreator.Create(administrationClient, allQueues, cancellationToken).ConfigureAwait(false);
 
                 foreach (IMessageReceiver messageReceiver in infrastructure.Receivers.Values)
                 {
                     if (messageReceiver.Subscriptions is SubscriptionManager subscriptionManager)
                     {
-                        await subscriptionManager.CreateSubscription(adminClient, cancellationToken).ConfigureAwait(false);
+                        await subscriptionManager.CreateSubscription(administrationClient, cancellationToken)
+                            .ConfigureAwait(false);
                     }
                 }
+
+                return infrastructure;
             }
 
             return infrastructure;
+
         }
 
         void ApplyRetryPolicyOptionsIfNeeded(ServiceBusClientOptions options)
@@ -143,18 +157,35 @@
 
         /// <inheritdoc />
         public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes() =>
-            new[]
-            {
-                TransportTransactionMode.None,
+        [
+            TransportTransactionMode.None,
                 TransportTransactionMode.ReceiveOnly,
                 TransportTransactionMode.SendsAtomicWithReceive
-            };
+        ];
 
         /// <summary>
-        /// Gets or sets the topic topology to be used.
+        /// Gets the topic topology used.
         /// </summary>
-        /// <remarks>The default is <see cref="TopicTopology.DefaultBundle"/></remarks>
-        public TopicTopology Topology { get; set; } = TopicTopology.DefaultBundle;
+        [MemberNotNull(nameof(topology))]
+        public TopicTopology Topology
+        {
+            get
+            {
+                ArgumentNullException.ThrowIfNull(topology);
+                return topology;
+            }
+            internal set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                if (value is not (MigrationTopology or TopicPerEventTopology))
+                {
+                    throw new ArgumentException("The provided topology is not supported.", nameof(value));
+                }
+                topology = value;
+            }
+        }
+
+        TopicTopology topology;
 
         /// <summary>
         /// The maximum size used when creating queues and topics in GB.
@@ -169,6 +200,8 @@
             }
         }
         int entityMaximumSize = 5;
+
+        internal int EntityMaximumSizeInMegabytes => EntityMaximumSize * 1024;
 
         /// <summary>
         /// Enables entity partitioning when creating queues and topics.
@@ -244,59 +277,6 @@
         TimeSpan? maxAutoLockRenewalDuration;
 
         /// <summary>
-        /// Specifies a callback to customize subscription names.
-        /// </summary>
-        public Func<string, string> SubscriptionNamingConvention
-        {
-            get => subscriptionNamingConvention;
-            set
-            {
-                Guard.AgainstNull(nameof(SubscriptionNamingConvention), value);
-
-                // wrap the custom convention:
-                subscriptionNamingConvention = subscriptionName =>
-                {
-                    try
-                    {
-                        return value(subscriptionName);
-                    }
-                    catch (Exception exception)
-                    {
-                        throw new Exception("Custom subscription naming convention threw an exception.", exception);
-                    }
-                };
-
-            }
-        }
-        Func<string, string> subscriptionNamingConvention = static name => name;
-
-        /// <summary>
-        /// Specifies a callback to customize subscription rule names.
-        /// </summary>
-        public Func<Type, string> SubscriptionRuleNamingConvention
-        {
-            get => subscriptionRuleNamingConvention;
-            set
-            {
-                Guard.AgainstNull(nameof(SubscriptionRuleNamingConvention), value);
-
-                // wrap the custom convention:
-                subscriptionRuleNamingConvention = eventType =>
-                {
-                    try
-                    {
-                        return value(eventType);
-                    }
-                    catch (Exception exception)
-                    {
-                        throw new Exception("Custom subscription rule naming convention threw an exception", exception);
-                    }
-                };
-            }
-        }
-        Func<Type, string> subscriptionRuleNamingConvention = static type => type.FullName;
-
-        /// <summary>
         /// Configures the transport to use AMQP over WebSockets.
         /// </summary>
         public bool UseWebSockets { get; set; }
@@ -304,7 +284,7 @@
         /// <summary>
         /// Overrides the default retry policy.
         /// </summary>
-        public ServiceBusRetryOptions RetryPolicyOptions
+        public ServiceBusRetryOptions? RetryPolicyOptions
         {
             get => retryPolicy;
             set
@@ -313,12 +293,12 @@
                 retryPolicy = value;
             }
         }
-        ServiceBusRetryOptions retryPolicy;
+        ServiceBusRetryOptions? retryPolicy;
 
         /// <summary>
         /// The proxy to use for communication over web sockets.
         /// </summary>
-        public IWebProxy WebProxy
+        public IWebProxy? WebProxy
         {
             get => webProxy;
             set
@@ -327,7 +307,7 @@
                 webProxy = value;
             }
         }
-        IWebProxy webProxy;
+        IWebProxy? webProxy;
 
         /// <summary>
         /// When set will not add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
@@ -336,11 +316,6 @@
             TreatAsErrorFromVersion = "5",
             RemoveInVersion = "6")]
         public bool DoNotSendTransportEncodingHeader { get; set; }
-
-        internal string ConnectionString { get; set; }
-
-        internal string FullyQualifiedNamespace { get; set; }
-        internal TokenCredential TokenCredential { get; set; }
 
         /// <summary>
         /// Gets or sets the action that allows customization of the native <see cref="ServiceBusMessage"/> 
@@ -355,6 +330,11 @@
         /// with expectations elsewhere in the system.
         /// </para>
         /// </remarks>
-        public OutgoingNativeMessageCustomizationAction OutgoingNativeMessageCustomization { get; set; }
+        public OutgoingNativeMessageCustomizationAction? OutgoingNativeMessageCustomization { get; set; }
+
+        internal string? ConnectionString { get; set; }
+
+        internal string? FullyQualifiedNamespace { get; set; }
+        internal TokenCredential? TokenCredential { get; set; }
     }
 }

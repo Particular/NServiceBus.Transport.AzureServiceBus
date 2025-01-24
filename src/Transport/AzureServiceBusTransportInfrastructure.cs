@@ -8,6 +8,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     using System.Threading;
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using Transport;
 
     sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
@@ -17,26 +18,29 @@ namespace NServiceBus.Transport.AzureServiceBus
         readonly MessageSenderRegistry messageSenderRegistry;
         readonly HostSettings hostSettings;
         readonly ServiceBusClient defaultClient;
+        readonly ServiceBusAdministrationClient administrationClient;
         readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
 
         public AzureServiceBusTransportInfrastructure(
             AzureServiceBusTransport transportSettings,
             HostSettings hostSettings,
             (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
-            ServiceBusClient defaultClient
+            ServiceBusClient defaultClient,
+            ServiceBusAdministrationClient administrationClient
             )
         {
             this.transportSettings = transportSettings;
 
             this.hostSettings = hostSettings;
             this.defaultClient = defaultClient;
+            this.administrationClient = administrationClient;
             this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
 
             messageSenderRegistry = new MessageSenderRegistry(defaultClient);
 
             Dispatcher = new MessageDispatcher(
                 messageSenderRegistry,
-                transportSettings.Topology.TopicToPublishTo,
+                transportSettings.Topology,
                 transportSettings.OutgoingNativeMessageCustomization,
                 transportSettings.DoNotSendTransportEncodingHeader
                 );
@@ -79,7 +83,7 @@ namespace NServiceBus.Transport.AzureServiceBus
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
                 receiveSettings.UsePublishSubscribe
-                    ? new SubscriptionManager(receiveAddress, transportSettings, defaultClient)
+                    ? new SubscriptionManager(receiveAddress, transportSettings, hostSettings.SetupInfrastructure, administrationClient)
                     : null,
                 subQueue
                 );
