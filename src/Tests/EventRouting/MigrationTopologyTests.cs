@@ -1,6 +1,8 @@
 namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
+using System.ComponentModel.DataAnnotations;
 using NUnit.Framework;
+using Particular.Approvals;
 
 [TestFixture]
 public class MigrationTopologyTests
@@ -44,6 +46,26 @@ public class MigrationTopologyTests
         var topology = TopicTopology.FromOptions(topologyOptions);
 
         Assert.That(() => topology.GetSubscribeDestinations(typeof(MyEvent), "SubscribingQueue"), Throws.Exception);
+    }
+
+    [Test]
+    public void Should_self_validate()
+    {
+        var topologyOptions = new MigrationTopologyOptions
+        {
+            TopicToPublishTo = "TopicToPublishTo", // passed validation because otherwise the custom validation would not be called
+            TopicToSubscribeOn = "TopicToSubscribeOn", // passed validation because otherwise the custom validation would not be called
+            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName, new string('c', 261) } },
+            SubscribedEventToTopicsMap = { { typeof(MyEvent).FullName, [new string('d', 261), new string('e', 261)] } },
+            QueueNameToSubscriptionNameMap = { { "SubscribingQueue", new string('f', 51) } },
+            SubscribedEventToRuleNameMap = { { typeof(MyEvent).FullName, new string('g', 51) } }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        Approver.Verify(validationException.Message);
     }
 
     class MyEvent;

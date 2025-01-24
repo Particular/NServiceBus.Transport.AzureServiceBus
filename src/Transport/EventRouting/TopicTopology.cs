@@ -3,6 +3,9 @@
 namespace NServiceBus
 {
     using System;
+    using System.Collections.Generic;
+    using System.ComponentModel.DataAnnotations;
+    using System.Text;
 
     /// <summary>
     /// Represents the topic topology used by <see cref="AzureServiceBusTransport"/>.
@@ -78,6 +81,35 @@ namespace NServiceBus
             return hierarchy;
         }
 
+        /// <summary>
+        /// Validates the topology follows the restrictions of Azure Service Bus.
+        /// </summary>
+        public void Validate()
+        {
+            var validationContext = new ValidationContext(Options);
+            var validationResults = new List<ValidationResult>();
+
+            if (!Validator.TryValidateObject(Options, validationContext, validationResults, validateAllProperties: true))
+            {
+                var messageBuilder = new StringBuilder();
+                messageBuilder.AppendLine("Validation failed for the following reasons:");
+
+                foreach (var result in validationResults)
+                {
+                    // The result.MemberNames list indicates which properties/fields caused the error.
+                    var members = string.Join(", ", result.MemberNames);
+
+                    // You can format this however you'd like, e.g. multiple lines, bullet points, etc.
+                    messageBuilder.AppendLine(
+                        $"- {result.ErrorMessage}" +
+                        (string.IsNullOrWhiteSpace(members) ? "" : $" (Members: {members})")
+                    );
+                }
+
+                throw new ValidationException(messageBuilder.ToString());
+            }
+        }
+
         // Should we make those public?
         internal string GetPublishDestination(Type eventType)
         {
@@ -106,6 +138,5 @@ namespace NServiceBus
         /// <param name="eventTypeFullName"></param>
         /// <returns></returns>
         protected abstract string GetPublishDestinationCore(string eventTypeFullName);
-
     }
 }

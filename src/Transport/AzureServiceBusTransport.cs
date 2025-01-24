@@ -70,6 +70,8 @@ namespace NServiceBus
                 throw new Exception("The transport has not been initialized. Either provide a connection string or a fully qualified namespace and token credential.");
             }
 
+            Topology.Validate();
+
             var transportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp;
             bool enableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive;
 
