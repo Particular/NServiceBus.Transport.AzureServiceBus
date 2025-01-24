@@ -30,23 +30,31 @@ public sealed class MigrationTopology : TopicTopology
     new MigrationTopologyOptions Options { get; }
 
     /// <summary>
-    /// 
+    /// Marks the given published event type as migrated applying the default convention of publishing the event type
+    /// under a topic name that is the FullName of the event type.
     /// </summary>
-    /// <typeparam name="TEventType"></typeparam>
+    /// <typeparam name="TEventType">The event type to be marked as migrated.</typeparam>
+    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
+    /// <remarks>Calling this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void MigratedPublishedEvent<TEventType>() => MigratedPublishedEvent<TEventType>(typeof(TEventType).FullName!);
 
     /// <summary>
-    /// 
+    /// Marks the given published event type as migrated applying the default convention of publishing the event type
+    /// under a topic name that is the FullName of the event type.
     /// </summary>
-    /// <param name="eventType"></param>
+    /// <param name="eventType">The event type to be marked as migrated.</param>
+    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
+    /// <remarks>Calling this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void MigratedPublishedEvent(Type eventType) => MigratedPublishedEvent(eventType, eventType.FullName!);
 
     /// <summary>
-    /// 
+    /// Marks the given published event type as migrated applying the default convention of publishing the event type
+    /// under a topic name that is the FullName of the event type.
     /// </summary>
-    /// <param name="topicName"></param>
-    /// <typeparam name="TEventType"></typeparam>
-    /// <exception cref="InvalidOperationException"></exception>
+    /// <typeparam name="TEventType">The event type to be marked as migrated.</typeparam>
+    /// <param name="topicName">The topic name to publish the event type to.</param>
+    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
+    /// <remarks>Calling this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void MigratedPublishedEvent<TEventType>(string topicName) => MigratedPublishedEvent(typeof(TEventType), topicName);
 
     /// <summary>
@@ -131,43 +139,26 @@ public sealed class MigrationTopology : TopicTopology
     /// or subscribed to on the <see cref="TopicToSubscribeOn"/> as configured on the migration topology.
     /// </summary>
     /// <typeparam name="TEventType">The event type to be marked for migration.</typeparam>
+    /// <param name="configure">Configures additional event migration options.</param>
     /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
     /// <remarks>Adding the same event type multiple times automatically de-duplicates the event type.</remarks>
-    public void EventToMigrate<TEventType>() => EventToMigrate(typeof(TEventType));
+    public void EventToMigrate<TEventType>(Action<EventToMigrateOptions>? configure = null) => EventToMigrate(typeof(TEventType), configure);
 
     /// <summary>
     /// Marks the given event type to be migrated making sure it is published to the <see cref="TopicToPublishTo"/>
     /// or subscribed to on the <see cref="TopicToSubscribeOn"/> as configured on the migration topology.
     /// </summary>
     /// <param name="eventType">The event type to be marked for migration.</param>
+    /// <param name="configure">Configures additional event migration options.</param>
     /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
     /// <remarks>Adding the same event type multiple times automatically de-duplicates the event type.</remarks>
-    public void EventToMigrate(Type eventType)
+    public void EventToMigrate(Type eventType, Action<EventToMigrateOptions>? configure = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
         _ = Options.EventsToMigrateMap.Add(eventType.FullName);
-    }
 
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="ruleName"></param>
-    /// <typeparam name="TEventType"></typeparam>
-    public void OverrideRuleNameFor<TEventType>(string ruleName) => OverrideRuleNameFor(typeof(TEventType), ruleName);
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="eventType"></param>
-    /// <param name="ruleName"></param>
-    /// <exception cref="InvalidOperationException"></exception>
-    public void OverrideRuleNameFor(Type eventType, string ruleName)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(ruleName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
-
-        Options.SubscribedEventToRuleNameMap[eventType.FullName] = ruleName;
+        configure?.Invoke(new EventToMigrateOptions(eventType.FullName, Options));
     }
 
     /// <summary>
@@ -217,5 +208,37 @@ public sealed class MigrationTopology : TopicTopology
 
         // TODO: Much better exception message
         throw new Exception($"During migration every event type must be explicitly mapped. Consider explicitly mapping '{eventTypeFullName}' to a topic.");
+    }
+
+    /// <summary>
+    /// Options enabled additional migration options for a specific event type.
+    /// </summary>
+    public sealed class EventToMigrateOptions
+    {
+        internal EventToMigrateOptions(string eventTypeFullName, MigrationTopologyOptions options)
+        {
+            EventTypeFullName = eventTypeFullName;
+            Options = options;
+        }
+
+        /// <summary>
+        /// Gets the event type full name.
+        /// </summary>
+        public string EventTypeFullName { get; }
+        MigrationTopologyOptions Options { get; }
+
+        /// <summary>
+        /// Overrides the default rule name for the event type.
+        /// </summary>
+        /// <param name="ruleName">The fixed rule name</param>
+        /// <exception cref="ArgumentException">The rule name is null or whitespace.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">The rule is longer than 50 characters.</exception>
+        public void OverrideRuleName(string ruleName)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(ruleName);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(ruleName.Length, 50, nameof(ruleName));
+
+            Options.SubscribedEventToRuleNameMap[EventTypeFullName] = ruleName;
+        }
     }
 }

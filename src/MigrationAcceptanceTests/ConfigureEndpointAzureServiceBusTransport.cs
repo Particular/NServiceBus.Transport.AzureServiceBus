@@ -24,8 +24,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 
         foreach (var eventType in publisherMetadata.Publishers.SelectMany(p => p.Events))
         {
-            topology.EventToMigrate(eventType);
-            topology.OverrideRuleNameFor(eventType, eventType.FullName.Shorten());
+            topology.EventToMigrate(eventType, options => options.OverrideRuleName(options.EventTypeFullName.Shorten()));
         }
 
         var transport = new AzureServiceBusTransport(connectionString, topology);
