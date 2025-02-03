@@ -41,7 +41,7 @@
                     {
                         var transport = c.ConfigureTransport<AzureServiceBusTransport>();
                         // doing a deliberate roundtrip to ensure that the options are correctly serialized and deserialized
-                        var serializedOptions = JsonSerializer.Serialize(new TopicPerEventTopologyOptions
+                        var serializedOptions = JsonSerializer.Serialize(new TopologyOptions
                         {
                             QueueNameToSubscriptionNameMap = { { Conventions.EndpointNamingConvention(typeof(Publisher)), TopicName } },
                             PublishedEventToTopicsMap = { { typeof(Event).FullName, TopicName } },

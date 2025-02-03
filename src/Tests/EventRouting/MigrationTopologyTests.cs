@@ -53,8 +53,8 @@ public class MigrationTopologyTests
     {
         var topologyOptions = new MigrationTopologyOptions
         {
-            TopicToPublishTo = "TopicToPublishTo", // passed validation because otherwise the custom validation would not be called
-            TopicToSubscribeOn = "TopicToSubscribeOn", // passed validation because otherwise the custom validation would not be called
+            TopicToPublishTo = new string('a', 261),
+            TopicToSubscribeOn = new string('a', 261),
             PublishedEventToTopicsMap = { { typeof(MyEvent).FullName, new string('c', 261) } },
             SubscribedEventToTopicsMap = { { typeof(MyEvent).FullName, [new string('d', 261), new string('e', 261)] } },
             QueueNameToSubscriptionNameMap = { { "SubscribingQueue", new string('f', 51) } },

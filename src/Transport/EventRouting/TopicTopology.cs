@@ -3,9 +3,8 @@
 namespace NServiceBus
 {
     using System;
-    using System.Collections.Generic;
     using System.ComponentModel.DataAnnotations;
-    using System.Text;
+    using Microsoft.Extensions.Options;
 
     /// <summary>
     /// Represents the topic topology used by <see cref="AzureServiceBusTransport"/>.
@@ -29,19 +28,13 @@ namespace NServiceBus
             options switch
             {
                 MigrationTopologyOptions migrationOptions => new MigrationTopology(migrationOptions),
-                TopicPerEventTopologyOptions perEventTopologyOptions => new TopicPerEventTopology(perEventTopologyOptions),
-                _ => new TopicPerEventTopology(new TopicPerEventTopologyOptions
-                {
-                    PublishedEventToTopicsMap = options.PublishedEventToTopicsMap,
-                    SubscribedEventToTopicsMap = options.SubscribedEventToTopicsMap,
-                    QueueNameToSubscriptionNameMap = options.QueueNameToSubscriptionNameMap
-                })
+                _ => new TopicPerEventTopology(options)
             };
 
         /// <summary>
         /// 
         /// </summary>
-        public static TopicPerEventTopology Default => new(new TopicPerEventTopologyOptions());
+        public static TopicPerEventTopology Default => new(new TopologyOptions());
 
         /// <summary>
         /// Returns a migration topology using a single topic named <c>bundle-1</c> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
@@ -86,28 +79,25 @@ namespace NServiceBus
         /// </summary>
         public void Validate()
         {
-            var validationContext = new ValidationContext(Options);
-            var validationResults = new List<ValidationResult>();
+            ValidateOptionsResult validationResult;
 
-            if (!Validator.TryValidateObject(Options, validationContext, validationResults, validateAllProperties: true))
+            if (Options is MigrationTopologyOptions migrationOptions)
             {
-                var messageBuilder = new StringBuilder();
-                messageBuilder.AppendLine("Validation failed for the following reasons:");
-
-                foreach (var result in validationResults)
-                {
-                    // The result.MemberNames list indicates which properties/fields caused the error.
-                    var members = string.Join(", ", result.MemberNames);
-
-                    // You can format this however you'd like, e.g. multiple lines, bullet points, etc.
-                    messageBuilder.AppendLine(
-                        $"- {result.ErrorMessage}" +
-                        (string.IsNullOrWhiteSpace(members) ? "" : $" (Members: {members})")
-                    );
-                }
-
-                throw new ValidationException(messageBuilder.ToString());
+                var migrationOptionsValidator = new MigrationTopologyOptionsValidator();
+                validationResult = migrationOptionsValidator.Validate(null, migrationOptions);
             }
+            else
+            {
+                var validator = new TopologyOptionsValidator();
+                validationResult = validator.Validate(null, Options);
+            }
+
+            if (validationResult.Succeeded)
+            {
+                return;
+            }
+
+            throw new ValidationException(validationResult.FailureMessage);
         }
 
         // Should we make those public?

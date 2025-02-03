@@ -11,9 +11,9 @@ using System.Linq;
 /// TODO Should we rename this to DefaultTopicTopology?
 public sealed class TopicPerEventTopology : TopicTopology
 {
-    internal TopicPerEventTopology(TopicPerEventTopologyOptions options) : base(options) => Options = options;
-
-    new TopicPerEventTopologyOptions Options { get; }
+    internal TopicPerEventTopology(TopologyOptions options) : base(options)
+    {
+    }
 
     /// <summary>
     /// 
