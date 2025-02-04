@@ -111,13 +111,7 @@ namespace NServiceBus
         public void EventToMigrate(System.Type eventType, System.Action<NServiceBus.MigrationTopology.EventToMigrateOptions>? configure = null) { }
         public void EventToMigrate<TEventType>(System.Action<NServiceBus.MigrationTopology.EventToMigrateOptions>? configure = null) { }
         protected override string GetPublishDestinationCore(string eventTypeFullName) { }
-        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
-                "Topic",
-                "SubscriptionName",
-                "RuleInfo",
-                "RuleName",
-                "RuleFilter"})]
-        protected override System.ValueTuple<string, string, System.ValueTuple<string, string>?>[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName) { }
+        protected override NServiceBus.SubscriptionInfo[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName) { }
         public void MigratedEvent(System.Type eventType) { }
         public void MigratedEvent<TEventType>() { }
         public void MigratedPublishedEvent(System.Type eventType) { }
@@ -138,8 +132,6 @@ namespace NServiceBus
     public sealed class MigrationTopologyOptions : NServiceBus.TopologyOptions
     {
         public MigrationTopologyOptions() { }
-        [System.Text.Json.Serialization.JsonIgnore]
-        public bool IsHierarchy { get; }
         [NServiceBus.AzureServiceBusTopics]
         [System.ComponentModel.DataAnnotations.Required]
         public string? TopicToPublishTo { get; set; }
@@ -159,16 +151,21 @@ namespace NServiceBus
         [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification="The created ValidationContext object is used in a way that never call reflection")]
         public Microsoft.Extensions.Options.ValidateOptionsResult Validate(string? name, NServiceBus.MigrationTopologyOptions options) { }
     }
+    public readonly struct RuleInfo : System.IEquatable<NServiceBus.RuleInfo>
+    {
+        public string Filter { get; init; }
+        public string Name { get; init; }
+    }
+    public readonly struct SubscriptionInfo : System.IEquatable<NServiceBus.SubscriptionInfo>
+    {
+        public NServiceBus.RuleInfo? Rule { get; init; }
+        public string SubscriptionName { get; init; }
+        public string Topic { get; init; }
+    }
     public sealed class TopicPerEventTopology : NServiceBus.TopicTopology
     {
         protected override string GetPublishDestinationCore(string eventTypeFullName) { }
-        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
-                "Topic",
-                "SubscriptionName",
-                "RuleInfo",
-                "RuleName",
-                "RuleFilter"})]
-        protected override System.ValueTuple<string, string, System.ValueTuple<string, string>?>[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName) { }
+        protected override NServiceBus.SubscriptionInfo[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName) { }
         public void OverrideSubscriptionNameFor(string queueName, string subscriptionName) { }
         public void PublishTo(System.Type eventType, string topicName) { }
         public void PublishTo<TEventType>(string topicName) { }
@@ -180,13 +177,7 @@ namespace NServiceBus
         protected TopicTopology(NServiceBus.TopologyOptions options) { }
         public static NServiceBus.TopicPerEventTopology Default { get; }
         protected abstract string GetPublishDestinationCore(string eventTypeFullName);
-        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
-                "Topic",
-                "SubscriptionName",
-                "RuleInfo",
-                "RuleName",
-                "RuleFilter"})]
-        protected abstract System.ValueTuple<string, string, System.ValueTuple<string, string>?>[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName);
+        protected abstract NServiceBus.SubscriptionInfo[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName);
         public void Validate() { }
         public static NServiceBus.TopicTopology FromOptions(NServiceBus.TopologyOptions options) { }
         public static NServiceBus.MigrationTopology MigrateFromNamedSingleTopic(string topicName) { }

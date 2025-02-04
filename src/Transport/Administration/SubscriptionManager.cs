@@ -127,7 +127,7 @@
                 throw;
             }
 
-            if (subscriptionInfo.RuleName is not null)
+            if (subscriptionInfo.Rule is { } rule)
             {
                 // Previously we used the rule manager here too
                 // var ruleManager = client.CreateRuleManager(transportSettings.Topology.TopicToSubscribeOn, subscriptionName);
@@ -135,7 +135,7 @@
                 // {
                 try
                 {
-                    await administrationClient.CreateRuleAsync(subscriptionInfo.Topic, subscriptionInfo.SubscriptionName, new CreateRuleOptions(subscriptionInfo.RuleName, new SqlRuleFilter(subscriptionInfo.RuleFilter)), cancellationToken)
+                    await administrationClient.CreateRuleAsync(subscriptionInfo.Topic, subscriptionInfo.SubscriptionName, new CreateRuleOptions(rule.Name, new SqlRuleFilter(rule.Filter)), cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
@@ -158,11 +158,11 @@
 
             async Task DeleteSubscription(SubscriptionInfo subscriptionInfo)
             {
-                if (subscriptionInfo.RuleName is not null)
+                if (subscriptionInfo.Rule is { } rule)
                 {
                     try
                     {
-                        await administrationClient.DeleteRuleAsync(subscriptionInfo.Topic, subscriptionInfo.SubscriptionName, subscriptionInfo.RuleName, cancellationToken).ConfigureAwait(false);
+                        await administrationClient.DeleteRuleAsync(subscriptionInfo.Topic, subscriptionInfo.SubscriptionName, rule.Name, cancellationToken).ConfigureAwait(false);
                     }
                     catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
                     {

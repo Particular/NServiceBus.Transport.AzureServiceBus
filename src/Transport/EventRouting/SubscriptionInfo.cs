@@ -1,10 +1,11 @@
 #nullable enable
+
 namespace NServiceBus;
 
 /// <summary>
 /// Represents instructions on how to subscribe for an event
 /// </summary>
-public class SubscriptionInfo
+public readonly record struct SubscriptionInfo
 {
     /// <summary>
     /// Name of the topic to subscribe to.
@@ -17,12 +18,7 @@ public class SubscriptionInfo
     public string SubscriptionName { get; init; }
 
     /// <summary>
-    /// Optional rule name to create.
+    /// Optional rule to create.
     /// </summary>
-    public string? RuleName { get; init; }
-
-    /// <summary>
-    /// Optional rule filter to use when creating a rule.
-    /// </summary>
-    public string? RuleFilter { get; init; }
+    public RuleInfo? Rule { get; init; }
 }

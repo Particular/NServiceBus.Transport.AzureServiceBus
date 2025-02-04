@@ -44,12 +44,10 @@ public class TopicPerEventTypeTopologyTests
         {
             Assert.That(result[0].Topic, Is.EqualTo("Topic1"));
             Assert.That(result[0].SubscriptionName, Is.EqualTo("MySubscriptionName"));
-            Assert.That(result[0].RuleName, Is.Null);
-            Assert.That(result[0].RuleFilter, Is.Null);
+            Assert.That(result[0].Rule, Is.Null);
             Assert.That(result[1].Topic, Is.EqualTo("Topic2"));
             Assert.That(result[1].SubscriptionName, Is.EqualTo("MySubscriptionName"));
-            Assert.That(result[1].RuleName, Is.Null);
-            Assert.That(result[1].RuleFilter, Is.Null);
+            Assert.That(result[1].Rule, Is.Null);
         });
     }
 
@@ -67,8 +65,7 @@ public class TopicPerEventTypeTopologyTests
         {
             Assert.That(result[0].Topic, Is.EqualTo(typeof(MyEvent).FullName));
             Assert.That(result[0].SubscriptionName, Is.EqualTo("SubscribingQueue"));
-            Assert.That(result[0].RuleName, Is.Null);
-            Assert.That(result[0].RuleFilter, Is.Null);
+            Assert.That(result[0].Rule, Is.Null);
         });
     }
 

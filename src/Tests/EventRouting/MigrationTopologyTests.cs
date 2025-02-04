@@ -28,8 +28,9 @@ public class MigrationTopologyTests
         {
             Assert.That(result[0].Topic, Is.EqualTo("SubscribeTopic"));
             Assert.That(result[0].SubscriptionName, Is.EqualTo("MySubscriptionName"));
-            Assert.That(result[0].RuleName, Is.EqualTo("MyRuleName"));
-            Assert.That(result[0].RuleFilter, Is.EqualTo("[NServiceBus.EnclosedMessageTypes] LIKE '%NServiceBus.Transport.AzureServiceBus.Tests.MigrationTopologyTests+MyEvent%'"));
+            Assert.That(result[0].Rule, Is.Not.Null);
+            Assert.That(result[0].Rule.Value.Name, Is.EqualTo("MyRuleName"));
+            Assert.That(result[0].Rule.Value.Filter, Is.EqualTo("[NServiceBus.EnclosedMessageTypes] LIKE '%NServiceBus.Transport.AzureServiceBus.Tests.MigrationTopologyTests+MyEvent%'"));
         });
     }
 

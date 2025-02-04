@@ -207,8 +207,11 @@ public sealed class MigrationTopology : TopicTopology
                 {
                     Topic = TopicToSubscribeOn,
                     SubscriptionName = subscriptionName,
-                    RuleName = Options.SubscribedEventToRuleNameMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName),
-                    RuleFilter = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventTypeFullName}%'"
+                    Rule = new RuleInfo
+                    {
+                        Name = Options.SubscribedEventToRuleNameMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName),
+                        Filter = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventTypeFullName}%'"
+                    }
                 }
             ];
         }
