@@ -12,18 +12,16 @@ namespace NServiceBus
     public abstract class TopicTopology
     {
         /// <summary>
-        /// 
+        /// Allows creating topology instances based on serializable state
         /// </summary>
-        /// <param name="options"></param>
         protected TopicTopology(TopologyOptions options) => Options = options;
 
         internal TopologyOptions Options { get; }
 
         /// <summary>
-        /// 
+        /// Creates an instance of the topology object based on serializable state.
         /// </summary>
-        /// <param name="options"></param>
-        /// <returns></returns>
+        /// <param name="options">Serializable topology configuration.</param>
         public static TopicTopology FromOptions(TopologyOptions options) =>
             options switch
             {
@@ -32,7 +30,7 @@ namespace NServiceBus
             };
 
         /// <summary>
-        /// 
+        /// Returns the default topology that uses topic per event type.
         /// </summary>
         public static TopicPerEventTopology Default => new(new TopologyOptions());
 
@@ -100,7 +98,7 @@ namespace NServiceBus
             throw new ValidationException(validationResult.FailureMessage);
         }
 
-        // Should we make those public?
+        //TODO: Should we make those public?
         internal string GetPublishDestination(Type eventType)
         {
             var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
@@ -108,11 +106,10 @@ namespace NServiceBus
         }
 
         /// <summary>
-        /// 
+        /// Returns instructions where to subscribe for a given event.
         /// </summary>
-        /// <param name="eventTypeFullName"></param>
-        /// <param name="subscribingQueueName"></param>
-        /// <returns></returns>
+        /// <param name="eventTypeFullName">Full type name of the event.</param>
+        /// <param name="subscribingQueueName">The name of the queue that is to be the forwarding destination of the subscription.</param>
         protected abstract (string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo)[] GetSubscribeDestinationsCore(
             string eventTypeFullName, string subscribingQueueName);
 
@@ -123,10 +120,9 @@ namespace NServiceBus
         }
 
         /// <summary>
-        /// 
+        /// Returns instructions where to publish a given event.
         /// </summary>
-        /// <param name="eventTypeFullName"></param>
-        /// <returns></returns>
+        /// <param name="eventTypeFullName">Full type name of the event.</param>
         protected abstract string GetPublishDestinationCore(string eventTypeFullName);
     }
 }

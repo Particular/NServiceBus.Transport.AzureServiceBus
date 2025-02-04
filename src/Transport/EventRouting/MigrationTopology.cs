@@ -6,98 +6,104 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// 
+/// Topology that allows mixing of single-topic and topic-per-event approaches in order to allow gradual migration to the topic-per-event topology.
 /// </summary>
 public sealed class MigrationTopology : TopicTopology
 {
     internal MigrationTopology(MigrationTopologyOptions options) : base(options) => Options = options;
 
     /// <summary>
-    /// Gets the topic name of the topic where all events are published to.
+    /// Gets the topic name of the topic where all single-topic events are published to.
     /// </summary>
     public string TopicToPublishTo => Options.TopicToPublishTo!;
 
     /// <summary>
-    /// Gets the topic name of the topic where all subscriptions are managed on.
+    /// Gets the topic name of the topic where all single-topic subscriptions are managed on.
     /// </summary>
     public string TopicToSubscribeOn => Options.TopicToSubscribeOn!;
 
     /// <summary>
     /// Gets whether the current topic topology represents a hierarchy.
     /// </summary>
-    public bool IsHierarchy => Options.IsHierarchy;
+    public bool IsHierarchy => !string.Equals(TopicToPublishTo, TopicToSubscribeOn, StringComparison.OrdinalIgnoreCase);
 
     new MigrationTopologyOptions Options { get; }
 
     /// <summary>
     /// Marks the given published event type as migrated applying the default convention of publishing the event type
-    /// under a topic name that is the FullName of the event type.
+    /// under a topic name that is the full name of the event type.
     /// </summary>
     /// <typeparam name="TEventType">The event type to be marked as migrated.</typeparam>
-    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
-    /// <remarks>Calling this method multiple times with the same event type will lead to the last one winning.</remarks>
+    /// <remarks>Calling overloads of this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void MigratedPublishedEvent<TEventType>() => MigratedPublishedEvent<TEventType>(typeof(TEventType).FullName!);
 
     /// <summary>
     /// Marks the given published event type as migrated applying the default convention of publishing the event type
-    /// under a topic name that is the FullName of the event type.
+    /// under a topic name that is the full name of the event type.
     /// </summary>
     /// <param name="eventType">The event type to be marked as migrated.</param>
-    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
-    /// <remarks>Calling this method multiple times with the same event type will lead to the last one winning.</remarks>
+    /// <remarks>Calling overloads of this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void MigratedPublishedEvent(Type eventType) => MigratedPublishedEvent(eventType, eventType.FullName!);
 
     /// <summary>
-    /// Marks the given published event type as migrated applying the default convention of publishing the event type
-    /// under a topic name that is the FullName of the event type.
+    /// Marks the given published event type as migrated and specifies the topic name under which the event is to be published.
     /// </summary>
     /// <typeparam name="TEventType">The event type to be marked as migrated.</typeparam>
-    /// <param name="topicName">The topic name to publish the event type to.</param>
-    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
-    /// <remarks>Calling this method multiple times with the same event type will lead to the last one winning.</remarks>
+    /// <param name="topicName">The topic name to publish the event to.</param>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
+    /// <remarks>Calling overloads of this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void MigratedPublishedEvent<TEventType>(string topicName) => MigratedPublishedEvent(typeof(TEventType), topicName);
 
     /// <summary>
-    /// 
+    /// Marks the given published event type as migrated and specifies the topic name under which the event is to be published.
     /// </summary>
-    /// <param name="eventType"></param>
-    /// <param name="topicName"></param>
-    /// <exception cref="InvalidOperationException"></exception>
+    /// <param name="eventType">The event type to be marked as migrated.</param>
+    /// <param name="topicName">The topic name to publish the event to.</param>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
+    /// <exception cref="ArgumentException">The full name of the event is not set.</exception>
+    /// <remarks>Calling overloads of this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void MigratedPublishedEvent(Type eventType, string topicName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
-        // TODO Last one wins?
+        //TODO: Last one wins? Sz: Yes
         Options.PublishedEventToTopicsMap[eventType.FullName] = topicName;
     }
 
     /// <summary>
-    /// 
+    /// Marks the given subscribed event type as migrated applying the default convention of subscribing to the event
+    /// under a topic name that is the full name of the event type.
     /// </summary>
-    /// <typeparam name="TEventType"></typeparam>
+    /// <typeparam name="TEventType">The event type to be marked as migrated.</typeparam>
+    /// <remarks>Calling overloads of this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void MigratedSubscribedEvent<TEventType>() => MigratedSubscribedEvent<TEventType>(typeof(TEventType).FullName!);
 
     /// <summary>
-    /// 
+    /// Marks the given subscribed event type as migrated applying the default convention of subscribing to the event
+    /// under a topic name that is the full name of the event type.
     /// </summary>
-    /// <param name="eventType"></param>
+    /// <param name="eventType">The event type to be marked as migrated.</param>
+    /// <remarks>Calling overloads of this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void MigratedSubscribedEvent(Type eventType) => MigratedSubscribedEvent(eventType, eventType.FullName!);
 
     /// <summary>
-    /// 
+    /// Marks the given subscribed event type as migrated and specifies the topic name under which the event is to be subscribed.
     /// </summary>
-    /// <param name="topicName"></param>
-    /// <typeparam name="TEventType"></typeparam>
-    /// <exception cref="InvalidOperationException"></exception>
+    /// <typeparam name="TEventType">The event type to be marked as migrated.</typeparam>
+    /// <param name="topicName">The topic name to subscribe to.</param>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
+    /// <remarks>Calling overloads of this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void MigratedSubscribedEvent<TEventType>(string topicName) => MigratedSubscribedEvent(typeof(TEventType), topicName);
 
     /// <summary>
-    /// 
+    /// Marks the given subscribed event type as migrated and specifies the topic name under which the event is to be subscribed.
     /// </summary>
-    /// <param name="eventType"></param>
-    /// <param name="topicName"></param>
-    /// <exception cref="InvalidOperationException"></exception>
+    /// <param name="eventType">The event type to be marked as migrated.</param>
+    /// <param name="topicName">The topic name to subscribe to.</param>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
+    /// <exception cref="ArgumentException">The full name of the event is not set.</exception>
+    /// <remarks>Calling overloads of this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void MigratedSubscribedEvent(Type eventType, string topicName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
@@ -115,19 +121,17 @@ public sealed class MigrationTopology : TopicTopology
     }
 
     /// <summary>
-    /// Marks the given event type as migrated applying the default convention of publishing or subscribing the event type
-    /// under a topic name that is the FullName of the event type.
+    /// Marks the given event type as migrated applying the default convention of subscribing and publishing the event
+    /// under a topic name that is the full name of the event type.
     /// </summary>
     /// <typeparam name="TEventType">The event type to be marked as migrated.</typeparam>
-    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
     public void MigratedEvent<TEventType>() => MigratedEvent(typeof(TEventType));
 
     /// <summary>
-    /// Marks the given event type as migrated applying the default convention of publishing or subscribing the event type
-    /// under a topic name that is the FullName of the event type.
+    /// Marks the given event type as migrated applying the default convention of subscribing and publishing the event
+    /// under a topic name that is the full name of the event type.
     /// </summary>
     /// <param name="eventType">The event type to be marked as migrated.</param>
-    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
     public void MigratedEvent(Type eventType)
     {
         MigratedPublishedEvent(eventType);
@@ -136,21 +140,21 @@ public sealed class MigrationTopology : TopicTopology
 
     /// <summary>
     /// Marks the given event type to be migrated making sure it is published to the <see cref="TopicToPublishTo"/>
-    /// or subscribed to on the <see cref="TopicToSubscribeOn"/> as configured on the migration topology.
+    /// or subscribed to on the <see cref="TopicToSubscribeOn"/> as configured on this migration topology.
     /// </summary>
     /// <typeparam name="TEventType">The event type to be marked for migration.</typeparam>
     /// <param name="configure">Configures additional event migration options.</param>
-    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
+    /// <exception cref="ArgumentException">The full name of the event type is not set.</exception>
     /// <remarks>Adding the same event type multiple times automatically de-duplicates the event type.</remarks>
     public void EventToMigrate<TEventType>(Action<EventToMigrateOptions>? configure = null) => EventToMigrate(typeof(TEventType), configure);
 
     /// <summary>
     /// Marks the given event type to be migrated making sure it is published to the <see cref="TopicToPublishTo"/>
-    /// or subscribed to on the <see cref="TopicToSubscribeOn"/> as configured on the migration topology.
+    /// or subscribed to on the <see cref="TopicToSubscribeOn"/> as configured on this migration topology.
     /// </summary>
     /// <param name="eventType">The event type to be marked for migration.</param>
     /// <param name="configure">Configures additional event migration options.</param>
-    /// <exception cref="ArgumentException">The FullName of the event type is not set.</exception>
+    /// <exception cref="ArgumentException">The full name of the event type is not set.</exception>
     /// <remarks>Adding the same event type multiple times automatically de-duplicates the event type.</remarks>
     public void EventToMigrate(Type eventType, Action<EventToMigrateOptions>? configure = null)
     {
@@ -162,10 +166,10 @@ public sealed class MigrationTopology : TopicTopology
     }
 
     /// <summary>
-    /// 
+    /// Instructs the topology to use provided subscription name when subscribing to events that are to be forwarded to the given queue.
     /// </summary>
-    /// <param name="queueName"></param>
-    /// <param name="subscriptionName"></param>
+    /// <param name="queueName">Queue name for which the default subscription name is to be overridden.</param>
+    /// <param name="subscriptionName">The subscription name to use.</param>
     public void OverrideSubscriptionNameFor(string queueName, string subscriptionName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(queueName);

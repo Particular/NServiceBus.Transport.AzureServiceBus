@@ -1,19 +1,18 @@
 #nullable enable
 namespace NServiceBus;
 
-using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 /// <summary>
-/// 
+/// Serializable object that defines the topology
 /// </summary>
 public sealed class MigrationTopologyOptions : TopologyOptions
 {
     /// TODO: Change to required/init once the Fody Obsolete problem is fixed
     /// <summary>
-    /// Gets the topic name of the topic where all events are published to.
+    /// Gets the topic name of the topic where all single-topic events are published to.
     /// </summary>
     [Required]
     [AzureServiceBusTopics]
@@ -21,26 +20,20 @@ public sealed class MigrationTopologyOptions : TopologyOptions
 
     /// TODO: Change to required/init once the Fody Obsolete problem is fixed
     /// <summary>
-    /// Gets the topic name of the topic where all subscriptions are managed on.
+    /// Gets the topic name of the topic where all single-topic subscriptions are managed on.
     /// </summary>
     [Required]
     [AzureServiceBusTopics]
     public string? TopicToSubscribeOn { get; set; }
 
     /// <summary>
-    /// Gets whether the current topic topology represents a hierarchy.
-    /// </summary>
-    [JsonIgnore]
-    public bool IsHierarchy => !string.Equals(TopicToPublishTo, TopicToSubscribeOn, StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// 
+    /// Collection of events that have not yet been migrated to the topic-per-event topology
     /// </summary>
     [JsonInclude]
     public HashSet<string> EventsToMigrateMap { get; init; } = [];
 
     /// <summary>
-    /// 
+    /// Maps event full names to non-default rule names.
     /// </summary>
     [JsonInclude]
     [AzureServiceBusRules]
