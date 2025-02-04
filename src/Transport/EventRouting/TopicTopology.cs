@@ -110,10 +110,10 @@ namespace NServiceBus
         /// </summary>
         /// <param name="eventTypeFullName">Full type name of the event.</param>
         /// <param name="subscribingQueueName">The name of the queue that is to be the forwarding destination of the subscription.</param>
-        protected abstract (string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo)[] GetSubscribeDestinationsCore(
+        protected abstract SubscriptionInfo[] GetSubscribeDestinationsCore(
             string eventTypeFullName, string subscribingQueueName);
 
-        internal (string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo)[] GetSubscribeDestinations(Type eventType, string subscribingQueueName)
+        internal SubscriptionInfo[] GetSubscribeDestinations(Type eventType, string subscribingQueueName)
         {
             var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
             return GetSubscribeDestinationsCore(eventTypeFullName, subscribingQueueName);

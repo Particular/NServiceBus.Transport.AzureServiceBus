@@ -86,9 +86,13 @@ public sealed class TopicPerEventTopology : TopicTopology
 
     //TODO: Should we use a public type instead of this tuple? Sz: Yes!
     /// <inheritdoc />
-    protected override (string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo)[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName) =>
+    protected override SubscriptionInfo[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName) =>
         // Not caching this Subscribe and Unsubscribe is not really on the hot path.
         Options.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
-            .Select<string, (string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo)>(topic => (topic, Options.QueueNameToSubscriptionNameMap.GetValueOrDefault(subscribingQueueName, subscribingQueueName), null))
+            .Select(topic => new SubscriptionInfo
+            {
+                Topic = topic,
+                SubscriptionName = Options.QueueNameToSubscriptionNameMap.GetValueOrDefault(subscribingQueueName, subscribingQueueName)
+            })
             .ToArray();
 }

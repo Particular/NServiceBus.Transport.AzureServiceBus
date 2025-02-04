@@ -196,18 +196,31 @@ public sealed class MigrationTopology : TopicTopology
     }
 
     /// <inheritdoc />
-    protected override (string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo)[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName)
+    protected override SubscriptionInfo[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName)
     {
         var subscriptionName = Options.QueueNameToSubscriptionNameMap.GetValueOrDefault(subscribingQueueName, subscribingQueueName);
         if (Options.EventsToMigrateMap.TryGetValue(eventTypeFullName, out _))
         {
-            return [(TopicToSubscribeOn, subscriptionName, (Options.SubscribedEventToRuleNameMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName), $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventTypeFullName}%'"))];
+            return
+            [
+                new SubscriptionInfo
+                {
+                    Topic = TopicToSubscribeOn,
+                    SubscriptionName = subscriptionName,
+                    RuleName = Options.SubscribedEventToRuleNameMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName),
+                    RuleFilter = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventTypeFullName}%'"
+                }
+            ];
         }
 
         if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
         {
             // Not caching this Subscribe and Unsubscribe is not really on the hot path.
-            return topics.Select<string, (string Topic, string SubscriptionName, (string RuleName, string RuleFilter)? RuleInfo)>(topic => (topic, subscriptionName, null)).ToArray();
+            return topics.Select(topic => new SubscriptionInfo
+            {
+                Topic = topic,
+                SubscriptionName = subscriptionName
+            }).ToArray();
         }
 
         // TODO: Much better exception message
