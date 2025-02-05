@@ -362,7 +362,7 @@
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.WorkingDirectory = TestContext.CurrentContext.TestDirectory;
             process.StartInfo.FileName = "dotnet";
-            process.StartInfo.Arguments = "NServiceBus.Transport.AzureServiceBus.CommandLine.dll " + command;
+            process.StartInfo.Arguments = $"--fx-version {Environment.Version} NServiceBus.Transport.AzureServiceBus.CommandLine.dll " + command;
 
             process.Start();
             var outputTask = process.StandardOutput.ReadToEndAsync();
