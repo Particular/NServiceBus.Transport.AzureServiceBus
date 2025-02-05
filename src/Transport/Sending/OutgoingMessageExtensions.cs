@@ -1,94 +1,93 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus
+﻿namespace NServiceBus.Transport.AzureServiceBus;
+
+using System;
+using System.Collections.Generic;
+using Azure.Messaging.ServiceBus;
+using Configuration;
+
+static class OutgoingMessageExtensions
 {
-    using System;
-    using System.Collections.Generic;
-    using Azure.Messaging.ServiceBus;
-    using Configuration;
-
-    static class OutgoingMessageExtensions
+    public static ServiceBusMessage ToAzureServiceBusMessage(
+        this IOutgoingTransportOperation outgoingTransportOperation,
+        string? incomingQueuePartitionKey,
+        bool doNotSendTransportEncodingHeader = false
+    )
     {
-        public static ServiceBusMessage ToAzureServiceBusMessage(
-            this IOutgoingTransportOperation outgoingTransportOperation,
-            string incomingQueuePartitionKey,
-            bool doNotSendTransportEncodingHeader = false
-        )
+        var outgoingMessage = outgoingTransportOperation.Message;
+        var message = new ServiceBusMessage(outgoingMessage.Body)
         {
-            var outgoingMessage = outgoingTransportOperation.Message;
-            var message = new ServiceBusMessage(outgoingMessage.Body)
-            {
-                // Cannot re-use MessageId to be compatible with ASB transport that could have native de-dup enabled
-                MessageId = Guid.NewGuid().ToString()
-            };
+            // Cannot re-use MessageId to be compatible with ASB transport that could have native de-dup enabled
+            MessageId = Guid.NewGuid().ToString()
+        };
 
-            if (!doNotSendTransportEncodingHeader)
-            {
-                // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
-                message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
-            }
-
-            message.TransactionPartitionKey = incomingQueuePartitionKey;
-
-            ApplyDeliveryConstraints(message, outgoingTransportOperation.Properties);
-
-            ApplyCorrelationId(message, outgoingMessage.Headers);
-
-            ApplyContentType(message, outgoingMessage.Headers);
-
-            SetReplyToAddress(message, outgoingMessage.Headers);
-
-            CopyHeaders(message, outgoingMessage.Headers);
-
-            return message;
+        if (!doNotSendTransportEncodingHeader)
+        {
+            // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
+            message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
         }
 
-        static void ApplyDeliveryConstraints(ServiceBusMessage message, DispatchProperties dispatchProperties)
-        {
-            if (dispatchProperties.DoNotDeliverBefore != null)
-            {
-                message.ScheduledEnqueueTime = dispatchProperties.DoNotDeliverBefore.At;
-            }
-            else if (dispatchProperties.DelayDeliveryWith != null)
-            {
-                // Delaying with TimeSpan is currently not supported, see https://github.com/Azure/azure-service-bus-dotnet/issues/160
-                message.ScheduledEnqueueTime = DateTimeOffset.UtcNow + dispatchProperties.DelayDeliveryWith.Delay;
-            }
+        message.TransactionPartitionKey = incomingQueuePartitionKey;
 
-            if (dispatchProperties.DiscardIfNotReceivedBefore != null)
-            {
-                message.TimeToLive = dispatchProperties.DiscardIfNotReceivedBefore.MaxTime;
-            }
+        ApplyDeliveryConstraints(message, outgoingTransportOperation.Properties);
+
+        ApplyCorrelationId(message, outgoingMessage.Headers);
+
+        ApplyContentType(message, outgoingMessage.Headers);
+
+        SetReplyToAddress(message, outgoingMessage.Headers);
+
+        CopyHeaders(message, outgoingMessage.Headers);
+
+        return message;
+    }
+
+    static void ApplyDeliveryConstraints(ServiceBusMessage message, DispatchProperties dispatchProperties)
+    {
+        if (dispatchProperties.DoNotDeliverBefore != null)
+        {
+            message.ScheduledEnqueueTime = dispatchProperties.DoNotDeliverBefore.At;
+        }
+        else if (dispatchProperties.DelayDeliveryWith != null)
+        {
+            // Delaying with TimeSpan is currently not supported, see https://github.com/Azure/azure-service-bus-dotnet/issues/160
+            message.ScheduledEnqueueTime = DateTimeOffset.UtcNow + dispatchProperties.DelayDeliveryWith.Delay;
         }
 
-        static void ApplyCorrelationId(ServiceBusMessage message, Dictionary<string, string> headers)
+        if (dispatchProperties.DiscardIfNotReceivedBefore != null)
         {
-            if (headers.TryGetValue(Headers.CorrelationId, out var correlationId))
-            {
-                message.CorrelationId = correlationId;
-            }
+            message.TimeToLive = dispatchProperties.DiscardIfNotReceivedBefore.MaxTime;
         }
+    }
 
-        static void ApplyContentType(ServiceBusMessage message, Dictionary<string, string> headers)
+    static void ApplyCorrelationId(ServiceBusMessage message, Dictionary<string, string> headers)
+    {
+        if (headers.TryGetValue(Headers.CorrelationId, out var correlationId))
         {
-            if (headers.TryGetValue(Headers.ContentType, out var contentType))
-            {
-                message.ContentType = contentType;
-            }
+            message.CorrelationId = correlationId;
         }
+    }
 
-        static void SetReplyToAddress(ServiceBusMessage message, Dictionary<string, string> headers)
+    static void ApplyContentType(ServiceBusMessage message, Dictionary<string, string> headers)
+    {
+        if (headers.TryGetValue(Headers.ContentType, out var contentType))
         {
-            if (headers.TryGetValue(Headers.ReplyToAddress, out var replyToAddress))
-            {
-                message.ReplyTo = replyToAddress;
-            }
+            message.ContentType = contentType;
         }
+    }
 
-        static void CopyHeaders(ServiceBusMessage outgoingMessage, Dictionary<string, string> headers)
+    static void SetReplyToAddress(ServiceBusMessage message, Dictionary<string, string> headers)
+    {
+        if (headers.TryGetValue(Headers.ReplyToAddress, out var replyToAddress))
         {
-            foreach (var header in headers)
-            {
-                outgoingMessage.ApplicationProperties[header.Key] = header.Value;
-            }
+            message.ReplyTo = replyToAddress;
+        }
+    }
+
+    static void CopyHeaders(ServiceBusMessage outgoingMessage, Dictionary<string, string> headers)
+    {
+        foreach (var header in headers)
+        {
+            outgoingMessage.ApplicationProperties[header.Key] = header.Value;
         }
     }
 }

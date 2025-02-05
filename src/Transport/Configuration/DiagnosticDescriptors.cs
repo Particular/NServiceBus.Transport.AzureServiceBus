@@ -1,4 +1,3 @@
-#nullable enable
 namespace NServiceBus.Transport.AzureServiceBus.Configuration;
 
 static class DiagnosticDescriptors

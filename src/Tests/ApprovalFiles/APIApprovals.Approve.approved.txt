@@ -84,7 +84,7 @@ namespace NServiceBus
             where TTransport : NServiceBus.AzureServiceBusTransport { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration, string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential, NServiceBus.TopicTopology topology)
             where TTransport : NServiceBus.AzureServiceBusTransport { }
-        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseWebSockets(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Net.IWebProxy webProxy = null) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseWebSockets(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Net.IWebProxy? webProxy = null) { }
     }
     public static class CustomizeNativeMessageExtensions
     {
@@ -106,7 +106,7 @@ namespace NServiceBus.Testing
 {
     public static class TestableCustomizeNativeMessageExtensions
     {
-        public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options) { }
+        public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage>? GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options) { }
     }
 }
 namespace NServiceBus.Transport.AzureServiceBus
@@ -193,6 +193,10 @@ namespace NServiceBus.Transport.AzureServiceBus
         [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification="The created ValidationContext object is used in a way that never call reflection")]
         public Microsoft.Extensions.Options.ValidateOptionsResult Validate(string? name, NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions options) { }
     }
+    public static class QueueAddressQualifier
+    {
+        public const string DeadLetterQueue = "$DeadLetterQueue";
+    }
     public sealed class TopicPerEventTopology : NServiceBus.TopicTopology
     {
         protected override string GetPublishDestinationCore(string eventTypeFullName) { }
@@ -242,8 +246,4 @@ namespace NServiceBus.Transport.AzureServiceBus
         [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification="The created ValidationContext object is used in a way that never call reflection")]
         public Microsoft.Extensions.Options.ValidateOptionsResult Validate(string? name, NServiceBus.Transport.AzureServiceBus.TopologyOptions options) { }
     }
-}
-public static class QueueAddressQualifier
-{
-    public const string DeadLetterQueue = "$DeadLetterQueue";
 }

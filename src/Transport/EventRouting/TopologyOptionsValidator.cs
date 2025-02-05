@@ -1,4 +1,3 @@
-#nullable enable
 namespace NServiceBus.Transport.AzureServiceBus;
 
 using Microsoft.Extensions.Options;

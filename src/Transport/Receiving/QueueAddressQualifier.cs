@@ -1,3 +1,5 @@
+namespace NServiceBus.Transport.AzureServiceBus;
+
 /// <summary>
 /// Queue address qualifiers
 /// </summary>

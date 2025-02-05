@@ -1,6 +1,4 @@
-﻿#nullable enable
-
-namespace NServiceBus.Transport.AzureServiceBus
+﻿namespace NServiceBus.Transport.AzureServiceBus
 {
     using System;
     using System.Threading;

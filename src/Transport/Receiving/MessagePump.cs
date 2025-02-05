@@ -1,345 +1,329 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus
+﻿namespace NServiceBus.Transport.AzureServiceBus;
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Transactions;
+using Azure.Messaging.ServiceBus;
+using BitFaster.Caching.Lru;
+using Extensibility;
+using Logging;
+
+sealed class MessagePump(
+    ServiceBusClient serviceBusClient,
+    AzureServiceBusTransport transportSettings,
+    string receiveAddress,
+    ReceiveSettings receiveSettings,
+    Action<string, Exception, CancellationToken> criticalErrorAction,
+    ISubscriptionManager? subscriptionManager,
+    SubQueue subQueue = SubQueue.None)
+    : IMessageReceiver
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using System.Transactions;
-    using Azure.Messaging.ServiceBus;
-    using BitFaster.Caching.Lru;
-    using Extensibility;
-    using Logging;
+    readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
 
-    class MessagePump : IMessageReceiver
+    OnMessage? onMessage;
+    OnError? onError;
+    RepeatedFailuresOverTimeCircuitBreaker? circuitBreaker;
+
+    // Start
+    CancellationTokenSource? messageProcessingCancellationTokenSource;
+    ServiceBusProcessor? processor;
+
+    static readonly ILog Logger = LogManager.GetLogger<MessagePump>();
+
+    PushRuntimeSettings? limitations;
+
+    [MemberNotNull(nameof(limitations), nameof(onMessage), nameof(onError))]
+    public Task Initialize(
+        PushRuntimeSettings limitations,
+        OnMessage onMessage,
+        OnError onError,
+        CancellationToken cancellationToken = default)
     {
-        readonly AzureServiceBusTransport transportSettings;
-        readonly ReceiveSettings receiveSettings;
-        readonly Action<string, Exception, CancellationToken> criticalErrorAction;
-        readonly SubQueue subQueue;
-        readonly ServiceBusClient serviceBusClient;
-        readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
-
-        OnMessage onMessage;
-        OnError onError;
-        RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
-
-        // Start
-        CancellationTokenSource messageProcessingCancellationTokenSource;
-        ServiceBusProcessor processor;
-
-        static readonly ILog Logger = LogManager.GetLogger<MessagePump>();
-
-        PushRuntimeSettings limitations;
-
-        public MessagePump(
-            ServiceBusClient serviceBusClient,
-            AzureServiceBusTransport transportSettings,
-            string receiveAddress,
-            ReceiveSettings receiveSettings,
-            Action<string, Exception, CancellationToken> criticalErrorAction,
-            ISubscriptionManager subscriptionManager,
-            SubQueue subQueue = SubQueue.None
-        )
+        if (receiveSettings.PurgeOnStartup)
         {
-            Id = receiveSettings.Id;
-            ReceiveAddress = receiveAddress;
-            this.serviceBusClient = serviceBusClient;
-            this.transportSettings = transportSettings;
-            this.receiveSettings = receiveSettings;
-            this.criticalErrorAction = criticalErrorAction;
-            this.subQueue = subQueue;
-            Subscriptions = subscriptionManager;
+            throw new Exception("Azure Service Bus transport doesn't support PurgeOnStartup behavior");
         }
 
-        public Task Initialize(
-            PushRuntimeSettings limitations,
-            OnMessage onMessage,
-            OnError onError,
-            CancellationToken cancellationToken = default)
+        this.limitations = limitations;
+        this.onMessage = onMessage;
+        this.onError = onError;
+
+        return Task.CompletedTask;
+    }
+
+    public async Task StartReceive(CancellationToken cancellationToken = default)
+    {
+        var receiveOptions = new ServiceBusProcessorOptions
         {
-            if (receiveSettings.PurgeOnStartup)
-            {
-                throw new Exception("Azure Service Bus transport doesn't support PurgeOnStartup behavior");
-            }
+            PrefetchCount = CalculatePrefetchCount(limitations!.MaxConcurrency),
+            ReceiveMode = TransactionMode == TransportTransactionMode.None
+                ? ServiceBusReceiveMode.ReceiveAndDelete
+                : ServiceBusReceiveMode.PeekLock,
+            Identifier = $"Processor-{Id}-{ReceiveAddress}-{Guid.NewGuid()}",
+            MaxConcurrentCalls = limitations.MaxConcurrency,
+            AutoCompleteMessages = false
+        };
 
-            this.limitations = limitations;
-            this.onMessage = onMessage;
-            this.onError = onError;
-
-            return Task.CompletedTask;
+        if (transportSettings.MaxAutoLockRenewalDuration.HasValue)
+        {
+            receiveOptions.MaxAutoLockRenewalDuration = transportSettings.MaxAutoLockRenewalDuration.Value;
         }
 
-        public async Task StartReceive(CancellationToken cancellationToken = default)
+        receiveOptions.SubQueue = subQueue;
+
+        processor = serviceBusClient.CreateProcessor(ReceiveAddress, receiveOptions);
+        processor.ProcessErrorAsync += OnProcessorError;
+        processor.ProcessMessageAsync += OnProcessMessage;
+
+        messageProcessingCancellationTokenSource = new CancellationTokenSource();
+
+        circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'",
+            transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex =>
+            {
+                criticalErrorAction("Failed to receive message from Azure Service Bus.", ex,
+                    messageProcessingCancellationTokenSource.Token);
+            }, () => UpdateProcessingCapacity(1),
+            () => UpdateProcessingCapacity(limitations.MaxConcurrency));
+
+        await processor.StartProcessingAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    TransportTransactionMode TransactionMode => transportSettings.TransportTransactionMode;
+
+    int CalculatePrefetchCount(int maxConcurrency)
+    {
+        var prefetchCount = maxConcurrency * transportSettings.PrefetchMultiplier;
+
+        if (transportSettings.PrefetchCount.HasValue)
         {
-            var receiveOptions = new ServiceBusProcessorOptions
-            {
-                PrefetchCount = CalculatePrefetchCount(limitations.MaxConcurrency),
-                ReceiveMode = TransactionMode == TransportTransactionMode.None
-                    ? ServiceBusReceiveMode.ReceiveAndDelete
-                    : ServiceBusReceiveMode.PeekLock,
-                Identifier = $"Processor-{Id}-{ReceiveAddress}-{Guid.NewGuid()}",
-                MaxConcurrentCalls = limitations.MaxConcurrency,
-                AutoCompleteMessages = false
-            };
-
-            if (transportSettings.MaxAutoLockRenewalDuration.HasValue)
-            {
-                receiveOptions.MaxAutoLockRenewalDuration = transportSettings.MaxAutoLockRenewalDuration.Value;
-            }
-
-            receiveOptions.SubQueue = subQueue;
-
-            processor = serviceBusClient.CreateProcessor(ReceiveAddress, receiveOptions);
-            processor.ProcessErrorAsync += OnProcessorError;
-            processor.ProcessMessageAsync += OnProcessMessage;
-
-            messageProcessingCancellationTokenSource = new CancellationTokenSource();
-
-            circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'",
-                transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex =>
-                {
-                    criticalErrorAction("Failed to receive message from Azure Service Bus.", ex,
-                        messageProcessingCancellationTokenSource.Token);
-                }, () => UpdateProcessingCapacity(1),
-                () => UpdateProcessingCapacity(limitations.MaxConcurrency));
-
-            await processor.StartProcessingAsync(cancellationToken)
-                .ConfigureAwait(false);
+            prefetchCount = transportSettings.PrefetchCount.Value;
         }
 
-        TransportTransactionMode TransactionMode => transportSettings.TransportTransactionMode;
-
-        int CalculatePrefetchCount(int maxConcurrency)
-        {
-            var prefetchCount = maxConcurrency * transportSettings.PrefetchMultiplier;
-
-            if (transportSettings.PrefetchCount.HasValue)
-            {
-                prefetchCount = transportSettings.PrefetchCount.Value;
-            }
-
-            return prefetchCount;
-        }
+        return prefetchCount;
+    }
 
 #pragma warning disable PS0018
-        async Task OnProcessMessage(ProcessMessageEventArgs arg)
+    async Task OnProcessMessage(ProcessMessageEventArgs arg)
 #pragma warning restore PS0018
+    {
+        string messageId;
+        Dictionary<string, string?> headers;
+        BinaryData body;
+        var message = arg.Message;
+
+        circuitBreaker!.Success();
+
+        try
         {
-            string messageId;
-            Dictionary<string, string> headers;
-            BinaryData body;
-            var message = arg.Message;
+            messageId = message.GetMessageId();
 
-            circuitBreaker.Success();
-
-            try
+            // Deliberately not using the cancellation token to make sure we abandon the message even when the
+            // cancellation token is already set.
+            if (await arg.TrySafeCompleteMessage(message, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
             {
-                messageId = message.GetMessageId();
-
-                // Deliberately not using the cancellation token to make sure we abandon the message even when the
-                // cancellation token is already set.
-                if (await arg.TrySafeCompleteMessage(message, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
-                {
-                    return;
-                }
-
-                // Deliberately not using the cancellation token to make sure we abandon the message even when the
-                // cancellation token is already set.
-                if (await arg.TrySafeAbandonMessage(message, TransactionMode, CancellationToken.None).ConfigureAwait(false))
-                {
-                    return;
-                }
-
-                headers = message.GetNServiceBusHeaders();
-                body = message.GetBody();
-            }
-            catch (Exception ex)
-            {
-                await arg.SafeDeadLetterMessage(message, TransactionMode, ex, CancellationToken.None).ConfigureAwait(false);
-
                 return;
             }
 
-            // need to catch OCE here because we are switching token
-            try
+            // Deliberately not using the cancellation token to make sure we abandon the message even when the
+            // cancellation token is already set.
+            if (await arg.TrySafeAbandonMessage(message, TransactionMode, CancellationToken.None).ConfigureAwait(false))
             {
-                await ProcessMessage(message, arg, messageId, headers, body, messageProcessingCancellationTokenSource.Token).ConfigureAwait(false);
+                return;
             }
-            catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource.Token))
-            {
-                Logger.Debug("Message processing canceled.", ex);
-            }
+
+            headers = message.GetNServiceBusHeaders();
+            body = message.GetBody();
         }
+        catch (Exception ex)
+        {
+            await arg.SafeDeadLetterMessage(message, TransactionMode, ex, CancellationToken.None).ConfigureAwait(false);
+
+            return;
+        }
+
+        // need to catch OCE here because we are switching token
+        try
+        {
+            await ProcessMessage(message, arg, messageId, headers, body, messageProcessingCancellationTokenSource!.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource!.Token))
+        {
+            Logger.Debug("Message processing canceled.", ex);
+        }
+    }
 
 #pragma warning disable PS0018
-        async Task OnProcessorError(ProcessErrorEventArgs processErrorEventArgs)
+    async Task OnProcessorError(ProcessErrorEventArgs processErrorEventArgs)
 #pragma warning restore PS0018
+    {
+        string message = $"Failed to receive a message on pump '{processErrorEventArgs.Identifier}' listening on '{processErrorEventArgs.EntityPath}' connected to '{processErrorEventArgs.FullyQualifiedNamespace}' due to '{processErrorEventArgs.ErrorSource}'. Exception: {processErrorEventArgs.Exception}";
+        // Making sure transient exceptions do not trigger the circuit breaker.
+        if (processErrorEventArgs.Exception is ServiceBusException { IsTransient: true })
         {
-            string message = $"Failed to receive a message on pump '{processErrorEventArgs.Identifier}' listening on '{processErrorEventArgs.EntityPath}' connected to '{processErrorEventArgs.FullyQualifiedNamespace}' due to '{processErrorEventArgs.ErrorSource}'. Exception: {processErrorEventArgs.Exception}";
-            // Making sure transient exceptions do not trigger the circuit breaker.
-            if (processErrorEventArgs.Exception is ServiceBusException { IsTransient: true })
-            {
-                Logger.Debug(message, processErrorEventArgs.Exception);
-                return;
-            }
+            Logger.Debug(message, processErrorEventArgs.Exception);
+            return;
+        }
 
-            Logger.Warn(message, processErrorEventArgs.Exception);
-            await circuitBreaker.Failure(processErrorEventArgs.Exception, processErrorEventArgs.CancellationToken)
+        Logger.Warn(message, processErrorEventArgs.Exception);
+        await circuitBreaker!.Failure(processErrorEventArgs.Exception, processErrorEventArgs.CancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
+    {
+        limitations = newLimitations;
+
+        UpdateProcessingCapacity(limitations.MaxConcurrency);
+
+        return Task.CompletedTask;
+    }
+
+    void UpdateProcessingCapacity(int maxConcurrency)
+    {
+        processor!.UpdateConcurrency(maxConcurrency);
+        processor!.UpdatePrefetchCount(CalculatePrefetchCount(maxConcurrency));
+    }
+
+    public async Task StopReceive(CancellationToken cancellationToken = default)
+    {
+        if (messageProcessingCancellationTokenSource is null)
+        {
+            // Receiver hasn't been started or is already stopped
+            return;
+        }
+
+        // Wiring up the stop token to trigger the cancellation token that is being
+        // used inside the message handling pipeline
+        await using var _ = cancellationToken
+            .Register(state => (state as CancellationTokenSource)?.Cancel(),
+                messageProcessingCancellationTokenSource,
+                useSynchronizationContext: false).ConfigureAwait(false);
+        // Deliberately not passing the cancellation token forward in order to make sure
+        // the processor waits until all processing handlers have returned. This makes
+        // the code compliant to the previous version that uses manual receives and is aligned
+        // with how the cancellation token support was initially designed.
+        await processor!.StopProcessingAsync(CancellationToken.None)
+            .ConfigureAwait(false);
+
+        try
+        {
+            await processor.CloseAsync(cancellationToken)
                 .ConfigureAwait(false);
         }
-
-        public Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
+        catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
         {
-            limitations = newLimitations;
-
-            UpdateProcessingCapacity(limitations.MaxConcurrency);
-
-            return Task.CompletedTask;
+            Logger.Debug($"Operation canceled while stopping the receiver {processor.EntityPath}.", ex);
         }
 
-        void UpdateProcessingCapacity(int maxConcurrency)
-        {
-            processor.UpdateConcurrency(maxConcurrency);
-            processor.UpdatePrefetchCount(CalculatePrefetchCount(maxConcurrency));
-        }
+        processor.ProcessErrorAsync -= OnProcessorError;
+        processor.ProcessMessageAsync -= OnProcessMessage;
 
-        public async Task StopReceive(CancellationToken cancellationToken = default)
-        {
-            if (messageProcessingCancellationTokenSource is null)
-            {
-                // Receiver hasn't been started or is already stopped
-                return;
-            }
+        await processor.DisposeAsync().ConfigureAwait(false);
 
-            // Wiring up the stop token to trigger the cancellation token that is being
-            // used inside the message handling pipeline
-            await using var _ = cancellationToken
-                .Register(state => (state as CancellationTokenSource)?.Cancel(),
-                    messageProcessingCancellationTokenSource,
-                    useSynchronizationContext: false).ConfigureAwait(false);
-            // Deliberately not passing the cancellation token forward in order to make sure
-            // the processor waits until all processing handlers have returned. This makes
-            // the code compliant to the previous version that uses manual receives and is aligned
-            // with how the cancellation token support was initially designed.
-            await processor.StopProcessingAsync(CancellationToken.None)
+        messageProcessingCancellationTokenSource?.Dispose();
+        messageProcessingCancellationTokenSource = null;
+        circuitBreaker?.Dispose();
+    }
+
+    async Task ProcessMessage(ServiceBusReceivedMessage message,
+        ProcessMessageEventArgs processMessageEventArgs,
+        string messageId, Dictionary<string, string?> headers, BinaryData body,
+        CancellationToken messageProcessingCancellationToken)
+    {
+        // args.CancellationToken is currently not used because the v8 version that supports cancellation was designed
+        // to not flip the cancellation token until the very last moment in time when the stop token is flipped.
+        var contextBag = new ContextBag();
+        contextBag.Set(message);
+        contextBag.Set(processMessageEventArgs);
+
+        try
+        {
+            using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
+            var messageContext = new MessageContext(messageId, headers, body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
+
+            await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
+
+            await processMessageEventArgs.SafeCompleteMessage(message,
+                    TransactionMode,
+                    azureServiceBusTransaction,
+                    messagesToBeCompleted,
+                    cancellationToken: messageProcessingCancellationToken)
                 .ConfigureAwait(false);
 
-            try
-            {
-                await processor.CloseAsync(cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
-            {
-                Logger.Debug($"Operation canceled while stopping the receiver {processor.EntityPath}.", ex);
-            }
-
-            processor.ProcessErrorAsync -= OnProcessorError;
-            processor.ProcessMessageAsync -= OnProcessMessage;
-
-            await processor.DisposeAsync().ConfigureAwait(false);
-
-            messageProcessingCancellationTokenSource?.Dispose();
-            messageProcessingCancellationTokenSource = null;
-            circuitBreaker?.Dispose();
+            azureServiceBusTransaction.Commit();
         }
-
-        async Task ProcessMessage(ServiceBusReceivedMessage message,
-            ProcessMessageEventArgs processMessageEventArgs,
-            string messageId, Dictionary<string, string> headers, BinaryData body,
-            CancellationToken messageProcessingCancellationToken)
+        catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationToken))
         {
-            // args.CancellationToken is currently not used because the v8 version that supports cancellation was designed
-            // to not flip the cancellation token until the very last moment in time when the stop token is flipped.
-            var contextBag = new ContextBag();
-            contextBag.Set(message);
-            contextBag.Set(processMessageEventArgs);
-
             try
             {
-                using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
-                var messageContext = new MessageContext(messageId, headers, body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
+                ErrorHandleResult result;
 
-                await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
-
-                await processMessageEventArgs.SafeCompleteMessage(message,
-                        TransactionMode,
-                        azureServiceBusTransaction,
-                        messagesToBeCompleted,
-                        cancellationToken: messageProcessingCancellationToken)
-                    .ConfigureAwait(false);
-
-                azureServiceBusTransaction.Commit();
-            }
-            catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationToken))
-            {
-                try
+                using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
                 {
-                    ErrorHandleResult result;
+                    var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body,
+                        azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
 
-                    using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
+                    result = await onError!(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
+
+                    if (result == ErrorHandleResult.Handled)
                     {
-                        var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body,
-                            azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
-
-                        result = await onError(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
-
-                        if (result == ErrorHandleResult.Handled)
-                        {
-                            await processMessageEventArgs.SafeCompleteMessage(message,
-                                    TransactionMode,
-                                    azureServiceBusTransaction,
-                                    messagesToBeCompleted,
-                                    cancellationToken: messageProcessingCancellationToken)
-                                .ConfigureAwait(false);
-                        }
-
-                        azureServiceBusTransaction.Commit();
-                    }
-
-                    if (result == ErrorHandleResult.RetryRequired)
-                    {
-                        await processMessageEventArgs.SafeAbandonMessage(message,
+                        await processMessageEventArgs.SafeCompleteMessage(message,
                                 TransactionMode,
+                                azureServiceBusTransaction,
+                                messagesToBeCompleted,
                                 cancellationToken: messageProcessingCancellationToken)
                             .ConfigureAwait(false);
                     }
-                }
-                catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
-                {
-                    Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
-                    await processMessageEventArgs.SafeAbandonMessage(message,
-                            TransactionMode,
-                            cancellationToken: messageProcessingCancellationToken)
-                        .ConfigureAwait(false);
+                    azureServiceBusTransaction.Commit();
                 }
-                catch (Exception onErrorEx) when (!onErrorEx.IsCausedBy(messageProcessingCancellationToken))
-                {
-                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
 
+                if (result == ErrorHandleResult.RetryRequired)
+                {
                     await processMessageEventArgs.SafeAbandonMessage(message,
                             TransactionMode,
                             cancellationToken: messageProcessingCancellationToken)
                         .ConfigureAwait(false);
                 }
             }
+            catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
+            {
+                Logger.Debug("Failed to execute recoverability.", onErrorEx);
+
+                await processMessageEventArgs.SafeAbandonMessage(message,
+                        TransactionMode,
+                        cancellationToken: messageProcessingCancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception onErrorEx) when (!onErrorEx.IsCausedBy(messageProcessingCancellationToken))
+            {
+                criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
+
+                await processMessageEventArgs.SafeAbandonMessage(message,
+                        TransactionMode,
+                        cancellationToken: messageProcessingCancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
-
-        AzureServiceBusTransportTransaction CreateTransaction(string incomingQueuePartitionKey) =>
-            TransactionMode == TransportTransactionMode.SendsAtomicWithReceive
-                ? new AzureServiceBusTransportTransaction(serviceBusClient, incomingQueuePartitionKey,
-                    new TransactionOptions
-                    {
-                        IsolationLevel = IsolationLevel.Serializable,
-                        Timeout = TransactionManager.DefaultTimeout
-                    })
-                : new AzureServiceBusTransportTransaction();
-
-        public ISubscriptionManager Subscriptions { get; }
-
-        public string Id { get; }
-
-        public string ReceiveAddress { get; }
     }
+
+    AzureServiceBusTransportTransaction CreateTransaction(string incomingQueuePartitionKey) =>
+        TransactionMode == TransportTransactionMode.SendsAtomicWithReceive
+            ? new AzureServiceBusTransportTransaction(serviceBusClient, incomingQueuePartitionKey,
+                new TransactionOptions
+                {
+                    IsolationLevel = IsolationLevel.Serializable,
+                    Timeout = TransactionManager.DefaultTimeout
+                })
+            : new AzureServiceBusTransportTransaction();
+
+    public ISubscriptionManager? Subscriptions { get; } = subscriptionManager;
+
+    public string Id { get; } = receiveSettings.Id;
+
+    public string ReceiveAddress { get; } = receiveAddress;
 }
