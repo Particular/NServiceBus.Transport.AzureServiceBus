@@ -40,13 +40,30 @@
         {
             // TransportTransactionMode.None uses ReceiveAndDelete mode which means the message is already removed from the queue
             // once we get it. Therefore, we don't need to abandon it.
-            if (transportTransactionMode != TransportTransactionMode.None && message.LockedUntil < DateTimeOffset.UtcNow)
+            if (transportTransactionMode != TransportTransactionMode.None)
             {
-                Logger.Warn(
-                    $"Skip handling the message with id '{message.GetMessageId()}' because the lock has expired at '{message.LockedUntil}'. " +
-                    "This is usually an indication that the endpoint prefetches more messages than it is able to handle within the configured" +
-                    " peek lock duration. Consider tweaking the prefetch configuration to values that are better aligned with the concurrency" +
-                    " of the endpoint and the time it takes to handle the messages.");
+                var now = DateTimeOffset.UtcNow;
+                var lockTimeRemaining = now - message.LockedUntil;
+
+                if (message.LockedUntil < now)
+                {
+                    Logger.WarnFormat(  // Do not user string interpolation, causing inability to share log message template 
+                        $"Skipping message '{0}'. Lock expired at '{1}'.\n\t" +
+                        "See https://docs.particular.net/search?q=nservicebus.transport.azureservicebus+controlling+the+prefetch+count",
+                        message.GetMessageId(),
+                        message.LockedUntil
+                    );
+                }
+                else if (lockTimeRemaining < MinimumLockTimeRemainingDuration)
+                {
+                    Logger.Warn( // Do not user string interpolation, causing inability to share log message template 
+                        $"Skipping message '{0}'. Remaining lock time {1} below {2}.\n\t" +
+                        "See https://docs.particular.net/search?q=nservicebus.transport.azureservicebus+controlling+the+prefetch+count",
+                        message.GetMessageId(),
+                        lockTimeRemaining,
+                        MinimumLockTimeRemainingDuration
+                    );
+                }
 
                 try
                 {
@@ -136,5 +153,6 @@
         // The extension methods here are related to functionality of the message pump. Therefore the same logger name
         // is used as the message pump.
         static readonly ILog Logger = LogManager.GetLogger<MessagePump>();
+        static readonly TimeSpan MinimumLockTimeRemainingDuration = TimeSpan.FromSeconds(90); // TODO: Determine defaults, many timeouts have a default of 1 minute
     }
 }
