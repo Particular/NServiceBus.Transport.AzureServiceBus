@@ -45,7 +45,11 @@ CreateSubscriptionOptions: {
   "UserMetadata": "bundle-2"
 }
 CreateRuleOptions: {
-  "Filter": {},
+  "Filter": {
+    "filter-type": "true",
+    "SqlExpression": "1=1",
+    "Parameters": {}
+  },
   "Action": null,
   "Name": "$default"
 }
