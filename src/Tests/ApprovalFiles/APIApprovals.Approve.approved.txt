@@ -3,30 +3,6 @@
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo(@"NServiceBus.Transport.AzureServiceBus.Tests, PublicKey=00240000048000009400000006020000002400005253413100040000010001007f16e21368ff041183fab592d9e8ed37e7be355e93323147a1d29983d6e591b04282e4da0c9e18bd901e112c0033925eb7d7872c2f1706655891c5c9d57297994f707d16ee9a8f40d978f064ee1ffc73c0db3f4712691b23bf596f75130f4ec978cf78757ec034625a5f27e6bb50c618931ea49f6f628fd74271c32959efb1c5")]
 namespace NServiceBus
 {
-    [System.AttributeUsage(System.AttributeTargets.Property)]
-    public sealed class AzureServiceBusQueuesAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
-    {
-        public AzureServiceBusQueuesAttribute() { }
-        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
-    }
-    [System.AttributeUsage(System.AttributeTargets.Property)]
-    public sealed class AzureServiceBusRulesAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
-    {
-        public AzureServiceBusRulesAttribute() { }
-        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
-    }
-    [System.AttributeUsage(System.AttributeTargets.Property)]
-    public sealed class AzureServiceBusSubscriptionsAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
-    {
-        public AzureServiceBusSubscriptionsAttribute() { }
-        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
-    }
-    [System.AttributeUsage(System.AttributeTargets.Property)]
-    public sealed class AzureServiceBusTopicsAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
-    {
-        public AzureServiceBusTopicsAttribute() { }
-        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
-    }
     public class AzureServiceBusTransport : NServiceBus.Transport.TransportDefinition
     {
         public AzureServiceBusTransport(string connectionString, NServiceBus.TopicTopology topology) { }
@@ -138,15 +114,15 @@ namespace NServiceBus
     public sealed class MigrationTopologyOptions : NServiceBus.TopologyOptions
     {
         public MigrationTopologyOptions() { }
-        [NServiceBus.AzureServiceBusTopics]
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.ComponentModel.DataAnnotations.Required]
         public string? TopicToPublishTo { get; set; }
-        [NServiceBus.AzureServiceBusTopics]
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.ComponentModel.DataAnnotations.Required]
         public string? TopicToSubscribeOn { get; set; }
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.HashSet<string> EventsToMigrateMap { get; init; }
-        [NServiceBus.AzureServiceBusRules]
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusRules]
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, string> SubscribedEventToRuleNameMap { get; init; }
     }
@@ -195,14 +171,14 @@ namespace NServiceBus
     public class TopologyOptions
     {
         public TopologyOptions() { }
-        [NServiceBus.AzureServiceBusTopics]
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, string> PublishedEventToTopicsMap { get; init; }
-        [NServiceBus.AzureServiceBusQueues]
-        [NServiceBus.AzureServiceBusSubscriptions]
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusQueues]
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusSubscriptions]
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, string> QueueNameToSubscriptionNameMap { get; init; }
-        [NServiceBus.AzureServiceBusTopics]
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>> SubscribedEventToTopicsMap { get; init; }
     }
@@ -240,6 +216,30 @@ namespace NServiceBus.Testing
 }
 namespace NServiceBus.Transport.AzureServiceBus
 {
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    public sealed class AzureServiceBusQueuesAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
+    {
+        public AzureServiceBusQueuesAttribute() { }
+        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
+    }
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    public sealed class AzureServiceBusRulesAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
+    {
+        public AzureServiceBusRulesAttribute() { }
+        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
+    }
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    public sealed class AzureServiceBusSubscriptionsAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
+    {
+        public AzureServiceBusSubscriptionsAttribute() { }
+        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
+    }
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    public sealed class AzureServiceBusTopicsAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
+    {
+        public AzureServiceBusTopicsAttribute() { }
+        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
+    }
     public sealed class AzureServiceBusTransportTransaction : System.IDisposable
     {
         public AzureServiceBusTransportTransaction(NServiceBus.Transport.TransportTransaction? transportTransaction = null) { }

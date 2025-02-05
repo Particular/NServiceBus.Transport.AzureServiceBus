@@ -1,5 +1,5 @@
 #nullable enable
-namespace NServiceBus;
+namespace NServiceBus.Transport.AzureServiceBus;
 
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;

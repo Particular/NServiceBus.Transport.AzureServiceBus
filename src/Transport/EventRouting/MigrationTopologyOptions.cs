@@ -4,6 +4,7 @@ namespace NServiceBus;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Transport.AzureServiceBus;
 
 /// <summary>
 /// Serializable object that defines the migration topology
