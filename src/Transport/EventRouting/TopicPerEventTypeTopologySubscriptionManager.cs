@@ -83,8 +83,7 @@ sealed class TopicPerEventTypeTopologySubscriptionManager : SubscriptionManager
                 }
                 catch (UnauthorizedAccessException unauthorizedAccessException)
                 {
-                    // TODO: Check the log level
-                    Logger.WarnFormat("Topic {0} could not be created. Reason: {1}", topicOptions.Name, unauthorizedAccessException.Message);
+                    Logger.ErrorFormat("Topic {0} could not be created. Reason: {1}", topicOptions.Name, unauthorizedAccessException.Message);
                     throw;
                 }
             }
