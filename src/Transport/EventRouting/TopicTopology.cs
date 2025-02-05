@@ -158,7 +158,7 @@ namespace NServiceBus
             public required string Name { get; init; }
 
             /// <summary>
-            /// Optional rule filter to use when creating a rule.
+            /// Optional SQL rule filter to use when creating a rule.
             /// </summary>
             public required string Filter { get; init; }
         }
