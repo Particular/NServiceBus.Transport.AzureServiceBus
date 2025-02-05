@@ -4,7 +4,6 @@
     using System.Net;
     using Azure.Core;
     using Azure.Messaging.ServiceBus;
-    using Transport.AzureServiceBus;
 
     /// <summary>
     /// Adds access to the Azure Service Bus transport config to the global Transport object.
@@ -53,7 +52,7 @@
             RemoveInVersion = "6")]
         public static TransportExtensions<AzureServiceBusTransport> ConnectionString(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string connectionString)
         {
-            Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
+            ArgumentException.ThrowIfNullOrWhiteSpace(nameof(connectionString), connectionString);
             transportExtensions.Transport.ConnectionString = connectionString;
             return transportExtensions;
         }
@@ -66,9 +65,9 @@
             RemoveInVersion = "6")]
         public static TransportExtensions<AzureServiceBusTransport> ConnectionString(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string> connectionString)
         {
-            Guard.AgainstNull(nameof(connectionString), connectionString);
+            ArgumentNullException.ThrowIfNull(connectionString);
             var value = connectionString();
-            Guard.AgainstNullAndEmpty(nameof(connectionString), value);
+            ArgumentException.ThrowIfNullOrWhiteSpace(nameof(connectionString), value);
             transportExtensions.Transport.ConnectionString = value;
             return transportExtensions;
         }
@@ -83,7 +82,6 @@
             ReplacementTypeOrMember = "AzureServiceBusTransport.EntityMaximumSize")]
         public static TransportExtensions<AzureServiceBusTransport> EntityMaximumSize(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int maximumSizeInGB)
         {
-            Guard.AgainstNegativeAndZero(nameof(maximumSizeInGB), maximumSizeInGB);
             transportExtensions.Transport.EntityMaximumSize = maximumSizeInGB;
             return transportExtensions;
         }
@@ -110,7 +108,6 @@
             ReplacementTypeOrMember = "AzureServiceBusTransport.PrefetchMultiplier")]
         public static TransportExtensions<AzureServiceBusTransport> PrefetchMultiplier(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int prefetchMultiplier)
         {
-            Guard.AgainstNegativeAndZero(nameof(prefetchMultiplier), prefetchMultiplier);
             transportExtensions.Transport.PrefetchMultiplier = prefetchMultiplier;
             return transportExtensions;
         }
@@ -125,7 +122,6 @@
             ReplacementTypeOrMember = "AzureServiceBusTransport.PrefetchCount")]
         public static TransportExtensions<AzureServiceBusTransport> PrefetchCount(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int prefetchCount)
         {
-            Guard.AgainstNegative(nameof(prefetchCount), prefetchCount);
             transportExtensions.Transport.PrefetchCount = prefetchCount;
             return transportExtensions;
         }
@@ -140,7 +136,6 @@
             ReplacementTypeOrMember = "AzureServiceBusTransport.TimeToWaitBeforeTriggeringCircuitBreaker")]
         public static TransportExtensions<AzureServiceBusTransport> TimeToWaitBeforeTriggeringCircuitBreaker(this TransportExtensions<AzureServiceBusTransport> transportExtensions, TimeSpan timeToWait)
         {
-            Guard.AgainstNegativeAndZero(nameof(timeToWait), timeToWait);
             transportExtensions.Transport.TimeToWaitBeforeTriggeringCircuitBreaker = timeToWait;
             return transportExtensions;
         }
@@ -173,7 +168,6 @@
             ReplacementTypeOrMember = "AzureServiceBusTransport.RetryPolicyOptions")]
         public static TransportExtensions<AzureServiceBusTransport> CustomRetryPolicy(this TransportExtensions<AzureServiceBusTransport> transportExtensions, ServiceBusRetryOptions retryPolicy)
         {
-            Guard.AgainstNull(nameof(retryPolicy), retryPolicy);
             transportExtensions.Transport.RetryPolicyOptions = retryPolicy;
             return transportExtensions;
         }
@@ -186,8 +180,8 @@
             RemoveInVersion = "6")]
         public static TransportExtensions<AzureServiceBusTransport> CustomTokenCredential(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string fullyQualifiedNamespace, TokenCredential tokenCredential)
         {
-            Guard.AgainstNull(nameof(tokenCredential), tokenCredential);
-            Guard.AgainstNullAndEmpty(nameof(fullyQualifiedNamespace), fullyQualifiedNamespace);
+            ArgumentNullException.ThrowIfNull(tokenCredential);
+            ArgumentException.ThrowIfNullOrWhiteSpace(nameof(fullyQualifiedNamespace), fullyQualifiedNamespace);
             transportExtensions.Transport.FullyQualifiedNamespace = fullyQualifiedNamespace;
             transportExtensions.Transport.TokenCredential = tokenCredential;
             return transportExtensions;
@@ -206,7 +200,6 @@
             ReplacementTypeOrMember = "AzureServiceBusTransport.MaxAutoLockRenewalDuration")]
         public static TransportExtensions<AzureServiceBusTransport> MaxAutoLockRenewalDuration(this TransportExtensions<AzureServiceBusTransport> transportExtensions, TimeSpan maximumAutoLockRenewalDuration)
         {
-            Guard.AgainstNegative(nameof(maximumAutoLockRenewalDuration), maximumAutoLockRenewalDuration);
             transportExtensions.Transport.MaxAutoLockRenewalDuration = maximumAutoLockRenewalDuration;
             return transportExtensions;
         }

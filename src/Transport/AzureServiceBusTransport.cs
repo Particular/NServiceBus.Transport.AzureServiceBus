@@ -29,7 +29,8 @@ namespace NServiceBus
             supportsPublishSubscribe: true,
             supportsTTBR: true)
         {
-            Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
+            ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+            ArgumentNullException.ThrowIfNull(topology);
 
             ConnectionString = connectionString;
             Topology = topology;
@@ -44,8 +45,9 @@ namespace NServiceBus
             supportsPublishSubscribe: true,
             supportsTTBR: true)
         {
-            Guard.AgainstNullAndEmpty(nameof(fullyQualifiedNamespace), fullyQualifiedNamespace);
-            Guard.AgainstNull(nameof(tokenCredential), tokenCredential);
+            ArgumentException.ThrowIfNullOrWhiteSpace(fullyQualifiedNamespace);
+            ArgumentNullException.ThrowIfNull(tokenCredential);
+            ArgumentNullException.ThrowIfNull(topology);
 
             FullyQualifiedNamespace = fullyQualifiedNamespace;
             TokenCredential = tokenCredential;
@@ -195,7 +197,7 @@ namespace NServiceBus
             get => entityMaximumSize;
             set
             {
-                Guard.AgainstNegativeAndZero(nameof(EntityMaximumSize), value);
+                ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(EntityMaximumSize));
                 entityMaximumSize = value;
             }
         }
@@ -216,7 +218,7 @@ namespace NServiceBus
             get => prefetchMultiplier;
             set
             {
-                Guard.AgainstNegativeAndZero(nameof(PrefetchMultiplier), value);
+                ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(PrefetchMultiplier));
                 prefetchMultiplier = value;
             }
         }
@@ -232,7 +234,7 @@ namespace NServiceBus
             {
                 if (value.HasValue)
                 {
-                    Guard.AgainstNegative(nameof(PrefetchCount), value.Value);
+                    ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value.Value, nameof(PrefetchCount));
                 }
 
                 prefetchCount = value;
@@ -249,7 +251,7 @@ namespace NServiceBus
             get => timeToWaitBeforeTriggeringCircuitBreaker;
             set
             {
-                Guard.AgainstNegativeAndZero(nameof(TimeToWaitBeforeTriggeringCircuitBreaker), value);
+                ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value.Ticks, nameof(TimeToWaitBeforeTriggeringCircuitBreaker));
                 timeToWaitBeforeTriggeringCircuitBreaker = value;
             }
         }
@@ -269,9 +271,10 @@ namespace NServiceBus
             {
                 if (value.HasValue)
                 {
-                    Guard.AgainstNegative(nameof(MaxAutoLockRenewalDuration), value.Value);
-                    maxAutoLockRenewalDuration = value;
+                    ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value.Value.Ticks, nameof(MaxAutoLockRenewalDuration));
                 }
+
+                maxAutoLockRenewalDuration = value;
             }
         }
         TimeSpan? maxAutoLockRenewalDuration;
@@ -289,7 +292,7 @@ namespace NServiceBus
             get => retryPolicy;
             set
             {
-                Guard.AgainstNull(nameof(RetryPolicyOptions), value);
+                ArgumentNullException.ThrowIfNull(value, nameof(RetryPolicyOptions));
                 retryPolicy = value;
             }
         }
@@ -303,7 +306,7 @@ namespace NServiceBus
             get => webProxy;
             set
             {
-                Guard.AgainstNull(nameof(WebProxy), value);
+                ArgumentNullException.ThrowIfNull(value, nameof(WebProxy));
                 webProxy = value;
             }
         }
