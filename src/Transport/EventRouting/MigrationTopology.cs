@@ -67,7 +67,6 @@ public sealed class MigrationTopology : TopicTopology
         ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
-        //TODO: Last one wins? Sz: Yes
         Options.PublishedEventToTopicsMap[eventType.FullName] = topicName;
     }
 

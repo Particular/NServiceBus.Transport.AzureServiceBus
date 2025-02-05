@@ -11,8 +11,6 @@ using System.Linq;
 /// </summary>
 public sealed class TopicPerEventTopology : TopicTopology
 {
-    //TODO: Should we rename this to DefaultTopicTopology? Sz: No
-
     internal TopicPerEventTopology(TopologyOptions options) : base(options)
     {
     }
@@ -22,6 +20,7 @@ public sealed class TopicPerEventTopology : TopicTopology
     /// </summary>
     /// <param name="topicName">Name of the topic to publish to.</param>
     /// <typeparam name="TEventType">Type of the event.</typeparam>
+    /// <remarks>Calling overloads of this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void PublishTo<TEventType>(string topicName) => PublishTo(typeof(TEventType), topicName);
 
     /// <summary>
@@ -29,12 +28,14 @@ public sealed class TopicPerEventTopology : TopicTopology
     /// </summary>
     /// <param name="eventType">Name of the topic to publish to.</param>
     /// <param name="topicName">Type of the event.</param>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
+    /// <exception cref="ArgumentException">The event type is not set.</exception>
+    /// <remarks>Calling overloads of this method multiple times with the same event type will lead to the last one winning.</remarks>
     public void PublishTo(Type eventType, string topicName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
-        //TODO: Last one wins? Sz: Yes
         Options.PublishedEventToTopicsMap[eventType.FullName] = topicName;
     }
 
@@ -43,6 +44,7 @@ public sealed class TopicPerEventTopology : TopicTopology
     /// </summary>
     /// <param name="topicName">Name of the topic to subscribe to.</param>
     /// <typeparam name="TEventType">Type of the event.</typeparam>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
     public void SubscribeTo<TEventType>(string topicName) => SubscribeTo(typeof(TEventType), topicName);
 
     /// <summary>
@@ -50,7 +52,8 @@ public sealed class TopicPerEventTopology : TopicTopology
     /// </summary>
     /// <param name="eventType">Name of the topic to subscribe to.</param>
     /// <param name="topicName">Type of the event.</param>
-    /// <exception cref="InvalidOperationException"></exception>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
+    /// <exception cref="ArgumentException">The event type is not set.</exception>
     public void SubscribeTo(Type eventType, string topicName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
@@ -84,7 +87,6 @@ public sealed class TopicPerEventTopology : TopicTopology
     protected override string GetPublishDestinationCore(string eventTypeFullName)
         => Options.PublishedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName);
 
-    //TODO: Should we use a public type instead of this tuple? Sz: Yes!
     /// <inheritdoc />
     protected override SubscriptionInfo[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName) =>
         // Not caching this Subscribe and Unsubscribe is not really on the hot path.

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 /// <summary>
-/// TODO: we probably need some kind of validation method that checks against invalid configurations?
+/// Serializable object that defines the topic-per-event topology
 /// </summary>
 [JsonDerivedType(typeof(TopologyOptions), typeDiscriminator: "topology-options")]
 [JsonDerivedType(typeof(MigrationTopologyOptions), typeDiscriminator: "migration-topology-options")]

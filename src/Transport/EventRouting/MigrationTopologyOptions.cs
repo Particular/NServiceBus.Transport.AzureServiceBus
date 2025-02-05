@@ -6,7 +6,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 /// <summary>
-/// Serializable object that defines the topology
+/// Serializable object that defines the migration topology
 /// </summary>
 public sealed class MigrationTopologyOptions : TopologyOptions
 {
