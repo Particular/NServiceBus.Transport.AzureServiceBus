@@ -83,7 +83,15 @@ namespace NServiceBus.Transport.AzureServiceBus
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
                 receiveSettings.UsePublishSubscribe
-                    ? new SubscriptionManager(receiveAddress, transportSettings, hostSettings.SetupInfrastructure, administrationClient)
+                    ? transportSettings.Topology.CreateSubscriptionManager(new SubscriptionManagerCreationOptions
+                    {
+                        AdministrationClient = administrationClient,
+                        Client = defaultClient,
+                        EnablePartitioning = transportSettings.EnablePartitioning,
+                        SetupInfrastructure = hostSettings.SetupInfrastructure,
+                        SubscribingQueueName = receiveAddress,
+                        EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
+                    })
                     : null,
                 subQueue
                 );

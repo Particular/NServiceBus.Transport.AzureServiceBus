@@ -95,29 +95,11 @@ namespace NServiceBus
         protected TopicTopology(NServiceBus.Transport.AzureServiceBus.TopologyOptions options) { }
         public static NServiceBus.Transport.AzureServiceBus.TopicPerEventTopology Default { get; }
         protected abstract string GetPublishDestinationCore(string eventTypeFullName);
-        protected abstract NServiceBus.TopicTopology.SubscriptionInfo[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName);
         public void Validate() { }
         public static NServiceBus.TopicTopology FromOptions(NServiceBus.Transport.AzureServiceBus.TopologyOptions options) { }
         public static NServiceBus.Transport.AzureServiceBus.MigrationTopology MigrateFromNamedSingleTopic(string topicName) { }
         public static NServiceBus.Transport.AzureServiceBus.MigrationTopology MigrateFromSingleDefaultTopic() { }
         public static NServiceBus.Transport.AzureServiceBus.MigrationTopology MigrateFromTopicHierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
-        [System.Runtime.CompilerServices.RequiredMember]
-        protected readonly struct RuleInfo : System.IEquatable<NServiceBus.TopicTopology.RuleInfo>
-        {
-            [System.Runtime.CompilerServices.RequiredMember]
-            public string Filter { get; init; }
-            [System.Runtime.CompilerServices.RequiredMember]
-            public string Name { get; init; }
-        }
-        [System.Runtime.CompilerServices.RequiredMember]
-        protected readonly struct SubscriptionInfo : System.IEquatable<NServiceBus.TopicTopology.SubscriptionInfo>
-        {
-            public NServiceBus.TopicTopology.RuleInfo? Rule { get; init; }
-            [System.Runtime.CompilerServices.RequiredMember]
-            public string SubscriptionName { get; init; }
-            [System.Runtime.CompilerServices.RequiredMember]
-            public string Topic { get; init; }
-        }
     }
 }
 namespace NServiceBus.Testing
@@ -177,7 +159,6 @@ namespace NServiceBus.Transport.AzureServiceBus
         public void EventToMigrate(System.Type eventType, string? ruleNameOverride = null) { }
         public void EventToMigrate<TEventType>(string? ruleNameOverride = null) { }
         protected override string GetPublishDestinationCore(string eventTypeFullName) { }
-        protected override NServiceBus.TopicTopology.SubscriptionInfo[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName) { }
         public void MigratedEvent(System.Type eventType) { }
         public void MigratedEvent<TEventType>() { }
         public void MigratedPublishedEvent(System.Type eventType) { }
@@ -215,7 +196,6 @@ namespace NServiceBus.Transport.AzureServiceBus
     public sealed class TopicPerEventTopology : NServiceBus.TopicTopology
     {
         protected override string GetPublishDestinationCore(string eventTypeFullName) { }
-        protected override NServiceBus.TopicTopology.SubscriptionInfo[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName) { }
         public void OverrideSubscriptionNameFor(string queueName, string subscriptionName) { }
         public void PublishTo(System.Type eventType, string topicName) { }
         public void PublishTo<TEventType>(string topicName) { }

@@ -3,7 +3,6 @@ namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 /// <summary>
 /// A topology that uses separate topic for each event type.
@@ -86,14 +85,7 @@ public sealed class TopicPerEventTopology : TopicTopology
     protected override string GetPublishDestinationCore(string eventTypeFullName)
         => Options.PublishedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName);
 
-    /// <inheritdoc />
-    protected override SubscriptionInfo[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName) =>
-        // Not caching this Subscribe and Unsubscribe is not really on the hot path.
-        Options.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
-            .Select(topic => new SubscriptionInfo
-            {
-                Topic = topic,
-                SubscriptionName = Options.QueueNameToSubscriptionNameMap.GetValueOrDefault(subscribingQueueName, subscribingQueueName)
-            })
-            .ToArray();
+    internal override SubscriptionManager CreateSubscriptionManager(
+        SubscriptionManagerCreationOptions creationOptions) =>
+        new TopicPerEventTypeTopologySubscriptionManager(creationOptions, Options);
 }

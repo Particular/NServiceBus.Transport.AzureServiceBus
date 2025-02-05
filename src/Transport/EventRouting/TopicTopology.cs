@@ -10,6 +10,8 @@ namespace NServiceBus
     /// <summary>
     /// Represents the topic topology used by <see cref="AzureServiceBusTransport"/>.
     /// </summary>
+    /// <remarks>This class cannot be inherited from to create custom topologies. This is a scenario that is currently
+    /// deliberately not supported.</remarks>
     public abstract class TopicTopology
     {
         /// <summary>
@@ -82,12 +84,12 @@ namespace NServiceBus
 
             if (Options is MigrationTopologyOptions migrationOptions)
             {
-                var migrationOptionsValidator = new Transport.AzureServiceBus.MigrationTopologyOptionsValidator();
+                var migrationOptionsValidator = new MigrationTopologyOptionsValidator();
                 validationResult = migrationOptionsValidator.Validate(null, migrationOptions);
             }
             else
             {
-                var validator = new Transport.AzureServiceBus.TopologyOptionsValidator();
+                var validator = new TopologyOptionsValidator();
                 validationResult = validator.Validate(null, Options);
             }
 
@@ -99,68 +101,20 @@ namespace NServiceBus
             throw new ValidationException(validationResult.FailureMessage);
         }
 
-        //TODO: Should we make those public?
         internal string GetPublishDestination(Type eventType)
         {
             var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
             return GetPublishDestinationCore(eventTypeFullName);
         }
 
-        /// <summary>
-        /// Returns instructions where to subscribe for a given event.
-        /// </summary>
-        /// <param name="eventTypeFullName">Full type name of the event.</param>
-        /// <param name="subscribingQueueName">The name of the queue that is to be the forwarding destination of the subscription.</param>
-        protected abstract SubscriptionInfo[] GetSubscribeDestinationsCore(
-            string eventTypeFullName, string subscribingQueueName);
-
-        internal SubscriptionInfo[] GetSubscribeDestinations(Type eventType, string subscribingQueueName)
-        {
-            var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
-            return GetSubscribeDestinationsCore(eventTypeFullName, subscribingQueueName);
-        }
+        // By having this internal abstract method it is not possible to extend the topology with a custom topology outside
+        // of this assembly. That is a deliberate design decision.
+        internal abstract SubscriptionManager CreateSubscriptionManager(SubscriptionManagerCreationOptions creationOptions);
 
         /// <summary>
         /// Returns instructions where to publish a given event.
         /// </summary>
         /// <param name="eventTypeFullName">Full type name of the event.</param>
         protected abstract string GetPublishDestinationCore(string eventTypeFullName);
-
-        /// <summary>
-        /// Represents instructions on how to subscribe for an event
-        /// </summary>
-        protected internal readonly record struct SubscriptionInfo
-        {
-            /// <summary>
-            /// Name of the topic to subscribe to.
-            /// </summary>
-            public required string Topic { get; init; }
-
-            /// <summary>
-            /// Name of the subscription to create/modify.
-            /// </summary>
-            public required string SubscriptionName { get; init; }
-
-            /// <summary>
-            /// Optional rule to create.
-            /// </summary>
-            public RuleInfo? Rule { get; init; }
-        }
-
-        /// <summary>
-        /// Represents instructions on how to create a rule
-        /// </summary>
-        protected internal readonly record struct RuleInfo
-        {
-            /// <summary>
-            /// Optional rule name to create.
-            /// </summary>
-            public required string Name { get; init; }
-
-            /// <summary>
-            /// Optional SQL rule filter to use when creating a rule.
-            /// </summary>
-            public required string Filter { get; init; }
-        }
     }
 }

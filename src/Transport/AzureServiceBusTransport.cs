@@ -127,7 +127,7 @@ namespace NServiceBus
                 {
                     if (messageReceiver.Subscriptions is SubscriptionManager subscriptionManager)
                     {
-                        await subscriptionManager.CreateSubscription(administrationClient, cancellationToken)
+                        await subscriptionManager.SetupInfrastructureIfNecessary(cancellationToken)
                             .ConfigureAwait(false);
                     }
                 }

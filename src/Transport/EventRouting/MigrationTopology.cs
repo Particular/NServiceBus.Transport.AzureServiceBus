@@ -2,8 +2,6 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
 /// <summary>
 /// Topology that allows mixing of single-topic and topic-per-event approaches in order to allow gradual migration to the topic-per-event topology.
@@ -201,38 +199,5 @@ public sealed class MigrationTopology : TopicTopology
         throw new Exception($"During migration every event type must be explicitly mapped. Consider explicitly mapping '{eventTypeFullName}' to a topic.");
     }
 
-    /// <inheritdoc />
-    protected override SubscriptionInfo[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName)
-    {
-        var subscriptionName = Options.QueueNameToSubscriptionNameMap.GetValueOrDefault(subscribingQueueName, subscribingQueueName);
-        if (Options.EventsToMigrateMap.TryGetValue(eventTypeFullName, out _))
-        {
-            return
-            [
-                new SubscriptionInfo
-                {
-                    Topic = TopicToSubscribeOn,
-                    SubscriptionName = subscriptionName,
-                    Rule = new RuleInfo
-                    {
-                        Name = Options.SubscribedEventToRuleNameMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName),
-                        Filter = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventTypeFullName}%'"
-                    }
-                }
-            ];
-        }
-
-        if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
-        {
-            // Not caching this Subscribe and Unsubscribe is not really on the hot path.
-            return topics.Select(topic => new SubscriptionInfo
-            {
-                Topic = topic,
-                SubscriptionName = subscriptionName
-            }).ToArray();
-        }
-
-        // TODO: Much better exception message
-        throw new Exception($"During migration every event type must be explicitly mapped. Consider explicitly mapping '{eventTypeFullName}' to a topic.");
-    }
+    internal override SubscriptionManager CreateSubscriptionManager(SubscriptionManagerCreationOptions creationOptions) => new MigrationTopologySubscriptionManager(creationOptions, Options);
 }
