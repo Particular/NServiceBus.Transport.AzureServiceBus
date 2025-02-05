@@ -92,7 +92,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     MigrationTopology topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-b");
                     string endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberOnTopicB));
                     topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
-                    topology.EventToMigrate<MyEvent>(options => options.OverrideRuleName(options.EventTypeFullName.Shorten()));
+                    topology.EventToMigrate<MyEvent>(ruleNameOverride: typeof(MyEvent).FullName.Shorten());
                     transport.Topology = topology;
                 }, metadata => metadata.RegisterPublisherFor<MyEvent>(typeof(SendOnlyPublisherOnTopicA)));
 
@@ -117,7 +117,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     MigrationTopology topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-c");
                     string endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberOnTopicC));
                     topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
-                    topology.EventToMigrate<MyEvent>(options => options.OverrideRuleName(options.EventTypeFullName.Shorten()));
+                    topology.EventToMigrate<MyEvent>(ruleNameOverride: typeof(MyEvent).FullName.Shorten());
                     transport.Topology = topology;
                 }, metadata => metadata.RegisterPublisherFor<MyEvent>(typeof(SendOnlyPublisherOnTopicA)));
 

@@ -119,8 +119,8 @@ namespace NServiceBus
         public bool IsHierarchy { get; }
         public string TopicToPublishTo { get; }
         public string TopicToSubscribeOn { get; }
-        public void EventToMigrate(System.Type eventType, System.Action<NServiceBus.MigrationTopology.EventToMigrateOptions>? configure = null) { }
-        public void EventToMigrate<TEventType>(System.Action<NServiceBus.MigrationTopology.EventToMigrateOptions>? configure = null) { }
+        public void EventToMigrate(System.Type eventType, string? ruleNameOverride = null) { }
+        public void EventToMigrate<TEventType>(string? ruleNameOverride = null) { }
         protected override string GetPublishDestinationCore(string eventTypeFullName) { }
         protected override NServiceBus.SubscriptionInfo[] GetSubscribeDestinationsCore(string eventTypeFullName, string subscribingQueueName) { }
         public void MigratedEvent(System.Type eventType) { }
@@ -134,11 +134,6 @@ namespace NServiceBus
         public void MigratedSubscribedEvent<TEventType>() { }
         public void MigratedSubscribedEvent<TEventType>(string topicName) { }
         public void OverrideSubscriptionNameFor(string queueName, string subscriptionName) { }
-        public sealed class EventToMigrateOptions
-        {
-            public string EventTypeFullName { get; }
-            public void OverrideRuleName(string ruleName) { }
-        }
     }
     public sealed class MigrationTopologyOptions : NServiceBus.TopologyOptions
     {

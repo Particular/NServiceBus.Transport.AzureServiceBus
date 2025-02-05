@@ -76,9 +76,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     var topology = TopicTopology.MigrateFromNamedSingleTopic("bundle-a");
-                    topology.EventToMigrate<EventFromTopicA>(options => options.OverrideRuleName(options.EventTypeFullName.Shorten()));
-                    topology.EventToMigrate<EventFromTopicB>(options => options.OverrideRuleName(options.EventTypeFullName.Shorten()));
-                    topology.EventToMigrate<EventFromTopicC>(options => options.OverrideRuleName(options.EventTypeFullName.Shorten()));
+                    topology.EventToMigrate<EventFromTopicA>(ruleNameOverride: typeof(EventFromTopicA).FullName.Shorten());
+                    topology.EventToMigrate<EventFromTopicB>(ruleNameOverride: typeof(EventFromTopicB).FullName.Shorten());
+                    topology.EventToMigrate<EventFromTopicC>(ruleNameOverride: typeof(EventFromTopicC).FullName.Shorten());
                     transport.Topology = topology;
                 }, metadata =>
                 {
@@ -120,8 +120,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     var topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-b");
-                    topology.EventToMigrate<EventFromTopicA>(options => options.OverrideRuleName(options.EventTypeFullName.Shorten()));
-                    topology.EventToMigrate<EventFromTopicB>(options => options.OverrideRuleName(options.EventTypeFullName.Shorten()));
+                    topology.EventToMigrate<EventFromTopicA>(ruleNameOverride: typeof(EventFromTopicA).FullName.Shorten());
+                    topology.EventToMigrate<EventFromTopicB>(ruleNameOverride: typeof(EventFromTopicB).FullName.Shorten());
                     transport.Topology = topology;
                 }, metadata =>
                 {
@@ -144,8 +144,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     var topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-c");
-                    topology.EventToMigrate<EventFromTopicA>(options => options.OverrideRuleName(options.EventTypeFullName.Shorten()));
-                    topology.EventToMigrate<EventFromTopicC>(options => options.OverrideRuleName(options.EventTypeFullName.Shorten()));
+                    topology.EventToMigrate<EventFromTopicA>(ruleNameOverride: typeof(EventFromTopicA).FullName.Shorten());
+                    topology.EventToMigrate<EventFromTopicC>(ruleNameOverride: typeof(EventFromTopicC).FullName.Shorten());
                     transport.Topology = topology;
                 }, metadata =>
                 {

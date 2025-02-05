@@ -50,7 +50,7 @@
                     b.CustomConfig(c =>
                     {
                         var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
-                        topology.EventToMigrate<MyEvent>(options => options.OverrideRuleName(options.EventTypeFullName.Shorten()));
+                        topology.EventToMigrate<MyEvent>(ruleNameOverride: typeof(MyEvent).FullName.Shorten());
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                     });
@@ -78,7 +78,7 @@
                     b.CustomConfig(c =>
                     {
                         var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
-                        topology.EventToMigrate<MyEvent>(options => options.OverrideRuleName(options.EventTypeFullName.Shorten()));
+                        topology.EventToMigrate<MyEvent>(ruleNameOverride: typeof(MyEvent).FullName.Shorten());
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                     });
