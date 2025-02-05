@@ -41,7 +41,7 @@ sealed class TopicPerEventTypeTopologySubscriptionManager : SubscriptionManager
     Task SubscribeEvent(string eventTypeFullName, CancellationToken cancellationToken)
     {
         var topics = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName]);
-        return CreateSubscriptionsForTopics(topics, subscriptionName, CreationOptions.SubscribingQueueName, CreationOptions.AdministrationClient, cancellationToken);
+        return CreateSubscriptionsForTopics(topics, subscriptionName, CreationOptions, cancellationToken);
     }
 
     public override Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
@@ -53,26 +53,55 @@ sealed class TopicPerEventTypeTopologySubscriptionManager : SubscriptionManager
 
     public static Task CreateSubscriptionsForTopics(HashSet<string> topics,
         string subscriptionName,
-        string subscribingQueueName, ServiceBusAdministrationClient administrationClient,
+        SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken = default)
     {
         return Task.WhenAll(topics.Select(CreateSubscription).ToArray());
 
         async Task CreateSubscription(string topicName)
         {
+            if (creationOptions.SetupInfrastructure)
+            {
+                var topicOptions = new CreateTopicOptions(topicName)
+                {
+                    EnableBatchedOperations = true,
+                    EnablePartitioning = creationOptions.EnablePartitioning,
+                    MaxSizeInMegabytes = creationOptions.EntityMaximumSizeInMegabytes
+                };
+
+                try
+                {
+                    await creationOptions.AdministrationClient.CreateTopicAsync(topicOptions, cancellationToken).ConfigureAwait(false);
+                }
+                catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+                {
+                    // ignored due to race conditions
+                }
+                catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
+                {
+                    Logger.Info($"Topic creation for topic {topicOptions.Name} is already in progress");
+                }
+                catch (UnauthorizedAccessException unauthorizedAccessException)
+                {
+                    // TODO: Check the log level
+                    Logger.WarnFormat("Topic {0} could not be created. Reason: {1}", topicOptions.Name, unauthorizedAccessException.Message);
+                    throw;
+                }
+            }
+
             var subscriptionOptions = new CreateSubscriptionOptions(topicName, subscriptionName)
             {
                 LockDuration = TimeSpan.FromMinutes(5),
-                ForwardTo = subscribingQueueName,
+                ForwardTo = creationOptions.SubscribingQueueName,
                 EnableDeadLetteringOnFilterEvaluationExceptions = false,
                 MaxDeliveryCount = int.MaxValue,
                 EnableBatchedOperations = true,
-                UserMetadata = subscribingQueueName
+                UserMetadata = creationOptions.SubscribingQueueName
             };
 
             try
             {
-                await administrationClient.CreateSubscriptionAsync(subscriptionOptions, cancellationToken).ConfigureAwait(false);
+                await creationOptions.AdministrationClient.CreateSubscriptionAsync(subscriptionOptions, cancellationToken).ConfigureAwait(false);
             }
             catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
@@ -84,8 +113,7 @@ sealed class TopicPerEventTypeTopologySubscriptionManager : SubscriptionManager
             }
             catch (UnauthorizedAccessException unauthorizedAccessException)
             {
-                // TODO: Check the log level
-                Logger.WarnFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
+                Logger.ErrorFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
                 throw;
             }
         }
