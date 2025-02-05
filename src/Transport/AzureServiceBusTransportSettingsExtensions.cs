@@ -18,10 +18,27 @@
         [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
             Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
             ReplacementTypeOrMember = "EndpointConfiguration.UseTransport(TransportDefinition)")]
-        public static TransportExtensions<AzureServiceBusTransport> UseTransport<TTransport>(this EndpointConfiguration endpointConfiguration, TopicTopology topology)
+        public static TransportExtensions<AzureServiceBusTransport> UseTransport<TTransport>(this EndpointConfiguration endpointConfiguration, string connectionString, TopicTopology topology)
             where TTransport : AzureServiceBusTransport
         {
-            var transport = new AzureServiceBusTransport(topology);
+            var transport = new AzureServiceBusTransport(connectionString, topology);
+
+            var routing = endpointConfiguration.UseTransport(transport);
+
+            return new TransportExtensions<AzureServiceBusTransport>(transport, routing);
+        }
+
+        /// <summary>
+        /// Configure the endpoint to use the Azure Service bus transport. This configuration method will eventually be deprecated.
+        /// Consider using endpointConfiguration.UseTransport(new AzureServiceBusTransport(connectionString, topology)) instead.
+        /// </summary>
+        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+            ReplacementTypeOrMember = "EndpointConfiguration.UseTransport(TransportDefinition)")]
+        public static TransportExtensions<AzureServiceBusTransport> UseTransport<TTransport>(this EndpointConfiguration endpointConfiguration, string fullyQualifiedNamespace, TokenCredential tokenCredential, TopicTopology topology)
+            where TTransport : AzureServiceBusTransport
+        {
+            var transport = new AzureServiceBusTransport(fullyQualifiedNamespace, tokenCredential, topology);
 
             var routing = endpointConfiguration.UseTransport(transport);
 
@@ -31,9 +48,9 @@
         /// <summary>
         /// Sets the Azure Service Bus connection string.
         /// </summary>
-        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
-            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
-            Message = "Provide the connection string to the AzureServiceBusTransport constructor")]
+        [ObsoleteEx(Message = "Connection string needs to be passed either through constructor of AzureServiceBusTransport or via UseTransport<AzureServiceBusTransport> method.",
+            TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6")]
         public static TransportExtensions<AzureServiceBusTransport> ConnectionString(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string connectionString)
         {
             Guard.AgainstNullAndEmpty(nameof(connectionString), connectionString);
@@ -44,9 +61,9 @@
         /// <summary>
         /// Sets the Azure Service Bus connection string.
         /// </summary>
-        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
-            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
-            Message = "Provide the connection string to the AzureServiceBusTransport constructor")]
+        [ObsoleteEx(Message = "Connection string needs to be passed either through constructor of AzureServiceBusTransport or via UseTransport<AzureServiceBusTransport> method.",
+            TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6")]
         public static TransportExtensions<AzureServiceBusTransport> ConnectionString(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string> connectionString)
         {
             Guard.AgainstNull(nameof(connectionString), connectionString);
@@ -164,12 +181,9 @@
         /// <summary>
         /// Overrides the default token credential with a custom one.
         /// </summary>
-        /// <param name="transportExtensions"></param>
-        /// <param name="fullyQualifiedNamespace">The fully qualified namespace.</param>
-        /// <param name="tokenCredential">The token credential to be used.</param>
-        [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
-            Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
-            ReplacementTypeOrMember = "AzureServiceBusTransport(string fullyQualifiedNamespace, TokenCredential tokenCredential)")]
+        [ObsoleteEx(Message = "Custom token credential needs to be passed either through constructor of AzureServiceBusTransport or via UseTransport<AzureServiceBusTransport> method.",
+            TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6")]
         public static TransportExtensions<AzureServiceBusTransport> CustomTokenCredential(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string fullyQualifiedNamespace, TokenCredential tokenCredential)
         {
             Guard.AgainstNull(nameof(tokenCredential), tokenCredential);

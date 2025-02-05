@@ -62,9 +62,18 @@ namespace NServiceBus
     }
     public static class AzureServiceBusTransportSettingsExtensions
     {
+        [System.Obsolete("Connection string needs to be passed either through constructor of AzureServiceBu" +
+            "sTransport or via UseTransport<AzureServiceBusTransport> method. Will be treated" +
+            " as an error from version 5.0.0. Will be removed in version 6.0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string> connectionString) { }
+        [System.Obsolete("Connection string needs to be passed either through constructor of AzureServiceBu" +
+            "sTransport or via UseTransport<AzureServiceBusTransport> method. Will be treated" +
+            " as an error from version 5.0.0. Will be removed in version 6.0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string connectionString) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Messaging.ServiceBus.ServiceBusRetryOptions retryPolicy) { }
+        [System.Obsolete("Custom token credential needs to be passed either through constructor of AzureSer" +
+            "viceBusTransport or via UseTransport<AzureServiceBusTransport> method. Will be t" +
+            "reated as an error from version 5.0.0. Will be removed in version 6.0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenCredential(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential) { }
         [System.Obsolete("Next versions of the transport will by default no longer send the transport encod" +
             "ing header for wire compatibility, requiring an opt-in for the header to be sent" +
@@ -95,7 +104,9 @@ namespace NServiceBus
             " throws a NotImplementedException. Will be removed in version 6.0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration)
             where TTransport : NServiceBus.AzureServiceBusTransport { }
-        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration, NServiceBus.TopicTopology topology)
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration, string connectionString, NServiceBus.TopicTopology topology)
+            where TTransport : NServiceBus.AzureServiceBusTransport { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration, string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential, NServiceBus.TopicTopology topology)
             where TTransport : NServiceBus.AzureServiceBusTransport { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseWebSockets(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Net.IWebProxy webProxy = null) { }
     }
