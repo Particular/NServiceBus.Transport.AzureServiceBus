@@ -67,7 +67,7 @@
             await Task.WhenAll(subscribeTasks).ConfigureAwait(false);
         }
 
-        async Task CreateSubscription(ServiceBusAdministrationClient client, SubscriptionInfo subscriptionInfo, CancellationToken cancellationToken)
+        async Task CreateSubscription(ServiceBusAdministrationClient client, TopicTopology.SubscriptionInfo subscriptionInfo, CancellationToken cancellationToken)
         {
             if (setupInfrastructure)
             {
@@ -156,7 +156,7 @@
             await Task.WhenAll(unsubscribeTasks).ConfigureAwait(false);
             return;
 
-            async Task DeleteSubscription(SubscriptionInfo subscriptionInfo)
+            async Task DeleteSubscription(TopicTopology.SubscriptionInfo subscriptionInfo)
             {
                 if (subscriptionInfo.Rule is { } rule)
                 {

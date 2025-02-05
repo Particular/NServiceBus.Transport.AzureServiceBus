@@ -125,5 +125,42 @@ namespace NServiceBus
         /// </summary>
         /// <param name="eventTypeFullName">Full type name of the event.</param>
         protected abstract string GetPublishDestinationCore(string eventTypeFullName);
+
+        /// <summary>
+        /// Represents instructions on how to subscribe for an event
+        /// </summary>
+        protected internal readonly record struct SubscriptionInfo
+        {
+            /// <summary>
+            /// Name of the topic to subscribe to.
+            /// </summary>
+            public required string Topic { get; init; }
+
+            /// <summary>
+            /// Name of the subscription to create/modify.
+            /// </summary>
+            public required string SubscriptionName { get; init; }
+
+            /// <summary>
+            /// Optional rule to create.
+            /// </summary>
+            public RuleInfo? Rule { get; init; }
+        }
+
+        /// <summary>
+        /// Represents instructions on how to create a rule
+        /// </summary>
+        protected internal readonly record struct RuleInfo
+        {
+            /// <summary>
+            /// Optional rule name to create.
+            /// </summary>
+            public required string Name { get; init; }
+
+            /// <summary>
+            /// Optional rule filter to use when creating a rule.
+            /// </summary>
+            public required string Filter { get; init; }
+        }
     }
 }
