@@ -1,10 +1,9 @@
 #nullable enable
-namespace NServiceBus;
+namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 
 /// <summary>
 /// A topology that uses separate topic for each event type.

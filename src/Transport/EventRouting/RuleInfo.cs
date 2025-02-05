@@ -1,5 +1,5 @@
 #nullable enable
-namespace NServiceBus;
+namespace NServiceBus.Transport.AzureServiceBus;
 
 /// <summary>
 /// Represents instructions on how to create a rule

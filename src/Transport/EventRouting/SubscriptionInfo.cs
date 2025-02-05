@@ -1,6 +1,6 @@
 #nullable enable
 
-namespace NServiceBus;
+namespace NServiceBus.Transport.AzureServiceBus;
 
 /// <summary>
 /// Represents instructions on how to subscribe for an event

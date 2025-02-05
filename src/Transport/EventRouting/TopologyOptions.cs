@@ -1,9 +1,8 @@
 #nullable enable
-namespace NServiceBus;
+namespace NServiceBus.Transport.AzureServiceBus;
 
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using Transport.AzureServiceBus;
 
 /// <summary>
 /// Serializable object that defines the topic-per-event topology

@@ -10,6 +10,7 @@ using NServiceBus.AcceptanceTests.Routing.NativePublishSubscribe;
 using NServiceBus.AcceptanceTests.Sagas;
 using NServiceBus.AcceptanceTests.Versioning;
 using NServiceBus.MessageMutator;
+using NServiceBus.Transport.AzureServiceBus;
 using NServiceBus.Transport.AzureServiceBus.AcceptanceTests;
 using Conventions = NServiceBus.AcceptanceTesting.Customization.Conventions;
 

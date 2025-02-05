@@ -5,6 +5,7 @@ namespace NServiceBus
     using System;
     using System.ComponentModel.DataAnnotations;
     using Microsoft.Extensions.Options;
+    using Transport.AzureServiceBus;
 
     /// <summary>
     /// Represents the topic topology used by <see cref="AzureServiceBusTransport"/>.
@@ -81,12 +82,12 @@ namespace NServiceBus
 
             if (Options is MigrationTopologyOptions migrationOptions)
             {
-                var migrationOptionsValidator = new MigrationTopologyOptionsValidator();
+                var migrationOptionsValidator = new Transport.AzureServiceBus.MigrationTopologyOptionsValidator();
                 validationResult = migrationOptionsValidator.Validate(null, migrationOptions);
             }
             else
             {
-                var validator = new TopologyOptionsValidator();
+                var validator = new Transport.AzureServiceBus.TopologyOptionsValidator();
                 validationResult = validator.Validate(null, Options);
             }
 
