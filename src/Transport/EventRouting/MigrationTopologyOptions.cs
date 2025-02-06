@@ -29,6 +29,7 @@ public sealed class MigrationTopologyOptions : TopologyOptions
     /// Collection of events that have not yet been migrated to the topic-per-event topology
     /// </summary>
     [JsonInclude]
+    [ValidMigrationTopology]
     public HashSet<string> EventsToMigrateMap { get; init; } = [];
 
     /// <summary>

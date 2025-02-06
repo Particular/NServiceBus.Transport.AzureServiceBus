@@ -172,6 +172,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     public sealed class MigrationTopologyOptions : NServiceBus.Transport.AzureServiceBus.TopologyOptions
     {
         public MigrationTopologyOptions() { }
+        [NServiceBus.Transport.AzureServiceBus.ValidMigrationTopology]
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.HashSet<string> EventsToMigrateMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusRules]
@@ -243,5 +244,12 @@ namespace NServiceBus.Transport.AzureServiceBus
         public TopologyOptionsValidator() { }
         [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification="The created ValidationContext object is used in a way that never call reflection")]
         public Microsoft.Extensions.Options.ValidateOptionsResult Validate(string? name, NServiceBus.Transport.AzureServiceBus.TopologyOptions options) { }
+    }
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    [System.Diagnostics.CodeAnalysis.Experimental("NSBASBEXP0005")]
+    public sealed class ValidMigrationTopologyAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
+    {
+        public ValidMigrationTopologyAttribute() { }
+        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
     }
 }

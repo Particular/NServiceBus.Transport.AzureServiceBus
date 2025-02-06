@@ -8,7 +8,7 @@ using System.Linq;
 using Configuration;
 
 /// <summary>
-/// Validates wether the string value, the values in a dictionary or the values in a dictionary of hashsets
+/// Validates whether the string value, the values in a dictionary or the values in a dictionary of hashsets
 /// passed to the property are valid Azure Service Bus topics.
 /// </summary>
 [Experimental(DiagnosticDescriptors.ExperimentalTopicsAttribute)]
