@@ -10,9 +10,9 @@ using Azure;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 
-public class RecordingServiceBusAdministrationClient : ServiceBusAdministrationClient
+public class RecordingServiceBusAdministrationClient(StringBuilder builder = null) : ServiceBusAdministrationClient
 {
-    readonly StringBuilder builder = new();
+    readonly StringBuilder builder = builder ?? new StringBuilder();
 
     public override Task<Response<SubscriptionProperties>> CreateSubscriptionAsync(CreateSubscriptionOptions options, CreateRuleOptions rule,
         CancellationToken cancellationToken = default)
@@ -38,9 +38,9 @@ public class RecordingServiceBusAdministrationClient : ServiceBusAdministrationC
     public override string ToString() => builder.ToString();
 }
 
-public class RecordingServiceBusClient : ServiceBusClient
+public class RecordingServiceBusClient(StringBuilder builder = null) : ServiceBusClient
 {
-    readonly StringBuilder builder = new();
+    readonly StringBuilder builder = builder ?? new StringBuilder();
 
     public override ServiceBusRuleManager CreateRuleManager(string topicName, string subscriptionName) => new RecordingRuleManager(topicName, subscriptionName, builder);
 
