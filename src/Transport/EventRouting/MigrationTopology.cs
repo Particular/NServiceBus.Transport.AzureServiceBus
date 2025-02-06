@@ -117,24 +117,6 @@ public sealed class MigrationTopology : TopicTopology
     }
 
     /// <summary>
-    /// Marks the given event type as migrated applying the default convention of subscribing and publishing the event
-    /// under a topic name that is the full name of the event type.
-    /// </summary>
-    /// <typeparam name="TEventType">The event type to be marked as migrated.</typeparam>
-    public void MigratedEvent<TEventType>() => MigratedEvent(typeof(TEventType));
-
-    /// <summary>
-    /// Marks the given event type as migrated applying the default convention of subscribing and publishing the event
-    /// under a topic name that is the full name of the event type.
-    /// </summary>
-    /// <param name="eventType">The event type to be marked as migrated.</param>
-    public void MigratedEvent(Type eventType)
-    {
-        MigratedPublishedEvent(eventType);
-        MigratedSubscribedEvent(eventType);
-    }
-
-    /// <summary>
     /// Marks the given event type to be migrated making sure it is published to the <see cref="TopicToPublishTo"/>
     /// or subscribed to on the <see cref="TopicToSubscribeOn"/> as configured on this migration topology.
     /// </summary>
@@ -195,8 +177,7 @@ public sealed class MigrationTopology : TopicTopology
             return topic;
         }
 
-        // TODO: Much better exception message
-        throw new Exception($"During migration every event type must be explicitly mapped. Consider explicitly mapping '{eventTypeFullName}' to a topic.");
+        throw new Exception($"When using migration topology, every event needs to be marked either as migrated or pending migration to avoid message loss. In the topology configuration use either MigratedPublishedEvent<'{eventTypeFullName}'>() or EventToMigrate<'{eventTypeFullName}'>(), depending on the migration state of this event.");
     }
 
     internal override SubscriptionManager CreateSubscriptionManager(SubscriptionManagerCreationOptions creationOptions) => new MigrationTopologySubscriptionManager(creationOptions, Options);
