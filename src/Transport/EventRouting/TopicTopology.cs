@@ -8,8 +8,7 @@ namespace NServiceBus
     /// <summary>
     /// Represents the topic topology used by <see cref="AzureServiceBusTransport"/>.
     /// </summary>
-    /// <remarks>This class cannot be inherited from to create custom topologies. This is a scenario that is currently
-    /// deliberately not supported.</remarks>
+    /// <remarks>This class cannot be inherited from to create custom topologies. This is a scenario that is currently not supported.</remarks>
     public abstract class TopicTopology
     {
         /// <summary>

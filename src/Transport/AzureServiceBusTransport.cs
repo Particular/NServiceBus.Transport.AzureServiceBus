@@ -21,6 +21,8 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// <summary>
     /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
     /// </summary>
+    /// <param name="connectionString">Connection string to use when connecting to Azure Service Bus.</param>
+    /// <param name="topology">Topology to use when publishing and subscribing events.</param>
     public AzureServiceBusTransport(string connectionString, TopicTopology topology) : base(
         defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
         supportsDelayedDelivery: true,
@@ -37,6 +39,9 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// <summary>
     /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
     /// </summary>
+    /// <param name="fullyQualifiedNamespace">Fully-qualified name of Azure Service Bus namespace.</param>
+    /// <param name="tokenCredential">Credentials to use when connecting to Azure Service Bus.</param>
+    /// <param name="topology">Topology to use when publishing and subscribing events.</param>
     public AzureServiceBusTransport(string fullyQualifiedNamespace, TokenCredential tokenCredential, TopicTopology topology) : base(
         defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
         supportsDelayedDelivery: true,

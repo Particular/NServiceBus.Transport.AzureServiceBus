@@ -14,6 +14,9 @@ public static partial class AzureServiceBusTransportSettingsExtensions
     /// Configure the endpoint to use the Azure Service bus transport. This configuration method will eventually be deprecated.
     /// Consider using endpointConfiguration.UseTransport(new AzureServiceBusTransport(connectionString, topology)) instead.
     /// </summary>
+    /// <param name="endpointConfiguration">this endpoint configuration.</param>
+    /// <param name="connectionString">Connection string to use when connecting to Azure Service Bus.</param>
+    /// <param name="topology">Topology to use when publishing and subscribing events.</param>
     [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
         Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
         ReplacementTypeOrMember = "EndpointConfiguration.UseTransport(TransportDefinition)")]
@@ -31,6 +34,10 @@ public static partial class AzureServiceBusTransportSettingsExtensions
     /// Configure the endpoint to use the Azure Service bus transport. This configuration method will eventually be deprecated.
     /// Consider using endpointConfiguration.UseTransport(new AzureServiceBusTransport(connectionString, topology)) instead.
     /// </summary>
+    /// <param name="endpointConfiguration">This endpoint configuration.</param>
+    /// <param name="fullyQualifiedNamespace">Fully-qualified name of Azure Service Bus namespace.</param>
+    /// <param name="tokenCredential">Credentials to use when connecting to Azure Service Bus.</param>
+    /// <param name="topology">Topology to use when publishing and subscribing events.</param>
     [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
         Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
         ReplacementTypeOrMember = "EndpointConfiguration.UseTransport(TransportDefinition)")]

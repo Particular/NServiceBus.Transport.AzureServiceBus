@@ -63,8 +63,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
             return;
         }
 
-        // TODO: Much better exception message
-        throw new Exception($"During migration every event type must be explicitly mapped. Consider explicitly mapping '{eventTypeFullName}' to a topic.");
+        throw new Exception($"When using migration topology, every events needs to be marked either as migrated or pending migration to avoid message loss. In the topology configuration use either MigratedSubscribedEvent<'{eventTypeFullName}'>() or EventToMigrate<'{eventTypeFullName}'>(), depending on the migration state of this event.");
     }
 
     public override async Task Unsubscribe(MessageMetadata eventType, ContextBag context,
@@ -97,8 +96,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
             return;
         }
 
-        // TODO: Much better exception message
-        throw new Exception($"During migration every event type must be explicitly mapped. Consider explicitly mapping '{eventTypeFullName}' to a topic.");
+        throw new Exception($"When using migration topology, every events needs to be marked either as migrated or pending migration to avoid message loss. In the topology configuration use either MigratedSubscribedEvent<'{eventTypeFullName}'>() or EventToMigrate<'{eventTypeFullName}'>(), depending on the migration state of this event.");
     }
 
     protected override async ValueTask SetupInfrastructureCore(CancellationToken cancellationToken = default)

@@ -3,24 +3,24 @@ namespace NServiceBus.Transport.AzureServiceBus;
 using System;
 
 /// <summary>
-/// Topology that allows mixing of single-topic and topic-per-event approaches in order to allow gradual migration to the topic-per-event topology.
+/// Topology that allows mixing of common-topic and topic-per-event approaches in order to allow gradual migration to the topic-per-event topology.
 /// </summary>
 public sealed class MigrationTopology : TopicTopology
 {
     internal MigrationTopology(MigrationTopologyOptions options) : base(options) => Options = options;
 
     /// <summary>
-    /// Gets the topic name of the topic where all single-topic events are published to.
+    /// Gets the topic name of the topic where all common-topic events are published to.
     /// </summary>
     public string TopicToPublishTo => Options.TopicToPublishTo!;
 
     /// <summary>
-    /// Gets the topic name of the topic where all single-topic subscriptions are managed on.
+    /// Gets the topic name of the topic where all common-topic events are subscribed.
     /// </summary>
     public string TopicToSubscribeOn => Options.TopicToSubscribeOn!;
 
     /// <summary>
-    /// Gets whether the current topic topology represents a hierarchy.
+    /// Gets whether the current topic topology represents a hierarchy (different publish and subscribe topics).
     /// </summary>
     public bool IsHierarchy => !string.Equals(TopicToPublishTo, TopicToSubscribeOn, StringComparison.OrdinalIgnoreCase);
 
@@ -141,7 +141,7 @@ public sealed class MigrationTopology : TopicTopology
     /// <typeparam name="TEventType">The event type to be marked for migration.</typeparam>
     /// <param name="ruleNameOverride">Optional rule name override.</param>
     /// <exception cref="ArgumentException">The full name of the event type is not set.</exception>
-    /// <remarks>Adding the same event type multiple times automatically de-duplicates the event type.</remarks>
+    /// <remarks>Calling overloads of this method multiple times with the same event type will lead to the last one winning (setting the <paramref name="ruleNameOverride"/> value).</remarks>
     public void EventToMigrate<TEventType>(string? ruleNameOverride = null) => EventToMigrate(typeof(TEventType), ruleNameOverride);
 
     /// <summary>
@@ -151,7 +151,7 @@ public sealed class MigrationTopology : TopicTopology
     /// <param name="eventType">The event type to be marked for migration.</param>
     /// <param name="ruleNameOverride">Optional rule name override.</param>
     /// <exception cref="ArgumentException">The full name of the event type is not set.</exception>
-    /// <remarks>Adding the same event type multiple times automatically de-duplicates the event type.</remarks>
+    /// <remarks>Calling overloads of this method multiple times with the same event type will lead to the last one winning (setting the <paramref name="ruleNameOverride"/> value).</remarks>
     public void EventToMigrate(Type eventType, string? ruleNameOverride = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
@@ -173,6 +173,7 @@ public sealed class MigrationTopology : TopicTopology
     /// </summary>
     /// <param name="queueName">Queue name for which the default subscription name is to be overridden.</param>
     /// <param name="subscriptionName">The subscription name to use.</param>
+    /// <remarks>Calling this method multiple times with the same queue name will lead to the last one winning (setting the <paramref name="subscriptionName"/> value).</remarks>
     public void OverrideSubscriptionNameFor(string queueName, string subscriptionName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(queueName);
