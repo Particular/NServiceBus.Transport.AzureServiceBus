@@ -15,7 +15,7 @@ public sealed class MigrationTopologyOptions : TopologyOptions
     /// </summary>
     [Required]
     [AzureServiceBusTopics]
-    public string? TopicToPublishTo { get; set; }
+    public string? TopicToPublishTo { get; init; }
 
     /// TODO: Change to required/init once the Fody Obsolete problem is fixed
     /// <summary>
@@ -23,7 +23,7 @@ public sealed class MigrationTopologyOptions : TopologyOptions
     /// </summary>
     [Required]
     [AzureServiceBusTopics]
-    public string? TopicToSubscribeOn { get; set; }
+    public string? TopicToSubscribeOn { get; init; }
 
     /// <summary>
     /// Collection of events that have not yet been migrated to the topic-per-event topology
