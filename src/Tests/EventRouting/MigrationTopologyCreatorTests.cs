@@ -11,7 +11,7 @@ public class MigrationTopologyCreatorTests
     public async Task Should_create_single_topic_topology()
     {
         var topology = TopicTopology.MigrateFromNamedSingleTopic("bundle-1");
-        var transportSettings = new AzureServiceBusTransport(topology);
+        var transportSettings = new AzureServiceBusTransport("connection-string", topology);
 
         var recordingAdministrationClient = new RecordingServiceBusAdministrationClient();
         var creator = new MigrationTopologyCreator(transportSettings);
@@ -25,7 +25,7 @@ public class MigrationTopologyCreatorTests
     public async Task Should_create_default_single_topic_topology()
     {
         var topology = TopicTopology.MigrateFromSingleDefaultTopic();
-        var transportSettings = new AzureServiceBusTransport(topology);
+        var transportSettings = new AzureServiceBusTransport("connection-string", topology);
 
         var recordingAdministrationClient = new RecordingServiceBusAdministrationClient();
         var creator = new MigrationTopologyCreator(transportSettings);
@@ -39,7 +39,7 @@ public class MigrationTopologyCreatorTests
     public async Task Should_hierarchy()
     {
         var topology = TopicTopology.MigrateFromTopicHierarchy("bundle-1", "bundle-2");
-        var transportSettings = new AzureServiceBusTransport(topology);
+        var transportSettings = new AzureServiceBusTransport("connection-string", topology);
 
         var recordingAdministrationClient = new RecordingServiceBusAdministrationClient();
         var creator = new MigrationTopologyCreator(transportSettings);

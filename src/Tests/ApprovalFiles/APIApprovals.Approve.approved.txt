@@ -159,8 +159,6 @@ namespace NServiceBus.Transport.AzureServiceBus
         public void EventToMigrate(System.Type eventType, string? ruleNameOverride = null) { }
         public void EventToMigrate<TEventType>(string? ruleNameOverride = null) { }
         protected override string GetPublishDestinationCore(string eventTypeFullName) { }
-        public void MigratedEvent(System.Type eventType) { }
-        public void MigratedEvent<TEventType>() { }
         public void MigratedPublishedEvent(System.Type eventType) { }
         public void MigratedPublishedEvent(System.Type eventType, string topicName) { }
         public void MigratedPublishedEvent<TEventType>() { }
@@ -174,17 +172,17 @@ namespace NServiceBus.Transport.AzureServiceBus
     public sealed class MigrationTopologyOptions : NServiceBus.Transport.AzureServiceBus.TopologyOptions
     {
         public MigrationTopologyOptions() { }
-        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string? TopicToPublishTo { get; set; }
-        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
-        [System.ComponentModel.DataAnnotations.Required]
-        public string? TopicToSubscribeOn { get; set; }
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.HashSet<string> EventsToMigrateMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusRules]
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, string> SubscribedEventToRuleNameMap { get; init; }
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string? TopicToPublishTo { get; init; }
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string? TopicToSubscribeOn { get; init; }
     }
     [Microsoft.Extensions.Options.OptionsValidator]
     public class MigrationTopologyOptionsValidator : Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions>

@@ -57,14 +57,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
         Topology = topology;
     }
 
-    [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811", Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.")]
-    internal AzureServiceBusTransport(TopicTopology topology) : base(
-        defaultTransactionMode: TransportTransactionMode.SendsAtomicWithReceive,
-        supportsDelayedDelivery: true,
-        supportsPublishSubscribe: true,
-        supportsTTBR: true) =>
-        Topology = topology;
-
     /// <inheritdoc />
     public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
         ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)

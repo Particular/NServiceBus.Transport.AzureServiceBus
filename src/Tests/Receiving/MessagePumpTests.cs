@@ -17,7 +17,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var fakeClient = new FakeServiceBusClient();
             var fakeReceiver = new FakeReceiver();
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport(TopicTopology.Default), "receiveAddress",
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
                 new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
 
             await pump.Initialize(new PushRuntimeSettings(1), (context, token) => Task.CompletedTask,
@@ -42,7 +42,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var fakeClient = new FakeServiceBusClient();
             var fakeReceiver = new FakeReceiver();
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport(TopicTopology.Default), "receiveAddress",
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
                 new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
 
             bool pumpWasCalled = false;
@@ -76,7 +76,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var onMessageCalled = 0;
             var onErrorCalled = 0;
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport(TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.ReceiveOnly }, "receiveAddress",
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.ReceiveOnly }, "receiveAddress",
                 new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
 
             using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -121,7 +121,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var onMessageCalled = 0;
             var onErrorCalled = 0;
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport(TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.SendsAtomicWithReceive }, "receiveAddress",
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.SendsAtomicWithReceive }, "receiveAddress",
                 new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
 
             using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -167,7 +167,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var onMessageCalled = 0;
             var onErrorCalled = 0;
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport(TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.ReceiveOnly }, "receiveAddress",
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.ReceiveOnly }, "receiveAddress",
                 new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
 
             using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -210,7 +210,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var fakeClient = new FakeServiceBusClient();
             var fakeReceiver = new FakeReceiver();
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport(TopicTopology.Default), "receiveAddress",
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
                 new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
 
             await pump.Initialize(new PushRuntimeSettings(1), (context, token) => Task.FromException<InvalidOperationException>(new InvalidOperationException()),
@@ -235,7 +235,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var fakeClient = new FakeServiceBusClient();
             var fakeReceiver = new FakeReceiver();
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport(TopicTopology.Default), "receiveAddress",
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
                 new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
 
             await pump.Initialize(new PushRuntimeSettings(1), (context, token) => Task.FromException<InvalidOperationException>(new InvalidOperationException()),
