@@ -1,11 +1,12 @@
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo(@"NServiceBus.Transport.AzureServiceBus.AcceptanceTests, PublicKey=00240000048000009400000006020000002400005253413100040000010001007f16e21368ff041183fab592d9e8ed37e7be355e93323147a1d29983d6e591b04282e4da0c9e18bd901e112c0033925eb7d7872c2f1706655891c5c9d57297994f707d16ee9a8f40d978f064ee1ffc73c0db3f4712691b23bf596f75130f4ec978cf78757ec034625a5f27e6bb50c618931ea49f6f628fd74271c32959efb1c5")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo(@"NServiceBus.Transport.AzureServiceBus.Migration.AcceptanceTests, PublicKey=00240000048000009400000006020000002400005253413100040000010001007f16e21368ff041183fab592d9e8ed37e7be355e93323147a1d29983d6e591b04282e4da0c9e18bd901e112c0033925eb7d7872c2f1706655891c5c9d57297994f707d16ee9a8f40d978f064ee1ffc73c0db3f4712691b23bf596f75130f4ec978cf78757ec034625a5f27e6bb50c618931ea49f6f628fd74271c32959efb1c5")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo(@"NServiceBus.Transport.AzureServiceBus.Tests, PublicKey=00240000048000009400000006020000002400005253413100040000010001007f16e21368ff041183fab592d9e8ed37e7be355e93323147a1d29983d6e591b04282e4da0c9e18bd901e112c0033925eb7d7872c2f1706655891c5c9d57297994f707d16ee9a8f40d978f064ee1ffc73c0db3f4712691b23bf596f75130f4ec978cf78757ec034625a5f27e6bb50c618931ea49f6f628fd74271c32959efb1c5")]
 namespace NServiceBus
 {
     public class AzureServiceBusTransport : NServiceBus.Transport.TransportDefinition
     {
-        public AzureServiceBusTransport(string connectionString) { }
-        public AzureServiceBusTransport(string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential) { }
+        public AzureServiceBusTransport(string connectionString, NServiceBus.TopicTopology topology) { }
+        public AzureServiceBusTransport(string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential, NServiceBus.TopicTopology topology) { }
         [System.Obsolete("Next versions of the transport will by default no longer send the transport encod" +
             "ing header for wire compatibility, requiring an opt-in for the header to be sent" +
             ". Will be treated as an error from version 5.0.0. Will be removed in version 6.0" +
@@ -14,28 +15,41 @@ namespace NServiceBus
         public bool EnablePartitioning { get; set; }
         public int EntityMaximumSize { get; set; }
         public System.TimeSpan? MaxAutoLockRenewalDuration { get; set; }
-        public System.Action<NServiceBus.Transport.IOutgoingTransportOperation, Azure.Messaging.ServiceBus.ServiceBusMessage> OutgoingNativeMessageCustomization { get; set; }
+        public System.Action<NServiceBus.Transport.IOutgoingTransportOperation, Azure.Messaging.ServiceBus.ServiceBusMessage>? OutgoingNativeMessageCustomization { get; set; }
         public int? PrefetchCount { get; set; }
         public int PrefetchMultiplier { get; set; }
-        public Azure.Messaging.ServiceBus.ServiceBusRetryOptions RetryPolicyOptions { get; set; }
+        public Azure.Messaging.ServiceBus.ServiceBusRetryOptions? RetryPolicyOptions { get; set; }
+        [System.Obsolete(@"The subscription name for a given subscriber queue can be overriden on the topology. Use `OverrideSubscriptionNameFor` instead. Will be treated as an error from version 5.0.0. The member currently throws a NotImplementedException. Will be removed in version 6.0.0.", false)]
         public System.Func<string, string> SubscriptionNamingConvention { get; set; }
+        [System.Obsolete("The subscription rule name can be overriden on the migration topology. Use `Overr" +
+            "ideRuleNameFor` instead. Will be treated as an error from version 5.0.0. The mem" +
+            "ber currently throws a NotImplementedException. Will be removed in version 6.0.0" +
+            ".", false)]
         public System.Func<System.Type, string> SubscriptionRuleNamingConvention { get; set; }
         public System.TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
-        [System.Obsolete("It is possible to represent the publish and subscribe topic separately by specify" +
-            "ing a topology. Use `Topology` instead. The member currently throws a NotImpleme" +
-            "ntedException. Will be removed in version 5.0.0.", true)]
-        public string TopicName { get; set; }
-        public NServiceBus.TopicTopology Topology { get; set; }
+        [System.Diagnostics.CodeAnalysis.MemberNotNull("topology")]
+        [get: System.Diagnostics.CodeAnalysis.MemberNotNull("topology")]
+        [set: System.Diagnostics.CodeAnalysis.MemberNotNull("topology")]
+        public NServiceBus.TopicTopology Topology { get; }
         public bool UseWebSockets { get; set; }
-        public System.Net.IWebProxy WebProxy { get; set; }
+        public System.Net.IWebProxy? WebProxy { get; set; }
         public override System.Collections.Generic.IReadOnlyCollection<NServiceBus.TransportTransactionMode> GetSupportedTransactionModes() { }
         public override System.Threading.Tasks.Task<NServiceBus.Transport.TransportInfrastructure> Initialize(NServiceBus.Transport.HostSettings hostSettings, NServiceBus.Transport.ReceiveSettings[] receivers, string[] sendingAddresses, System.Threading.CancellationToken cancellationToken = default) { }
     }
     public static class AzureServiceBusTransportSettingsExtensions
     {
+        [System.Obsolete("Connection string needs to be passed either through constructor of AzureServiceBu" +
+            "sTransport or via UseTransport<AzureServiceBusTransport> method. Will be treated" +
+            " as an error from version 5.0.0. Will be removed in version 6.0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string> connectionString) { }
+        [System.Obsolete("Connection string needs to be passed either through constructor of AzureServiceBu" +
+            "sTransport or via UseTransport<AzureServiceBusTransport> method. Will be treated" +
+            " as an error from version 5.0.0. Will be removed in version 6.0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string connectionString) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Messaging.ServiceBus.ServiceBusRetryOptions retryPolicy) { }
+        [System.Obsolete("Custom token credential needs to be passed either through constructor of AzureSer" +
+            "viceBusTransport or via UseTransport<AzureServiceBusTransport> method. Will be t" +
+            "reated as an error from version 5.0.0. Will be removed in version 6.0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenCredential(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential) { }
         [System.Obsolete("Next versions of the transport will by default no longer send the transport encod" +
             "ing header for wire compatibility, requiring an opt-in for the header to be sent" +
@@ -47,42 +61,84 @@ namespace NServiceBus
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> MaxAutoLockRenewalDuration(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan maximumAutoLockRenewalDuration) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchMultiplier(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchMultiplier) { }
+        [System.Obsolete("TBD. Use `Topology` instead. Will be treated as an error from version 5.0.0. The " +
+            "member currently throws a NotImplementedException. Will be removed in version 6." +
+            "0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> subscriptionNamingConvention) { }
+        [System.Obsolete("TBD. Use `Topology` instead. Will be treated as an error from version 5.0.0. The " +
+            "member currently throws a NotImplementedException. Will be removed in version 6." +
+            "0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionRuleNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<System.Type, string> subscriptionRuleNamingConvention) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TimeToWaitBeforeTriggeringCircuitBreaker(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan timeToWait) { }
+        [System.Obsolete("Setting the topic name is accessible via the migration topology. Use `Topology.Si" +
+            "ngle(topicName)` instead. Will be treated as an error from version 5.0.0. The me" +
+            "mber currently throws a NotImplementedException. Will be removed in version 6.0." +
+            "0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TopicName(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string topicName) { }
+        [System.Obsolete("Selecting the transport requires to choose a topology. Use `UseTransport(topology" +
+            ")` instead. Will be treated as an error from version 5.0.0. The member currently" +
+            " throws a NotImplementedException. Will be removed in version 6.0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration)
             where TTransport : NServiceBus.AzureServiceBusTransport { }
-        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseWebSockets(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Net.IWebProxy webProxy = null) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration, string connectionString, NServiceBus.TopicTopology topology)
+            where TTransport : NServiceBus.AzureServiceBusTransport { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration, string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential, NServiceBus.TopicTopology topology)
+            where TTransport : NServiceBus.AzureServiceBusTransport { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseWebSockets(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Net.IWebProxy? webProxy = null) { }
     }
     public static class CustomizeNativeMessageExtensions
     {
         public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
     }
-    public readonly struct TopicTopology : System.IEquatable<NServiceBus.TopicTopology>
+    public abstract class TopicTopology
     {
-        public bool IsHierarchy { get; }
-        public string TopicToPublishTo { get; }
-        public string TopicToSubscribeOn { get; }
-        public static NServiceBus.TopicTopology DefaultBundle { get; }
-        public bool Equals(NServiceBus.TopicTopology other) { }
-        public override bool Equals(object obj) { }
-        public override int GetHashCode() { }
-        public static NServiceBus.TopicTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
-        public static NServiceBus.TopicTopology Single(string topicName) { }
-        public static bool operator !=(NServiceBus.TopicTopology left, NServiceBus.TopicTopology right) { }
-        public static bool operator ==(NServiceBus.TopicTopology left, NServiceBus.TopicTopology right) { }
+        protected TopicTopology(NServiceBus.Transport.AzureServiceBus.TopologyOptions options) { }
+        public static NServiceBus.Transport.AzureServiceBus.TopicPerEventTopology Default { get; }
+        protected abstract string GetPublishDestinationCore(string eventTypeFullName);
+        public void Validate() { }
+        public static NServiceBus.TopicTopology FromOptions(NServiceBus.Transport.AzureServiceBus.TopologyOptions options) { }
+        public static NServiceBus.Transport.AzureServiceBus.MigrationTopology MigrateFromNamedSingleTopic(string topicName) { }
+        public static NServiceBus.Transport.AzureServiceBus.MigrationTopology MigrateFromSingleDefaultTopic() { }
+        public static NServiceBus.Transport.AzureServiceBus.MigrationTopology MigrateFromTopicHierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
     }
 }
 namespace NServiceBus.Testing
 {
     public static class TestableCustomizeNativeMessageExtensions
     {
-        public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options) { }
+        public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage>? GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options) { }
     }
 }
 namespace NServiceBus.Transport.AzureServiceBus
 {
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    [System.Diagnostics.CodeAnalysis.Experimental("NSBASBEXP0001")]
+    public sealed class AzureServiceBusQueuesAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
+    {
+        public AzureServiceBusQueuesAttribute() { }
+        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
+    }
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    [System.Diagnostics.CodeAnalysis.Experimental("NSBASBEXP0002")]
+    public sealed class AzureServiceBusRulesAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
+    {
+        public AzureServiceBusRulesAttribute() { }
+        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
+    }
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    [System.Diagnostics.CodeAnalysis.Experimental("NSBASBEXP0003")]
+    public sealed class AzureServiceBusSubscriptionsAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
+    {
+        public AzureServiceBusSubscriptionsAttribute() { }
+        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
+    }
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    [System.Diagnostics.CodeAnalysis.Experimental("NSBASBEXP0004")]
+    public sealed class AzureServiceBusTopicsAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
+    {
+        public AzureServiceBusTopicsAttribute() { }
+        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
+    }
     public sealed class AzureServiceBusTransportTransaction : System.IDisposable
     {
         public AzureServiceBusTransportTransaction(NServiceBus.Transport.TransportTransaction? transportTransaction = null) { }
@@ -95,8 +151,105 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         public static System.Transactions.TransactionScope ToTransactionScope(this NServiceBus.Transport.AzureServiceBus.AzureServiceBusTransportTransaction azureServiceBusTransaction) { }
     }
-}
-public static class QueueAddressQualifier
-{
-    public const string DeadLetterQueue = "$DeadLetterQueue";
+    public sealed class MigrationTopology : NServiceBus.TopicTopology
+    {
+        public bool IsHierarchy { get; }
+        public string TopicToPublishTo { get; }
+        public string TopicToSubscribeOn { get; }
+        public void EventToMigrate(System.Type eventType, string? ruleNameOverride = null) { }
+        public void EventToMigrate<TEventType>(string? ruleNameOverride = null) { }
+        protected override string GetPublishDestinationCore(string eventTypeFullName) { }
+        public void MigratedPublishedEvent(System.Type eventType) { }
+        public void MigratedPublishedEvent(System.Type eventType, string topicName) { }
+        public void MigratedPublishedEvent<TEventType>() { }
+        public void MigratedPublishedEvent<TEventType>(string topicName) { }
+        public void MigratedSubscribedEvent(System.Type eventType) { }
+        public void MigratedSubscribedEvent(System.Type eventType, string topicName) { }
+        public void MigratedSubscribedEvent<TEventType>() { }
+        public void MigratedSubscribedEvent<TEventType>(string topicName) { }
+        public void OverrideSubscriptionNameFor(string queueName, string subscriptionName) { }
+    }
+    public sealed class MigrationTopologyOptions : NServiceBus.Transport.AzureServiceBus.TopologyOptions
+    {
+        public MigrationTopologyOptions() { }
+        [NServiceBus.Transport.AzureServiceBus.ValidMigrationTopology]
+        [System.Text.Json.Serialization.JsonInclude]
+        public System.Collections.Generic.HashSet<string> EventsToMigrateMap { get; init; }
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusRules]
+        [System.Text.Json.Serialization.JsonInclude]
+        public System.Collections.Generic.Dictionary<string, string> SubscribedEventToRuleNameMap { get; init; }
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string? TopicToPublishTo { get; init; }
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
+        [System.ComponentModel.DataAnnotations.Required]
+        public string? TopicToSubscribeOn { get; init; }
+    }
+    [Microsoft.Extensions.Options.OptionsValidator]
+    public class MigrationTopologyOptionsValidator : Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions>
+    {
+        public MigrationTopologyOptionsValidator() { }
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification="The created ValidationContext object is used in a way that never call reflection")]
+        public Microsoft.Extensions.Options.ValidateOptionsResult Validate(string? name, NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions options) { }
+    }
+    public static class QueueAddressQualifier
+    {
+        public const string DeadLetterQueue = "$DeadLetterQueue";
+    }
+    public sealed class TopicPerEventTopology : NServiceBus.TopicTopology
+    {
+        protected override string GetPublishDestinationCore(string eventTypeFullName) { }
+        public void OverrideSubscriptionNameFor(string queueName, string subscriptionName) { }
+        public void PublishTo(System.Type eventType, string topicName) { }
+        public void PublishTo<TEventType>(string topicName) { }
+        public void SubscribeTo(System.Type eventType, string topicName) { }
+        public void SubscribeTo<TEventType>(string topicName) { }
+    }
+    [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions), "migration-topology-options")]
+    [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.Transport.AzureServiceBus.TopologyOptions), "topology-options")]
+    public class TopologyOptions
+    {
+        public TopologyOptions() { }
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
+        [System.Text.Json.Serialization.JsonInclude]
+        public System.Collections.Generic.Dictionary<string, string> PublishedEventToTopicsMap { get; init; }
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusQueues]
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusSubscriptions]
+        [System.Text.Json.Serialization.JsonInclude]
+        public System.Collections.Generic.Dictionary<string, string> QueueNameToSubscriptionNameMap { get; init; }
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
+        [System.Text.Json.Serialization.JsonInclude]
+        public System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>> SubscribedEventToTopicsMap { get; init; }
+    }
+    [System.Text.Json.Serialization.JsonSerializable(typeof(NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions))]
+    [System.Text.Json.Serialization.JsonSerializable(typeof(NServiceBus.Transport.AzureServiceBus.TopologyOptions))]
+    [System.Text.Json.Serialization.JsonSourceGenerationOptions(WriteIndented=true)]
+    public class TopologyOptionsSerializationContext : System.Text.Json.Serialization.JsonSerializerContext, System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver
+    {
+        public TopologyOptionsSerializationContext() { }
+        public TopologyOptionsSerializationContext(System.Text.Json.JsonSerializerOptions options) { }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>>> DictionaryStringHashSetString { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<string, string>> DictionaryStringString { get; }
+        protected override System.Text.Json.JsonSerializerOptions? GeneratedSerializerOptions { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.HashSet<string>> HashSetString { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions> MigrationTopologyOptions { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<string> String { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.TopologyOptions> TopologyOptions { get; }
+        public static NServiceBus.Transport.AzureServiceBus.TopologyOptionsSerializationContext Default { get; }
+        public override System.Text.Json.Serialization.Metadata.JsonTypeInfo? GetTypeInfo(System.Type type) { }
+    }
+    [Microsoft.Extensions.Options.OptionsValidator]
+    public class TopologyOptionsValidator : Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions>
+    {
+        public TopologyOptionsValidator() { }
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification="The created ValidationContext object is used in a way that never call reflection")]
+        public Microsoft.Extensions.Options.ValidateOptionsResult Validate(string? name, NServiceBus.Transport.AzureServiceBus.TopologyOptions options) { }
+    }
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    [System.Diagnostics.CodeAnalysis.Experimental("NSBASBEXP0005")]
+    public sealed class ValidMigrationTopologyAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
+    {
+        public ValidMigrationTopologyAttribute() { }
+        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
+    }
 }

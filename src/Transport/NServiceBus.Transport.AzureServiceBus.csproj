@@ -5,6 +5,8 @@
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\NServiceBus.snk</AssemblyOriginatorKeyFile>
     <Description>Azure Service Bus transport for NServiceBus</Description>
+    <NoWarn>NSBASBEXP0001;NSBASBEXP0002;NSBASBEXP0003;NSBASBEXP0004;NSBASBEXP0005;</NoWarn>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +28,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="NServiceBus.Transport.AzureServiceBus.Tests" Key="$(NServiceBusTestsKey)" />
     <InternalsVisibleTo Include="NServiceBus.Transport.AzureServiceBus.AcceptanceTests" Key="$(NServiceBusTestsKey)" />
+    <InternalsVisibleTo Include="NServiceBus.Transport.AzureServiceBus.Migration.AcceptanceTests" Key="$(NServiceBusTestsKey)" />
   </ItemGroup>
 
 </Project>

@@ -1,166 +1,166 @@
-﻿#nullable enable
+﻿namespace NServiceBus.Transport.AzureServiceBus;
 
-namespace NServiceBus.Transport.AzureServiceBus
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Transactions;
+using Azure.Messaging.ServiceBus;
+using Logging;
+
+class MessageDispatcher : IMessageDispatcher
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using System.Transactions;
-    using Azure.Messaging.ServiceBus;
-    using Logging;
+    const int MaxMessageThresholdForTransaction = 100;
 
-    class MessageDispatcher : IMessageDispatcher
+    static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
+    static readonly Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> emptyDestinationAndOperations = [];
+
+    readonly MessageSenderRegistry messageSenderRegistry;
+    readonly bool doNotSendTransportEncodingHeader;
+    readonly OutgoingNativeMessageCustomizationAction customizerCallback;
+    readonly TopicTopology topology;
+
+    public MessageDispatcher(
+        MessageSenderRegistry messageSenderRegistry,
+        TopicTopology topology,
+        OutgoingNativeMessageCustomizationAction? customizerCallback = null,
+        bool doNotSendTransportEncodingHeader = false
+    )
     {
-        const int MaxMessageThresholdForTransaction = 100;
+        this.messageSenderRegistry = messageSenderRegistry;
+        this.topology = topology;
+        this.customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
+        this.doNotSendTransportEncodingHeader = doNotSendTransportEncodingHeader;
+    }
 
-        static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
-        static readonly Dictionary<string, List<IOutgoingTransportOperation>> emptyDestinationAndOperations = [];
+    public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
+    {
+        _ = transaction.TryGet(out AzureServiceBusTransportTransaction azureServiceBusTransaction);
 
-        readonly MessageSenderRegistry messageSenderRegistry;
-        readonly string topicName;
-        readonly bool doNotSendTransportEncodingHeader;
-        readonly OutgoingNativeMessageCustomizationAction customizerCallback;
+        var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
+        var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
 
-        public MessageDispatcher(
-            MessageSenderRegistry messageSenderRegistry,
-            string topicName,
-            OutgoingNativeMessageCustomizationAction? customizerCallback = null,
-            bool doNotSendTransportEncodingHeader = false
-        )
+        var transportOperations =
+            new List<IOutgoingTransportOperation>(unicastTransportOperations.Count +
+                                                  multicastTransportOperations.Count);
+        transportOperations.AddRange(unicastTransportOperations);
+        transportOperations.AddRange(multicastTransportOperations);
+
+        Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)>? isolatedOperationsPerDestination = null;
+        Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)>? defaultOperationsPerDestination = null;
+        var numberOfDefaultOperations = 0;
+        var numberOfIsolatedOperations = 0;
+
+        foreach (var operation in transportOperations)
         {
-            this.messageSenderRegistry = messageSenderRegistry;
-            this.topicName = topicName;
-            this.customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
-            this.doNotSendTransportEncodingHeader = doNotSendTransportEncodingHeader;
+            var destination = operation.ExtractDestination(topology);
+            switch (operation.RequiredDispatchConsistency)
+            {
+                case DispatchConsistency.Default:
+                    numberOfDefaultOperations++;
+                    defaultOperationsPerDestination ??=
+                        new Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)>(StringComparer.OrdinalIgnoreCase);
+
+                    if (!defaultOperationsPerDestination.ContainsKey(destination))
+                    {
+                        defaultOperationsPerDestination[destination] = (operation is MulticastTransportOperation, [operation]);
+                    }
+                    else
+                    {
+                        defaultOperationsPerDestination[destination].Operations.Add(operation);
+                    }
+                    break;
+                case DispatchConsistency.Isolated:
+                    // every isolated operation counts
+                    numberOfIsolatedOperations++;
+                    isolatedOperationsPerDestination ??=
+                        new Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)>(StringComparer.OrdinalIgnoreCase);
+                    if (!isolatedOperationsPerDestination.ContainsKey(destination))
+                    {
+                        isolatedOperationsPerDestination[destination] = (operation is MulticastTransportOperation, [operation]);
+                    }
+                    else
+                    {
+                        isolatedOperationsPerDestination[destination].Operations.Add(operation);
+                    }
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
 
-        public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
+        if (azureServiceBusTransaction is { HasTransaction: true } && numberOfDefaultOperations > MaxMessageThresholdForTransaction)
         {
-            _ = transaction.TryGet(out AzureServiceBusTransportTransaction azureServiceBusTransaction);
+            throw new Exception($"The number of outgoing messages ({numberOfDefaultOperations}) exceeds the limits permitted by Azure Service Bus ({MaxMessageThresholdForTransaction}) in a single transaction");
+        }
 
-            var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
-            var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
+        Task[] dispatchTasks =
+        [
+            DispatchIsolatedOperations(isolatedOperationsPerDestination ?? emptyDestinationAndOperations, numberOfIsolatedOperations, transaction, azureServiceBusTransaction, cancellationToken),
+            DispatchBatchedOperations(defaultOperationsPerDestination ?? emptyDestinationAndOperations, numberOfDefaultOperations, transaction, azureServiceBusTransaction, cancellationToken)
+        ];
 
-            var transportOperations =
-                new List<IOutgoingTransportOperation>(unicastTransportOperations.Count +
-                                                      multicastTransportOperations.Count);
-            transportOperations.AddRange(unicastTransportOperations);
-            transportOperations.AddRange(multicastTransportOperations);
+        try
+        {
+            await Task.WhenAll(dispatchTasks).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
+        {
+            Log.Error("Exception from Send.", ex);
+            throw;
+        }
+    }
 
-            Dictionary<string, List<IOutgoingTransportOperation>>? isolatedOperationsPerDestination = null;
-            Dictionary<string, List<IOutgoingTransportOperation>>? defaultOperationsPerDestination = null;
-            var numberOfDefaultOperations = 0;
-            var numberOfIsolatedOperations = 0;
+    // The parameters of this method are deliberately mutable and of the original collection type to make sure
+    // no boxing occurs
+    Task DispatchBatchedOperations(
+        Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> transportOperationsPerDestination,
+        int numberOfTransportOperations,
+        TransportTransaction transportTransaction,
+        AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
+        CancellationToken cancellationToken
+    )
+    {
+        if (numberOfTransportOperations == 0)
+        {
+            return Task.CompletedTask;
+        }
 
-            foreach (var operation in transportOperations)
+        var dispatchTasks = new List<Task>(transportOperationsPerDestination.Count);
+        foreach (var destinationAndOperations in transportOperationsPerDestination)
+        {
+            var destination = destinationAndOperations.Key;
+            var (isTopic, operations) = destinationAndOperations.Value;
+
+            var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
+            foreach (var operation in operations)
             {
-                var destination = operation.ExtractDestination(defaultMulticastRoute: topicName);
-                switch (operation.RequiredDispatchConsistency)
-                {
-                    case DispatchConsistency.Default:
-                        numberOfDefaultOperations++;
-                        defaultOperationsPerDestination ??=
-                            new Dictionary<string, List<IOutgoingTransportOperation>>(StringComparer.OrdinalIgnoreCase);
+                var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, doNotSendTransportEncodingHeader);
+                operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
+                customizerCallback(operation, message);
 
-                        if (!defaultOperationsPerDestination.ContainsKey(destination))
-                        {
-                            defaultOperationsPerDestination[destination] = [operation];
-                        }
-                        else
-                        {
-                            defaultOperationsPerDestination[destination].Add(operation);
-                        }
-                        break;
-                    case DispatchConsistency.Isolated:
-                        // every isolated operation counts
-                        numberOfIsolatedOperations++;
-                        isolatedOperationsPerDestination ??=
-                            new Dictionary<string, List<IOutgoingTransportOperation>>(StringComparer.OrdinalIgnoreCase);
-                        if (!isolatedOperationsPerDestination.ContainsKey(destination))
-                        {
-                            isolatedOperationsPerDestination[destination] = [operation];
-                        }
-                        else
-                        {
-                            isolatedOperationsPerDestination[destination].Add(operation);
-                        }
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+                messagesToSend.Enqueue(message);
             }
+            // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
+            // doing the access as late as possible but still on the synchronous path. Initializing the transaction
+            // as late as possible is important because it will start the transaction timer. If the transaction
+            // is started too early it might shorten the overall transaction time available.
+            dispatchTasks.Add(DispatchBatchOrFallbackToIndividualSendsForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, messagesToSend, cancellationToken));
+        }
+        return Task.WhenAll(dispatchTasks);
+    }
 
-            if (azureServiceBusTransaction is { HasTransaction: true } && numberOfDefaultOperations > MaxMessageThresholdForTransaction)
-            {
-                throw new Exception($"The number of outgoing messages ({numberOfDefaultOperations}) exceeds the limits permitted by Azure Service Bus ({MaxMessageThresholdForTransaction}) in a single transaction");
-            }
-
-            Task[] dispatchTasks =
-            [
-                DispatchIsolatedOperations(isolatedOperationsPerDestination ?? emptyDestinationAndOperations, numberOfIsolatedOperations, transaction, azureServiceBusTransaction, cancellationToken),
-                DispatchBatchedOperations(defaultOperationsPerDestination ?? emptyDestinationAndOperations, numberOfDefaultOperations, transaction, azureServiceBusTransaction, cancellationToken)
-            ];
-
+    async Task DispatchBatchOrFallbackToIndividualSendsForDestination(string destination, bool isMulticast, ServiceBusClient? client, Transaction? transaction,
+        Queue<ServiceBusMessage> messagesToSend,
+        CancellationToken cancellationToken)
+    {
+        int batchCount = 0;
+        List<ServiceBusMessage>? messagesTooLargeToBeBatched = null;
+        var sender = messageSenderRegistry.GetMessageSender(destination, client);
+        while (messagesToSend.Count > 0)
+        {
             try
-            {
-                await Task.WhenAll(dispatchTasks).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
-            {
-                Log.Error("Exception from Send.", ex);
-                throw;
-            }
-        }
-
-        // The parameters of this method are deliberately mutable and of the original collection type to make sure
-        // no boxing occurs
-        Task DispatchBatchedOperations(
-            Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
-            int numberOfTransportOperations,
-            TransportTransaction transportTransaction,
-            AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
-            CancellationToken cancellationToken
-        )
-        {
-            if (numberOfTransportOperations == 0)
-            {
-                return Task.CompletedTask;
-            }
-
-            var dispatchTasks = new List<Task>(transportOperationsPerDestination.Count);
-            foreach (var destinationAndOperations in transportOperationsPerDestination)
-            {
-                var destination = destinationAndOperations.Key;
-                var operations = destinationAndOperations.Value;
-
-                var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
-                foreach (var operation in operations)
-                {
-                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, doNotSendTransportEncodingHeader);
-                    operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
-                    customizerCallback(operation, message);
-
-                    messagesToSend.Enqueue(message);
-                }
-                // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
-                // doing the access as late as possible but still on the synchronous path. Initializing the transaction
-                // as late as possible is important because it will start the transaction timer. If the transaction
-                // is started too early it might shorten the overall transaction time available.
-                dispatchTasks.Add(DispatchBatchOrFallbackToIndividualSendsForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, messagesToSend, cancellationToken));
-            }
-            return Task.WhenAll(dispatchTasks);
-        }
-
-        async Task DispatchBatchOrFallbackToIndividualSendsForDestination(string destination, ServiceBusClient? client, Transaction? transaction,
-            Queue<ServiceBusMessage> messagesToSend,
-            CancellationToken cancellationToken)
-        {
-            int batchCount = 0;
-            List<ServiceBusMessage>? messagesTooLargeToBeBatched = null;
-            var sender = messageSenderRegistry.GetMessageSender(destination, client);
-            while (messagesToSend.Count > 0)
             {
                 using ServiceBusMessageBatch messageBatch = await sender.CreateMessageBatchAsync(cancellationToken)
                     .ConfigureAwait(false);
@@ -220,78 +220,94 @@ namespace NServiceBus.Transport.AzureServiceBus
                 //committable tx will not be committed because this scope is not the owner
                 scope.Complete();
 
+
                 if (Log.IsDebugEnabled)
                 {
                     Log.Debug($"Sent batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
                 }
             }
-
-            if (messagesTooLargeToBeBatched is not null)
+            // The catch is deliberately at this level because CreateMessageBatchAsync might also throw
+            // when it tries to establish a link to a non-existing entity.
+            catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
-                if (Log.IsDebugEnabled)
-                {
-                    Log.Debug($"Sending '{messagesTooLargeToBeBatched.Count}' that were too large for the batch individually to destination {destination}.");
-                }
-
-                var individualSendTasks = new List<Task>(messagesTooLargeToBeBatched.Count);
-                foreach (var message in messagesTooLargeToBeBatched)
-                {
-                    individualSendTasks.Add(DispatchForDestination(destination, client, transaction, message, cancellationToken));
-                }
-
-                await Task.WhenAll(individualSendTasks)
-                    .ConfigureAwait(false);
-
-                if (Log.IsDebugEnabled)
-                {
-                    Log.Debug($"Sent '{messagesTooLargeToBeBatched.Count}' that were too large for the batch individually to destination {destination}.");
-                }
+                Log.Debug($"Skipping sending messages to topic {destination} because the destination does not exist.");
+                return;
             }
         }
 
-        // The parameters of this method are deliberately mutable and of the original collection type to make sure
-        // no boxing occurs
-        Task DispatchIsolatedOperations(
-            Dictionary<string, List<IOutgoingTransportOperation>> transportOperationsPerDestination,
-            int numberOfTransportOperations,
-            TransportTransaction transportTransaction,
-            AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
-            CancellationToken cancellationToken)
+        if (messagesTooLargeToBeBatched is not null)
         {
-            if (numberOfTransportOperations == 0)
+            if (Log.IsDebugEnabled)
             {
-                return Task.CompletedTask;
+                Log.Debug($"Sending '{messagesTooLargeToBeBatched.Count}' that were too large for the batch individually to destination {destination}.");
             }
 
-            // It is OK to use the pumps client and partition key (keeps things compliant as before) but
-            // isolated dispatches should never use the committable transaction regardless whether it is present
-            // or not.
-            Transaction? noTransaction = default;
-            var dispatchTasks = new List<Task>(numberOfTransportOperations);
-            foreach (var destinationAndOperations in transportOperationsPerDestination)
+            var individualSendTasks = new List<Task>(messagesTooLargeToBeBatched.Count);
+            foreach (var message in messagesTooLargeToBeBatched)
             {
-                var destination = destinationAndOperations.Key;
-                var operations = destinationAndOperations.Value;
-
-                foreach (var operation in operations)
-                {
-                    var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, doNotSendTransportEncodingHeader);
-                    operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
-                    customizerCallback(operation, message);
-                    dispatchTasks.Add(DispatchForDestination(destination, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
-                }
+                individualSendTasks.Add(DispatchForDestination(destination, isMulticast, client, transaction, message, cancellationToken));
             }
 
-            return Task.WhenAll(dispatchTasks);
+            await Task.WhenAll(individualSendTasks)
+                .ConfigureAwait(false);
+
+            if (Log.IsDebugEnabled)
+            {
+                Log.Debug($"Sent '{messagesTooLargeToBeBatched.Count}' that were too large for the batch individually to destination {destination}.");
+            }
+        }
+    }
+
+    // The parameters of this method are deliberately mutable and of the original collection type to make sure
+    // no boxing occurs
+    Task DispatchIsolatedOperations(
+        Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> transportOperationsPerDestination,
+        int numberOfTransportOperations,
+        TransportTransaction transportTransaction,
+        AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
+        CancellationToken cancellationToken)
+    {
+        if (numberOfTransportOperations == 0)
+        {
+            return Task.CompletedTask;
         }
 
-        async Task DispatchForDestination(string destination, ServiceBusClient? client, Transaction? transaction, ServiceBusMessage message, CancellationToken cancellationToken)
+        // It is OK to use the pumps client and partition key (keeps things compliant as before) but
+        // isolated dispatches should never use the committable transaction regardless whether it is present
+        // or not.
+        Transaction? noTransaction = null;
+        var dispatchTasks = new List<Task>(numberOfTransportOperations);
+        foreach (var destinationAndOperations in transportOperationsPerDestination)
         {
-            var sender = messageSenderRegistry.GetMessageSender(destination, client);
+            var destination = destinationAndOperations.Key;
+            var (isTopic, operations) = destinationAndOperations.Value;
+
+            foreach (var operation in operations)
+            {
+                var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, doNotSendTransportEncodingHeader);
+                operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
+                customizerCallback(operation, message);
+                dispatchTasks.Add(DispatchForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
+            }
+        }
+
+        return Task.WhenAll(dispatchTasks);
+    }
+
+    async Task DispatchForDestination(string destination, bool isMulticast, ServiceBusClient? client,
+        Transaction? transaction, ServiceBusMessage message, CancellationToken cancellationToken)
+    {
+        var sender = messageSenderRegistry.GetMessageSender(destination, client);
+        try
+        {
             // Making sure we have a suppress scope around the sending
             using var scope = transaction.ToScope();
             await sender.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
             scope.Complete();
+        }
+        catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+        {
+            Log.Debug($"Sending message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
         }
     }
 }

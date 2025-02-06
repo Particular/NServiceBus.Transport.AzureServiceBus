@@ -1,0 +1,15 @@
+CreateTopicOptions: {
+  "DefaultMessageTimeToLive": "10675199.02:48:05.4775807",
+  "AutoDeleteOnIdle": "10675199.02:48:05.4775807",
+  "MaxSizeInMegabytes": 5120,
+  "RequiresDuplicateDetection": false,
+  "DuplicateDetectionHistoryTimeWindow": "00:01:00",
+  "Name": "bundle-1",
+  "AuthorizationRules": [],
+  "Status": {},
+  "EnablePartitioning": false,
+  "SupportOrdering": false,
+  "EnableBatchedOperations": true,
+  "UserMetadata": null,
+  "MaxMessageSizeInKilobytes": null
+}

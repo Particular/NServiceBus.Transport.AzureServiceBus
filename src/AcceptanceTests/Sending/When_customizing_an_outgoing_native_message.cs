@@ -55,6 +55,10 @@
                 {
                     c.Pipeline.Register(typeof(Handler.PhysicalBehavior), "Customizes a native message in a physical behavior");
                     c.Pipeline.Register(typeof(Handler.LogicalBehavior), "Customizes a native message in a logical behavior");
+                }, metadata =>
+                {
+                    metadata.RegisterSelfAsPublisherFor<MessageSessionPublishedEvent>(this);
+                    metadata.RegisterSelfAsPublisherFor<MessageHandlerContextPublishedEvent>(this);
                 });
             }
 

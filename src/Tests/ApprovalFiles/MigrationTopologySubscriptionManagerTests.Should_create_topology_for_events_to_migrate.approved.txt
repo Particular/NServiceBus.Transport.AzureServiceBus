@@ -1,0 +1,18 @@
+CreateRuleOptions(topicName: 'SubscribeTopic', subscriptionName: 'MySubscriptionName'): {
+  "Filter": {
+    "filter-type": "sql",
+    "SqlExpression": "[NServiceBus.EnclosedMessageTypes] LIKE \u0027%NServiceBus.Transport.AzureServiceBus.Tests.MigrationTopologySubscriptionManagerTests\u002BMyEvent1%\u0027",
+    "Parameters": {}
+  },
+  "Action": null,
+  "Name": "MyRuleName1"
+}
+CreateRuleOptions(topicName: 'SubscribeTopic', subscriptionName: 'MySubscriptionName'): {
+  "Filter": {
+    "filter-type": "sql",
+    "SqlExpression": "[NServiceBus.EnclosedMessageTypes] LIKE \u0027%NServiceBus.Transport.AzureServiceBus.Tests.MigrationTopologySubscriptionManagerTests\u002BMyEvent2%\u0027",
+    "Parameters": {}
+  },
+  "Action": null,
+  "Name": "MyRuleName2"
+}
