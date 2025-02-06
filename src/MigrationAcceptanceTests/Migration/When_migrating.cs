@@ -9,7 +9,7 @@
     using NUnit.Framework;
     using Transport.AzureServiceBus.AcceptanceTests;
 
-    public class When_migrating_publisher_first : NServiceBusAcceptanceTest
+    public class When_migrating : NServiceBusAcceptanceTest
     {
         const string bundleTopicName = "bundle-m";
 
@@ -60,42 +60,17 @@
 
             Assert.That(beforeMigration.GotTheEvent, Is.True);
 
-            //Publisher migrated to new topology
-            var publisherMigrated = await Scenario.Define<Context>(c => c.Step = "Publisher migrated")
-                .WithEndpoint<Publisher>(b =>
-                {
-                    b.CustomConfig(c =>
-                    {
-                        var topology = TopicTopology.Default;
-                        topology.PublishTo<MyEvent>(bundleTopicName);
-
-                        c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
-                    });
-                    b.When((session, ctx) => session.Publish(new MyEvent()));
-                })
-                .WithEndpoint<Subscriber>(b =>
-                {
-                    b.CustomConfig(c =>
-                    {
-                        var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
-                        topology.EventToMigrate<MyEvent>(ruleNameOverride: typeof(MyEvent).FullName.Shorten());
-
-                        c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
-                    });
-                })
-                .Done(c => c.GotTheEvent)
-                .Run(TimeSpan.FromSeconds(60));
-
-            Assert.That(publisherMigrated.GotTheEvent, Is.True);
-
-            //Subscriber but continues to receive events via the bundle topic
+            /*
+             * When auto-subscribe enabled, Subscriber creates a new topic/subscription
+             * but continues to receive events via the bundle topic
+             */
             var subscriberMigrated = await Scenario.Define<Context>(c => c.Step = "Subscriber migrated")
                 .WithEndpoint<Publisher>(b =>
                 {
                     b.CustomConfig(c =>
                     {
-                        var topology = TopicTopology.Default;
-                        topology.PublishTo<MyEvent>(bundleTopicName);
+                        var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
+                        topology.EventToMigrate<MyEvent>();
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                     });
