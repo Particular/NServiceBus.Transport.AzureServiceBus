@@ -107,6 +107,41 @@ namespace NServiceBus
             this TransportExtensions<AzureServiceBusTransport> transportExtensions) =>
             throw new NotImplementedException();
     }
+
+    public abstract partial class TopicTopology
+    {
+        [ObsoleteEx(TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6",
+            ReplacementTypeOrMember = "MigrationTopology.TopicToPublishTo")]
+        public string TopicToPublishTo => throw new NotImplementedException();
+
+        [ObsoleteEx(TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6",
+            ReplacementTypeOrMember = "MigrationTopology.TopicToSubscribeOn")]
+        public string TopicToSubscribeOn => throw new NotImplementedException();
+
+        [ObsoleteEx(TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6",
+            ReplacementTypeOrMember = "MigrationTopology.IsHierarchy")]
+        public bool IsHierarchy => throw new NotImplementedException();
+
+        [ObsoleteEx(TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6",
+            ReplacementTypeOrMember = "TopicTopology.MigrateFromSingleDefaultTopic()")]
+        public static TopicTopology DefaultBundle => throw new NotImplementedException();
+
+        [ObsoleteEx(TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6",
+            ReplacementTypeOrMember = "TopicTopology.MigrateFromNamedSingleTopic(string topicName)")]
+        public static TopicTopology Single(string topicName) => throw new NotImplementedException();
+
+        [ObsoleteEx(TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6",
+            ReplacementTypeOrMember =
+                "TopicTopology.MigrateFromTopicHierarchy(string topicToPublishTo, string topicToSubscribeOn)")]
+        public static TopicTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn)
+            => throw new NotImplementedException();
+    }
 }
 
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member

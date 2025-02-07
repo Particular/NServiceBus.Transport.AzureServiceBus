@@ -12,17 +12,18 @@ public sealed class MigrationTopology : TopicTopology
     /// <summary>
     /// Gets the topic name of the topic where all common-topic events are published to.
     /// </summary>
-    public string TopicToPublishTo => Options.TopicToPublishTo!;
+    public new string TopicToPublishTo => Options.TopicToPublishTo!;
 
     /// <summary>
     /// Gets the topic name of the topic where all common-topic events are subscribed.
     /// </summary>
-    public string TopicToSubscribeOn => Options.TopicToSubscribeOn!;
+    public new string TopicToSubscribeOn => Options.TopicToSubscribeOn!;
 
     /// <summary>
     /// Gets whether the current topic topology represents a hierarchy (different publish and subscribe topics).
     /// </summary>
-    public bool IsHierarchy => !string.Equals(TopicToPublishTo, TopicToSubscribeOn, StringComparison.OrdinalIgnoreCase);
+    public new bool IsHierarchy =>
+        !string.Equals(TopicToPublishTo, TopicToSubscribeOn, StringComparison.OrdinalIgnoreCase);
 
     new MigrationTopologyOptions Options { get; }
 

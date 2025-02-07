@@ -101,13 +101,33 @@ namespace NServiceBus
     public abstract class TopicTopology
     {
         protected TopicTopology(NServiceBus.Transport.AzureServiceBus.TopologyOptions options) { }
+        [System.Obsolete("Use `MigrationTopology.IsHierarchy` instead. The member currently throws a NotImp" +
+            "lementedException. Will be removed in version 6.0.0.", true)]
+        public bool IsHierarchy { get; }
+        [System.Obsolete("Use `MigrationTopology.TopicToPublishTo` instead. The member currently throws a N" +
+            "otImplementedException. Will be removed in version 6.0.0.", true)]
+        public string TopicToPublishTo { get; }
+        [System.Obsolete("Use `MigrationTopology.TopicToSubscribeOn` instead. The member currently throws a" +
+            " NotImplementedException. Will be removed in version 6.0.0.", true)]
+        public string TopicToSubscribeOn { get; }
         public static NServiceBus.Transport.AzureServiceBus.TopicPerEventTopology Default { get; }
+        [System.Obsolete("Use `TopicTopology.MigrateFromSingleDefaultTopic()` instead. The member currently" +
+            " throws a NotImplementedException. Will be removed in version 6.0.0.", true)]
+        public static NServiceBus.TopicTopology DefaultBundle { get; }
         protected abstract string GetPublishDestinationCore(string eventTypeFullName);
         public void Validate() { }
         public static NServiceBus.TopicTopology FromOptions(NServiceBus.Transport.AzureServiceBus.TopologyOptions options) { }
+        [System.Obsolete("Use `TopicTopology.MigrateFromTopicHierarchy(string topicToPublishTo, string topi" +
+            "cToSubscribeOn)` instead. The member currently throws a NotImplementedException." +
+            " Will be removed in version 6.0.0.", true)]
+        public static NServiceBus.TopicTopology Hierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
         public static NServiceBus.Transport.AzureServiceBus.MigrationTopology MigrateFromNamedSingleTopic(string topicName) { }
         public static NServiceBus.Transport.AzureServiceBus.MigrationTopology MigrateFromSingleDefaultTopic() { }
         public static NServiceBus.Transport.AzureServiceBus.MigrationTopology MigrateFromTopicHierarchy(string topicToPublishTo, string topicToSubscribeOn) { }
+        [System.Obsolete("Use `TopicTopology.MigrateFromNamedSingleTopic(string topicName)` instead. The me" +
+            "mber currently throws a NotImplementedException. Will be removed in version 6.0." +
+            "0.", true)]
+        public static NServiceBus.TopicTopology Single(string topicName) { }
     }
 }
 namespace NServiceBus.Testing
@@ -161,9 +181,9 @@ namespace NServiceBus.Transport.AzureServiceBus
     }
     public sealed class MigrationTopology : NServiceBus.TopicTopology
     {
-        public bool IsHierarchy { get; }
-        public string TopicToPublishTo { get; }
-        public string TopicToSubscribeOn { get; }
+        public new bool IsHierarchy { get; }
+        public new string TopicToPublishTo { get; }
+        public new string TopicToSubscribeOn { get; }
         public void EventToMigrate(System.Type eventType, string? ruleNameOverride = null) { }
         public void EventToMigrate<TEventType>(string? ruleNameOverride = null) { }
         protected override string GetPublishDestinationCore(string eventTypeFullName) { }
