@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="NServiceBus.TransportTests.Sources" Version="9.2.4" GeneratePathProperty="true" />
-    <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
+    <PackageReference Include="System.IO.Hashing" Version="9.0.1" />
   </ItemGroup>
 
   <ItemGroup>
