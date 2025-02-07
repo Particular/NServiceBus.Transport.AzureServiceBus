@@ -197,8 +197,12 @@ namespace NServiceBus.Transport.AzureServiceBus
         public void MigratedSubscribedEvent<TEventType>(string topicName) { }
         public void OverrideSubscriptionNameFor(string queueName, string subscriptionName) { }
     }
+    [System.Runtime.CompilerServices.RequiredMember]
     public sealed class MigrationTopologyOptions : NServiceBus.Transport.AzureServiceBus.TopologyOptions
     {
+        [System.Obsolete("Constructors of types with required members are not supported in this version of " +
+            "your compiler.", true)]
+        [System.Runtime.CompilerServices.CompilerFeatureRequired("RequiredMembers")]
         public MigrationTopologyOptions() { }
         [NServiceBus.Transport.AzureServiceBus.ValidMigrationTopology]
         [System.Text.Json.Serialization.JsonInclude]
@@ -208,9 +212,11 @@ namespace NServiceBus.Transport.AzureServiceBus
         public System.Collections.Generic.Dictionary<string, string> SubscribedEventToRuleNameMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.ComponentModel.DataAnnotations.Required]
+        [System.Runtime.CompilerServices.RequiredMember]
         public string? TopicToPublishTo { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.ComponentModel.DataAnnotations.Required]
+        [System.Runtime.CompilerServices.RequiredMember]
         public string? TopicToSubscribeOn { get; init; }
     }
     [Microsoft.Extensions.Options.OptionsValidator]

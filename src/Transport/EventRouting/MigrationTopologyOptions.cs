@@ -9,21 +9,19 @@ using System.Text.Json.Serialization;
 /// </summary>
 public sealed class MigrationTopologyOptions : TopologyOptions
 {
-    /// TODO: Change to required/init once the Fody Obsolete problem is fixed
     /// <summary>
     /// Gets the topic name of the topic where all single-topic events are published to.
     /// </summary>
     [Required]
     [AzureServiceBusTopics]
-    public string? TopicToPublishTo { get; init; }
+    public required string? TopicToPublishTo { get; init; }
 
-    /// TODO: Change to required/init once the Fody Obsolete problem is fixed
     /// <summary>
     /// Gets the topic name of the topic where all single-topic subscriptions are managed on.
     /// </summary>
     [Required]
     [AzureServiceBusTopics]
-    public string? TopicToSubscribeOn { get; init; }
+    public required string? TopicToSubscribeOn { get; init; }
 
     /// <summary>
     /// Collection of events that have not yet been migrated to the topic-per-event topology
