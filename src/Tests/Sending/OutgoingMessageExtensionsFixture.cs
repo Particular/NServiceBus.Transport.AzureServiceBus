@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 {
     using System;
+    using Azure.Messaging.ServiceBus;
     using NServiceBus.Routing;
     using NUnit.Framework;
 
@@ -11,7 +12,7 @@
         const string Dummy = "DUMMY";
 
         [Test]
-        public void Should_not_contain_legacy_header_when_disabled()
+        public void Should_not_contain_legacy_header_by_default()
         {
             // Arrange
             TransportOperation transportOperation = CreateTransportOperation();
@@ -19,14 +20,13 @@
             var outgoingMessage = transportOperations.UnicastTransportOperations[0];
 
             // Act
-            var serviceBusMessage = outgoingMessage.ToAzureServiceBusMessage(incomingQueuePartitionKey: Dummy, doNotSendTransportEncodingHeader: true);
+            ServiceBusMessage serviceBusMessage = outgoingMessage.ToAzureServiceBusMessage(Dummy, false);
 
             Assert.That(serviceBusMessage.ApplicationProperties.Keys, Has.No.Member(TransportEncoding));
         }
 
-
         [Test]
-        public void Should_contain_legacy_header_by_default()
+        public void Should_contain_legacy_header_when_opted_in()
         {
             // Arrange
             TransportOperation transportOperation = CreateTransportOperation();
@@ -34,7 +34,7 @@
             var outgoingMessage = transportOperations.UnicastTransportOperations[0];
 
             // Act
-            var serviceBusMessage = outgoingMessage.ToAzureServiceBusMessage(incomingQueuePartitionKey: Dummy);
+            ServiceBusMessage serviceBusMessage = outgoingMessage.ToAzureServiceBusMessage(Dummy, true);
 
             Assert.That(serviceBusMessage.ApplicationProperties.Keys, Has.Member(TransportEncoding));
         }

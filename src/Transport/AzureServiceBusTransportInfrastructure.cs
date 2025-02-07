@@ -39,7 +39,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             messageSenderRegistry,
             transportSettings.Topology,
             transportSettings.OutgoingNativeMessageCustomization,
-            transportSettings.DoNotSendTransportEncodingHeader
+            transportSettings.SendTransportEncodingHeader
         );
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
         {

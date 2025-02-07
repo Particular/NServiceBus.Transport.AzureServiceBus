@@ -212,15 +212,17 @@ public static partial class AzureServiceBusTransportSettingsExtensions
     }
 
     /// <summary>
-    /// When set will not add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
+    /// When set will add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
     /// </summary>
     /// <param name="transportExtensions"></param>
-    [ObsoleteEx(Message = "Next versions of the transport will by default no longer send the transport encoding header for wire compatibility, requiring an opt-in for the header to be sent.",
-        TreatAsErrorFromVersion = "5",
-        RemoveInVersion = "6")]
-    public static TransportExtensions<AzureServiceBusTransport> DoNotSendTransportEncodingHeader(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
+    [ObsoleteEx(
+        Message = "Next versions of the transport will no longer support sending the transport encoding header.",
+        TreatAsErrorFromVersion = "6",
+        RemoveInVersion = "7")]
+    public static TransportExtensions<AzureServiceBusTransport> SendTransportEncodingHeader(
+        this TransportExtensions<AzureServiceBusTransport> transportExtensions)
     {
-        transportExtensions.Transport.DoNotSendTransportEncodingHeader = true;
+        transportExtensions.Transport.SendTransportEncodingHeader = true;
         return transportExtensions;
     }
 }

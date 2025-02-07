@@ -10,7 +10,7 @@ static class OutgoingMessageExtensions
     public static ServiceBusMessage ToAzureServiceBusMessage(
         this IOutgoingTransportOperation outgoingTransportOperation,
         string? incomingQueuePartitionKey,
-        bool doNotSendTransportEncodingHeader = false
+        bool sendTransportEncodingHeader = false
     )
     {
         var outgoingMessage = outgoingTransportOperation.Message;
@@ -20,7 +20,7 @@ static class OutgoingMessageExtensions
             MessageId = Guid.NewGuid().ToString()
         };
 
-        if (!doNotSendTransportEncodingHeader)
+        if (sendTransportEncodingHeader)
         {
             // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
             message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";

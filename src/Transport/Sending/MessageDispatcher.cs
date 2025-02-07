@@ -9,30 +9,20 @@ using System.Transactions;
 using Azure.Messaging.ServiceBus;
 using Logging;
 
-class MessageDispatcher : IMessageDispatcher
+class MessageDispatcher(
+    MessageSenderRegistry messageSenderRegistry,
+    TopicTopology topology,
+    OutgoingNativeMessageCustomizationAction? customizerCallback = null,
+    bool sendTransportEncodingHeader = false)
+    : IMessageDispatcher
 {
     const int MaxMessageThresholdForTransaction = 100;
 
     static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
     static readonly Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> emptyDestinationAndOperations = [];
 
-    readonly MessageSenderRegistry messageSenderRegistry;
-    readonly bool doNotSendTransportEncodingHeader;
-    readonly OutgoingNativeMessageCustomizationAction customizerCallback;
-    readonly TopicTopology topology;
-
-    public MessageDispatcher(
-        MessageSenderRegistry messageSenderRegistry,
-        TopicTopology topology,
-        OutgoingNativeMessageCustomizationAction? customizerCallback = null,
-        bool doNotSendTransportEncodingHeader = false
-    )
-    {
-        this.messageSenderRegistry = messageSenderRegistry;
-        this.topology = topology;
-        this.customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
-        this.doNotSendTransportEncodingHeader = doNotSendTransportEncodingHeader;
-    }
+    readonly OutgoingNativeMessageCustomizationAction
+        customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
 
     public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
     {
@@ -136,7 +126,8 @@ class MessageDispatcher : IMessageDispatcher
             var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
             foreach (var operation in operations)
             {
-                var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, doNotSendTransportEncodingHeader);
+                ServiceBusMessage message = operation.ToAzureServiceBusMessage(
+                    azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, sendTransportEncodingHeader);
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
 
@@ -284,7 +275,8 @@ class MessageDispatcher : IMessageDispatcher
 
             foreach (var operation in operations)
             {
-                var message = operation.ToAzureServiceBusMessage(azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, doNotSendTransportEncodingHeader);
+                ServiceBusMessage message = operation.ToAzureServiceBusMessage(
+                    azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, sendTransportEncodingHeader);
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
                 dispatchTasks.Add(DispatchForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
