@@ -25,6 +25,20 @@ namespace NServiceBus
             get => throw new NotImplementedException();
             set => throw new NotImplementedException();
         }
+
+        /// <summary>
+        /// When set will not add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
+        /// </summary>
+        [ObsoleteEx(
+            Message =
+                "Next versions of the transport will by default no longer send the transport encoding header for wire compatibility, requiring an opt-in for the header to be sent.",
+            TreatAsErrorFromVersion = "5",
+            RemoveInVersion = "6")]
+        public bool DoNotSendTransportEncodingHeader
+        {
+            get => throw new NotImplementedException();
+            set => throw new NotImplementedException();
+        }
     }
 
     public static partial class AzureServiceBusTransportSettingsExtensions
@@ -47,19 +61,30 @@ namespace NServiceBus
             TreatAsErrorFromVersion = "5",
             RemoveInVersion = "6",
             ReplacementTypeOrMember = "Topology")]
-        public static TransportExtensions<AzureServiceBusTransport> SubscriptionNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string, string> subscriptionNamingConvention)
-        {
-            throw new NotImplementedException();
-        }
+        public static TransportExtensions<AzureServiceBusTransport> SubscriptionNamingConvention(
+            this TransportExtensions<AzureServiceBusTransport> transportExtensions,
+            Func<string, string> subscriptionNamingConvention) => throw new NotImplementedException();
 
         [ObsoleteEx(Message = "TBD",
             TreatAsErrorFromVersion = "5",
             RemoveInVersion = "6",
             ReplacementTypeOrMember = "Topology")]
-        public static TransportExtensions<AzureServiceBusTransport> SubscriptionRuleNamingConvention(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<Type, string> subscriptionRuleNamingConvention)
-        {
+        public static TransportExtensions<AzureServiceBusTransport> SubscriptionRuleNamingConvention(
+            this TransportExtensions<AzureServiceBusTransport> transportExtensions,
+            Func<Type, string> subscriptionRuleNamingConvention) => throw new NotImplementedException();
+
+        /// <summary>
+        /// When set will not add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
+        /// </summary>
+        /// <param name="transportExtensions"></param>
+        [ObsoleteEx(
+            Message =
+                "Next versions of the transport will by default no longer send the transport encoding header for wire compatibility, requiring an opt-in for the header to be sent.",
+            TreatAsErrorFromVersion = "6",
+            RemoveInVersion = "7")]
+        public static TransportExtensions<AzureServiceBusTransport> DoNotSendTransportEncodingHeader(
+            this TransportExtensions<AzureServiceBusTransport> transportExtensions) =>
             throw new NotImplementedException();
-        }
     }
 }
 

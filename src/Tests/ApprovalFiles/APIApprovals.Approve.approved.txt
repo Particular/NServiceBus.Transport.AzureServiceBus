@@ -9,8 +9,8 @@ namespace NServiceBus
         public AzureServiceBusTransport(string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential, NServiceBus.TopicTopology topology) { }
         [System.Obsolete("Next versions of the transport will by default no longer send the transport encod" +
             "ing header for wire compatibility, requiring an opt-in for the header to be sent" +
-            ". Will be treated as an error from version 5.0.0. Will be removed in version 6.0" +
-            ".0.", false)]
+            ". The member currently throws a NotImplementedException. Will be removed in vers" +
+            "ion 6.0.0.", true)]
         public bool DoNotSendTransportEncodingHeader { get; set; }
         public bool EnablePartitioning { get; set; }
         public int EntityMaximumSize { get; set; }
@@ -19,12 +19,18 @@ namespace NServiceBus
         public int? PrefetchCount { get; set; }
         public int PrefetchMultiplier { get; set; }
         public Azure.Messaging.ServiceBus.ServiceBusRetryOptions? RetryPolicyOptions { get; set; }
-        [System.Obsolete(@"The subscription name for a given subscriber queue can be overriden on the topology. Use `OverrideSubscriptionNameFor` instead. Will be treated as an error from version 5.0.0. The member currently throws a NotImplementedException. Will be removed in version 6.0.0.", false)]
+        [System.Obsolete("Next versions of the transport will by default no longer send the transport encod" +
+            "ing header for wire compatibility, requiring an opt-in for the header to be sent" +
+            ". Will be treated as an error from version 6.0.0. Will be removed in version 7.0" +
+            ".0.", false)]
+        public bool SendTransportEncodingHeader { get; set; }
+        [System.Obsolete("The subscription name for a given subscriber queue can be overriden on the topolo" +
+            "gy. Use `OverrideSubscriptionNameFor` instead. The member currently throws a Not" +
+            "ImplementedException. Will be removed in version 6.0.0.", true)]
         public System.Func<string, string> SubscriptionNamingConvention { get; set; }
         [System.Obsolete("The subscription rule name can be overriden on the migration topology. Use `Overr" +
-            "ideRuleNameFor` instead. Will be treated as an error from version 5.0.0. The mem" +
-            "ber currently throws a NotImplementedException. Will be removed in version 6.0.0" +
-            ".", false)]
+            "ideRuleNameFor` instead. The member currently throws a NotImplementedException. " +
+            "Will be removed in version 6.0.0.", true)]
         public System.Func<System.Type, string> SubscriptionRuleNamingConvention { get; set; }
         public System.TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
         [System.Diagnostics.CodeAnalysis.MemberNotNull("topology")]
@@ -39,45 +45,44 @@ namespace NServiceBus
     public static class AzureServiceBusTransportSettingsExtensions
     {
         [System.Obsolete("Connection string needs to be passed either through constructor of AzureServiceBu" +
-            "sTransport or via UseTransport<AzureServiceBusTransport> method. Will be treated" +
-            " as an error from version 5.0.0. Will be removed in version 6.0.0.", false)]
+            "sTransport or via UseTransport<AzureServiceBusTransport> method. Will be removed" +
+            " in version 6.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string> connectionString) { }
         [System.Obsolete("Connection string needs to be passed either through constructor of AzureServiceBu" +
-            "sTransport or via UseTransport<AzureServiceBusTransport> method. Will be treated" +
-            " as an error from version 5.0.0. Will be removed in version 6.0.0.", false)]
+            "sTransport or via UseTransport<AzureServiceBusTransport> method. Will be removed" +
+            " in version 6.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ConnectionString(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string connectionString) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Messaging.ServiceBus.ServiceBusRetryOptions retryPolicy) { }
         [System.Obsolete("Custom token credential needs to be passed either through constructor of AzureSer" +
-            "viceBusTransport or via UseTransport<AzureServiceBusTransport> method. Will be t" +
-            "reated as an error from version 5.0.0. Will be removed in version 6.0.0.", false)]
+            "viceBusTransport or via UseTransport<AzureServiceBusTransport> method. Will be r" +
+            "emoved in version 6.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomTokenCredential(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential) { }
-        [System.Obsolete("Next versions of the transport will by default no longer send the transport encod" +
-            "ing header for wire compatibility, requiring an opt-in for the header to be sent" +
-            ". Will be treated as an error from version 5.0.0. Will be removed in version 6.0" +
-            ".0.", false)]
+        [System.Obsolete(@"Next versions of the transport will by default no longer send the transport encoding header for wire compatibility, requiring an opt-in for the header to be sent. Will be treated as an error from version 6.0.0. The member currently throws a NotImplementedException. Will be removed in version 7.0.0.", false)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> DoNotSendTransportEncodingHeader(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EnablePartitioning(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EntityMaximumSize(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int maximumSizeInGB) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> MaxAutoLockRenewalDuration(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan maximumAutoLockRenewalDuration) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchMultiplier(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchMultiplier) { }
-        [System.Obsolete("TBD. Use `Topology` instead. Will be treated as an error from version 5.0.0. The " +
-            "member currently throws a NotImplementedException. Will be removed in version 6." +
-            "0.0.", false)]
+        [System.Obsolete("Next versions of the transport will by default no longer send the transport encod" +
+            "ing header for wire compatibility, requiring an opt-in for the header to be sent" +
+            ". Will be treated as an error from version 6.0.0. Will be removed in version 7.0" +
+            ".0.", false)]
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SendTransportEncodingHeader(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
+        [System.Obsolete("TBD. Use `Topology` instead. The member currently throws a NotImplementedExceptio" +
+            "n. Will be removed in version 6.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<string, string> subscriptionNamingConvention) { }
-        [System.Obsolete("TBD. Use `Topology` instead. Will be treated as an error from version 5.0.0. The " +
-            "member currently throws a NotImplementedException. Will be removed in version 6." +
-            "0.0.", false)]
+        [System.Obsolete("TBD. Use `Topology` instead. The member currently throws a NotImplementedExceptio" +
+            "n. Will be removed in version 6.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SubscriptionRuleNamingConvention(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Func<System.Type, string> subscriptionRuleNamingConvention) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TimeToWaitBeforeTriggeringCircuitBreaker(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan timeToWait) { }
         [System.Obsolete("Setting the topic name is accessible via the migration topology. Use `Topology.Si" +
-            "ngle(topicName)` instead. Will be treated as an error from version 5.0.0. The me" +
-            "mber currently throws a NotImplementedException. Will be removed in version 6.0." +
-            "0.", false)]
+            "ngle(topicName)` instead. The member currently throws a NotImplementedException." +
+            " Will be removed in version 6.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TopicName(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, string topicName) { }
         [System.Obsolete("Selecting the transport requires to choose a topology. Use `UseTransport(topology" +
-            ")` instead. Will be treated as an error from version 5.0.0. The member currently" +
-            " throws a NotImplementedException. Will be removed in version 6.0.0.", false)]
+            ")` instead. The member currently throws a NotImplementedException. Will be remov" +
+            "ed in version 6.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration)
             where TTransport : NServiceBus.AzureServiceBusTransport { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration, string connectionString, NServiceBus.TopicTopology topology)

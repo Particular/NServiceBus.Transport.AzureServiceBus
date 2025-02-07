@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 {
     using System;
+    using Azure.Messaging.ServiceBus;
     using NServiceBus.Routing;
     using NUnit.Framework;
 
@@ -19,7 +20,7 @@
             var outgoingMessage = transportOperations.UnicastTransportOperations[0];
 
             // Act
-            var serviceBusMessage = outgoingMessage.ToAzureServiceBusMessage(incomingQueuePartitionKey: Dummy, doNotSendTransportEncodingHeader: true);
+            ServiceBusMessage serviceBusMessage = outgoingMessage.ToAzureServiceBusMessage(Dummy, true);
 
             Assert.That(serviceBusMessage.ApplicationProperties.Keys, Has.No.Member(TransportEncoding));
         }
