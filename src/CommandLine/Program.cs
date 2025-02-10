@@ -2,6 +2,7 @@
 {
     using System;
     using System.ComponentModel.DataAnnotations;
+    using System.Diagnostics;
     using Azure.Messaging.ServiceBus;
     using McMaster.Extensions.CommandLineUtils;
 
@@ -56,7 +57,11 @@
                     createCommand.AddOption(fullyQualifiedNamespace);
                     createCommand.AddOption(size);
                     createCommand.AddOption(partitioning);
-                    var topicName = createCommand.Option("-t|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
+
+                    var topology = createCommand.Option("-t|--topology", "Topology to use", CommandOptionType.SingleValue)
+                        .IsRequired()
+                        .Accepts(v => v.Values("migration", "topic-per-event"));
+                    var topicName = createCommand.Option("-st|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                     var topicToPublishTo = createCommand.Option("-tp|--topic-to-publish-to", "The topic name to publish to", CommandOptionType.SingleValue);
                     var topicToSubscribeOn = createCommand.Option("-ts|--topic-to-subscribe-on", "The topic name to subscribe on", CommandOptionType.SingleValue);
 
@@ -68,15 +73,25 @@
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
-                        // Unfortunately the default value cannot be set outside the execute because it would then
-                        // trigger the validation. There seems to be no way in the command handling library to
-                        // differentiate defaults from user inputs we set a default for the topicName here.
-                        if (!topicName.HasValue() && !topicToPublishTo.HasValue() && !topicToSubscribeOn.HasValue())
+                        if (topology.Value() == "migration")
                         {
-                            topicName.DefaultValue = Topic.DefaultTopicName;
-                        }
+                            // Unfortunately the default value cannot be set outside the execute because it would then
+                            // trigger the validation. There seems to be no way in the command handling library to
+                            // differentiate defaults from user inputs we set a default for the topicName here.
+                            if (!topicName.HasValue() && !topicToPublishTo.HasValue() && !topicToSubscribeOn.HasValue())
+                            {
+                                topicName.DefaultValue = Topic.DefaultTopicName;
+                            }
 
-                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Endpoint.Create(client, name, topicName, topicToPublishTo, topicToSubscribeOn, subscriptionName, size, partitioning));
+                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
+                                client => MigrationTopologyEndpoint.Create(client, name, topicName, topicToPublishTo, topicToSubscribeOn,
+                                    subscriptionName, size, partitioning));
+                        }
+                        else
+                        {
+                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
+                                client => TopicPerEventTopologyEndpoint.Create(client, name, size, partitioning));
+                        }
 
                         Console.WriteLine($"Endpoint '{name.Value}' is ready.");
                     });
@@ -84,7 +99,45 @@
 
                 endpointCommand.Command("subscribe", subscribeCommand =>
                 {
-                    subscribeCommand.Description = "Subscribes an endpoint to an event.";
+                    subscribeCommand.Description = "Subscribes an endpoint to an event using topic-per-event topology.";
+                    var name = subscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
+                    var topicName = subscribeCommand.Argument("topic", "Topic name to subscribe. Unless configured otherwise on the publisher defaults to full name of the event (e.g. MyNamespace.MyMessage) (required)").IsRequired();
+
+                    subscribeCommand.AddOption(connectionString);
+                    subscribeCommand.AddOption(fullyQualifiedNamespace);
+                    subscribeCommand.AddOption(size);
+                    subscribeCommand.AddOption(partitioning);
+                    var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
+
+                    subscribeCommand.OnExecuteAsync(async ct =>
+                    {
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, size, partitioning));
+
+                        Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{topicName.Value}'.");
+                    });
+                });
+
+                endpointCommand.Command("unsubscribe", unsubscribeCommand =>
+                {
+                    unsubscribeCommand.Description = "Unsubscribes an endpoint from an event using topic-per-event topology.";
+                    var name = unsubscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
+                    var topicName = unsubscribeCommand.Argument("topic", "Topic name to subscribe. Unless configured otherwise on the publisher defaults to full name of the event (e.g. MyNamespace.MyMessage) (required)").IsRequired();
+
+                    unsubscribeCommand.AddOption(connectionString);
+                    unsubscribeCommand.AddOption(fullyQualifiedNamespace);
+                    var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
+
+                    unsubscribeCommand.OnExecuteAsync(async ct =>
+                    {
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Unsubscribe(client, name, topicName, subscriptionName));
+
+                        Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{topicName.Value}'.");
+                    });
+                });
+
+                endpointCommand.Command("subscribe-non-migrated", subscribeCommand =>
+                {
+                    subscribeCommand.Description = "Subscribes an endpoint to an event using legacy forwarding topology.";
                     var name = subscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
                     var eventType = subscribeCommand.Argument("event-type", "Full name of the event to subscribe to (e.g. MyNamespace.MyMessage) (required)").IsRequired();
 
@@ -97,15 +150,15 @@
 
                     subscribeCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Endpoint.Subscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => MigrationTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
 
                         Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{eventType.Value}'.");
                     });
                 });
 
-                endpointCommand.Command("unsubscribe", unsubscribeCommand =>
+                endpointCommand.Command("unsubscribe-non-migrated", unsubscribeCommand =>
                 {
-                    unsubscribeCommand.Description = "Unsubscribes an endpoint from an event.";
+                    unsubscribeCommand.Description = "Unsubscribes an endpoint from an event using legacy forwarding topology.";
                     var name = unsubscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
                     var eventType = unsubscribeCommand.Argument("event-type", "Full name of the event to unsubscribe from (e.g. MyNamespace.MyMessage) (required)").IsRequired();
 
@@ -118,7 +171,7 @@
 
                     unsubscribeCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Endpoint.Unsubscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => MigrationTopologyEndpoint.Unsubscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
 
                         Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{eventType.Value}'.");
                     });

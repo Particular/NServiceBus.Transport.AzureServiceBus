@@ -6,10 +6,8 @@
 
     static class Topic
     {
-        public static Task Create(ServiceBusAdministrationClient client, CommandOption topicName, CommandOption<int> size, CommandOption partitioning)
+        public static Task Create(ServiceBusAdministrationClient client, string topicNameToUse, CommandOption<int> size, CommandOption partitioning)
         {
-            var topicNameToUse = topicName.Value();
-
             var options = new CreateTopicOptions(topicNameToUse)
             {
                 EnableBatchedOperations = true,

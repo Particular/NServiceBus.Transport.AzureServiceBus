@@ -6,7 +6,7 @@
     using Azure.Messaging.ServiceBus.Administration;
     using McMaster.Extensions.CommandLineUtils;
 
-    static class Endpoint
+    static class MigrationTopologyEndpoint
     {
         public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption topicToPublishTo, CommandOption topicToSubscribeOn, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning)
         {
@@ -23,7 +23,7 @@
             {
                 try
                 {
-                    await Topic.Create(client, topicName, size, partitioning);
+                    await Topic.Create(client, topicName.Value(), size, partitioning);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -48,7 +48,7 @@
             {
                 try
                 {
-                    await Topic.Create(client, topicToPublishTo, size, partitioning);
+                    await Topic.Create(client, topicToPublishTo.Value(), size, partitioning);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -57,7 +57,7 @@
 
                 try
                 {
-                    await Topic.Create(client, topicToSubscribeOn, size, partitioning);
+                    await Topic.Create(client, topicToSubscribeOn.Value(), size, partitioning);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
