@@ -2,7 +2,6 @@
 {
     using System;
     using System.ComponentModel.DataAnnotations;
-    using System.Diagnostics;
     using Azure.Messaging.ServiceBus;
     using McMaster.Extensions.CommandLineUtils;
 
@@ -50,30 +49,27 @@
 
                 endpointCommand.Command("create", createCommand =>
                 {
-                    createCommand.Description = "Creates required infrastructure for an endpoint.";
-                    var name = createCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
-
-                    createCommand.AddOption(connectionString);
-                    createCommand.AddOption(fullyQualifiedNamespace);
-                    createCommand.AddOption(size);
-                    createCommand.AddOption(partitioning);
-
-                    var topology = createCommand.Option("-t|--topology", "Topology to use", CommandOptionType.SingleValue)
-                        .IsRequired()
-                        .Accepts(v => v.Values("migration", "topic-per-event"));
-                    var topicName = createCommand.Option("-st|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
-                    var topicToPublishTo = createCommand.Option("-tp|--topic-to-publish-to", "The topic name to publish to", CommandOptionType.SingleValue);
-                    var topicToSubscribeOn = createCommand.Option("-ts|--topic-to-subscribe-on", "The topic name to subscribe on", CommandOptionType.SingleValue);
-
-                    topicName.OnValidate(v => ValidateTopicInformationIsCorrect(topicName, topicToPublishTo, topicToSubscribeOn));
-                    topicToPublishTo.OnValidate(v => ValidateTopicInformationIsCorrect(topicName, topicToPublishTo, topicToSubscribeOn));
-                    topicToSubscribeOn.OnValidate(v => ValidateTopicInformationIsCorrect(topicName, topicToPublishTo, topicToSubscribeOn));
-
-                    var subscriptionName = createCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
-
-                    createCommand.OnExecuteAsync(async ct =>
+                    createCommand.Command("migration", createMigrationCommand =>
                     {
-                        if (topology.Value() == "migration")
+                        createMigrationCommand.Description = "Creates required infrastructure for an endpoint that uses migration topology.";
+                        var name = createMigrationCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
+
+                        createMigrationCommand.AddOption(connectionString);
+                        createMigrationCommand.AddOption(fullyQualifiedNamespace);
+                        createMigrationCommand.AddOption(size);
+                        createMigrationCommand.AddOption(partitioning);
+
+                        var topicName = createMigrationCommand.Option("-st|--topic", "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
+                        var topicToPublishTo = createMigrationCommand.Option("-tp|--topic-to-publish-to", "The topic name to publish to", CommandOptionType.SingleValue);
+                        var topicToSubscribeOn = createMigrationCommand.Option("-ts|--topic-to-subscribe-on", "The topic name to subscribe on", CommandOptionType.SingleValue);
+
+                        topicName.OnValidate(v => ValidateTopicInformationIsCorrect(topicName, topicToPublishTo, topicToSubscribeOn));
+                        topicToPublishTo.OnValidate(v => ValidateTopicInformationIsCorrect(topicName, topicToPublishTo, topicToSubscribeOn));
+                        topicToSubscribeOn.OnValidate(v => ValidateTopicInformationIsCorrect(topicName, topicToPublishTo, topicToSubscribeOn));
+
+                        var subscriptionName = createMigrationCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
+
+                        createMigrationCommand.OnExecuteAsync(async ct =>
                         {
                             // Unfortunately the default value cannot be set outside the execute because it would then
                             // trigger the validation. There seems to be no way in the command handling library to
@@ -86,14 +82,29 @@
                             await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
                                 client => MigrationTopologyEndpoint.Create(client, name, topicName, topicToPublishTo, topicToSubscribeOn,
                                     subscriptionName, size, partitioning));
-                        }
-                        else
+
+
+                            Console.WriteLine($"Endpoint '{name.Value}' is ready.");
+                        });
+                    });
+
+                    createCommand.Command("topic-per-event", createTopicPerEventCommand =>
+                    {
+                        createTopicPerEventCommand.Description = "Creates required infrastructure for an endpoint that uses topic-per-event topology.";
+                        var name = createTopicPerEventCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
+
+                        createTopicPerEventCommand.AddOption(connectionString);
+                        createTopicPerEventCommand.AddOption(fullyQualifiedNamespace);
+                        createTopicPerEventCommand.AddOption(size);
+                        createTopicPerEventCommand.AddOption(partitioning);
+
+                        createTopicPerEventCommand.OnExecuteAsync(async ct =>
                         {
                             await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
                                 client => TopicPerEventTopologyEndpoint.Create(client, name, size, partitioning));
-                        }
 
-                        Console.WriteLine($"Endpoint '{name.Value}' is ready.");
+                            Console.WriteLine($"Endpoint '{name.Value}' is ready.");
+                        });
                     });
                 });
 
@@ -135,45 +146,48 @@
                     });
                 });
 
-                endpointCommand.Command("subscribe-non-migrated", subscribeCommand =>
+                endpointCommand.Command("non-migrated", nonMigratedSubCommand =>
                 {
-                    subscribeCommand.Description = "Subscribes an endpoint to an event using legacy forwarding topology.";
-                    var name = subscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
-                    var eventType = subscribeCommand.Argument("event-type", "Full name of the event to subscribe to (e.g. MyNamespace.MyMessage) (required)").IsRequired();
-
-                    subscribeCommand.AddOption(connectionString);
-                    subscribeCommand.AddOption(fullyQualifiedNamespace);
-                    var topicName = subscribeCommand.Option("-t|--topic", "Topic name to subscribe on (defaults to 'bundle-1')", CommandOptionType.SingleValue);
-                    topicName.DefaultValue = Topic.DefaultTopicName;
-                    var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
-                    var shortenedRuleName = subscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
-
-                    subscribeCommand.OnExecuteAsync(async ct =>
+                    nonMigratedSubCommand.Command("subscribe", subscribeCommand =>
                     {
-                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => MigrationTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
+                        subscribeCommand.Description = "Subscribes an endpoint to an event using legacy forwarding topology.";
+                        var name = subscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
+                        var eventType = subscribeCommand.Argument("event-type", "Full name of the event to subscribe to (e.g. MyNamespace.MyMessage) (required)").IsRequired();
 
-                        Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{eventType.Value}'.");
+                        subscribeCommand.AddOption(connectionString);
+                        subscribeCommand.AddOption(fullyQualifiedNamespace);
+                        var topicName = subscribeCommand.Option("-t|--topic", "Topic name to subscribe on (defaults to 'bundle-1')", CommandOptionType.SingleValue);
+                        topicName.DefaultValue = Topic.DefaultTopicName;
+                        var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
+                        var shortenedRuleName = subscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
+
+                        subscribeCommand.OnExecuteAsync(async ct =>
+                        {
+                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => MigrationTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
+
+                            Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{eventType.Value}'.");
+                        });
                     });
-                });
 
-                endpointCommand.Command("unsubscribe-non-migrated", unsubscribeCommand =>
-                {
-                    unsubscribeCommand.Description = "Unsubscribes an endpoint from an event using legacy forwarding topology.";
-                    var name = unsubscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
-                    var eventType = unsubscribeCommand.Argument("event-type", "Full name of the event to unsubscribe from (e.g. MyNamespace.MyMessage) (required)").IsRequired();
-
-                    unsubscribeCommand.AddOption(connectionString);
-                    unsubscribeCommand.AddOption(fullyQualifiedNamespace);
-                    var topicName = unsubscribeCommand.Option("-t|--topic", "Topic name to unsubscribe from (defaults to 'bundle-1')", CommandOptionType.SingleValue);
-                    topicName.DefaultValue = Topic.DefaultTopicName;
-                    var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
-                    var shortenedRuleName = unsubscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
-
-                    unsubscribeCommand.OnExecuteAsync(async ct =>
+                    nonMigratedSubCommand.Command("unsubscribe", unsubscribeCommand =>
                     {
-                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => MigrationTopologyEndpoint.Unsubscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
+                        unsubscribeCommand.Description = "Unsubscribes an endpoint from an event using legacy forwarding topology.";
+                        var name = unsubscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
+                        var eventType = unsubscribeCommand.Argument("event-type", "Full name of the event to unsubscribe from (e.g. MyNamespace.MyMessage) (required)").IsRequired();
 
-                        Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{eventType.Value}'.");
+                        unsubscribeCommand.AddOption(connectionString);
+                        unsubscribeCommand.AddOption(fullyQualifiedNamespace);
+                        var topicName = unsubscribeCommand.Option("-t|--topic", "Topic name to unsubscribe from (defaults to 'bundle-1')", CommandOptionType.SingleValue);
+                        topicName.DefaultValue = Topic.DefaultTopicName;
+                        var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
+                        var shortenedRuleName = unsubscribeCommand.Option("-r|--rule-name", "Rule name (defaults to event type) ", CommandOptionType.SingleValue);
+
+                        unsubscribeCommand.OnExecuteAsync(async ct =>
+                        {
+                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => MigrationTopologyEndpoint.Unsubscribe(client, name, topicName, subscriptionName, eventType, shortenedRuleName));
+
+                            Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{eventType.Value}'.");
+                        });
                     });
                 });
             });
