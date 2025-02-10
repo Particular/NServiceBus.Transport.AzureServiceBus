@@ -23,6 +23,23 @@
         public async Task Create_endpoint_without_specifying_a_topic()
         {
             await DeleteQueue(QueueName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --topology topic-per-event");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(QueueName);
+        }
+
+        [Test]
+        public async Task Create_migration_endpoint_without_specifying_a_topic()
+        {
+            await DeleteQueue(QueueName);
             await DeleteTopic(DefaultTopicName);
 
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --topology migration");
@@ -40,7 +57,7 @@
         }
 
         [Test]
-        public async Task Create_endpoint_when_there_are_no_entities()
+        public async Task Create_migration_endpoint_when_there_are_no_entities()
         {
             await DeleteQueue(QueueName);
             await DeleteTopic(TopicName);
@@ -60,7 +77,7 @@
         }
 
         [Test]
-        public async Task Create_endpoint_with_hierarchy_when_there_are_no_entities()
+        public async Task Create_migration_endpoint_with_hierarchy_when_there_are_no_entities()
         {
             await DeleteQueue(QueueName);
             await DeleteTopic(TopicName);
@@ -85,6 +102,15 @@
         [Test]
         public async Task Create_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
         {
+            var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topology topic-per-type --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+        }
+
+        [Test]
+        public async Task Create_migration_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
+        {
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topology migration --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
@@ -92,7 +118,7 @@
         }
 
         [Test]
-        public async Task Create_endpoint_validates_topic_name_and_hierarchy_cannot_be_used_together()
+        public async Task Create_migration_endpoint_validates_topic_name_and_hierarchy_cannot_be_used_together()
         {
             var (_, publishError, publishExitCode) = await Execute($"endpoint create {EndpointName} --topology migration --topic {TopicName} --topic-to-publish-to {HierarchyTopicName}");
             var (_, subscribeError, subscribeExitCode) = await Execute($"endpoint create {EndpointName} --topology migration --topic {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
@@ -107,7 +133,7 @@
         }
 
         [Test]
-        public async Task Create_endpoint_validates_hierarchy_is_correct()
+        public async Task Create_migration_endpoint_validates_hierarchy_is_correct()
         {
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topology migration --topic-to-subscribe-on {HierarchyTopicName} --topic-to-publish-to {HierarchyTopicName}");
 
@@ -116,7 +142,7 @@
         }
 
         [Test]
-        public async Task Subscribe_endpoint()
+        public async Task Subscribe_migration_endpoint()
         {
             await DeleteQueue(QueueName);
             await DeleteTopic(TopicName);
@@ -133,7 +159,7 @@
         }
 
         [Test]
-        public async Task Subscribe_endpoint_supports_hierarchy()
+        public async Task Subscribe_migration_endpoint_supports_hierarchy()
         {
             await DeleteQueue(QueueName);
             await DeleteTopic(TopicName);
@@ -154,6 +180,15 @@
         [Test]
         public async Task Subscribe_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
         {
+            var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+        }
+
+        [Test]
+        public async Task Subscribe_migration_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
+        {
             var (_, error, exitCode) = await Execute($"endpoint subscribe-non-migrated {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
@@ -161,7 +196,7 @@
         }
 
         [Test]
-        public async Task Unsubscribe_endpoint()
+        public async Task Unsubscribe_migration_endpoint()
         {
             await DeleteQueue(QueueName);
             await DeleteTopic(TopicName);
@@ -179,7 +214,7 @@
         }
 
         [Test]
-        public async Task Unsubscribe_endpoint_supports_hierarchy()
+        public async Task Unsubscribe_migration_endpoint_supports_hierarchy()
         {
             await DeleteQueue(QueueName);
             await DeleteTopic(TopicName);
@@ -199,6 +234,15 @@
 
         [Test]
         public async Task Unsubscribe_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+        }
+
+        [Test]
+        public async Task Unsubscribe_migration_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
         {
             var (_, error, exitCode) = await Execute($"endpoint unsubscribe-non-migrated {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
