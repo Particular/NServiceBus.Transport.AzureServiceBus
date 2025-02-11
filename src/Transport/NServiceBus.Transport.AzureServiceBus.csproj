@@ -26,9 +26,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="NServiceBus.Transport.AzureServiceBus.Tests" Key="$(NServiceBusTestsKey)" />
     <InternalsVisibleTo Include="NServiceBus.Transport.AzureServiceBus.AcceptanceTests" Key="$(NServiceBusTestsKey)" />
     <InternalsVisibleTo Include="NServiceBus.Transport.AzureServiceBus.Migration.AcceptanceTests" Key="$(NServiceBusTestsKey)" />
+    <InternalsVisibleTo Include="NServiceBus.Transport.AzureServiceBus.Tests" Key="$(NServiceBusTestsKey)" />
   </ItemGroup>
 
 </Project>
