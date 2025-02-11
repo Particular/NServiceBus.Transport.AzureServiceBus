@@ -17,7 +17,6 @@ public class MigrationTopologyTests
             PublishedEventToTopicsMap =
             {
                 { typeof(MyEvent).FullName, new string('c', 261) },
-                { typeof(MyEventMappedTwice).FullName, "MyEventMappedTwice" }
             },
             SubscribedEventToTopicsMap =
             {
@@ -26,12 +25,34 @@ public class MigrationTopologyTests
             },
             QueueNameToSubscriptionNameMap = { { "SubscribingQueue", new string('f', 51) } },
             SubscribedEventToRuleNameMap = { { typeof(MyEvent).FullName, new string('g', 51) } },
-            EventsToMigrateMap = { typeof(MyEventMappedTwice).FullName },
         };
 
         var topology = TopicTopology.FromOptions(topologyOptions);
 
         var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        Approver.Verify(validationException.Message);
+    }
+
+    [Test]
+    public void Should_self_validate_consistency()
+    {
+        var topologyOptions = new MigrationTopologyOptions
+        {
+            TopicToPublishTo = "TopicToPublishTo",
+            TopicToSubscribeOn = "TopicToSubscribeOn",
+            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName, "TopicToPublishTo" } },
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent).FullName, ["SomeOtherTopic", "TopicToSubscribeOn"] },
+                { typeof(MyEventMappedTwice).FullName, ["MyEventMappedTwice"] }
+            },
+            EventsToMigrateMap = { typeof(MyEventMappedTwice).FullName }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        ValidationException validationException = Assert.Catch<ValidationException>(() => topology.Validate());
 
         Approver.Verify(validationException.Message);
     }
