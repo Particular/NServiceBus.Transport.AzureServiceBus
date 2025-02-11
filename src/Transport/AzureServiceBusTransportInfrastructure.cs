@@ -57,7 +57,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     void WriteStartupDiagnostics(StartupDiagnosticEntries startupDiagnostic) =>
         startupDiagnostic.Add("Azure Service Bus transport", new
         {
-            transportSettings.Topology,
+            Topology = transportSettings.Topology.Options,
             EntityMaximumSize = transportSettings.EntityMaximumSize.ToString(),
             EnablePartitioning = transportSettings.EnablePartitioning.ToString(),
             PrefetchMultiplier = transportSettings.PrefetchMultiplier.ToString(),
