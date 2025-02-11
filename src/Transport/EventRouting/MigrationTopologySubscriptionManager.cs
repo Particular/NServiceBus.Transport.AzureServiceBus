@@ -58,7 +58,8 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 
         if (topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
         {
-            await TopicPerEventTypeTopologySubscriptionManager.CreateSubscriptionsForTopics(topics, subscriptionName, CreationOptions, cancellationToken)
+            await TopicPerEventTopologySubscriptionManager
+                .CreateSubscriptionsForTopics(topics, subscriptionName, CreationOptions, cancellationToken)
                 .ConfigureAwait(false);
             return;
         }
@@ -91,7 +92,8 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 
         if (topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
         {
-            await TopicPerEventTypeTopologySubscriptionManager.DeleteSubscriptionsForTopics(topics, subscriptionName, CreationOptions.AdministrationClient, cancellationToken)
+            await TopicPerEventTopologySubscriptionManager.DeleteSubscriptionsForTopics(topics, subscriptionName,
+                    CreationOptions.AdministrationClient, cancellationToken)
                 .ConfigureAwait(false);
             return;
         }

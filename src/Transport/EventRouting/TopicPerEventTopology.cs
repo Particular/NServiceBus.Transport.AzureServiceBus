@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 
 /// <summary>
-/// A topology that uses separate topic for each event type.
+/// A topology that uses separate topic for each event.
 /// </summary>
 public sealed class TopicPerEventTopology : TopicTopology
 {
@@ -86,5 +86,5 @@ public sealed class TopicPerEventTopology : TopicTopology
 
     internal override SubscriptionManager CreateSubscriptionManager(
         SubscriptionManagerCreationOptions creationOptions) =>
-        new TopicPerEventTypeTopologySubscriptionManager(creationOptions, Options);
+        new TopicPerEventTopologySubscriptionManager(creationOptions, Options);
 }

@@ -11,19 +11,19 @@ using Extensibility;
 using Logging;
 using Unicast.Messages;
 
-sealed class TopicPerEventTypeTopologySubscriptionManager : SubscriptionManager
+sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 {
     readonly TopologyOptions topologyOptions;
     readonly string subscriptionName;
 
-    public TopicPerEventTypeTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
+    public TopicPerEventTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
         TopologyOptions topologyOptions) : base(creationOptions)
     {
         this.topologyOptions = topologyOptions;
         subscriptionName = topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(CreationOptions.SubscribingQueueName, CreationOptions.SubscribingQueueName);
     }
 
-    static readonly ILog Logger = LogManager.GetLogger<TopicPerEventTypeTopologySubscriptionManager>();
+    static readonly ILog Logger = LogManager.GetLogger<TopicPerEventTopologySubscriptionManager>();
 
     public override Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
         CancellationToken cancellationToken = default) =>

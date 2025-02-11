@@ -8,7 +8,7 @@ using Particular.Approvals;
 using Unicast.Messages;
 
 [TestFixture]
-public class TopicPerEventTypeSubscriptionManagerTests
+public class TopicPerEventSubscriptionManagerTests
 {
     [Test]
     public async Task Should_create_topology_for_mapped_events()
@@ -27,7 +27,7 @@ public class TopicPerEventTypeSubscriptionManagerTests
         var client = new RecordingServiceBusClient(builder);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
-        var subscriptionManager = new TopicPerEventTypeTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
@@ -51,7 +51,7 @@ public class TopicPerEventTypeSubscriptionManagerTests
         var client = new RecordingServiceBusClient(builder);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
-        var subscriptionManager = new TopicPerEventTypeTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
