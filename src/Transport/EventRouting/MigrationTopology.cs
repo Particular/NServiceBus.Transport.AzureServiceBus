@@ -3,19 +3,19 @@ namespace NServiceBus.Transport.AzureServiceBus;
 using System;
 
 /// <summary>
-/// Topology that allows mixing of common-topic and topic-per-event approaches in order to allow gradual migration to the topic-per-event topology.
+/// Topology that allows mixing of single-topic and topic-per-event approaches in order to allow gradual migration to the topic-per-event topology.
 /// </summary>
 public sealed class MigrationTopology : TopicTopology
 {
     internal MigrationTopology(MigrationTopologyOptions options) : base(options) => Options = options;
 
     /// <summary>
-    /// Gets the topic name of the topic where all common-topic events are published to.
+    /// Gets the topic name of the topic where all single-topic events are published to.
     /// </summary>
     public new string TopicToPublishTo => Options.TopicToPublishTo!;
 
     /// <summary>
-    /// Gets the topic name of the topic where all common-topic events are subscribed.
+    /// Gets the topic name of the topic where all single-topic events are subscribed.
     /// </summary>
     public new string TopicToSubscribeOn => Options.TopicToSubscribeOn!;
 
