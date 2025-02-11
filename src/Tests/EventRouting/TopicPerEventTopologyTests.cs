@@ -5,7 +5,7 @@ using NUnit.Framework;
 using Particular.Approvals;
 
 [TestFixture]
-public class TopicPerEventTypeTopologyTests
+public class TopicPerEventTopologyTests
 {
     [Test]
     public void PublishDestination_Should_return_mapped_topic_when_event_is_mapped()
