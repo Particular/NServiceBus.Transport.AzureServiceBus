@@ -151,6 +151,20 @@
         }
 
         [Test]
+        public async Task Subscribe_endpoint()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic("MyMessage1");
+
+            await Execute($"endpoint create {EndpointName}");
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1");
+
+            await VerifyQueue(QueueName);
+            await VerifyTopic("MyMessage1");
+            await VerifyTopicPerEventTypeSubscription("MyMessage1", SubscriptionName, QueueName);
+        }
+
+        [Test]
         public async Task Subscribe_migration_endpoint()
         {
             await DeleteQueue(QueueName);
@@ -161,10 +175,12 @@
             await Execute($"migration endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName}");
             await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
             await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
+            await Execute($"migration endpoint subscribe-migrated {EndpointName} MyNamespace1.MyMessage4");
 
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
-            await VerifySubscription(TopicName, SubscriptionName, QueueName);
+            await VerifySingleTopicSubscription(TopicName, SubscriptionName, QueueName);
+            await VerifyTopicPerEventTypeSubscription("MyNamespace1.MyMessage4", SubscriptionName, QueueName);
         }
 
         [Test]
@@ -183,7 +199,7 @@
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
             await VerifyTopic(HierarchyTopicName);
-            await VerifySubscription(HierarchyTopicName, SubscriptionName, QueueName);
+            await VerifySingleTopicSubscription(HierarchyTopicName, SubscriptionName, QueueName);
         }
 
         [Test]
@@ -205,6 +221,21 @@
         }
 
         [Test]
+        public async Task Unsubscribe_endpoint()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic("MyMessage1");
+
+            await Execute($"endpoint create {EndpointName}");
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1");
+            await Execute($"endpoint unsubscribe {EndpointName} MyMessage1");
+
+            await VerifyQueue(QueueName);
+            await VerifyTopic("MyMessage1");
+            await VerifySubscriptionDoesNotExist("MyMessage1", SubscriptionName);
+        }
+
+        [Test]
         public async Task Unsubscribe_migration_endpoint()
         {
             await DeleteQueue(QueueName);
@@ -214,12 +245,15 @@
             await Execute($"migration endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName}");
             await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
             await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
+            await Execute($"migration endpoint subscribe-migrated {EndpointName} MyNamespace1.MyMessage4");
 
             await Execute($"migration endpoint unsubscribe {EndpointName} MyMessage1 --topic {TopicName}");
             await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
             await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
+            await Execute($"migration endpoint unsubscribe-migrated {EndpointName} MyNamespace1.MyMessage4");
 
             await VerifySubscriptionContainsOnlyDefaultRule(TopicName, SubscriptionName);
+            await VerifySubscriptionDoesNotExist("MyNamespace1.MyMessage4", SubscriptionName);
         }
 
         [Test]
@@ -359,7 +393,28 @@
             });
         }
 
-        async Task VerifySubscription(string topicName, string subscriptionName, string queueName)
+        async Task VerifyTopicPerEventTypeSubscription(string topicName, string subscriptionName, string queueName)
+        {
+            var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
+                Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
+                Assert.That(actual.EnableDeadLetteringOnFilterEvaluationExceptions, Is.EqualTo(false));
+                Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
+                Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
+                Assert.That(actual.UserMetadata, Is.EqualTo(queueName));
+            });
+        }
+
+        async Task VerifySubscriptionDoesNotExist(string topicName, string subscriptionName)
+        {
+            var exists = (await client.SubscriptionExistsAsync(topicName, subscriptionName)).Value;
+            Assert.That(exists, Is.False);
+        }
+
+        async Task VerifySingleTopicSubscription(string topicName, string subscriptionName, string queueName)
         {
             var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
 

@@ -38,6 +38,44 @@
 
             app.HelpOption(inherited: true);
 
+            void SubscribeTopicPerEventType(CommandLineApplication subscribeCommand)
+            {
+                subscribeCommand.Description = "Subscribes an endpoint to an event using topic-per-event topology.";
+                var name = subscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
+                var topicName = subscribeCommand.Argument("topic", "Topic name to subscribe. Unless configured otherwise on the publisher defaults to full name of the event (e.g. MyNamespace.MyMessage) (required)").IsRequired();
+
+                subscribeCommand.AddOption(connectionString);
+                subscribeCommand.AddOption(fullyQualifiedNamespace);
+                subscribeCommand.AddOption(size);
+                subscribeCommand.AddOption(partitioning);
+                var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
+
+                subscribeCommand.OnExecuteAsync(async ct =>
+                {
+                    await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, size, partitioning));
+
+                    Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{topicName.Value}'.");
+                });
+            }
+
+            void UnsubscribeTopicPerEventType(CommandLineApplication unsubscribeCommand)
+            {
+                unsubscribeCommand.Description = "Unsubscribes an endpoint from an event using topic-per-event topology.";
+                var name = unsubscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
+                var topicName = unsubscribeCommand.Argument("topic", "Topic name to subscribe. Unless configured otherwise on the publisher defaults to full name of the event (e.g. MyNamespace.MyMessage) (required)").IsRequired();
+
+                unsubscribeCommand.AddOption(connectionString);
+                unsubscribeCommand.AddOption(fullyQualifiedNamespace);
+                var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
+
+                unsubscribeCommand.OnExecuteAsync(async ct =>
+                {
+                    await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Unsubscribe(client, name, topicName, subscriptionName));
+
+                    Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{topicName.Value}'.");
+                });
+            }
+
             app.Command("endpoint", endpointCommand =>
             {
                 endpointCommand.OnExecute(() =>
@@ -66,43 +104,8 @@
                     });
                 });
 
-                endpointCommand.Command("subscribe", subscribeCommand =>
-                {
-                    subscribeCommand.Description = "Subscribes an endpoint to an event using topic-per-event topology.";
-                    var name = subscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
-                    var topicName = subscribeCommand.Argument("topic", "Topic name to subscribe. Unless configured otherwise on the publisher defaults to full name of the event (e.g. MyNamespace.MyMessage) (required)").IsRequired();
-
-                    subscribeCommand.AddOption(connectionString);
-                    subscribeCommand.AddOption(fullyQualifiedNamespace);
-                    subscribeCommand.AddOption(size);
-                    subscribeCommand.AddOption(partitioning);
-                    var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
-
-                    subscribeCommand.OnExecuteAsync(async ct =>
-                    {
-                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, size, partitioning));
-
-                        Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{topicName.Value}'.");
-                    });
-                });
-
-                endpointCommand.Command("unsubscribe", unsubscribeCommand =>
-                {
-                    unsubscribeCommand.Description = "Unsubscribes an endpoint from an event using topic-per-event topology.";
-                    var name = unsubscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
-                    var topicName = unsubscribeCommand.Argument("topic", "Topic name to subscribe. Unless configured otherwise on the publisher defaults to full name of the event (e.g. MyNamespace.MyMessage) (required)").IsRequired();
-
-                    unsubscribeCommand.AddOption(connectionString);
-                    unsubscribeCommand.AddOption(fullyQualifiedNamespace);
-                    var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
-
-                    unsubscribeCommand.OnExecuteAsync(async ct =>
-                    {
-                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Unsubscribe(client, name, topicName, subscriptionName));
-
-                        Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{topicName.Value}'.");
-                    });
-                });
+                endpointCommand.Command("subscribe", SubscribeTopicPerEventType);
+                endpointCommand.Command("unsubscribe", UnsubscribeTopicPerEventType);
             });
 
             app.Command("migration", migrationCommand =>
@@ -226,6 +229,9 @@
                             Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{eventType.Value}'.");
                         });
                     });
+
+                    endpointCommand.Command("subscribe-migrated", SubscribeTopicPerEventType);
+                    endpointCommand.Command("unsubscribe-migrated", UnsubscribeTopicPerEventType);
                 });
             });
 
