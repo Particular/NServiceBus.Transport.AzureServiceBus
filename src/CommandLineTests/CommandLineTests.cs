@@ -20,12 +20,38 @@
         const string HierarchySubscriptionName = $"forwardTo-{HierarchyTopicName}";
 
         [Test]
-        public async Task Create_endpoint_without_specifying_a_topic()
+        public async Task Create_endpoint()
+        {
+            await DeleteQueue(QueueName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(QueueName);
+        }
+
+        [Test]
+        public async Task Create_endpoint_rejects_options_relevant_to_migration()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic-to-publish-to {TopicName}");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("Unrecognized option '--topic-to-publish-to'"));
+        }
+
+        [Test]
+        public async Task Create_migration_endpoint_without_specifying_a_topic()
         {
             await DeleteQueue(QueueName);
             await DeleteTopic(DefaultTopicName);
 
-            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName}");
+            var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName}");
 
             Assert.Multiple(() =>
             {
@@ -40,12 +66,12 @@
         }
 
         [Test]
-        public async Task Create_endpoint_when_there_are_no_entities()
+        public async Task Create_migration_endpoint_when_there_are_no_entities()
         {
             await DeleteQueue(QueueName);
             await DeleteTopic(TopicName);
 
-            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName}");
+            var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName}");
 
             Assert.Multiple(() =>
             {
@@ -60,13 +86,13 @@
         }
 
         [Test]
-        public async Task Create_endpoint_with_hierarchy_when_there_are_no_entities()
+        public async Task Create_migration_endpoint_with_hierarchy_when_there_are_no_entities()
         {
             await DeleteQueue(QueueName);
             await DeleteTopic(TopicName);
             await DeleteTopic(HierarchyTopicName);
 
-            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
+            var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
 
             Assert.Multiple(() =>
             {
@@ -85,17 +111,26 @@
         [Test]
         public async Task Create_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
         {
-            var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+            var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
             Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
         }
 
         [Test]
-        public async Task Create_endpoint_validates_topic_name_and_hierarchy_cannot_be_used_together()
+        public async Task Create_migration_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
         {
-            var (_, publishError, publishExitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --topic-to-publish-to {HierarchyTopicName}");
-            var (_, subscribeError, subscribeExitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
+            var (_, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+        }
+
+        [Test]
+        public async Task Create_migration_endpoint_validates_topic_name_and_hierarchy_cannot_be_used_together()
+        {
+            var (_, publishError, publishExitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --topic-to-publish-to {HierarchyTopicName}");
+            var (_, subscribeError, subscribeExitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
 
             Assert.Multiple(() =>
             {
@@ -107,9 +142,9 @@
         }
 
         [Test]
-        public async Task Create_endpoint_validates_hierarchy_is_correct()
+        public async Task Create_migration_endpoint_validates_hierarchy_is_correct()
         {
-            var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic-to-subscribe-on {HierarchyTopicName} --topic-to-publish-to {HierarchyTopicName}");
+            var (_, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic-to-subscribe-on {HierarchyTopicName} --topic-to-publish-to {HierarchyTopicName}");
 
             Assert.That(exitCode, Is.EqualTo(1));
             Assert.That(error, Does.Contain("A valid topic hierarchy requires the topic-to-publish-to option and the topic-to-subscribe-on option to be different."));
@@ -119,42 +154,67 @@
         public async Task Subscribe_endpoint()
         {
             await DeleteQueue(QueueName);
-            await DeleteTopic(TopicName);
+            await DeleteTopic("MyMessage1");
 
-            await Execute($"endpoint create {EndpointName} --topic {TopicName}");
-
-            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName}");
-            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
-            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
+            await Execute($"endpoint create {EndpointName}");
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1");
 
             await VerifyQueue(QueueName);
-            await VerifyTopic(TopicName);
-            await VerifySubscription(TopicName, SubscriptionName, QueueName);
+            await VerifyTopic("MyMessage1");
+            await VerifyTopicPerEventTypeSubscription("MyMessage1", SubscriptionName, QueueName);
         }
 
         [Test]
-        public async Task Subscribe_endpoint_supports_hierarchy()
+        public async Task Subscribe_migration_endpoint()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            await Execute($"migration endpoint create {EndpointName} --topic {TopicName}");
+
+            await Execute($"migration endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
+            await Execute($"migration endpoint subscribe-migrated {EndpointName} MyNamespace1.MyMessage4");
+
+            await VerifyQueue(QueueName);
+            await VerifyTopic(TopicName);
+            await VerifySingleTopicSubscription(TopicName, SubscriptionName, QueueName);
+            await VerifyTopicPerEventTypeSubscription("MyNamespace1.MyMessage4", SubscriptionName, QueueName);
+        }
+
+        [Test]
+        public async Task Subscribe_migration_endpoint_supports_hierarchy()
         {
             await DeleteQueue(QueueName);
             await DeleteTopic(TopicName);
             await DeleteTopic(HierarchyTopicName);
 
-            await Execute($"endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
+            await Execute($"migration endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
 
-            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {HierarchyTopicName}");
-            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName}");
-            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName");
+            await Execute($"migration endpoint subscribe {EndpointName} MyMessage1 --topic {HierarchyTopicName}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName");
 
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
             await VerifyTopic(HierarchyTopicName);
-            await VerifySubscription(HierarchyTopicName, SubscriptionName, QueueName);
+            await VerifySingleTopicSubscription(HierarchyTopicName, SubscriptionName, QueueName);
         }
 
         [Test]
         public async Task Subscribe_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
         {
-            var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+            var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+        }
+
+        [Test]
+        public async Task Subscribe_migration_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
+        {
+            var (_, error, exitCode) = await Execute($"migration endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
             Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
@@ -164,35 +224,53 @@
         public async Task Unsubscribe_endpoint()
         {
             await DeleteQueue(QueueName);
-            await DeleteTopic(TopicName);
+            await DeleteTopic("MyMessage1");
 
-            await Execute($"endpoint create {EndpointName} --topic {TopicName}");
-            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName}");
-            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
-            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
+            await Execute($"endpoint create {EndpointName}");
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1");
+            await Execute($"endpoint unsubscribe {EndpointName} MyMessage1");
 
-            await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --topic {TopicName}");
-            await Execute($"endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
-            await Execute($"endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
-
-            await VerifySubscriptionContainsOnlyDefaultRule(TopicName, SubscriptionName);
+            await VerifyQueue(QueueName);
+            await VerifyTopic("MyMessage1");
+            await VerifySubscriptionDoesNotExist("MyMessage1", SubscriptionName);
         }
 
         [Test]
-        public async Task Unsubscribe_endpoint_supports_hierarchy()
+        public async Task Unsubscribe_migration_endpoint()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            await Execute($"migration endpoint create {EndpointName} --topic {TopicName}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
+            await Execute($"migration endpoint subscribe-migrated {EndpointName} MyNamespace1.MyMessage4");
+
+            await Execute($"migration endpoint unsubscribe {EndpointName} MyMessage1 --topic {TopicName}");
+            await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName}");
+            await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
+            await Execute($"migration endpoint unsubscribe-migrated {EndpointName} MyNamespace1.MyMessage4");
+
+            await VerifySubscriptionContainsOnlyDefaultRule(TopicName, SubscriptionName);
+            await VerifySubscriptionDoesNotExist("MyNamespace1.MyMessage4", SubscriptionName);
+        }
+
+        [Test]
+        public async Task Unsubscribe_migration_endpoint_supports_hierarchy()
         {
             await DeleteQueue(QueueName);
             await DeleteTopic(TopicName);
             await DeleteTopic(HierarchySubscriptionName);
 
-            await Execute($"endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
-            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {HierarchyTopicName}");
-            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName}");
-            await Execute($"endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName");
+            await Execute($"migration endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyMessage1 --topic {HierarchyTopicName}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName");
 
-            await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --topic {HierarchyTopicName}");
-            await Execute($"endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName}");
-            await Execute($"endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName");
+            await Execute($"migration endpoint unsubscribe {EndpointName} MyMessage1 --topic {HierarchyTopicName}");
+            await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName}");
+            await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName");
 
             await VerifySubscriptionContainsOnlyDefaultRule(HierarchyTopicName, SubscriptionName);
         }
@@ -200,7 +278,16 @@
         [Test]
         public async Task Unsubscribe_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
         {
-            var (_, error, exitCode) = await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+            var (_, error, exitCode) = await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+        }
+
+        [Test]
+        public async Task Unsubscribe_migration_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
+        {
+            var (_, error, exitCode) = await Execute($"migration endpoint unsubscribe {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
             Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
@@ -306,7 +393,28 @@
             });
         }
 
-        async Task VerifySubscription(string topicName, string subscriptionName, string queueName)
+        async Task VerifyTopicPerEventTypeSubscription(string topicName, string subscriptionName, string queueName)
+        {
+            var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
+                Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
+                Assert.That(actual.EnableDeadLetteringOnFilterEvaluationExceptions, Is.EqualTo(false));
+                Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
+                Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
+                Assert.That(actual.UserMetadata, Is.EqualTo(queueName));
+            });
+        }
+
+        async Task VerifySubscriptionDoesNotExist(string topicName, string subscriptionName)
+        {
+            var exists = (await client.SubscriptionExistsAsync(topicName, subscriptionName)).Value;
+            Assert.That(exists, Is.False);
+        }
+
+        async Task VerifySingleTopicSubscription(string topicName, string subscriptionName, string queueName)
         {
             var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
 

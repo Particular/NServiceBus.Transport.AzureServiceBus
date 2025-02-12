@@ -6,7 +6,7 @@
     using Azure.Messaging.ServiceBus.Administration;
     using McMaster.Extensions.CommandLineUtils;
 
-    static class Endpoint
+    static class MigrationTopologyEndpoint
     {
         public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption topicToPublishTo, CommandOption topicToSubscribeOn, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning)
         {
