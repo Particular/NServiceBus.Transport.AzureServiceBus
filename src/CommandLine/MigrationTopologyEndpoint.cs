@@ -23,7 +23,7 @@
             {
                 try
                 {
-                    await Topic.Create(client, topicName.Value(), size, partitioning);
+                    await Topic.Create(client, topicName, size, partitioning);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -48,7 +48,7 @@
             {
                 try
                 {
-                    await Topic.Create(client, topicToPublishTo.Value(), size, partitioning);
+                    await Topic.Create(client, topicToPublishTo, size, partitioning);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -57,7 +57,7 @@
 
                 try
                 {
-                    await Topic.Create(client, topicToSubscribeOn.Value(), size, partitioning);
+                    await Topic.Create(client, topicToSubscribeOn, size, partitioning);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {

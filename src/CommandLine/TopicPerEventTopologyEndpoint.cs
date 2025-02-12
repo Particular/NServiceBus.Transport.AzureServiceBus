@@ -24,7 +24,7 @@ static class TopicPerEventTopologyEndpoint
     {
         try
         {
-            await Topic.Create(client, topicName.Value, size, partitioning);
+            await Topic.Create(client, topicName, size, partitioning);
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {

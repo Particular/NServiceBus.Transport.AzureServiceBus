@@ -6,7 +6,15 @@
 
     static class Topic
     {
-        public static Task Create(ServiceBusAdministrationClient client, string topicNameToUse, CommandOption<int> size, CommandOption partitioning)
+        public static Task Create(ServiceBusAdministrationClient client, CommandOption topicNameToUse, CommandOption<int> size,
+            CommandOption partitioning) =>
+            Create(client, topicNameToUse.Value(), size, partitioning);
+
+        public static Task Create(ServiceBusAdministrationClient client, CommandArgument topicNameToUse, CommandOption<int> size,
+            CommandOption partitioning) =>
+            Create(client, topicNameToUse.Value, size, partitioning);
+
+        static Task Create(ServiceBusAdministrationClient client, string topicNameToUse, CommandOption<int> size, CommandOption partitioning)
         {
             var options = new CreateTopicOptions(topicNameToUse)
             {

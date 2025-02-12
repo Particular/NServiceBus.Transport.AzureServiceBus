@@ -42,7 +42,7 @@
             {
                 subscribeCommand.Description = "Subscribes an endpoint to an event using topic-per-event topology.";
                 var name = subscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
-                var topicName = subscribeCommand.Argument("topic", "Topic name to subscribe. Unless configured otherwise on the publisher defaults to full name of the event (e.g. MyNamespace.MyMessage) (required)").IsRequired();
+                var topicName = subscribeCommand.Argument("topic", "Topic name to subscribe (required)").IsRequired();
 
                 subscribeCommand.AddOption(connectionString);
                 subscribeCommand.AddOption(fullyQualifiedNamespace);
@@ -62,7 +62,7 @@
             {
                 unsubscribeCommand.Description = "Unsubscribes an endpoint from an event using topic-per-event topology.";
                 var name = unsubscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
-                var topicName = unsubscribeCommand.Argument("topic", "Topic name to subscribe. Unless configured otherwise on the publisher defaults to full name of the event (e.g. MyNamespace.MyMessage) (required)").IsRequired();
+                var topicName = unsubscribeCommand.Argument("topic", "Topic name to unsubscribe (required)").IsRequired();
 
                 unsubscribeCommand.AddOption(connectionString);
                 unsubscribeCommand.AddOption(fullyQualifiedNamespace);
@@ -172,7 +172,7 @@
                     endpointCommand.Command("subscribe", subscribeCommand =>
                         {
                             subscribeCommand.Description =
-                                "Subscribes an endpoint to an event using legacy forwarding topology.";
+                                "Subscribes an endpoint to an event using single-topic approach (forwarding topology).";
                             var name = subscribeCommand.Argument("name", "Name of the endpoint (required)")
                                 .IsRequired();
                             var eventType = subscribeCommand.Argument("event-type",
@@ -202,7 +202,7 @@
                     endpointCommand.Command("unsubscribe", unsubscribeCommand =>
                     {
                         unsubscribeCommand.Description =
-                            "Unsubscribes an endpoint from an event using legacy forwarding topology.";
+                            "Unsubscribes an endpoint from an event using single-topic approach (forwarding topology).";
                         var name = unsubscribeCommand.Argument("name", "Name of the endpoint (required)")
                             .IsRequired();
                         var eventType = unsubscribeCommand.Argument("event-type",
