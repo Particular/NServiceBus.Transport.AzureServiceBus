@@ -1,6 +1,7 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 using Configuration;
@@ -24,17 +25,41 @@ public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
     static ValidationResult? ValidateMigrationTopology(MigrationTopologyOptions options)
     {
         var builder = new ValidateOptionsResultBuilder();
-        foreach (var eventTypeFullname in options.EventsToMigrateMap)
+
+        foreach ((string? eventTypeFullname, string? topic) in options.PublishedEventToTopicsMap)
         {
-            if (options.PublishedEventToTopicsMap.ContainsKey(eventTypeFullname))
+            if (options.EventsToMigrateMap.Contains(eventTypeFullname))
             {
                 builder.AddResult(new ValidationResult(
-                    $"Event '{eventTypeFullname}' is in the migration map and in the published event to topics map. An event type cannot be marked for migration and mapped to a topic at the same time.", [nameof(options.PublishedEventToTopicsMap)]));
+                    $"Event '{eventTypeFullname}' is in the migration map and in the published event to topics map. An event type cannot be marked for migration and mapped to a topic at the same time.",
+                    [nameof(options.PublishedEventToTopicsMap)]));
             }
 
-            if (options.SubscribedEventToTopicsMap.ContainsKey(eventTypeFullname))
+            if (topic.Equals(options.TopicToPublishTo))
             {
-                builder.AddResult(new ValidationResult($"Event '{eventTypeFullname}' is in the migration map and in the subscribed event to topics map. An event type cannot be marked for migration and mapped to a topic at the same time.", [nameof(options.SubscribedEventToTopicsMap)]));
+                builder.AddResult(new ValidationResult(
+                    $"The topic to publish '{topic}' for '{eventTypeFullname}' cannot be the sames as the topic to publish to '{options.TopicToPublishTo}' for the migration topology.",
+                    [nameof(options.TopicToPublishTo), nameof(options.PublishedEventToTopicsMap)]));
+            }
+        }
+
+        foreach ((string? eventTypeFullname, HashSet<string> topics) in options.SubscribedEventToTopicsMap)
+        {
+            if (options.EventsToMigrateMap.Contains(eventTypeFullname))
+            {
+                builder.AddResult(new ValidationResult(
+                    $"Event '{eventTypeFullname}' is in the migration map and in the subscribed event to topics map. An event type cannot be marked for migration and mapped to a topic at the same time.",
+                    [nameof(options.SubscribedEventToTopicsMap)]));
+            }
+
+            foreach (string topic in topics)
+            {
+                if (topic.Equals(options.TopicToSubscribeOn))
+                {
+                    builder.AddResult(new ValidationResult(
+                        $"The topic to subscribe '{topic}' for '{eventTypeFullname}' cannot be the sames as the topic to subscribe to '{options.TopicToSubscribeOn}' for the migration topology.",
+                        [nameof(options.TopicToSubscribeOn), nameof(options.SubscribedEventToTopicsMap)]));
+                }
             }
         }
 
