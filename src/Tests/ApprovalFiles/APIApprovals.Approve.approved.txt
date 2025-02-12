@@ -252,6 +252,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, string> QueueNameToSubscriptionNameMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
+        [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscribedEventToTopicsMapConverter))]
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>> SubscribedEventToTopicsMap { get; init; }
     }
