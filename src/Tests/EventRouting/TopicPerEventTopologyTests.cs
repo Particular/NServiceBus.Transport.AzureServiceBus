@@ -42,5 +42,21 @@ public class TopicPerEventTopologyTests
         Approver.Verify(validationException.Message);
     }
 
+    // With the generic host validation can already be done at startup and this allows disabling further validation
+    // for advanced scenarios to save startup time.
+    [Test]
+    public void Should_allow_disabling_validation()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName, new string('c', 261) } }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+        topology.OptionsValidator = new TopologyOptionsDisableValidationValidator();
+
+        Assert.DoesNotThrow(() => topology.Validate());
+    }
+
     class MyEvent;
 }

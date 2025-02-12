@@ -100,10 +100,11 @@ namespace NServiceBus
     }
     public abstract class TopicTopology
     {
-        protected TopicTopology(NServiceBus.Transport.AzureServiceBus.TopologyOptions options) { }
+        protected TopicTopology(NServiceBus.Transport.AzureServiceBus.TopologyOptions options, Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions> optionsValidator) { }
         [System.Obsolete("Use `MigrationTopology.IsHierarchy` instead. The member currently throws a NotImp" +
             "lementedException. Will be removed in version 6.0.0.", true)]
         public bool IsHierarchy { get; }
+        public Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions> OptionsValidator { get; set; }
         [System.Obsolete("Use `MigrationTopology.TopicToPublishTo` instead. The member currently throws a N" +
             "otImplementedException. Will be removed in version 6.0.0.", true)]
         public string TopicToPublishTo { get; }
@@ -254,6 +255,11 @@ namespace NServiceBus.Transport.AzureServiceBus
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>> SubscribedEventToTopicsMap { get; init; }
+    }
+    public sealed class TopologyOptionsDisableValidationValidator : Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions>
+    {
+        public TopologyOptionsDisableValidationValidator() { }
+        public Microsoft.Extensions.Options.ValidateOptionsResult Validate(string? name, NServiceBus.Transport.AzureServiceBus.TopologyOptions options) { }
     }
     [System.Text.Json.Serialization.JsonSerializable(typeof(NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions))]
     [System.Text.Json.Serialization.JsonSerializable(typeof(NServiceBus.Transport.AzureServiceBus.TopologyOptions))]

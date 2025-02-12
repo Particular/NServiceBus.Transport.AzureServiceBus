@@ -8,7 +8,7 @@ using System.Collections.Generic;
 /// </summary>
 public sealed class TopicPerEventTopology : TopicTopology
 {
-    internal TopicPerEventTopology(TopologyOptions options) : base(options)
+    internal TopicPerEventTopology(TopologyOptions options) : base(options, new TopologyOptionsValidator())
     {
     }
 
