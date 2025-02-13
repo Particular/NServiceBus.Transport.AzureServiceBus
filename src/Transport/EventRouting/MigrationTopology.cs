@@ -1,13 +1,16 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
+using Microsoft.Extensions.Options;
 
 /// <summary>
 /// Topology that allows mixing of single-topic and topic-per-event approaches in order to allow gradual migration to the topic-per-event topology.
 /// </summary>
 public sealed class MigrationTopology : TopicTopology
 {
-    internal MigrationTopology(MigrationTopologyOptions options) : base(options) => Options = options;
+    internal MigrationTopology(MigrationTopologyOptions options) : base(options,
+        new OptionsValidatorDecorator(new MigrationTopologyOptionsValidator())) =>
+        Options = options;
 
     /// <summary>
     /// Gets the topic name of the topic where all single-topic events are published to.
@@ -182,4 +185,13 @@ public sealed class MigrationTopology : TopicTopology
     }
 
     internal override SubscriptionManager CreateSubscriptionManager(SubscriptionManagerCreationOptions creationOptions) => new MigrationTopologySubscriptionManager(creationOptions, Options);
+
+    sealed class OptionsValidatorDecorator(IValidateOptions<MigrationTopologyOptions> decorated)
+        : IValidateOptions<TopologyOptions>
+    {
+        public ValidateOptionsResult Validate(string? name, TopologyOptions options) =>
+            decorated.Validate(name,
+                options as MigrationTopologyOptions ??
+                throw new Exception("The options to be validated must be of type MigrationTopologyOptions."));
+    }
 }

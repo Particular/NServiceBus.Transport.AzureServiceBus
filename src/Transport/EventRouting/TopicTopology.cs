@@ -14,7 +14,16 @@ namespace NServiceBus
         /// <summary>
         /// Allows creating topology instances based on serializable state
         /// </summary>
-        protected TopicTopology(TopologyOptions options) => Options = options;
+        protected TopicTopology(TopologyOptions options, IValidateOptions<TopologyOptions> optionsValidator)
+        {
+            Options = options;
+            OptionsValidator = optionsValidator;
+        }
+
+        /// <summary>
+        /// Gets or sets the options validator used to validate the consistency of the provided options.
+        /// </summary>
+        public IValidateOptions<TopologyOptions> OptionsValidator { get; set; }
 
         internal TopologyOptions Options { get; }
 
@@ -77,18 +86,7 @@ namespace NServiceBus
         /// </summary>
         public void Validate()
         {
-            ValidateOptionsResult validationResult;
-
-            if (Options is MigrationTopologyOptions migrationOptions)
-            {
-                var migrationOptionsValidator = new MigrationTopologyOptionsValidator();
-                validationResult = migrationOptionsValidator.Validate(null, migrationOptions);
-            }
-            else
-            {
-                var validator = new TopologyOptionsValidator();
-                validationResult = validator.Validate(null, Options);
-            }
+            ValidateOptionsResult validationResult = OptionsValidator.Validate(null, Options);
 
             if (validationResult.Succeeded)
             {
