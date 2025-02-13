@@ -5,21 +5,15 @@ using Azure.Messaging.ServiceBus.Administration;
 
 sealed class SubscriptionManagerCreationOptions
 {
-    /// TODO: Change to required/init once the Fody Obsolete problem is fixed
-    public string SubscribingQueueName { get; set; } = null!;
+    public required string SubscribingQueueName { get; init; }
 
-    /// TODO: Change to required/init once the Fody Obsolete problem is fixed
-    public bool EnablePartitioning { get; set; }
+    public required ServiceBusAdministrationClient AdministrationClient { get; init; }
 
-    /// TODO: Change to required/init once the Fody Obsolete problem is fixed
-    public int EntityMaximumSizeInMegabytes { get; set; }
+    public required ServiceBusClient Client { get; init; }
 
-    /// TODO: Change to required/init once the Fody Obsolete problem is fixed
-    public bool SetupInfrastructure { get; set; }
+    public bool EnablePartitioning { get; init; }
 
-    /// TODO: Change to required/init once the Fody Obsolete problem is fixed
-    public ServiceBusAdministrationClient AdministrationClient { get; set; } = null!;
+    public int EntityMaximumSizeInMegabytes { get; init; }
 
-    /// TODO: Change to required/init once the Fody Obsolete problem is fixed
-    public ServiceBusClient Client { get; set; } = null!;
+    public bool SetupInfrastructure { get; init; }
 }
