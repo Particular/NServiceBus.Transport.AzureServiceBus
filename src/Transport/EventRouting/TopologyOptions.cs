@@ -22,6 +22,7 @@ public class TopologyOptions
     /// </summary>
     [JsonInclude]
     [AzureServiceBusTopics]
+    [JsonConverter(typeof(SubscribedEventToTopicsMapConverter))]
     public Dictionary<string, HashSet<string>> SubscribedEventToTopicsMap { get; init; } = [];
 
     /// <summary>
