@@ -46,12 +46,14 @@ namespace NServiceBus
         /// <summary>
         /// Returns a migration topology using a single topic named <c>bundle-1</c> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
         /// </summary>
+        [ObsoleteEx(Message = MigrationTopology.ObsoleteMessage, TreatAsErrorFromVersion = "6", RemoveInVersion = "7")]
         public static MigrationTopology MigrateFromSingleDefaultTopic() => MigrateFromNamedSingleTopic("bundle-1");
 
         /// <summary>
         /// Returns a migration topology using a single topic with the <paramref name="topicName"/> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
         /// </summary>
         /// <param name="topicName">The topic name.</param>
+        [ObsoleteEx(Message = MigrationTopology.ObsoleteMessage, TreatAsErrorFromVersion = "6", RemoveInVersion = "7")]
         public static MigrationTopology MigrateFromNamedSingleTopic(string topicName) => new(new MigrationTopologyOptions
         {
             TopicToPublishTo = topicName,
@@ -65,6 +67,7 @@ namespace NServiceBus
         /// <param name="topicToSubscribeOn">The topic name to subscribe to.</param>
         /// <returns></returns>
         /// <exception cref="ArgumentException">Thrown when <paramref name="topicToPublishTo"/> is equal to <paramref name="topicToSubscribeOn"/>.</exception>
+        [ObsoleteEx(Message = MigrationTopology.ObsoleteMessage, TreatAsErrorFromVersion = "6", RemoveInVersion = "7")]
         public static MigrationTopology MigrateFromTopicHierarchy(string topicToPublishTo, string topicToSubscribeOn)
         {
             var hierarchy = new MigrationTopology(new MigrationTopologyOptions
