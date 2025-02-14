@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 /// <summary>
 /// Topology that allows mixing of single-topic and topic-per-event approaches in order to allow gradual migration to the topic-per-event topology.
 /// </summary>
+[ObsoleteEx(Message = ObsoleteMessage, TreatAsErrorFromVersion = "6", RemoveInVersion = "7")]
 public sealed class MigrationTopology : TopicTopology
 {
     internal MigrationTopology(MigrationTopologyOptions options) : base(options,
@@ -185,6 +186,9 @@ public sealed class MigrationTopology : TopicTopology
     }
 
     internal override SubscriptionManager CreateSubscriptionManager(SubscriptionManagerCreationOptions creationOptions) => new MigrationTopologySubscriptionManager(creationOptions, Options);
+
+    internal const string ObsoleteMessage =
+        "The migration topology is intended to be used during a transitional period, facilitating the migration from the single-topic topology to the topic-per-event topology. The migration topology will eventually be phased out over subsequent releases. Should you phase challenges during migration, please reach out to https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/issues/1170.";
 
     sealed class OptionsValidatorDecorator(IValidateOptions<MigrationTopologyOptions> decorated)
         : IValidateOptions<TopologyOptions>
