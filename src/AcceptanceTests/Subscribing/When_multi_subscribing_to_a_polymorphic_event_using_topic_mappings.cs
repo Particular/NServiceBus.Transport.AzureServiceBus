@@ -15,12 +15,12 @@
             Requires.NativePubSubSupport();
 
             var context = await Scenario.Define<Context>()
-                .WithEndpoint<Publisher1>(b => b.When(c => c.EndpointsStarted, (session, c) =>
+                .WithEndpoint<Publisher1>(b => b.When((session, c) =>
                 {
                     c.AddTrace("Publishing MyEvent1");
                     return session.Publish(new MyEvent1());
                 }))
-                .WithEndpoint<Publisher2>(b => b.When(c => c.EndpointsStarted, (session, c) =>
+                .WithEndpoint<Publisher2>(b => b.When((session, c) =>
                 {
                     c.AddTrace("Publishing MyEvent2");
                     return session.Publish(new MyEvent2());
