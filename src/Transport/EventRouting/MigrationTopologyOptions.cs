@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 /// <summary>
 /// Serializable object that defines the migration topology
 /// </summary>
-[ObsoleteEx(Message = MigrationTopology.ObsoleteMessage, TreatAsErrorFromVersion = "6", RemoveInVersion = "7")]
+[ObsoleteEx(Message = MigrationTopology.ObsoleteMessage, TreatAsErrorFromVersion = "7", RemoveInVersion = "8")]
 public sealed class MigrationTopologyOptions : TopologyOptions
 {
     /// <summary>
