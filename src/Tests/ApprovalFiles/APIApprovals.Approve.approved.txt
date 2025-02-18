@@ -244,7 +244,10 @@ namespace NServiceBus.Transport.AzureServiceBus
         public void PublishTo(System.Type eventType, string topicName) { }
         public void PublishTo<TEventType>(string topicName) { }
         public void SubscribeTo(System.Type eventType, string topicName) { }
+        public void SubscribeTo(System.Type eventType, System.Type eventTypeImplementation) { }
         public void SubscribeTo<TEventType>(string topicName) { }
+        public void SubscribeTo<TEventType, TEventTypeImplementation>()
+            where TEventTypeImplementation : TEventType { }
     }
     [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions), "migration-topology-options")]
     [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.Transport.AzureServiceBus.TopologyOptions), "topology-options")]
