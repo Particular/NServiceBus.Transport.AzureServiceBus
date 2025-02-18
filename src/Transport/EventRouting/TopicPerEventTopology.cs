@@ -37,6 +37,29 @@ public sealed class TopicPerEventTopology : TopicTopology
     }
 
     /// <summary>
+    /// Instructs the topology to use provided topic to subscribe for events of a given type applying the default convention
+    /// of subscribing to the event under a topic name that is the full name of the event type.
+    /// </summary>
+    /// <typeparam name="TEventType">Type of the event.</typeparam>
+    /// <typeparam name="TEventTypeImplementation">Type of the event implementation.</typeparam>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
+    public void SubscribeTo<TEventType, TEventTypeImplementation>() where TEventTypeImplementation : TEventType =>
+        SubscribeTo(typeof(TEventType), typeof(TEventTypeImplementation));
+
+    /// <summary>
+    /// Instructs the topology to use provided topic to subscribe for events of a given type applying the default convention
+    /// of subscribing to the event under a topic name that is the full name of the event type.
+    /// </summary>
+    /// <param name="eventType">Name of the topic to subscribe to.</param>
+    /// <param name="eventTypeImplementation">Type of the event implementation.</param>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
+    public void SubscribeTo(Type eventType, Type eventTypeImplementation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventTypeImplementation.FullName);
+        SubscribeTo(eventType, eventTypeImplementation.FullName);
+    }
+
+    /// <summary>
     /// Instructs the topology to use provided topic to subscribe for events of a given type.
     /// </summary>
     /// <param name="topicName">Name of the topic to subscribe to.</param>
