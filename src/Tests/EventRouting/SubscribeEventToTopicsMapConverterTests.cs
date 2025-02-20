@@ -7,6 +7,28 @@ using NUnit.Framework;
 public class SubscribeEventToTopicsMapConverterTests
 {
     [Test]
+    public void Defaults_to_non_migration_when_no_type_specified()
+    {
+        const string jsonPayload = """
+                                   {
+                                     "SubscribedEventToTopicsMap" : {
+                                       "MyEvent" : "SomeTopic"
+                                     }
+                                   }
+                                   """;
+
+        TopologyOptions deserialized =
+            JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.TopologyOptions);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
+            Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
+                Is.EquivalentTo(["SomeTopic"]));
+        });
+    }
+
+    [Test]
     public void Supports_single_element()
     {
         const string jsonPayload = """
