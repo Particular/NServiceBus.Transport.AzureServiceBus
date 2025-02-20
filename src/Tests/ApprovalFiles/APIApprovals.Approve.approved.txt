@@ -211,10 +211,8 @@ namespace NServiceBus.Transport.AzureServiceBus
         [System.Runtime.CompilerServices.CompilerFeatureRequired("RequiredMembers")]
         public MigrationTopologyOptions() { }
         [NServiceBus.Transport.AzureServiceBus.ValidMigrationTopology]
-        [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.HashSet<string> EventsToMigrateMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusRules]
-        [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, string> SubscribedEventToRuleNameMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.ComponentModel.DataAnnotations.Required]
@@ -255,15 +253,12 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         public TopologyOptions() { }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
-        [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, string> PublishedEventToTopicsMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusQueues]
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusSubscriptions]
-        [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, string> QueueNameToSubscriptionNameMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscribedEventToTopicsMapConverter))]
-        [System.Text.Json.Serialization.JsonInclude]
         public System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>> SubscribedEventToTopicsMap { get; init; }
     }
     public sealed class TopologyOptionsDisableValidationValidator : Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions>
