@@ -11,9 +11,18 @@ using System.Text.Json.Serialization;
 public class TopologyOptions
 {
     /// <summary>
+    /// Maps event type full names to topics under which they are to be published.
+    /// </summary>
+    [AzureServiceBusTopics]
+    public Dictionary<string, string> PublishedEventToTopicsMap
+    {
+        get => publishedEventToTopicsMap;
+        init => publishedEventToTopicsMap = value ?? [];
+    }
+
+    /// <summary>
     /// Maps event type full names to topics under which they are to be subscribed.
     /// </summary>
-    [JsonInclude]
     [AzureServiceBusTopics]
     [JsonConverter(typeof(SubscribedEventToTopicsMapConverter))]
     public Dictionary<string, HashSet<string>> SubscribedEventToTopicsMap
@@ -25,24 +34,12 @@ public class TopologyOptions
     /// <summary>
     /// Maps queue names to non-default subscription names.
     /// </summary>
-    [JsonInclude]
     [AzureServiceBusQueues]
     [AzureServiceBusSubscriptions]
     public Dictionary<string, string> QueueNameToSubscriptionNameMap
     {
         get => queueNameToSubscriptionNameMap;
         init => queueNameToSubscriptionNameMap = value ?? [];
-    }
-
-    /// <summary>
-    /// Maps event type full names to topics under which they are to be published.
-    /// </summary>
-    [JsonInclude]
-    [AzureServiceBusTopics]
-    public Dictionary<string, string> PublishedEventToTopicsMap
-    {
-        get => publishedEventToTopicsMap;
-        init => publishedEventToTopicsMap = value ?? [];
     }
 
     //Backing fields are required because the Json serializes initializes properties to null if corresponding json element is missing

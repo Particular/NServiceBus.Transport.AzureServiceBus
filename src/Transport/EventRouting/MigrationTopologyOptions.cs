@@ -2,7 +2,6 @@ namespace NServiceBus.Transport.AzureServiceBus;
 
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
 
 /// <summary>
 /// Serializable object that defines the migration topology
@@ -27,7 +26,6 @@ public sealed class MigrationTopologyOptions : TopologyOptions
     /// <summary>
     /// Collection of events that have not yet been migrated to the topic-per-event topology
     /// </summary>
-    [JsonInclude]
     [ValidMigrationTopology]
     public HashSet<string> EventsToMigrateMap
     {
@@ -38,7 +36,6 @@ public sealed class MigrationTopologyOptions : TopologyOptions
     /// <summary>
     /// Maps event full names to non-default rule names.
     /// </summary>
-    [JsonInclude]
     [AzureServiceBusRules]
     public Dictionary<string, string> SubscribedEventToRuleNameMap
     {
