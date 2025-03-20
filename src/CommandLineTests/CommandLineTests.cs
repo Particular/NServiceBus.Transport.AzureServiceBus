@@ -62,7 +62,7 @@
 
             await VerifyQueue(QueueName);
             await VerifyTopic(DefaultTopicName);
-            await VerifySubscriptionContainsOnlyDefaultRule(DefaultTopicName, SubscriptionName);
+            await VerifySubscriptionContainsOnlyDefaultRejectAllRule(DefaultTopicName, SubscriptionName);
         }
 
         [Test]
@@ -82,7 +82,7 @@
 
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
-            await VerifySubscriptionContainsOnlyDefaultRule(TopicName, SubscriptionName);
+            await VerifySubscriptionContainsOnlyDefaultRejectAllRule(TopicName, SubscriptionName);
         }
 
         [Test]
@@ -105,7 +105,7 @@
             await VerifyTopic(TopicName);
             await VerifyTopic(HierarchyTopicName);
             await VerifySubscriptionContainsOnlyDefaultMatchAllRule(TopicName, HierarchySubscriptionName);
-            await VerifySubscriptionContainsOnlyDefaultRule(HierarchyTopicName, SubscriptionName);
+            await VerifySubscriptionContainsOnlyDefaultRejectAllRule(HierarchyTopicName, SubscriptionName);
         }
 
         [Test]
@@ -162,6 +162,7 @@
             await VerifyQueue(QueueName);
             await VerifyTopic("MyMessage1");
             await VerifyTopicPerEventTypeSubscription("MyMessage1", SubscriptionName, QueueName);
+            await VerifySubscriptionContainsOnlyDefaultMatchAllRule("MyMessage1", SubscriptionName);
         }
 
         [Test]
@@ -252,7 +253,7 @@
             await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName");
             await Execute($"migration endpoint unsubscribe-migrated {EndpointName} MyNamespace1.MyMessage4");
 
-            await VerifySubscriptionContainsOnlyDefaultRule(TopicName, SubscriptionName);
+            await VerifySubscriptionContainsOnlyDefaultRejectAllRule(TopicName, SubscriptionName);
             await VerifySubscriptionDoesNotExist("MyNamespace1.MyMessage4", SubscriptionName);
         }
 
@@ -272,7 +273,7 @@
             await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName}");
             await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName");
 
-            await VerifySubscriptionContainsOnlyDefaultRule(HierarchyTopicName, SubscriptionName);
+            await VerifySubscriptionContainsOnlyDefaultRejectAllRule(HierarchyTopicName, SubscriptionName);
         }
 
         [Test]
@@ -467,7 +468,7 @@
             });
         }
 
-        async Task VerifySubscriptionContainsOnlyDefaultRule(string topicName, string subscriptionName)
+        async Task VerifySubscriptionContainsOnlyDefaultRejectAllRule(string topicName, string subscriptionName)
         {
             var rules = new List<RuleProperties>();
 

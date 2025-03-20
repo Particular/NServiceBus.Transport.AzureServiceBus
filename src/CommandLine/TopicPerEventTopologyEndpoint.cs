@@ -33,7 +33,7 @@ static class TopicPerEventTopologyEndpoint
 
         try
         {
-            await Subscription.Create(client, name, topicName, subscriptionName);
+            await Subscription.CreateWithMatchAll(client, name, topicName, subscriptionName);
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
