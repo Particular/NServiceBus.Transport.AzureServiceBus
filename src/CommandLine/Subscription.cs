@@ -7,7 +7,7 @@
 
     static class Subscription
     {
-        public static Task Create(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandOption topicName, CommandOption subscriptionName)
+        public static Task CreateWithRejectAll(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandOption topicName, CommandOption subscriptionName)
         {
             var topicNameToUse = topicName.HasValue() ? topicName.Value() : Topic.DefaultTopicName;
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
@@ -25,7 +25,7 @@
             return client.CreateSubscriptionAsync(options, new CreateRuleOptions("$default", new FalseRuleFilter()));
         }
 
-        public static Task Create(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandArgument topicName, CommandOption subscriptionName)
+        public static Task CreateWithMatchAll(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandArgument topicName, CommandOption subscriptionName)
         {
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
 
@@ -39,7 +39,7 @@
                 UserMetadata = endpointName.Value
             };
 
-            return client.CreateSubscriptionAsync(options, new CreateRuleOptions("$default", new FalseRuleFilter()));
+            return client.CreateSubscriptionAsync(options, new CreateRuleOptions("$default", new TrueRuleFilter()));
         }
 
         public static Task CreateForwarding(ServiceBusAdministrationClient client, CommandOption topicToPublishTo, CommandOption topicToSubscribeTo, string subscriptionName)

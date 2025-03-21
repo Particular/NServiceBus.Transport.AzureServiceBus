@@ -32,7 +32,7 @@
 
                 try
                 {
-                    await Subscription.Create(client, name, topicName, subscriptionName);
+                    await Subscription.CreateWithRejectAll(client, name, topicName, subscriptionName);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -76,7 +76,7 @@
 
                 try
                 {
-                    await Subscription.Create(client, name, topicToSubscribeOn, subscriptionName);
+                    await Subscription.CreateWithRejectAll(client, name, topicToSubscribeOn, subscriptionName);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
