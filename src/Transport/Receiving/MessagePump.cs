@@ -238,7 +238,6 @@ sealed class MessagePump(
         circuitBreaker = null;
     }
 
-
     async Task ProcessMessage(ServiceBusReceivedMessage message,
         ProcessMessageEventArgs processMessageEventArgs,
         string messageId, Dictionary<string, string?> headers, BinaryData body,
