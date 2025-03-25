@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 
-sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
+sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure, IAsyncDisposable
 {
     readonly AzureServiceBusTransport transportSettings;
 
@@ -96,10 +96,26 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
     public override async Task Shutdown(CancellationToken cancellationToken = default)
     {
-        await Task.WhenAll(Receivers.Values.Select(r => r.StopReceive(cancellationToken)))
-            .ConfigureAwait(false);
+        try
+        {
+            await Task.WhenAll(Receivers.Values.Select(r => r.StopReceive(cancellationToken)))
+                .ConfigureAwait(false);
 
-        await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
+            await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var messageReceiver in Receivers.Values)
+        {
+            var receiver = (MessagePump)messageReceiver;
+            await receiver.DisposeAsync().ConfigureAwait(false);
+        }
 
         foreach (var (_, serviceBusClient) in receiveSettingsAndClientPairs)
         {
