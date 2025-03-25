@@ -331,18 +331,9 @@ sealed class MessagePump(
                 })
             : new AzureServiceBusTransportTransaction();
 
-    public ISubscriptionManager? Subscriptions
-    {
-        get;
-    } = subscriptionManager;
+    public ISubscriptionManager? Subscriptions { get; } = subscriptionManager;
 
-    public string Id
-    {
-        get;
-    } = receiveSettings.Id;
+    public string Id { get; } = receiveSettings.Id;
 
-    public string ReceiveAddress
-    {
-        get;
-    } = receiveAddress;
+    public string ReceiveAddress { get; } = receiveAddress;
 }
