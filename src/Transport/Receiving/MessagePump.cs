@@ -19,7 +19,7 @@ sealed class MessagePump(
     Action<string, Exception, CancellationToken> criticalErrorAction,
     ISubscriptionManager? subscriptionManager,
     SubQueue subQueue = SubQueue.None)
-    : IMessageReceiver
+    : IMessageReceiver, IAsyncDisposable
 {
     readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
 
@@ -218,15 +218,24 @@ sealed class MessagePump(
         {
             Logger.Debug($"Operation canceled while stopping the receiver {processor.EntityPath}.", ex);
         }
+    }
 
-        processor.ProcessErrorAsync -= OnProcessorError;
-        processor.ProcessMessageAsync -= OnProcessMessage;
+    public async ValueTask DisposeAsync()
+    {
+        if (processor != null)
+        {
+            processor.ProcessErrorAsync -= OnProcessorError;
+            processor.ProcessMessageAsync -= OnProcessMessage;
 
-        await processor.DisposeAsync().ConfigureAwait(false);
+            await processor.DisposeAsync().ConfigureAwait(false);
+            processor = null;
+        }
 
         messageProcessingCancellationTokenSource?.Dispose();
         messageProcessingCancellationTokenSource = null;
+
         circuitBreaker?.Dispose();
+        circuitBreaker = null;
     }
 
     async Task ProcessMessage(ServiceBusReceivedMessage message,
