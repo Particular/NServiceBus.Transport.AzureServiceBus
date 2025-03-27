@@ -105,7 +105,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure, I
         }
         finally
         {
-            //NOTE: On the core disposes the transport seam, this can be removed
+            //NOTE: Once Core disposes the transport seam, this can be removed
             await DisposeAsync().ConfigureAwait(false);
         }
     }
