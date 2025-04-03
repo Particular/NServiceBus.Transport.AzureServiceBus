@@ -105,10 +105,20 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         }
         finally
         {
-            await ReleaseResources().ConfigureAwait(false);
+            foreach (var messageReceiver in Receivers.Values)
+            {
+                var receiver = (MessagePump)messageReceiver;
+                await receiver.DisposeAsync().ConfigureAwait(false);
+            }
+
+            foreach (var (_, serviceBusClient) in receiveSettingsAndClientPairs)
+            {
+                await serviceBusClient.DisposeAsync().ConfigureAwait(false);
+            }
+
+            await defaultClient.DisposeAsync().ConfigureAwait(false);
         }
     }
-
 
     public override string ToTransportAddress(QueueAddress address)
     {
@@ -125,24 +135,6 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         }
 
         return queue.ToString();
-    }
-
-#pragma warning disable PS0018
-    async ValueTask ReleaseResources()
-#pragma warning restore PS0018
-    {
-        foreach (var messageReceiver in Receivers.Values)
-        {
-            var receiver = (MessagePump)messageReceiver;
-            await receiver.DisposeAsync().ConfigureAwait(false);
-        }
-
-        foreach (var (_, serviceBusClient) in receiveSettingsAndClientPairs)
-        {
-            await serviceBusClient.DisposeAsync().ConfigureAwait(false);
-        }
-
-        await defaultClient.DisposeAsync().ConfigureAwait(false);
     }
 
     static SubQueue ToSubQueue(QueueAddress address) =>
