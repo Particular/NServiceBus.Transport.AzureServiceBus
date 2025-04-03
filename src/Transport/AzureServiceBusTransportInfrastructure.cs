@@ -96,17 +96,28 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
     public override async Task Shutdown(CancellationToken cancellationToken = default)
     {
-        await Task.WhenAll(Receivers.Values.Select(r => r.StopReceive(cancellationToken)))
-            .ConfigureAwait(false);
-
-        await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
-
-        foreach (var (_, serviceBusClient) in receiveSettingsAndClientPairs)
+        try
         {
-            await serviceBusClient.DisposeAsync().ConfigureAwait(false);
-        }
+            await Task.WhenAll(Receivers.Values.Select(r => r.StopReceive(cancellationToken)))
+                .ConfigureAwait(false);
 
-        await defaultClient.DisposeAsync().ConfigureAwait(false);
+            await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            foreach (var messageReceiver in Receivers.Values)
+            {
+                var receiver = (MessagePump)messageReceiver;
+                await receiver.DisposeAsync().ConfigureAwait(false);
+            }
+
+            foreach (var (_, serviceBusClient) in receiveSettingsAndClientPairs)
+            {
+                await serviceBusClient.DisposeAsync().ConfigureAwait(false);
+            }
+
+            await defaultClient.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     public override string ToTransportAddress(QueueAddress address)
