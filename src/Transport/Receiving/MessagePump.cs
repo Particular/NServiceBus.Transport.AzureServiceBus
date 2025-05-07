@@ -110,7 +110,7 @@ sealed class MessagePump(
     async Task OnProcessMessage(ProcessMessageEventArgs arg)
 #pragma warning restore PS0018
     {
-        string messageId;
+        string nativeMessageId;
         Dictionary<string, string?> headers;
         BinaryData body;
         var message = arg.Message;
@@ -119,7 +119,7 @@ sealed class MessagePump(
 
         try
         {
-            messageId = message.GetMessageId();
+            nativeMessageId = message.GetMessageId();
 
             // Deliberately not using the cancellation token to make sure we abandon the message even when the
             // cancellation token is already set.
@@ -148,7 +148,7 @@ sealed class MessagePump(
         // need to catch OCE here because we are switching token
         try
         {
-            await ProcessMessage(message, arg, messageId, headers, body, messageProcessingCancellationTokenSource!.Token).ConfigureAwait(false);
+            await ProcessMessage(message, arg, nativeMessageId, headers, body, messageProcessingCancellationTokenSource!.Token).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource!.Token))
         {
@@ -240,7 +240,7 @@ sealed class MessagePump(
 
     async Task ProcessMessage(ServiceBusReceivedMessage message,
         ProcessMessageEventArgs processMessageEventArgs,
-        string messageId, Dictionary<string, string?> headers, BinaryData body,
+        string nativeMessageId, Dictionary<string, string?> headers, BinaryData body,
         CancellationToken messageProcessingCancellationToken)
     {
         // args.CancellationToken is currently not used because the v8 version that supports cancellation was designed
@@ -252,7 +252,7 @@ sealed class MessagePump(
         try
         {
             using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
-            var messageContext = new MessageContext(messageId, headers, body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
+            var messageContext = new MessageContext(nativeMessageId, headers, body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
             await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
@@ -273,7 +273,7 @@ sealed class MessagePump(
 
                 using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
                 {
-                    var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), messageId, body,
+                    var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), nativeMessageId, body,
                         azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
 
                     result = await onError!(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
