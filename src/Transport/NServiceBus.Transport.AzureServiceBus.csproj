@@ -32,6 +32,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\..\..\NServiceBus\src\NServiceBus.Core\NServiceBus.Core.csproj" />
+    <ProjectReference Include="..\..\..\NServiceBus.Extensions.Hosting\src\NServiceBus.Extensions.Hosting\NServiceBus.Extensions.Hosting.csproj" />
   </ItemGroup>
 
 </Project>
