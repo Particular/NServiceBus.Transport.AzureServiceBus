@@ -31,7 +31,10 @@ class QueueCreator(AzureServiceBusTransport transportSettings)
             }
             catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
-                Logger.Debug($"Queue {queue.Name} already exists");
+                if (Logger.IsDebugEnabled)
+                {
+                    Logger.Debug($"Queue {queue.Name} already exists");
+                }
             }
             catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
             {
