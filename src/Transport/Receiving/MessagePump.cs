@@ -152,7 +152,10 @@ sealed class MessagePump(
         }
         catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource!.Token))
         {
-            Logger.Debug("Message processing canceled.", ex);
+            if (Logger.IsDebugEnabled)
+            {
+                Logger.Debug("Message processing canceled.", ex);
+            }
         }
     }
 
@@ -216,7 +219,10 @@ sealed class MessagePump(
         }
         catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
         {
-            Logger.Debug($"Operation canceled while stopping the receiver {processor.EntityPath}.", ex);
+            if (Logger.IsDebugEnabled)
+            {
+                Logger.Debug($"Operation canceled while stopping the receiver {processor.EntityPath}.", ex);
+            }
         }
     }
 

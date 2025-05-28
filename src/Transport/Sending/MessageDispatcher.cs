@@ -221,7 +221,11 @@ class MessageDispatcher(
             // when it tries to establish a link to a non-existing entity.
             catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
-                Log.Debug($"Skipping sending messages to topic {destination} because the destination does not exist.");
+                if (Log.IsDebugEnabled)
+                {
+                    Log.Debug($"Skipping sending messages to topic {destination} because the destination does not exist.");
+                }
+
                 return;
             }
         }
@@ -299,7 +303,10 @@ class MessageDispatcher(
         }
         catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {
-            Log.Debug($"Sending message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
+            if (Log.IsDebugEnabled)
+            {
+                Log.Debug($"Sending message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
+            }
         }
     }
 }
