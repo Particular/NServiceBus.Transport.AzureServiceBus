@@ -16,7 +16,10 @@ static class ProcessMessageEventArgsExtensions
     {
         if (transportTransactionMode == TransportTransactionMode.ReceiveOnly && messagesToBeCompleted.TryGet(message.GetMessageId(), out _))
         {
-            Logger.DebugFormat("Received message with id '{0}' was marked as successfully completed. Trying to immediately acknowledge the message without invoking the pipeline.", message.GetMessageId());
+            if (Logger.IsDebugEnabled)
+            {
+                Logger.DebugFormat("Received message with id '{0}' was marked as successfully completed. Trying to immediately acknowledge the message without invoking the pipeline.", message.GetMessageId());
+            }
 
             try
             {
@@ -56,8 +59,11 @@ static class ProcessMessageEventArgsExtensions
             }
             catch (Exception e) when (!e.IsCausedBy(cancellationToken))
             {
-                // nothing we can do about it, message will be retried
-                Logger.Debug($"Error abandoning the message with id '{message.GetMessageId()}' because the lock has expired at '{message.LockedUntil}.", e);
+                if (Logger.IsDebugEnabled)
+                {
+                    // nothing we can do about it, message will be retried
+                    Logger.Debug($"Error abandoning the message with id '{message.GetMessageId()}' because the lock has expired at '{message.LockedUntil}.", e);
+                }
             }
         }
         return false;
@@ -80,8 +86,11 @@ static class ProcessMessageEventArgsExtensions
             }
             catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(cancellationToken))
             {
-                // nothing we can do about it, message will be retried
-                Logger.Debug("Error dead lettering poisoned message.", deadLetterEx);
+                if (Logger.IsDebugEnabled)
+                {
+                    // nothing we can do about it, message will be retried
+                    Logger.Debug("Error dead lettering poisoned message.", deadLetterEx);
+                }
             }
         }
         else
@@ -126,9 +135,12 @@ static class ProcessMessageEventArgsExtensions
             }
             catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.MessageLockLost)
             {
-                // We tried to abandon the message because it needs to be retried, but the lock was lost.
-                // the message will reappear on the next receive anyway so we can just ignore this case.
-                Logger.DebugFormat("Attempted to abandon the message with id '{0}' but the lock was lost.", message.GetMessageId());
+                if (Logger.IsDebugEnabled)
+                {
+                    // We tried to abandon the message because it needs to be retried, but the lock was lost.
+                    // the message will reappear on the next receive anyway so we can just ignore this case.
+                    Logger.DebugFormat("Attempted to abandon the message with id '{0}' but the lock was lost.", message.GetMessageId());
+                }
             }
         }
     }

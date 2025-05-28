@@ -120,7 +120,10 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
         }
         catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
-            Logger.Debug($"Default subscription rule for topic {subscription.TopicName} already exists");
+            if (Logger.IsDebugEnabled)
+            {
+                Logger.Debug($"Default subscription rule for topic {subscription.TopicName} already exists");
+            }
         }
         catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
         {
