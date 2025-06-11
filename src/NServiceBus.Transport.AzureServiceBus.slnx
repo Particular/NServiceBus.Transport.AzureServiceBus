@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="../.github/workflows/ci.yml" />
+    <File Path="../.github/workflows/release.yml" />
+    <File Path="Custom.Build.props" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="AcceptanceTests/NServiceBus.Transport.AzureServiceBus.AcceptanceTests.csproj" />
+    <Project Path="CommandLineTests/NServiceBus.Transport.AzureServiceBus.CommandLine.Tests.csproj" />
+    <Project Path="MigrationAcceptanceTests/NServiceBus.Transport.AzureServiceBus.Migration.AcceptanceTests.csproj" />
+    <Project Path="Tests/NServiceBus.Transport.AzureServiceBus.Tests.csproj" />
+    <Project Path="TransportTests/NServiceBus.Transport.AzureServiceBus.TransportTests.csproj" />
+  </Folder>
+  <Project Path="CommandLine/NServiceBus.Transport.AzureServiceBus.CommandLine.csproj" />
+  <Project Path="Transport/NServiceBus.Transport.AzureServiceBus.csproj" />
+</Solution>
