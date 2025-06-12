@@ -310,7 +310,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// <summary>
     /// When set will add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
     /// </summary>
-    [ObsoleteEx(Message = "Next versions of the transport will by default no longer send the transport encoding header for wire compatibility, requiring an opt-in for the header to be sent.",
+    [ObsoleteEx(Message = "Next versions of the transport will no longer support sending the transport encoding header.",
         TreatAsErrorFromVersion = "6",
         RemoveInVersion = "7")]
     public bool SendTransportEncodingHeader
