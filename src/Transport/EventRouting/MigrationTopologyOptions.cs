@@ -6,7 +6,7 @@ using System.ComponentModel.DataAnnotations;
 /// <summary>
 /// Serializable object that defines the migration topology
 /// </summary>
-[ObsoleteEx(Message = MigrationTopology.ObsoleteMessage, TreatAsErrorFromVersion = "7", RemoveInVersion = "8")]
+[ObsoleteEx(Message = MigrationTopology.ObsoleteMessage, TreatAsErrorFromVersion = MigrationTopology.TreatAsErrorFromVersion, RemoveInVersion = MigrationTopology.RemoveInVersion)]
 public sealed class MigrationTopologyOptions : TopologyOptions
 {
     /// <summary>
