@@ -49,18 +49,6 @@ namespace NServiceBus
             get => throw new NotImplementedException();
             set => throw new NotImplementedException();
         }
-
-        [ObsoleteEx(
-            Message =
-                "The transport by default no longer sends the transport encoding header for wire compatibility with NServiceBus.AzureServiceBus, requiring an opt-in for the header to be sent.",
-            TreatAsErrorFromVersion = "5",
-            RemoveInVersion = "6",
-            ReplacementTypeOrMember = "SendTransportEncodingHeader")]
-        public bool DoNotSendTransportEncodingHeader
-        {
-            get => throw new NotImplementedException();
-            set => throw new NotImplementedException();
-        }
     }
 
     public static partial class AzureServiceBusTransportSettingsExtensions
@@ -95,17 +83,6 @@ namespace NServiceBus
         public static TransportExtensions<AzureServiceBusTransport> SubscriptionRuleNamingConvention(
             this TransportExtensions<AzureServiceBusTransport> transportExtensions,
             Func<Type, string> subscriptionRuleNamingConvention) => throw new NotImplementedException();
-
-        [ObsoleteEx(
-            Message =
-                "The transport by default no longer sends the transport encoding header for wire compatibility with NServiceBus.AzureServiceBus, requiring an opt-in for the header to be sent.",
-            TreatAsErrorFromVersion = "6",
-            RemoveInVersion = "7",
-            ReplacementTypeOrMember =
-                "SendTransportEncodingHeader(this TransportExtensions<AzureServiceBusTransport> transportExtensions)")]
-        public static TransportExtensions<AzureServiceBusTransport> DoNotSendTransportEncodingHeader(
-            this TransportExtensions<AzureServiceBusTransport> transportExtensions) =>
-            throw new NotImplementedException();
     }
 
     public abstract partial class TopicTopology
