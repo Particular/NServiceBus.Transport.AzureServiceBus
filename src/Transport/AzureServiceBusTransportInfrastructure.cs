@@ -38,8 +38,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         Dispatcher = new MessageDispatcher(
             messageSenderRegistry,
             transportSettings.Topology,
-            transportSettings.OutgoingNativeMessageCustomization,
-            transportSettings.SendTransportEncodingHeader
+            transportSettings.OutgoingNativeMessageCustomization
         );
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
         {

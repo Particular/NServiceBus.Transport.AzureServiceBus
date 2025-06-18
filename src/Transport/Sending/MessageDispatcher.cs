@@ -12,8 +12,7 @@ using Logging;
 class MessageDispatcher(
     MessageSenderRegistry messageSenderRegistry,
     TopicTopology topology,
-    OutgoingNativeMessageCustomizationAction? customizerCallback = null,
-    bool sendTransportEncodingHeader = false)
+    OutgoingNativeMessageCustomizationAction? customizerCallback = null)
     : IMessageDispatcher
 {
     const int MaxMessageThresholdForTransaction = 100;
@@ -127,7 +126,7 @@ class MessageDispatcher(
             foreach (var operation in operations)
             {
                 ServiceBusMessage message = operation.ToAzureServiceBusMessage(
-                    azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, sendTransportEncodingHeader);
+                    azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
 
@@ -280,7 +279,7 @@ class MessageDispatcher(
             foreach (var operation in operations)
             {
                 ServiceBusMessage message = operation.ToAzureServiceBusMessage(
-                    azureServiceBusTransportTransaction?.IncomingQueuePartitionKey, sendTransportEncodingHeader);
+                    azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
                 dispatchTasks.Add(DispatchForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
