@@ -23,11 +23,7 @@ namespace NServiceBus
             TreatAsErrorFromVersion = "6",
             RemoveInVersion = "7")]
         public static TransportExtensions<AzureServiceBusTransport> SendTransportEncodingHeader(
-            this TransportExtensions<AzureServiceBusTransport> transportExtensions)
-        {
-            transportExtensions.Transport.SendTransportEncodingHeader = true;
-            return transportExtensions;
-        }
+            this TransportExtensions<AzureServiceBusTransport> transportExtensions) => throw new NotImplementedException();
     }
 }
 
