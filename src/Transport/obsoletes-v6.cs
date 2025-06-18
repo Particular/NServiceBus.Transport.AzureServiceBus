@@ -6,7 +6,7 @@ namespace NServiceBus
 
     public partial class AzureServiceBusTransport
     {
-        [ObsoleteEx(Message = "Next versions of the transport will no longer support sending the transport encoding header.",
+        [ObsoleteEx(Message = "The transport no longer supports sending the transport encoding header.",
         TreatAsErrorFromVersion = "6",
         RemoveInVersion = "7")]
         public bool SendTransportEncodingHeader
@@ -19,7 +19,7 @@ namespace NServiceBus
     public static partial class AzureServiceBusTransportSettingsExtensions
     {
         [ObsoleteEx(
-            Message = "Next versions of the transport will no longer support sending the transport encoding header.",
+            Message = "The transport no longer supports sending the transport encoding header.",
             TreatAsErrorFromVersion = "6",
             RemoveInVersion = "7")]
         public static TransportExtensions<AzureServiceBusTransport> SendTransportEncodingHeader(
