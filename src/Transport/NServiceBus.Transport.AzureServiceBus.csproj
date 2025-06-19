@@ -21,10 +21,6 @@
     <PackageReference Include="Particular.Packaging" Version="4.4.0" PrivateAssets="All" />
   </ItemGroup>
 
-  <ItemGroup Label="Direct references to transitive dependencies to avoid versions with CVE">
-    <PackageReference Include="Azure.Core" Version="1.46.2" />
-  </ItemGroup>
-
   <ItemGroup>
     <InternalsVisibleTo Include="NServiceBus.Transport.AzureServiceBus.AcceptanceTests" Key="$(NServiceBusTestsKey)" />
     <InternalsVisibleTo Include="NServiceBus.Transport.AzureServiceBus.Migration.AcceptanceTests" Key="$(NServiceBusTestsKey)" />
