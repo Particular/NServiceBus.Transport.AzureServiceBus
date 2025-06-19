@@ -308,18 +308,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
     IWebProxy? webProxy;
 
     /// <summary>
-    /// When set will add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
-    /// </summary>
-    [ObsoleteEx(Message = "Next versions of the transport will no longer support sending the transport encoding header.",
-        TreatAsErrorFromVersion = "6",
-        RemoveInVersion = "7")]
-    public bool SendTransportEncodingHeader
-    {
-        get;
-        set;
-    }
-
-    /// <summary>
     /// Gets or sets the action that allows customization of the native <see cref="ServiceBusMessage"/> 
     /// just before it is dispatched to the Azure Service Bus SDK client. 
     /// </summary>

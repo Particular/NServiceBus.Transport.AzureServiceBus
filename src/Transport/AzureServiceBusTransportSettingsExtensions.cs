@@ -52,34 +52,6 @@ public static partial class AzureServiceBusTransportSettingsExtensions
     }
 
     /// <summary>
-    /// Sets the Azure Service Bus connection string.
-    /// </summary>
-    [ObsoleteEx(Message = "Connection string needs to be passed either through constructor of AzureServiceBusTransport or via UseTransport<AzureServiceBusTransport> method.",
-        TreatAsErrorFromVersion = "5",
-        RemoveInVersion = "6")]
-    public static TransportExtensions<AzureServiceBusTransport> ConnectionString(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string connectionString)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(nameof(connectionString), connectionString);
-        transportExtensions.Transport.ConnectionString = connectionString;
-        return transportExtensions;
-    }
-
-    /// <summary>
-    /// Sets the Azure Service Bus connection string.
-    /// </summary>
-    [ObsoleteEx(Message = "Connection string needs to be passed either through constructor of AzureServiceBusTransport or via UseTransport<AzureServiceBusTransport> method.",
-        TreatAsErrorFromVersion = "5",
-        RemoveInVersion = "6")]
-    public static TransportExtensions<AzureServiceBusTransport> ConnectionString(this TransportExtensions<AzureServiceBusTransport> transportExtensions, Func<string> connectionString)
-    {
-        ArgumentNullException.ThrowIfNull(connectionString);
-        var value = connectionString();
-        ArgumentException.ThrowIfNullOrWhiteSpace(nameof(connectionString), value);
-        transportExtensions.Transport.ConnectionString = value;
-        return transportExtensions;
-    }
-
-    /// <summary>
     /// Overrides the default maximum size used when creating queues and topics.
     /// </summary>
     /// <param name="transportExtensions"></param>
@@ -180,21 +152,6 @@ public static partial class AzureServiceBusTransportSettingsExtensions
     }
 
     /// <summary>
-    /// Overrides the default token credential with a custom one.
-    /// </summary>
-    [ObsoleteEx(Message = "Custom token credential needs to be passed either through constructor of AzureServiceBusTransport or via UseTransport<AzureServiceBusTransport> method.",
-        TreatAsErrorFromVersion = "5",
-        RemoveInVersion = "6")]
-    public static TransportExtensions<AzureServiceBusTransport> CustomTokenCredential(this TransportExtensions<AzureServiceBusTransport> transportExtensions, string fullyQualifiedNamespace, TokenCredential tokenCredential)
-    {
-        ArgumentNullException.ThrowIfNull(tokenCredential);
-        ArgumentException.ThrowIfNullOrWhiteSpace(nameof(fullyQualifiedNamespace), fullyQualifiedNamespace);
-        transportExtensions.Transport.FullyQualifiedNamespace = fullyQualifiedNamespace;
-        transportExtensions.Transport.TokenCredential = tokenCredential;
-        return transportExtensions;
-    }
-
-    /// <summary>
     /// Overrides the default maximum duration within which the lock will be renewed automatically. This
     /// value should be greater than the longest message lock duration.
     /// </summary>
@@ -208,21 +165,6 @@ public static partial class AzureServiceBusTransportSettingsExtensions
     public static TransportExtensions<AzureServiceBusTransport> MaxAutoLockRenewalDuration(this TransportExtensions<AzureServiceBusTransport> transportExtensions, TimeSpan maximumAutoLockRenewalDuration)
     {
         transportExtensions.Transport.MaxAutoLockRenewalDuration = maximumAutoLockRenewalDuration;
-        return transportExtensions;
-    }
-
-    /// <summary>
-    /// When set will add `NServiceBus.Transport.Encoding` header for wire compatibility with NServiceBus.AzureServiceBus. The default value is <c>false</c>.
-    /// </summary>
-    /// <param name="transportExtensions"></param>
-    [ObsoleteEx(
-        Message = "Next versions of the transport will no longer support sending the transport encoding header.",
-        TreatAsErrorFromVersion = "6",
-        RemoveInVersion = "7")]
-    public static TransportExtensions<AzureServiceBusTransport> SendTransportEncodingHeader(
-        this TransportExtensions<AzureServiceBusTransport> transportExtensions)
-    {
-        transportExtensions.Transport.SendTransportEncodingHeader = true;
         return transportExtensions;
     }
 }

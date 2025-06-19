@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <ToolCommandName>asb-transport</ToolCommandName>
     <PackAsTool>True</PackAsTool>
@@ -11,10 +11,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.13.2" />
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.19.0" />
+    <PackageReference Include="Azure.Identity" Version="1.14.0" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
     <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="4.1.1" />
-    <PackageReference Include="Particular.Packaging" Version="4.2.2" PrivateAssets="All" />
+    <PackageReference Include="Particular.Packaging" Version="4.4.0" PrivateAssets="All" />
   </ItemGroup>
 
 </Project>

@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Runtime.InteropServices;
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
     using Azure.Messaging.ServiceBus.Administration;
@@ -514,12 +515,19 @@
 
         static async Task<(string output, string error, int exitCode)> Execute(string command)
         {
-            var process = new Process();
-            process.StartInfo.RedirectStandardOutput = true;
-            process.StartInfo.RedirectStandardError = true;
-            process.StartInfo.WorkingDirectory = TestContext.CurrentContext.TestDirectory;
-            process.StartInfo.FileName = "dotnet";
-            process.StartInfo.Arguments = $"--fx-version {Environment.Version} NServiceBus.Transport.AzureServiceBus.CommandLine.dll " + command;
+            var frameworkVersion = RuntimeInformation.FrameworkDescription.AsSpan()[5..];
+
+            var process = new Process
+            {
+                StartInfo =
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    WorkingDirectory = TestContext.CurrentContext.TestDirectory,
+                    FileName = "dotnet",
+                    Arguments = $"--fx-version {frameworkVersion} NServiceBus.Transport.AzureServiceBus.CommandLine.dll " + command
+                }
+            };
 
             process.Start();
             var outputTask = process.StandardOutput.ReadToEndAsync();
