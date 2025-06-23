@@ -12,12 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.14.0" />
-    <PackageReference Include="NServiceBus.AcceptanceTests.Sources" Version="10.0.0-alpha.1" GeneratePathProperty="true" />
-    <PackageReference Include="System.IO.Hashing" Version="9.0.6" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="NUnit" Version="4.3.2" />
@@ -26,18 +20,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\AcceptanceTests\TestIndependenceMutator.cs">
-      <Link>TestIndependenceMutator.cs</Link>
-    </Compile>
-    <Compile Include="..\AcceptanceTests\TestIndependenceSkipBehavior.cs">
-      <Link>TestIndependenceSkipBehavior.cs</Link>
-    </Compile>
-    <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs">
-      <Link>TestSuiteConstraints.cs</Link>
-    </Compile>
-    <Compile Include="..\AcceptanceTests\AcceptanceTestExtensions.cs">
-      <Link>AcceptanceTestExtensions.cs</Link>
-    </Compile>
+    <PackageReference Include="Azure.Identity" Version="1.14.0" />
+    <PackageReference Include="NServiceBus.AcceptanceTests.Sources" Version="10.0.0-alpha.1" GeneratePathProperty="true" />
+    <PackageReference Include="System.IO.Hashing" Version="9.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\AcceptanceTests\TestIndependenceMutator.cs" />
+    <Compile Include="..\AcceptanceTests\TestIndependenceSkipBehavior.cs" />
+    <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs" />
+    <Compile Include="..\AcceptanceTests\AcceptanceTestExtensions.cs" />
   </ItemGroup>
 
 </Project>

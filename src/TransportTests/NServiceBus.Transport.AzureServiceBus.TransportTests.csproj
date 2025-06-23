@@ -9,16 +9,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NServiceBus.TransportTests.Sources" Version="10.0.0-alpha.1" GeneratePathProperty="true" />
-    <PackageReference Include="System.IO.Hashing" Version="9.0.6" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="NUnit" Version="4.3.2" />
     <PackageReference Include="NUnit.Analyzers" Version="4.9.2" />
     <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NServiceBus.TransportTests.Sources" Version="10.0.0-alpha.1" GeneratePathProperty="true" />
+    <PackageReference Include="System.IO.Hashing" Version="9.0.6" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(PkgNServiceBus_TransportTests_Sources)' != ''">
@@ -29,9 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\AcceptanceTests\AcceptanceTestExtensions.cs">
-      <Link>AcceptanceTestExtensions.cs</Link>
-    </Compile>
+    <Compile Include="..\AcceptanceTests\AcceptanceTestExtensions.cs" />
   </ItemGroup>
 
 </Project>
