@@ -189,14 +189,13 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// </summary>
     public int EntityMaximumSize
     {
-        get => entityMaximumSize;
+        get;
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(EntityMaximumSize));
-            entityMaximumSize = value;
+            field = value;
         }
-    }
-    int entityMaximumSize = 5;
+    } = 5;
 
     internal int EntityMaximumSizeInMegabytes => EntityMaximumSize * 1024;
 
@@ -210,21 +209,20 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// </summary>
     public int PrefetchMultiplier
     {
-        get => prefetchMultiplier;
+        get;
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(PrefetchMultiplier));
-            prefetchMultiplier = value;
+            field = value;
         }
-    }
-    int prefetchMultiplier = 10;
+    } = 10;
 
     /// <summary>
     /// Overrides the default prefetch count calculation with the specified value.
     /// </summary>
     public int? PrefetchCount
     {
-        get => prefetchCount;
+        get;
         set
         {
             if (value.HasValue)
@@ -232,25 +230,23 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value.Value, nameof(PrefetchCount));
             }
 
-            prefetchCount = value;
+            field = value;
         }
 
     }
-    int? prefetchCount;
 
     /// <summary>
     /// Overrides the default time to wait before triggering a circuit breaker that initiates the endpoint shutdown procedure when the message pump cannot successfully receive a message.
     /// </summary>
     public TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker
     {
-        get => timeToWaitBeforeTriggeringCircuitBreaker;
+        get;
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value.Ticks, nameof(TimeToWaitBeforeTriggeringCircuitBreaker));
-            timeToWaitBeforeTriggeringCircuitBreaker = value;
+            field = value;
         }
-    }
-    TimeSpan timeToWaitBeforeTriggeringCircuitBreaker = TimeSpan.FromMinutes(2);
+    } = TimeSpan.FromMinutes(2);
 
     /// <summary>
     /// Gets or sets the maximum duration within which the lock will be renewed automatically. This
@@ -261,7 +257,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// after completion of message and result in a few false MessageLockLostExceptions temporarily.</remarks>
     public TimeSpan? MaxAutoLockRenewalDuration
     {
-        get => maxAutoLockRenewalDuration;
+        get;
         set
         {
             if (value.HasValue)
@@ -269,10 +265,9 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value.Value.Ticks, nameof(MaxAutoLockRenewalDuration));
             }
 
-            maxAutoLockRenewalDuration = value;
+            field = value;
         }
     }
-    TimeSpan? maxAutoLockRenewalDuration;
 
     /// <summary>
     /// Configures the transport to use AMQP over WebSockets.
@@ -284,39 +279,37 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// </summary>
     public ServiceBusRetryOptions? RetryPolicyOptions
     {
-        get => retryPolicy;
+        get;
         set
         {
             ArgumentNullException.ThrowIfNull(value, nameof(RetryPolicyOptions));
-            retryPolicy = value;
+            field = value;
         }
     }
-    ServiceBusRetryOptions? retryPolicy;
 
     /// <summary>
     /// The proxy to use for communication over web sockets.
     /// </summary>
     public IWebProxy? WebProxy
     {
-        get => webProxy;
+        get;
         set
         {
             ArgumentNullException.ThrowIfNull(value, nameof(WebProxy));
-            webProxy = value;
+            field = value;
         }
     }
-    IWebProxy? webProxy;
 
     /// <summary>
-    /// Gets or sets the action that allows customization of the native <see cref="ServiceBusMessage"/> 
-    /// just before it is dispatched to the Azure Service Bus SDK client. 
+    /// Gets or sets the action that allows customization of the native <see cref="ServiceBusMessage"/>
+    /// just before it is dispatched to the Azure Service Bus SDK client.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This customization is applied after any configured transport customizations, meaning that 
-    /// any changes made here may override or conflict with previous transport-level adjustments. 
-    /// Exercise caution, as modifying the message at this stage can lead to unintended behavior 
-    /// downstream if the message structure or properties are altered in ways that do not align 
+    /// This customization is applied after any configured transport customizations, meaning that
+    /// any changes made here may override or conflict with previous transport-level adjustments.
+    /// Exercise caution, as modifying the message at this stage can lead to unintended behavior
+    /// downstream if the message structure or properties are altered in ways that do not align
     /// with expectations elsewhere in the system.
     /// </para>
     /// </remarks>
