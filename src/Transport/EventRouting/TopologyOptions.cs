@@ -16,9 +16,9 @@ public class TopologyOptions
     [AzureServiceBusTopics]
     public Dictionary<string, string> PublishedEventToTopicsMap
     {
-        get => publishedEventToTopicsMap;
-        init => publishedEventToTopicsMap = value ?? [];
-    }
+        get;
+        init => field = value ?? [];
+    } = [];
 
     /// <summary>
     /// Maps event type full names to topics under which they are to be subscribed.
@@ -27,9 +27,9 @@ public class TopologyOptions
     [JsonConverter(typeof(SubscribedEventToTopicsMapConverter))]
     public Dictionary<string, HashSet<string>> SubscribedEventToTopicsMap
     {
-        get => subscribedEventToTopicsMap;
-        init => subscribedEventToTopicsMap = value ?? [];
-    }
+        get;
+        init => field = value ?? [];
+    } = [];
 
     /// <summary>
     /// Maps queue names to non-default subscription names.
@@ -38,12 +38,7 @@ public class TopologyOptions
     [AzureServiceBusSubscriptions]
     public Dictionary<string, string> QueueNameToSubscriptionNameMap
     {
-        get => queueNameToSubscriptionNameMap;
-        init => queueNameToSubscriptionNameMap = value ?? [];
-    }
-
-    //Backing fields are required because the Json serializes initializes properties to null if corresponding json element is missing
-    readonly Dictionary<string, string> publishedEventToTopicsMap = [];
-    readonly Dictionary<string, HashSet<string>> subscribedEventToTopicsMap = [];
-    readonly Dictionary<string, string> queueNameToSubscriptionNameMap = [];
+        get;
+        init => field = value ?? [];
+    } = [];
 }
