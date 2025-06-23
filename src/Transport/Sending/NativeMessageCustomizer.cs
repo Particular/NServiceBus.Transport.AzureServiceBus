@@ -6,6 +6,5 @@ using Azure.Messaging.ServiceBus;
 
 sealed class NativeMessageCustomizer
 {
-    ConcurrentDictionary<string, Action<ServiceBusMessage>>? customizations;
-    public ConcurrentDictionary<string, Action<ServiceBusMessage>> Customizations => customizations ??= new ConcurrentDictionary<string, Action<ServiceBusMessage>>();
+    public ConcurrentDictionary<string, Action<ServiceBusMessage>> Customizations => field ??= new ConcurrentDictionary<string, Action<ServiceBusMessage>>();
 }

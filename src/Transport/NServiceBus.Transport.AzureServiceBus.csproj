@@ -1,28 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\NServiceBus.snk</AssemblyOriginatorKeyFile>
     <Description>Azure Service Bus transport for NServiceBus</Description>
-    <NoWarn>NSBASBEXP0001;NSBASBEXP0002;NSBASBEXP0003;NSBASBEXP0004;NSBASBEXP0005;</NoWarn>
+    <NoWarn>$(NoWarn);NSBASBEXP0001;NSBASBEXP0002;NSBASBEXP0003;NSBASBEXP0004;NSBASBEXP0005;</NoWarn>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.18.3" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
     <PackageReference Include="BitFaster.Caching" Version="2.5.3" />
-    <PackageReference Include="NServiceBus" Version="9.2.5" />
+    <PackageReference Include="NServiceBus" Version="10.0.0-alpha.1" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Fody" Version="6.9.2" PrivateAssets="All" />
     <PackageReference Include="Obsolete.Fody" Version="5.3.1" PrivateAssets="All" />
-    <PackageReference Include="Particular.Packaging" Version="4.2.2" PrivateAssets="All" />
-  </ItemGroup>
-
-  <ItemGroup Label="Direct references to transitive dependencies to avoid versions with CVE">
-    <PackageReference Include="Azure.Core" Version="1.46.0" />
+    <PackageReference Include="Particular.Packaging" Version="4.4.0" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>

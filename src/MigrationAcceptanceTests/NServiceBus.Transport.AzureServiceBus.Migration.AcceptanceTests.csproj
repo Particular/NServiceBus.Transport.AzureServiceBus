@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <TargetFramework>net10.0</TargetFramework>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\NServiceBusTests.snk</AssemblyOriginatorKeyFile>
     <RootNamespace>NServiceBus.Transport.AzureServiceBus.Topic.AcceptanceTests</RootNamespace>
@@ -12,32 +12,24 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.13.2" />
-    <PackageReference Include="NServiceBus.AcceptanceTests.Sources" Version="9.2.4" GeneratePathProperty="true" />
-    <PackageReference Include="System.IO.Hashing" Version="9.0.4" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="GitHubActionsTestLogger" Version="2.4.1" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="NUnit" Version="4.3.2" />
-    <PackageReference Include="NUnit.Analyzers" Version="4.7.0" />
+    <PackageReference Include="NUnit.Analyzers" Version="4.9.2" />
     <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\AcceptanceTests\TestIndependenceMutator.cs">
-      <Link>TestIndependenceMutator.cs</Link>
-    </Compile>
-    <Compile Include="..\AcceptanceTests\TestIndependenceSkipBehavior.cs">
-      <Link>TestIndependenceSkipBehavior.cs</Link>
-    </Compile>
-    <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs">
-      <Link>TestSuiteConstraints.cs</Link>
-    </Compile>
-    <Compile Include="..\AcceptanceTests\AcceptanceTestExtensions.cs">
-      <Link>AcceptanceTestExtensions.cs</Link>
-    </Compile>
+    <PackageReference Include="Azure.Identity" Version="1.14.0" />
+    <PackageReference Include="NServiceBus.AcceptanceTests.Sources" Version="10.0.0-alpha.1" GeneratePathProperty="true" />
+    <PackageReference Include="System.IO.Hashing" Version="10.0.0-preview.5.25277.114" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\AcceptanceTests\TestIndependenceMutator.cs" />
+    <Compile Include="..\AcceptanceTests\TestIndependenceSkipBehavior.cs" />
+    <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs" />
+    <Compile Include="..\AcceptanceTests\AcceptanceTestExtensions.cs" />
   </ItemGroup>
 
 </Project>

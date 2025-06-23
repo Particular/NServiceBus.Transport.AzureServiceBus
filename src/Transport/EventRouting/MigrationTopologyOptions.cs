@@ -29,9 +29,9 @@ public sealed class MigrationTopologyOptions : TopologyOptions
     [ValidMigrationTopology]
     public HashSet<string> EventsToMigrateMap
     {
-        get => eventsToMigrateMap;
-        init => eventsToMigrateMap = value ?? [];
-    }
+        get;
+        init => field = value ?? [];
+    } = [];
 
     /// <summary>
     /// Maps event full names to non-default rule names.
@@ -39,11 +39,7 @@ public sealed class MigrationTopologyOptions : TopologyOptions
     [AzureServiceBusRules]
     public Dictionary<string, string> SubscribedEventToRuleNameMap
     {
-        get => subscribedEventToRuleNameMap;
-        init => subscribedEventToRuleNameMap = value ?? [];
-    }
-
-    //Backing fields are required because the Json serializes initializes properties to null if corresponding json element is missing
-    readonly HashSet<string> eventsToMigrateMap = [];
-    readonly Dictionary<string, string> subscribedEventToRuleNameMap = [];
+        get;
+        init => field = value ?? [];
+    } = [];
 }

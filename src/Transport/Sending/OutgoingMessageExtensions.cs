@@ -3,30 +3,21 @@
 using System;
 using System.Collections.Generic;
 using Azure.Messaging.ServiceBus;
-using Configuration;
 
 static class OutgoingMessageExtensions
 {
     public static ServiceBusMessage ToAzureServiceBusMessage(
         this IOutgoingTransportOperation outgoingTransportOperation,
-        string? incomingQueuePartitionKey,
-        bool sendTransportEncodingHeader = false
+        string? incomingQueuePartitionKey
     )
     {
         var outgoingMessage = outgoingTransportOperation.Message;
         var message = new ServiceBusMessage(outgoingMessage.Body)
         {
             // Cannot re-use MessageId to be compatible with ASB transport that could have native de-dup enabled
-            MessageId = Guid.NewGuid().ToString()
+            MessageId = Guid.NewGuid().ToString(),
+            TransactionPartitionKey = incomingQueuePartitionKey
         };
-
-        if (sendTransportEncodingHeader)
-        {
-            // The value needs to be "application/octect-stream" and not "application/octet-stream" for interop with ASB transport
-            message.ApplicationProperties[TransportMessageHeaders.TransportEncoding] = "application/octect-stream";
-        }
-
-        message.TransactionPartitionKey = incomingQueuePartitionKey;
 
         ApplyDeliveryConstraints(message, outgoingTransportOperation.Properties);
 
