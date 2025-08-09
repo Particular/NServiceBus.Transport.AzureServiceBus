@@ -35,7 +35,9 @@ namespace NServiceBus
         public static TopicTopology FromOptions(TopologyOptions options) =>
             options switch
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 MigrationTopologyOptions migrationOptions => new MigrationTopology(migrationOptions),
+#pragma warning restore CS0618 // Type or member is obsolete
                 _ => new TopicPerEventTopology(options)
             };
 

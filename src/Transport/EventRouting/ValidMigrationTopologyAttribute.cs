@@ -18,7 +18,9 @@ public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext) =>
         validationContext.ObjectInstance switch
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             MigrationTopologyOptions options => ValidateMigrationTopology(options),
+#pragma warning restore CS0618 // Type or member is obsolete
             _ => ValidationResult.Success,
         };
 
