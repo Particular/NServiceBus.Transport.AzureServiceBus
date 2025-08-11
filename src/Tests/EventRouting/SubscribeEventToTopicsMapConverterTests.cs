@@ -37,8 +37,9 @@ public class SubscribeEventToTopicsMapConverterTests
                                    }
                                    """;
 
-        MigrationTopologyOptions deserialized =
-            JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.MigrationTopologyOptions);
+#pragma warning disable CS0618 // Type or member is obsolete
+        MigrationTopologyOptions deserialized = JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.MigrationTopologyOptions);
+#pragma warning restore CS0618 // Type or member is obsolete
 
         Assert.Multiple(() =>
         {
@@ -61,8 +62,9 @@ public class SubscribeEventToTopicsMapConverterTests
                                    }
                                    """;
 
-        var deserialized = (MigrationTopologyOptions)
-            JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.TopologyOptions);
+#pragma warning disable CS0618 // Type or member is obsolete
+        var deserialized = (MigrationTopologyOptions)JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.TopologyOptions);
+#pragma warning restore CS0618 // Type or member is obsolete
 
         Assert.Multiple(() =>
         {

@@ -10,7 +10,9 @@ public class MigrationTopologyTests
     [Test]
     public void Should_self_validate()
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         var topologyOptions = new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
         {
             TopicToPublishTo = new string('a', 261),
             TopicToSubscribeOn = new string('a', 261),
@@ -37,7 +39,9 @@ public class MigrationTopologyTests
     [Test]
     public void Should_self_validate_consistency()
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         var topologyOptions = new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
         {
             TopicToPublishTo = "TopicToPublishTo",
             TopicToSubscribeOn = "TopicToSubscribeOn",
@@ -62,7 +66,9 @@ public class MigrationTopologyTests
     [Test]
     public void Should_allow_disabling_validation()
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         var topologyOptions = new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
         {
             TopicToPublishTo = new string('a', 261),
             TopicToSubscribeOn = new string('a', 261)

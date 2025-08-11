@@ -13,7 +13,9 @@ public class MigrationTopologySubscriptionManagerTests
     [Test]
     public async Task Should_create_topology_for_events_to_migrate()
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         var topologyOptions = new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
         {
             TopicToPublishTo = "PublishTopic",
             TopicToSubscribeOn = "SubscribeTopic",
@@ -49,7 +51,9 @@ public class MigrationTopologySubscriptionManagerTests
     [Test]
     public async Task Should_create_topology_for_migrated_and_not_migrated_events()
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         var topologyOptions = new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
         {
             TopicToPublishTo = "PublishTopic",
             TopicToSubscribeOn = "SubscribeTopic",
@@ -78,7 +82,9 @@ public class MigrationTopologySubscriptionManagerTests
     [Test]
     public async Task Should_throw_when_event_is_not_mapped()
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         var topologyOptions = new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
         {
             TopicToPublishTo = "TopicToPublishTo",
             TopicToSubscribeOn = "TopicToSubscribeOn",
