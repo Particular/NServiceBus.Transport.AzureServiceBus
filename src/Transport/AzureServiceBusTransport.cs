@@ -117,9 +117,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 .Concat(sendingAddresses)
                 .ToArray();
 
-#pragma warning disable CS0618 // Type or member is obsolete
             var queueCreator = new TopologyCreator(this);
-#pragma warning restore CS0618 // Type or member is obsolete
             await queueCreator.Create(administrationClient, allQueues, cancellationToken).ConfigureAwait(false);
 
             foreach (IMessageReceiver messageReceiver in infrastructure.Receivers.Values)

@@ -6,7 +6,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 using Configuration;
 using Microsoft.Extensions.Options;
-using Particular.Obsoletes;
 
 /// <summary>
 /// Validates whether the <see cref="MigrationTopologyOptions"/> are valid and do not contain conflicting mapped event types.
@@ -16,6 +15,7 @@ using Particular.Obsoletes;
 public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
 {
     /// <inheritdoc />
+
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext) =>
         validationContext.ObjectInstance switch
         {
@@ -25,35 +25,35 @@ public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
             _ => ValidationResult.Success,
         };
 
-    [ObsoleteMetadata(Message = MigrationObsoleteMessages.ObsoleteMessage, TreatAsErrorFromVersion = MigrationObsoleteMessages.TreatAsErrorFromVersion, RemoveInVersion = MigrationObsoleteMessages.RemoveInVersion)]
-    [Obsolete("The migration topology is intended to be used during a transitional period, facilitating the migration from the single-topic topology to the topic-per-event topology. The migration topology will eventually be phased out over subsequent releases. Should you face challenges during migration, please reach out to |https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/issues/1170|. Will be treated as an error from version 7.0.0. Will be removed in version 8.0.0.", false)]
+#pragma warning disable CS0618 // Type or member is obsolete
     static ValidationResult? ValidateMigrationTopology(MigrationTopologyOptions options)
+#pragma warning restore CS0618 // Type or member is obsolete
     {
         var builder = new ValidateOptionsResultBuilder();
 
-        foreach ((string? eventTypeFullname, string? topic) in options.PublishedEventToTopicsMap)
+        foreach ((string? eventTypeFullName, string? topic) in options.PublishedEventToTopicsMap)
         {
-            if (options.EventsToMigrateMap.Contains(eventTypeFullname))
+            if (options.EventsToMigrateMap.Contains(eventTypeFullName))
             {
                 builder.AddResult(new ValidationResult(
-                    $"Event '{eventTypeFullname}' is in the migration map and in the published event to topics map. An event type cannot be marked for migration and mapped to a topic at the same time.",
+                    $"Event '{eventTypeFullName}' is in the migration map and in the published event to topics map. An event type cannot be marked for migration and mapped to a topic at the same time.",
                     [nameof(options.PublishedEventToTopicsMap)]));
             }
 
             if (topic.Equals(options.TopicToPublishTo))
             {
                 builder.AddResult(new ValidationResult(
-                    $"The topic to publish '{topic}' for '{eventTypeFullname}' cannot be the sames as the topic to publish to '{options.TopicToPublishTo}' for the migration topology.",
+                    $"The topic to publish '{topic}' for '{eventTypeFullName}' cannot be the same as the topic to publish to '{options.TopicToPublishTo}' for the migration topology.",
                     [nameof(options.TopicToPublishTo), nameof(options.PublishedEventToTopicsMap)]));
             }
         }
 
-        foreach ((string? eventTypeFullname, HashSet<string> topics) in options.SubscribedEventToTopicsMap)
+        foreach ((string? eventTypeFullName, HashSet<string> topics) in options.SubscribedEventToTopicsMap)
         {
-            if (options.EventsToMigrateMap.Contains(eventTypeFullname))
+            if (options.EventsToMigrateMap.Contains(eventTypeFullName))
             {
                 builder.AddResult(new ValidationResult(
-                    $"Event '{eventTypeFullname}' is in the migration map and in the subscribed event to topics map. An event type cannot be marked for migration and mapped to a topic at the same time.",
+                    $"Event '{eventTypeFullName}' is in the migration map and in the subscribed event to topics map. An event type cannot be marked for migration and mapped to a topic at the same time.",
                     [nameof(options.SubscribedEventToTopicsMap)]));
             }
 
@@ -62,13 +62,15 @@ public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
                 if (topic.Equals(options.TopicToSubscribeOn))
                 {
                     builder.AddResult(new ValidationResult(
-                        $"The topic to subscribe '{topic}' for '{eventTypeFullname}' cannot be the sames as the topic to subscribe to '{options.TopicToSubscribeOn}' for the migration topology.",
+                        $"The topic to subscribe '{topic}' for '{eventTypeFullName}' cannot be the same as the topic to subscribe to '{options.TopicToSubscribeOn}' for the migration topology.",
                         [nameof(options.TopicToSubscribeOn), nameof(options.SubscribedEventToTopicsMap)]));
                 }
             }
         }
 
         var result = builder.Build();
+#pragma warning disable CS0618 // Type or member is obsolete
         return result.Succeeded ? ValidationResult.Success : new ValidationResult(result.FailureMessage, [nameof(MigrationTopologyOptions.EventsToMigrateMap)]);
+#pragma warning restore CS0618 // Type or member is obsolete
     }
 }
