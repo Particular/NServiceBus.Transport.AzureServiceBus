@@ -8,7 +8,7 @@
     using Azure.Messaging.ServiceBus.Administration;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
-    using Conventions = NServiceBus.AcceptanceTesting.Customization.Conventions;
+    using Conventions = AcceptanceTesting.Customization.Conventions;
 
     public class When_loading_from_options
     {
@@ -64,7 +64,9 @@
                     {
                         var transport = c.ConfigureTransport<AzureServiceBusTransport>();
                         // doing a deliberate roundtrip to ensure that the options are correctly serialized and deserialized
+#pragma warning disable CS0618 // Type or member is obsolete
                         var serializedOptions = JsonSerializer.Serialize(new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
                         {
                             QueueNameToSubscriptionNameMap = { { Conventions.EndpointNamingConvention(typeof(Publisher)), TopicName } },
                             SubscribedEventToRuleNameMap = { { typeof(Event).FullName, typeof(Event).FullName.Shorten() } },
@@ -72,8 +74,11 @@
                             TopicToSubscribeOn = TopicName,
                             EventsToMigrateMap = [typeof(Event).FullName]
                         }, TopologyOptionsSerializationContext.Default.TopologyOptions);
+
                         var options = JsonSerializer.Deserialize(serializedOptions, TopologyOptionsSerializationContext.Default.TopologyOptions);
+#pragma warning disable CS0618 // Type or member is obsolete
                         var topology = (MigrationTopology)TopicTopology.FromOptions(options);
+#pragma warning restore CS0618 // Type or member is obsolete
                         transport.Topology = topology;
                     });
                     b.When((session, c) => session.Publish(new Event()));

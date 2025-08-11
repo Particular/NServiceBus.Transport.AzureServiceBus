@@ -75,7 +75,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 EndpointSetup<DefaultPublisher>(b =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
+#pragma warning disable CS0618 // Type or member is obsolete
                     MigrationTopology topology = TopicTopology.MigrateFromNamedSingleTopic("bundle-a");
+#pragma warning restore CS0618 // Type or member is obsolete
                     topology.EventToMigrate<MyEvent>();
                     transport.Topology = topology;
                     b.SendOnly();
@@ -89,7 +91,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
+#pragma warning disable CS0618 // Type or member is obsolete
                     MigrationTopology topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-b");
+#pragma warning restore CS0618 // Type or member is obsolete
                     string endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberOnTopicB));
                     topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
                     topology.EventToMigrate<MyEvent>(ruleNameOverride: typeof(MyEvent).FullName.Shorten());
@@ -114,7 +118,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
+#pragma warning disable CS0618 // Type or member is obsolete
                     MigrationTopology topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-c");
+#pragma warning restore CS0618 // Type or member is obsolete
                     string endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberOnTopicC));
                     topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
                     topology.EventToMigrate<MyEvent>(ruleNameOverride: typeof(MyEvent).FullName.Shorten());

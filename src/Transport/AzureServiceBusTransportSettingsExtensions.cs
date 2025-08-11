@@ -4,6 +4,7 @@ using System;
 using System.Net;
 using Azure.Core;
 using Azure.Messaging.ServiceBus;
+using Particular.Obsoletes;
 
 /// <summary>
 /// Adds access to the Azure Service Bus transport config to the global Transport object.

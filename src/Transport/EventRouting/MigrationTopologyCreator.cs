@@ -13,7 +13,9 @@ sealed class MigrationTopologyCreator(AzureServiceBusTransport transportSettings
 
     public async Task Create(ServiceBusAdministrationClient adminClient, CancellationToken cancellationToken = default)
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         if (transportSettings.Topology is MigrationTopology migrationTopology)
+#pragma warning restore CS0618 // Type or member is obsolete
         {
             var topicToPublishTo = new CreateTopicOptions(migrationTopology.TopicToPublishTo)
             {

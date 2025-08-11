@@ -13,11 +13,14 @@ using Unicast.Messages;
 
 sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 {
+#pragma warning disable CS0618 // Type or member is obsolete
     readonly MigrationTopologyOptions topologyOptions;
+#pragma warning restore CS0618 // Type or member is obsolete
     readonly string subscriptionName;
 
-    public MigrationTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
-        MigrationTopologyOptions topologyOptions) : base(creationOptions)
+#pragma warning disable CS0618 // Type or member is obsolete
+    public MigrationTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions, MigrationTopologyOptions topologyOptions) : base(creationOptions)
+#pragma warning restore CS0618 // Type or member is obsolete
     {
         this.topologyOptions = topologyOptions;
         subscriptionName = topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(CreationOptions.SubscribingQueueName, CreationOptions.SubscribingQueueName);

@@ -7,7 +7,9 @@ using System.Text.Json.Serialization;
 /// Serializable object that defines the topic-per-event topology
 /// </summary>
 [JsonDerivedType(typeof(TopologyOptions), typeDiscriminator: "topology-options")]
+#pragma warning disable CS0618 // Type or member is obsolete
 [JsonDerivedType(typeof(MigrationTopologyOptions), typeDiscriminator: "migration-topology-options")]
+#pragma warning restore CS0618 // Type or member is obsolete
 public class TopologyOptions
 {
     /// <summary>

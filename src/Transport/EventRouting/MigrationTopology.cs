@@ -2,11 +2,13 @@ namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
 using Microsoft.Extensions.Options;
+using Particular.Obsoletes;
 
 /// <summary>
 /// Topology that allows mixing of single-topic and topic-per-event approaches in order to allow gradual migration to the topic-per-event topology.
 /// </summary>
-[ObsoleteEx(Message = ObsoleteMessage, TreatAsErrorFromVersion = TreatAsErrorFromVersion, RemoveInVersion = RemoveInVersion)]
+[ObsoleteMetadata(Message = MigrationObsoleteMessages.ObsoleteMessage, TreatAsErrorFromVersion = MigrationObsoleteMessages.TreatAsErrorFromVersion, RemoveInVersion = MigrationObsoleteMessages.RemoveInVersion)]
+[Obsolete("The migration topology is intended to be used during a transitional period, facilitating the migration from the single-topic topology to the topic-per-event topology. The migration topology will eventually be phased out over subsequent releases. Should you face challenges during migration, please reach out to |https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/issues/1170|. Will be treated as an error from version 7.0.0. Will be removed in version 8.0.0.", false)]
 public sealed class MigrationTopology : TopicTopology
 {
     internal MigrationTopology(MigrationTopologyOptions options) : base(options,
@@ -187,20 +189,6 @@ public sealed class MigrationTopology : TopicTopology
 
     internal override SubscriptionManager CreateSubscriptionManager(SubscriptionManagerCreationOptions creationOptions) => new MigrationTopologySubscriptionManager(creationOptions, Options);
 
-    /*
-     * The idea behind obsoleting the migration topology is to make it clear in the user's code base that eventually the migration topology will be removed.
-     * The intent was to give users at least two major versions that are aligned with .NET LTS versions time, which should be roughly 2 years to migrate away
-     * from the migration topology to the new topic-per-event topology. Should an out-of-band major release be required, consider bumping the `TreatAsErrorFromVersion`
-     * and `RemoveInVersion` values to make sure more or least two years have passed after the release v5.0.0 of the transport. It might also be worthwhile
-     * checking the linked issue in the obsolete message to see if there are any signals that warrant moving this even further.
-     */
-    internal const string TreatAsErrorFromVersion = "7";
-
-    internal const string RemoveInVersion = "8";
-
-    internal const string ObsoleteMessage =
-        "The migration topology is intended to be used during a transitional period, facilitating the migration from the single-topic topology to the topic-per-event topology. The migration topology will eventually be phased out over subsequent releases. Should you face challenges during migration, please reach out to |https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/issues/1170|.";
-
     sealed class OptionsValidatorDecorator(IValidateOptions<MigrationTopologyOptions> decorated)
         : IValidateOptions<TopologyOptions>
     {
@@ -209,4 +197,21 @@ public sealed class MigrationTopology : TopicTopology
                 options as MigrationTopologyOptions ??
                 throw new Exception("The options to be validated must be of type MigrationTopologyOptions."));
     }
+}
+
+static class MigrationObsoleteMessages
+{
+    /*
+     * The idea behind obsoleting the migration topology is to make it clear in the user's code base that eventually the migration topology will be removed.
+     * The intent was to give users at least two major versions that are aligned with .NET LTS versions time, which should be roughly 2 years to migrate away
+     * from the migration topology to the new topic-per-event topology. Should an out-of-band major release be required, consider bumping the `TreatAsErrorFromVersion`
+     * and `RemoveInVersion` values to make sure more or least two years have passed after the release v5.0.0 of the transport. It might also be worthwhile
+     * checking the linked issue in the obsolete message to see if there are any signals that warrant moving this even further.
+     */
+    public const string TreatAsErrorFromVersion = "7";
+
+    public const string RemoveInVersion = "8";
+
+    public const string ObsoleteMessage =
+        "The migration topology is intended to be used during a transitional period, facilitating the migration from the single-topic topology to the topic-per-event topology. The migration topology will eventually be phased out over subsequent releases. Should you face challenges during migration, please reach out to |https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/issues/1170|";
 }

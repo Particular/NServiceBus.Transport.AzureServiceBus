@@ -174,7 +174,9 @@ public partial class AzureServiceBusTransport : TransportDefinition
         internal set
         {
             ArgumentNullException.ThrowIfNull(value);
+#pragma warning disable CS0618 // Type or member is obsolete
             if (value is not (MigrationTopology or TopicPerEventTopology))
+#pragma warning restore CS0618 // Type or member is obsolete
             {
                 throw new ArgumentException("The provided topology is not supported.", nameof(value));
             }

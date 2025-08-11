@@ -3,8 +3,8 @@
     using System;
     using System.Threading.Tasks;
     using AcceptanceTesting;
-    using Azure.Messaging.ServiceBus.Administration;
     using Azure.Messaging.ServiceBus;
+    using Azure.Messaging.ServiceBus.Administration;
     using EndpointTemplates;
     using NUnit.Framework;
     using Transport.AzureServiceBus.AcceptanceTests;
@@ -38,7 +38,9 @@
                 {
                     b.CustomConfig(c =>
                     {
+#pragma warning disable CS0618 // Type or member is obsolete
                         var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
+#pragma warning restore CS0618 // Type or member is obsolete
                         topology.EventToMigrate<MyEvent>();
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
@@ -49,7 +51,9 @@
                 {
                     b.CustomConfig(c =>
                     {
+#pragma warning disable CS0618 // Type or member is obsolete
                         var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
+#pragma warning restore CS0618 // Type or member is obsolete
                         topology.EventToMigrate<MyEvent>(ruleNameOverride: typeof(MyEvent).FullName.Shorten());
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
@@ -69,7 +73,9 @@
                 {
                     b.CustomConfig(c =>
                     {
+#pragma warning disable CS0618 // Type or member is obsolete
                         var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
+#pragma warning restore CS0618 // Type or member is obsolete
                         topology.EventToMigrate<MyEvent>();
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;

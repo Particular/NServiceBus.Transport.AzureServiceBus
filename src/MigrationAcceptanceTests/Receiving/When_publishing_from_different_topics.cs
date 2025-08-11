@@ -75,7 +75,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 EndpointSetup<DefaultPublisher>(b =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
+#pragma warning disable CS0618 // Type or member is obsolete
                     var topology = TopicTopology.MigrateFromNamedSingleTopic("bundle-a");
+#pragma warning restore CS0618 // Type or member is obsolete
                     topology.EventToMigrate<EventFromTopicA>(ruleNameOverride: typeof(EventFromTopicA).FullName.Shorten());
                     topology.EventToMigrate<EventFromTopicB>(ruleNameOverride: typeof(EventFromTopicB).FullName.Shorten());
                     topology.EventToMigrate<EventFromTopicC>(ruleNameOverride: typeof(EventFromTopicC).FullName.Shorten());
@@ -119,7 +121,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
+#pragma warning disable CS0618 // Type or member is obsolete
                     var topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-b");
+#pragma warning restore CS0618 // Type or member is obsolete
                     topology.EventToMigrate<EventFromTopicA>(ruleNameOverride: typeof(EventFromTopicA).FullName.Shorten());
                     topology.EventToMigrate<EventFromTopicB>(ruleNameOverride: typeof(EventFromTopicB).FullName.Shorten());
                     transport.Topology = topology;
@@ -143,7 +147,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
+#pragma warning disable CS0618 // Type or member is obsolete
                     var topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-c");
+#pragma warning restore CS0618 // Type or member is obsolete
                     topology.EventToMigrate<EventFromTopicA>(ruleNameOverride: typeof(EventFromTopicA).FullName.Shorten());
                     topology.EventToMigrate<EventFromTopicC>(ruleNameOverride: typeof(EventFromTopicC).FullName.Shorten());
                     transport.Topology = topology;
