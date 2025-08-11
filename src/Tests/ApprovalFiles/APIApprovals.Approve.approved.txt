@@ -14,8 +14,8 @@ namespace NServiceBus
         public int? PrefetchCount { get; set; }
         public int PrefetchMultiplier { get; set; }
         public Azure.Messaging.ServiceBus.ServiceBusRetryOptions? RetryPolicyOptions { get; set; }
-        [System.Obsolete("The transport no longer supports sending the transport encoding header. The membe" +
-            "r currently throws a NotImplementedException. Will be removed in version 7.0.0.", true)]
+        [System.Obsolete("The transport no longer supports sending the transport encoding header. Will be r" +
+            "emoved in version 7.0.0.", true)]
         public bool SendTransportEncodingHeader { get; set; }
         public System.TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
         [System.Diagnostics.CodeAnalysis.MemberNotNull("topology")]
@@ -35,8 +35,8 @@ namespace NServiceBus
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> MaxAutoLockRenewalDuration(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan maximumAutoLockRenewalDuration) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchMultiplier(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchMultiplier) { }
-        [System.Obsolete("The transport no longer supports sending the transport encoding header. The membe" +
-            "r currently throws a NotImplementedException. Will be removed in version 7.0.0.", true)]
+        [System.Obsolete("The transport no longer supports sending the transport encoding header. Will be r" +
+            "emoved in version 7.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SendTransportEncodingHeader(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TimeToWaitBeforeTriggeringCircuitBreaker(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan timeToWait) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration, string connectionString, NServiceBus.TopicTopology topology)
