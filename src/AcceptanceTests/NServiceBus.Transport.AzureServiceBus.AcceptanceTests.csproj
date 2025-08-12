@@ -21,7 +21,7 @@
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.14.0" />
     <PackageReference Include="NServiceBus.AcceptanceTests.Sources" Version="10.0.0-alpha.2" GeneratePathProperty="true" />
-    <PackageReference Include="System.IO.Hashing" Version="10.0.0-preview.5.25277.114" />
+    <PackageReference Include="System.IO.Hashing" Version="10.0.0-preview.7.25380.108" />
   </ItemGroup>
 
 </Project>
