@@ -12,7 +12,7 @@ sealed class NativeMessageCustomizationBehavior(bool isOutboxEnabled) : Behavior
 
     public override Task Invoke(IRoutingContext context, Func<Task> next)
     {
-        if (!context.Extensions.TryGet(CustomizationKey, out Action<ServiceBusMessage> customization))
+        if (!context.Extensions.TryGet<Action<ServiceBusMessage>>(CustomizationKey, out var customization))
         {
             return next();
         }

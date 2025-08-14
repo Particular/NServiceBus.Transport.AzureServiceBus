@@ -25,7 +25,7 @@ class MessageDispatcher(
 
     public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
     {
-        _ = transaction.TryGet(out AzureServiceBusTransportTransaction azureServiceBusTransaction);
+        _ = transaction.TryGet<AzureServiceBusTransportTransaction>(out var azureServiceBusTransaction);
 
         var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
         var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
