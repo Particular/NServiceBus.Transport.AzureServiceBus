@@ -220,6 +220,12 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// See <see href="https://learn.microsoft.com/en-us/azure/service-bus-messaging/advanced-features-overview#autodelete-on-idle"/>.
     /// </para>
     /// <para>
+    /// This setting only applies to queues, not to topics or subscriptions. Topics and subscriptions are considered
+    /// shared infrastructure and are not affected by this property. When using 'MakeInstanceUniquelyAddressable',
+    /// only the instance-specific input queues will have AutoDeleteOnIdle applied, while shared queues (such as error
+    /// and audit queues) remain unaffected to prevent unintended deletion of critical infrastructure.
+    /// </para>
+    /// <para>
     /// Setting this value can be useful for temporary queues (dynamically scaling endpoints that make use of 'MakeInstanceUniquelyAddressable') that should be cleaned up automatically
     /// when they are no longer being used. However, be cautious when setting this for production endpoints as it may result in unexpected entity deletion during periods of low activity.
     /// </para>
