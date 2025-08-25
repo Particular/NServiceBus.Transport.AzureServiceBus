@@ -118,7 +118,15 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 .ToArray();
 
             var queueCreator = new TopologyCreator(this);
-            await queueCreator.Create(administrationClient, allQueues, cancellationToken).ConfigureAwait(false);
+
+            // Pass in the instance specific queue address (if it exists) so that the queue creator can set the 
+            // AutoDeleteOnIdle (if set) only on that queue and not on shared queues like error.
+            string? instanceReceiverAddress = null;
+            if (infrastructure.Receivers.TryGetValue("InstanceSpecific", out var instanceReceiver))
+            {
+                instanceReceiverAddress = instanceReceiver.ReceiveAddress;
+            }
+            await queueCreator.Create(administrationClient, allQueues, instanceReceiverAddress, cancellationToken).ConfigureAwait(false);
 
             foreach (IMessageReceiver messageReceiver in infrastructure.Receivers.Values)
             {
@@ -133,7 +141,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
         }
 
         return infrastructure;
-
     }
 
     void ApplyRetryPolicyOptionsIfNeeded(ServiceBusClientOptions options)
@@ -200,6 +207,36 @@ public partial class AzureServiceBusTransport : TransportDefinition
     } = 5;
 
     internal int EntityMaximumSizeInMegabytes => EntityMaximumSize * 1024;
+
+    /// <summary>
+    /// Gets or sets the maximum time period that a queue can remain idle before Azure Service Bus automatically deletes it.
+    /// </summary>
+    /// <value>The idle timeout after which unused entities are automatically deleted. The minimum allowed value is 5 minutes.</value>    
+    /// <remarks>
+    /// <para>
+    /// This property controls the AutoDeleteOnIdle setting for queues created by the transport.
+    /// When an entity has no messages and no active connections for the specified duration,
+    /// Azure Service Bus will automatically delete it to help manage resource cleanup.
+    /// See <see href="https://learn.microsoft.com/en-us/azure/service-bus-messaging/advanced-features-overview#autodelete-on-idle"/>.
+    /// </para>
+    /// <para>
+    /// Setting this value can be useful for temporary queues (dynamically scaling endpoints that make use of 'MakeInstanceUniquelyAddressable') that should be cleaned up automatically
+    /// when they are no longer being used. However, be cautious when setting this for production endpoints as it may result in unexpected entity deletion during periods of low activity.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the value is less than 5 minutes.</exception>
+    public TimeSpan? AutoDeleteOnIdle
+    {
+        get;
+        set
+        {
+            if (value.HasValue)
+            {
+                ArgumentOutOfRangeException.ThrowIfLessThan(value.Value, TimeSpan.FromMinutes(5), nameof(AutoDeleteOnIdle));
+            }
+            field = value;
+        }
+    }
 
     /// <summary>
     /// Enables entity partitioning when creating queues and topics.
