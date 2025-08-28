@@ -7,6 +7,7 @@ namespace NServiceBus
     {
         public AzureServiceBusTransport(string connectionString, NServiceBus.TopicTopology topology) { }
         public AzureServiceBusTransport(string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential, NServiceBus.TopicTopology topology) { }
+        public System.TimeSpan? AutoDeleteOnIdle { get; set; }
         public bool EnablePartitioning { get; set; }
         public int EntityMaximumSize { get; set; }
         public System.TimeSpan? MaxAutoLockRenewalDuration { get; set; }

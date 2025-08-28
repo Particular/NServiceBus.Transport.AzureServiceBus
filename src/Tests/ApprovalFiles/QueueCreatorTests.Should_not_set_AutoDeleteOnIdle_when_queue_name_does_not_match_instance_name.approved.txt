@@ -1,0 +1,20 @@
+CreateQueueOptions: {
+  "Name": "some-queue",
+  "LockDuration": "00:05:00",
+  "MaxSizeInMegabytes": 5120,
+  "RequiresDuplicateDetection": false,
+  "RequiresSession": false,
+  "DefaultMessageTimeToLive": "10675199.02:48:05.4775807",
+  "AutoDeleteOnIdle": "10675199.02:48:05.4775807",
+  "DeadLetteringOnMessageExpiration": false,
+  "DuplicateDetectionHistoryTimeWindow": "00:01:00",
+  "MaxDeliveryCount": 2147483647,
+  "EnableBatchedOperations": true,
+  "AuthorizationRules": [],
+  "Status": {},
+  "ForwardTo": null,
+  "ForwardDeadLetteredMessagesTo": null,
+  "EnablePartitioning": false,
+  "UserMetadata": null,
+  "MaxMessageSizeInKilobytes": null
+}
