@@ -140,4 +140,15 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase)
             ? SubQueue.DeadLetter
             : SubQueue.None;
+
+    public override string GetManifest()
+    {
+        var inputQueues = Receivers.Select(receiver => $"'{receiver.Value.ReceiveAddress.ToLower()}'");
+
+        return @$"
+{{
+    'inputQueues': [{string.Join(", ", inputQueues)}]
+}}
+";
+    }
 }
