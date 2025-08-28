@@ -7,14 +7,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 
-sealed class MessageSenderRegistry(ServiceBusClient defaultClient)
+sealed class MessageSenderRegistry
 {
-    public ServiceBusSender GetMessageSender(string destination, ServiceBusClient? client)
+    public ServiceBusSender GetMessageSender(string destination, ServiceBusClient client)
     {
         // According to the client SDK guidelines we can safely use these client objects for concurrent asynchronous
         // operations and from multiple threads.
         // see https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-performance-improvements
-        var lazySender = destinationToSenderMapping.GetOrAdd((destination, client ?? defaultClient),
+        var lazySender = destinationToSenderMapping.GetOrAdd((destination, client),
             static arg =>
             {
                 (string innerDestination, ServiceBusClient innerClient) = arg;
