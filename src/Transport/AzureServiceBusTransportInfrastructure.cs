@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -141,14 +142,18 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             ? SubQueue.DeadLetter
             : SubQueue.None;
 
-    public override string GetManifest()
+    public override IEnumerable<KeyValuePair<string, ManifestItem>> GetManifest()
     {
-        var inputQueues = Receivers.Select(receiver => $"'{receiver.Value.ReceiveAddress.ToLower()}'");
+        var inputQueues = Receivers.Select(receiver => new ManifestItem { StringValue = receiver.Value.ReceiveAddress.ToLower() }).ToArray();
 
-        return @$"
-{{
-    'inputQueues': [{string.Join(", ", inputQueues)}]
-}}
-";
+        return [
+            new("asbSettings", new ManifestItem { ItemValue = [
+                new("entityMaximumSize", $"{transportSettings.EntityMaximumSize}GB"),
+                new("prefetchCount", transportSettings.PrefetchCount?.ToString() ?? "default"),
+                new("prefetchMultiplier", transportSettings.PrefetchMultiplier.ToString())
+                ]
+            }),
+            new("inputQueues", new ManifestItem { ArrayValue = inputQueues })
+            ];
     }
 }
