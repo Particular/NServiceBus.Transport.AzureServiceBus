@@ -17,7 +17,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), TopicTopology.FromOptions(new TopologyOptions()));
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -51,7 +51,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), TopicTopology.FromOptions(new TopologyOptions()));
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
 
             var sender = new FakeSender
             {
@@ -75,7 +75,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
                 TopicTopology.FromOptions(new TopologyOptions
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
@@ -114,7 +116,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), TopicTopology.FromOptions(new TopologyOptions()
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
             }));
@@ -150,7 +152,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), TopicTopology.FromOptions(new TopologyOptions()));
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -188,7 +190,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
                 TopicTopology.FromOptions(new TopologyOptions
                 {
                     PublishedEventToTopicsMap =
@@ -230,7 +234,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), TopicTopology.FromOptions(new TopologyOptions()));
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -266,7 +270,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
                 TopicTopology.FromOptions(new TopologyOptions
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
@@ -306,7 +312,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client), TopicTopology.FromOptions(new TopologyOptions()));
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -354,7 +360,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
                 TopicTopology.FromOptions(new TopologyOptions
                 {
                     PublishedEventToTopicsMap =
@@ -409,7 +417,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(client),
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
                 TopicTopology.FromOptions(new TopologyOptions
                 {
                     PublishedEventToTopicsMap =
@@ -491,7 +501,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             defaultClient.Senders["SomeDestination"] = defaultSender;
             var transactionalClient = new FakeServiceBusClient();
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), TopicTopology.FromOptions(new TopologyOptions()));
+            var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -543,7 +553,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 return false;
             };
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), TopicTopology.FromOptions(new TopologyOptions()));
+            var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
 
             var nrOfMessages = 150;
             var operations = new List<TransportOperation>(nrOfMessages);
@@ -587,7 +597,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 return false;
             };
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), TopicTopology.FromOptions(new TopologyOptions()));
+            var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operations = new List<TransportOperation>(200);
             for (int i = 0; i < 200; i++)
@@ -624,7 +634,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             defaultSender.TryAdd = msg => false;
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), TopicTopology.FromOptions(new TopologyOptions()));
+            var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operations = new List<TransportOperation>(5);
             for (int i = 0; i < 5; i++)
@@ -666,7 +676,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 };
             };
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), TopicTopology.FromOptions(new TopologyOptions()));
+            var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operations = new List<TransportOperation>(5);
             for (int i = 0; i < 10; i++)
@@ -699,7 +709,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var transactionalSender = new FakeSender();
             transactionalClient.Senders["SomeDestination"] = transactionalSender;
 
-            var dispatcher = new MessageDispatcher(new MessageSenderRegistry(defaultClient), TopicTopology.FromOptions(new TopologyOptions()));
+            var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",

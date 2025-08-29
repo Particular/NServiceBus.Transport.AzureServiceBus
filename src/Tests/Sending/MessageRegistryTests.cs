@@ -10,16 +10,17 @@
         [Test]
         public async Task Should_get_cached_sender_per_destination()
         {
-            var pool = new MessageSenderRegistry(new ServiceBusClient(FakeConnectionString));
+            var client = new ServiceBusClient(FakeConnectionString);
+            var pool = new MessageSenderRegistry();
 
             try
             {
-                var firstMessageSenderDest1 = pool.GetMessageSender("dest1", null);
+                var firstMessageSenderDest1 = pool.GetMessageSender("dest1", client);
 
-                var firstMessageSenderDest2 = pool.GetMessageSender("dest2", null);
+                var firstMessageSenderDest2 = pool.GetMessageSender("dest2", client);
 
-                var secondMessageSenderDest1 = pool.GetMessageSender("dest1", null);
-                var secondMessageSenderDest2 = pool.GetMessageSender("dest2", null);
+                var secondMessageSenderDest1 = pool.GetMessageSender("dest1", client);
+                var secondMessageSenderDest2 = pool.GetMessageSender("dest2", client);
 
                 Assert.Multiple(() =>
                 {
