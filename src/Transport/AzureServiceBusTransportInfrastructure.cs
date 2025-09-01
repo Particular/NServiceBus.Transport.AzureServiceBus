@@ -144,7 +144,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
     public override IEnumerable<KeyValuePair<string, ManifestItem>> GetManifest()
     {
-        var inputQueues = Receivers.Select(receiver => new ManifestItem { StringValue = receiver.Value.ReceiveAddress.ToLower() }).ToArray();
+        var inputQueues = receiveSettingsAndClientPairs.Select(settingsAndClient => new ManifestItem { StringValue = ToTransportAddress(settingsAndClient.receiveSettings.ReceiveAddress).ToLower() }).ToArray();
 
         return [
             new("asbSettings", new ManifestItem { ItemValue = [
