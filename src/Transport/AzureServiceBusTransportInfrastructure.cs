@@ -65,7 +65,8 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             UseWebSockets = transportSettings.UseWebSockets.ToString(),
             TimeToWaitBeforeTriggeringCircuitBreaker = transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker.ToString(),
             CustomTokenProvider = transportSettings.TokenCredential?.ToString() ?? "default",
-            CustomRetryPolicy = transportSettings.RetryPolicyOptions?.ToString() ?? "default"
+            CustomRetryPolicy = transportSettings.RetryPolicyOptions?.ToString() ?? "default",
+            AutoDeleteOnIdle = transportSettings.AutoDeleteOnIdle?.ToString() ?? "default"
         });
 
     IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient receiveClient)

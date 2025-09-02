@@ -32,5 +32,11 @@ public class RecordingServiceBusAdministrationClient(StringBuilder builder = nul
         return Task.FromResult<Response<RuleProperties>>(null);
     }
 
+    public override Task<Response<QueueProperties>> CreateQueueAsync(CreateQueueOptions options, CancellationToken cancellationToken = default)
+    {
+        builder.AppendLine($"CreateQueueOptions: {JsonSerializer.Serialize(options, SkdJsonSerializerContext.PolymorphicOptions)}");
+        return Task.FromResult<Response<QueueProperties>>(null);
+    }
+
     public override string ToString() => builder.ToString();
 }
