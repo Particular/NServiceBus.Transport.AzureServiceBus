@@ -151,19 +151,27 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             .SelectMany(eventTypeFullName =>
                 transportSettings.Topology.Options.SubscribedEventToTopicsMap
                 .GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
-                .Select(topicName => topicName.ToLower()))
-            .Distinct()
-            .Select(topicName => new ManifestItem { StringValue = topicName })
+                .Select(topicName => new { Topic = topicName.ToLower(), MessageType = eventTypeFullName }))
+            .GroupBy(topicAndMessageType => topicAndMessageType.Topic)
+            .Select(group => new ManifestItem
+            {
+                ItemValue = [
+                    new("topicName", new ManifestItem { StringValue = group.Key }),
+                    new("messageTypes", new ManifestItem { ArrayValue = group.Select(topicAndMessageType => new ManifestItem { StringValue = topicAndMessageType.MessageType }).ToArray() })
+                ]
+            })
             .ToArray();
 
         return [
-            new("asbSettings", new ManifestItem { ItemValue = [
-                new("entityMaximumSize", $"{transportSettings.EntityMaximumSize}GB"),
-                new("prefetchCount", transportSettings.PrefetchCount?.ToString() ?? "default"),
-                new("prefetchMultiplier", transportSettings.PrefetchMultiplier.ToString()),
-                new("enablePartitioning", transportSettings.EnablePartitioning.ToString().ToLower())
-                ]
-            }),
+            new("asbSettings", new ManifestItem
+                {
+                    ItemValue = [
+                        new("entityMaximumSize", $"{transportSettings.EntityMaximumSize}GB"),
+                        new("prefetchCount", transportSettings.PrefetchCount?.ToString() ?? "default"),
+                        new("prefetchMultiplier", transportSettings.PrefetchMultiplier.ToString()),
+                        new("enablePartitioning", transportSettings.EnablePartitioning.ToString().ToLower())
+                    ]
+                }),
             new("inputQueues", new ManifestItem { ArrayValue = inputQueues }),
             new("subscriptions", new ManifestItem { ArrayValue = subscriptions })
         ];
