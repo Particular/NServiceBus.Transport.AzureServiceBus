@@ -142,18 +142,30 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             ? SubQueue.DeadLetter
             : SubQueue.None;
 
-    public override IEnumerable<KeyValuePair<string, ManifestItem>> GetManifest()
+    public override IEnumerable<KeyValuePair<string, ManifestItem>> GetManifest(string[] eventTypes)
     {
-        var inputQueues = receiveSettingsAndClientPairs.Select(settingsAndClient => new ManifestItem { StringValue = ToTransportAddress(settingsAndClient.receiveSettings.ReceiveAddress).ToLower() }).ToArray();
+        var inputQueues = receiveSettingsAndClientPairs
+            .Select(settingsAndClient => new ManifestItem { StringValue = ToTransportAddress(settingsAndClient.receiveSettings.ReceiveAddress).ToLower() })
+            .ToArray();
+        var subscriptions = eventTypes
+            .SelectMany(eventTypeFullName =>
+                transportSettings.Topology.Options.SubscribedEventToTopicsMap
+                .GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
+                .Select(topicName => topicName.ToLower()))
+            .Distinct()
+            .Select(topicName => new ManifestItem { StringValue = topicName })
+            .ToArray();
 
         return [
             new("asbSettings", new ManifestItem { ItemValue = [
                 new("entityMaximumSize", $"{transportSettings.EntityMaximumSize}GB"),
                 new("prefetchCount", transportSettings.PrefetchCount?.ToString() ?? "default"),
-                new("prefetchMultiplier", transportSettings.PrefetchMultiplier.ToString())
+                new("prefetchMultiplier", transportSettings.PrefetchMultiplier.ToString()),
+                new("enablePartitioning", transportSettings.EnablePartitioning.ToString().ToLower())
                 ]
             }),
-            new("inputQueues", new ManifestItem { ArrayValue = inputQueues })
-            ];
+            new("inputQueues", new ManifestItem { ArrayValue = inputQueues }),
+            new("subscriptions", new ManifestItem { ArrayValue = subscriptions })
+        ];
     }
 }
