@@ -233,11 +233,11 @@ class MessageDispatcher(
             {
                 if (client.TransportType == ServiceBusTransportType.AmqpTcp)
                 {
-                    Log.Error("Couldn't connect using AMQP protocol. Ensure AMQP ports 5671 and 5672 on the server are reachable, or try using websockets");
+                    Log.Error("Couldn't connect using AMQP over TCP. Ensure AMQP ports 5671 and 5672 on the server are reachable, or try using websockets");
                 }
                 else if (client.TransportType == ServiceBusTransportType.AmqpWebSockets)
                 {
-                    Log.Error("Couldn't connect using web sockets.");
+                    Log.Error("Couldn't connect using AMQP over web sockets.");
                 }
 
                 throw;
@@ -327,11 +327,11 @@ class MessageDispatcher(
         {
             if (client.TransportType == ServiceBusTransportType.AmqpTcp)
             {
-                Log.Error("Couldn't connect using AMQP protocol. Ensure AMQP ports 5671 and 5672 on the server are reachable, or try using websockets");
+                Log.Error("Couldn't connect using AMQP over TCP. Ensure AMQP ports 5671 and 5672 on the server are reachable, or try using websockets");
             }
             else if (client.TransportType == ServiceBusTransportType.AmqpWebSockets)
             {
-                Log.Error("Couldn't connect using web sockets.");
+                Log.Error("Couldn't connect using AMQP over web sockets.");
             }
 
             throw;
