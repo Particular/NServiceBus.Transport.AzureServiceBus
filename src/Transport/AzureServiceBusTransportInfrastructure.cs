@@ -33,9 +33,10 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         this.administrationClient = administrationClient;
         this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
 
-        messageSenderRegistry = new MessageSenderRegistry(defaultClient);
+        messageSenderRegistry = new MessageSenderRegistry();
 
         Dispatcher = new MessageDispatcher(
+            defaultClient,
             messageSenderRegistry,
             transportSettings.Topology,
             transportSettings.OutgoingNativeMessageCustomization,
