@@ -29,6 +29,16 @@ namespace NServiceBus
         internal TopologyOptions Options { get; }
 
         /// <summary>
+        /// Determines if an exception should be thrown when attempting to publish an event not mapped in PublishedEventToTopicsMap
+        /// </summary>
+        public bool ThrowIfUnmappedEventTypes
+        {
+            get => Options.ThrowIfUnmappedEventTypes;
+            set => Options.ThrowIfUnmappedEventTypes = value;
+        }
+
+
+        /// <summary>
         /// Creates an instance of the topology object based on serializable state.
         /// </summary>
         /// <param name="options">Serializable topology configuration.</param>

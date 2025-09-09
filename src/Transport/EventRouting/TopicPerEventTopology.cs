@@ -105,7 +105,13 @@ public sealed class TopicPerEventTopology : TopicTopology
 
     /// <inheritdoc />
     protected override string GetPublishDestinationCore(string eventTypeFullName)
-        => Options.PublishedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName);
+    {
+        if (!Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out string? topic) && Options.ThrowIfUnmappedEventTypes)
+        {
+            throw new Exception($"Unmapped event type '{eventTypeFullName}'. All events must be mapped in `PublishedEventToTopicsMap` when `ThrowIfUnmappedEventTypes` is set");
+        }
+        return topic ?? eventTypeFullName;
+    }
 
     internal override SubscriptionManager CreateSubscriptionManager(
         SubscriptionManagerCreationOptions creationOptions) =>
