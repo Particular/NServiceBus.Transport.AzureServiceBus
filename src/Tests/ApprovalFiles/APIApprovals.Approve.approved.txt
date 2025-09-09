@@ -54,6 +54,7 @@ namespace NServiceBus
     {
         protected TopicTopology(NServiceBus.Transport.AzureServiceBus.TopologyOptions options, Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions> optionsValidator) { }
         public Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions> OptionsValidator { get; set; }
+        public bool ThrowIfUnmappedEventTypes { get; set; }
         public static NServiceBus.Transport.AzureServiceBus.TopicPerEventTopology Default { get; }
         protected abstract string GetPublishDestinationCore(string eventTypeFullName);
         public void Validate() { }
@@ -185,6 +186,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscribedEventToTopicsMapConverter))]
         public System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>> SubscribedEventToTopicsMap { get; init; }
+        public bool ThrowIfUnmappedEventTypes { get; set; }
     }
     public sealed class TopologyOptionsDisableValidationValidator : Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions>
     {
@@ -198,6 +200,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         public TopologyOptionsSerializationContext() { }
         public TopologyOptionsSerializationContext(System.Text.Json.JsonSerializerOptions options) { }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<bool> Boolean { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>>> DictionaryStringHashSetString { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<string, string>> DictionaryStringString { get; }
         protected override System.Text.Json.JsonSerializerOptions? GeneratedSerializerOptions { get; }
