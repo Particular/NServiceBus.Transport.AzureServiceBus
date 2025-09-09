@@ -1,7 +1,6 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
-using System.Collections.Generic;
 
 /// <summary>
 /// A topology that uses separate topic for each event.
