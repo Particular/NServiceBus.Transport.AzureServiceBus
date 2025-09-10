@@ -26,6 +26,18 @@ public class TopicPerEventTopologyTests
     }
 
     [Test]
+    public void PublishDestination_Should_default_topic_to_event_name()
+    {
+        var topologyOptions = new TopologyOptions();
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var result = topology.GetPublishDestination(typeof(MyEvent));
+
+        Assert.That(result, Is.EqualTo(typeof(MyEvent).FullName));
+    }
+
+    [Test]
     public void Should_self_validate()
     {
         var topologyOptions = new TopologyOptions
@@ -56,6 +68,17 @@ public class TopicPerEventTopologyTests
         topology.OptionsValidator = new TopologyOptionsDisableValidationValidator();
 
         Assert.DoesNotThrow(() => topology.Validate());
+    }
+
+    [Test]
+    public void ThrowIfUnmappedEventTypes_Should_throw_when_type_unmapped()
+    {
+        var topologyOptions = new TopologyOptions();
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+        topology.ThrowIfUnmappedEventTypes = true;
+
+        Assert.Throws<System.Exception>(() => topology.GetPublishDestination(typeof(MyEvent)));
     }
 
     class MyEvent;
