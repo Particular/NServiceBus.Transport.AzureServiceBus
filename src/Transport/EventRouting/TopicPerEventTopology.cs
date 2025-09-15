@@ -1,7 +1,6 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
-using System.Collections.Generic;
 
 /// <summary>
 /// A topology that uses separate topic for each event.
@@ -105,7 +104,13 @@ public sealed class TopicPerEventTopology : TopicTopology
 
     /// <inheritdoc />
     protected override string GetPublishDestinationCore(string eventTypeFullName)
-        => Options.PublishedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName);
+    {
+        if (!Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out string? topic) && Options.ThrowIfUnmappedEventTypes)
+        {
+            throw new Exception($"Unmapped event type '{eventTypeFullName}'. All events must be mapped in `{nameof(TopologyOptions.PublishedEventToTopicsMap)}` when `{nameof(TopologyOptions.ThrowIfUnmappedEventTypes)}` is set");
+        }
+        return topic ?? eventTypeFullName;
+    }
 
     internal override SubscriptionManager CreateSubscriptionManager(
         SubscriptionManagerCreationOptions creationOptions) =>
