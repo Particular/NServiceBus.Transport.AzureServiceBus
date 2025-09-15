@@ -3,6 +3,7 @@ namespace NServiceBus.Transport.AzureServiceBus;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Particular.Obsoletes;
 
 /// <summary>
@@ -46,7 +47,8 @@ public sealed class MigrationTopologyOptions : TopologyOptions
         init => field = value ?? [];
     } = [];
 
-    // NOTE: explicity set to true always, since MigrationTopology is already obsolete and we don't want to have a fallback naming strategy
-    /// <inheritdoc/>
-    public new bool ThrowIfUnmappedEventTypes { get; } = true;
+    // NOTE: explicitly set to true always and ignored from JSON, since MigrationTopology is already obsolete and we don't want to have a fallback naming strategy
+    /// <inheritdoc cref="TopologyOptions.ThrowIfUnmappedEventTypes" />
+    [JsonIgnore]
+    public new bool ThrowIfUnmappedEventTypes => true;
 }
