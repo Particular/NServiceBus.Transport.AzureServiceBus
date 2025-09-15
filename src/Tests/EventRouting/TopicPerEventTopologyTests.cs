@@ -74,9 +74,9 @@ public class TopicPerEventTopologyTests
     public void ThrowIfUnmappedEventTypes_Should_throw_when_type_unmapped()
     {
         var topologyOptions = new TopologyOptions();
+        topologyOptions.ThrowIfUnmappedEventTypes = true;
 
         var topology = TopicTopology.FromOptions(topologyOptions);
-        topology.ThrowIfUnmappedEventTypes = true;
 
         Assert.Throws<System.Exception>(() => topology.GetPublishDestination(typeof(MyEvent)));
     }

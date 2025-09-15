@@ -107,7 +107,7 @@ public sealed class TopicPerEventTopology : TopicTopology
     {
         if (!Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out string? topic) && Options.ThrowIfUnmappedEventTypes)
         {
-            throw new Exception($"Unmapped event type '{eventTypeFullName}'. All events must be mapped in `PublishedEventToTopicsMap` when `ThrowIfUnmappedEventTypes` is set");
+            throw new Exception($"Unmapped event type '{eventTypeFullName}'. All events must be mapped in `{nameof(TopologyOptions.PublishedEventToTopicsMap)}` when `{nameof(TopologyOptions.ThrowIfUnmappedEventTypes)}` is set");
         }
         return topic ?? eventTypeFullName;
     }

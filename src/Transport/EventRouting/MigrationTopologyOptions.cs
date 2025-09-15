@@ -45,4 +45,8 @@ public sealed class MigrationTopologyOptions : TopologyOptions
         get;
         init => field = value ?? [];
     } = [];
+
+    // NOTE: explicity set to true always, since MigrationTopology is already obsolete and we don't want to have a fallback naming strategy
+    /// <inheritdoc/>
+    public new bool ThrowIfUnmappedEventTypes { get; } = true;
 }

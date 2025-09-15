@@ -54,7 +54,6 @@ namespace NServiceBus
     {
         protected TopicTopology(NServiceBus.Transport.AzureServiceBus.TopologyOptions options, Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions> optionsValidator) { }
         public Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions> OptionsValidator { get; set; }
-        public bool ThrowIfUnmappedEventTypes { get; set; }
         public static NServiceBus.Transport.AzureServiceBus.TopicPerEventTopology Default { get; }
         protected abstract string GetPublishDestinationCore(string eventTypeFullName);
         public void Validate() { }
@@ -143,6 +142,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         public System.Collections.Generic.HashSet<string> EventsToMigrateMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusRules]
         public System.Collections.Generic.Dictionary<string, string> SubscribedEventToRuleNameMap { get; init; }
+        public new bool ThrowIfUnmappedEventTypes { get; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.ComponentModel.DataAnnotations.Required]
         public required string? TopicToPublishTo { get; init; }
