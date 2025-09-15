@@ -2,6 +2,7 @@ namespace NServiceBus.Transport.AzureServiceBus;
 
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// Serializable object that defines the migration topology
@@ -46,4 +47,9 @@ public sealed class MigrationTopologyOptions : TopologyOptions
     //Backing fields are required because the Json serializes initializes properties to null if corresponding json element is missing
     readonly HashSet<string> eventsToMigrateMap = [];
     readonly Dictionary<string, string> subscribedEventToRuleNameMap = [];
+
+    // NOTE: explicitly set to true always and ignored from JSON, since MigrationTopology is already obsolete and we don't want to have a fallback naming strategy
+    /// <inheritdoc cref="TopologyOptions.ThrowIfUnmappedEventTypes" />
+    [JsonIgnore]
+    public new bool ThrowIfUnmappedEventTypes => true;
 }

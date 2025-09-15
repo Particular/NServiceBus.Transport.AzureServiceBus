@@ -46,4 +46,9 @@ public class TopologyOptions
     readonly Dictionary<string, string> publishedEventToTopicsMap = [];
     readonly Dictionary<string, HashSet<string>> subscribedEventToTopicsMap = [];
     readonly Dictionary<string, string> queueNameToSubscriptionNameMap = [];
+
+    /// <summary>
+    /// Determines if an exception should be thrown when attempting to publish an event not mapped in PublishedEventToTopicsMap
+    /// </summary>
+    public bool ThrowIfUnmappedEventTypes { get; set; } = false;
 }
