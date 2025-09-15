@@ -1,5 +1,6 @@
 namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
+using System;
 using System.ComponentModel.DataAnnotations;
 using NUnit.Framework;
 using Particular.Approvals;
@@ -38,6 +39,19 @@ public class TopicPerEventTopologyTests
     }
 
     [Test]
+    public void PublishDestination_Should_throw_when_instructed_to_and_type_unmapped()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            ThrowIfUnmappedEventTypes = true
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.Throws<Exception>(() => topology.GetPublishDestination(typeof(MyEvent)));
+    }
+
+    [Test]
     public void Should_self_validate()
     {
         var topologyOptions = new TopologyOptions
@@ -68,19 +82,6 @@ public class TopicPerEventTopologyTests
         topology.OptionsValidator = new TopologyOptionsDisableValidationValidator();
 
         Assert.DoesNotThrow(() => topology.Validate());
-    }
-
-    [Test]
-    public void ThrowIfUnmappedEventTypes_Should_throw_when_type_unmapped()
-    {
-        var topologyOptions = new TopologyOptions
-        {
-            ThrowIfUnmappedEventTypes = true
-        };
-
-        var topology = TopicTopology.FromOptions(topologyOptions);
-
-        Assert.Throws<System.Exception>(() => topology.GetPublishDestination(typeof(MyEvent)));
     }
 
     class MyEvent;
