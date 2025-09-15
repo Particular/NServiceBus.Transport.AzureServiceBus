@@ -9,12 +9,4 @@ public class TopicPerEventTopologyOptions : TopologyOptions
     /// Determines if an exception should be thrown when attempting to publish an event not mapped in PublishedEventToTopicsMap
     /// </summary>
     public bool ThrowIfUnmappedEventTypes { get; set; } = false;
-
-    internal static TopicPerEventTopologyOptions From(TopologyOptions options) =>
-        new()
-        {
-            PublishedEventToTopicsMap = options.PublishedEventToTopicsMap,
-            QueueNameToSubscriptionNameMap = options.QueueNameToSubscriptionNameMap,
-            SubscribedEventToTopicsMap = options.SubscribedEventToTopicsMap
-        };
 }

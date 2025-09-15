@@ -35,12 +35,12 @@ namespace NServiceBus
         /// <param name="options">Serializable topology configuration.</param>
         public static TopicTopology FromOptions(TopologyOptions options)
         {
-            TopicPerEventTopology Default()
+            static TopicPerEventTopology Default()
             {
 #pragma warning disable CS0618 // Type or member is obsolete
                 Log.Warn($"Unknown options type, expected '{nameof(TopicPerEventTopologyOptions)}' or '{nameof(MigrationTopologyOptions)}'");
 #pragma warning restore CS0618 // Type or member is obsolete
-                return new TopicPerEventTopology(TopicPerEventTopologyOptions.From(options));
+                return TopicTopology.Default;
             }
 
             return options switch
