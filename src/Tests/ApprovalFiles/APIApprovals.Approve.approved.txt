@@ -54,7 +54,6 @@ namespace NServiceBus
     {
         protected TopicTopology(NServiceBus.Transport.AzureServiceBus.TopologyOptions options, Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions> optionsValidator) { }
         public Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions> OptionsValidator { get; set; }
-        public bool ThrowIfUnmappedEventTypes { get; set; }
         public static NServiceBus.Transport.AzureServiceBus.TopicPerEventTopology Default { get; }
         protected abstract string GetPublishDestinationCore(string eventTypeFullName);
         public void Validate() { }
@@ -173,8 +172,13 @@ namespace NServiceBus.Transport.AzureServiceBus
         public void SubscribeTo<TEventType, TEventTypeImplementation>()
             where TEventTypeImplementation : TEventType { }
     }
+    public class TopicPerEventTopologyOptions : NServiceBus.Transport.AzureServiceBus.TopologyOptions
+    {
+        public TopicPerEventTopologyOptions() { }
+        public bool ThrowIfUnmappedEventTypes { get; set; }
+    }
     [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions), "migration-topology-options")]
-    [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.Transport.AzureServiceBus.TopologyOptions), "topology-options")]
+    [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.Transport.AzureServiceBus.TopicPerEventTopologyOptions), "topology-options")]
     public class TopologyOptions
     {
         public TopologyOptions() { }
@@ -186,7 +190,6 @@ namespace NServiceBus.Transport.AzureServiceBus
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscribedEventToTopicsMapConverter))]
         public System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>> SubscribedEventToTopicsMap { get; init; }
-        public bool ThrowIfUnmappedEventTypes { get; set; }
     }
     public sealed class TopologyOptionsDisableValidationValidator : Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions>
     {
@@ -207,6 +210,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.HashSet<string>> HashSetString { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions> MigrationTopologyOptions { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<string> String { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.TopicPerEventTopologyOptions> TopicPerEventTopologyOptions { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.TopologyOptions> TopologyOptions { get; }
         public static NServiceBus.Transport.AzureServiceBus.TopologyOptionsSerializationContext Default { get; }
         public override System.Text.Json.Serialization.Metadata.JsonTypeInfo? GetTypeInfo(System.Type type) { }

@@ -13,11 +13,11 @@ using Unicast.Messages;
 
 sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 {
-    readonly TopologyOptions topologyOptions;
+    readonly TopicPerEventTopologyOptions topologyOptions;
     readonly string subscriptionName;
 
     public TopicPerEventTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
-        TopologyOptions topologyOptions) : base(creationOptions)
+        TopicPerEventTopologyOptions topologyOptions) : base(creationOptions)
     {
         this.topologyOptions = topologyOptions;
         subscriptionName = topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(CreationOptions.SubscribingQueueName, CreationOptions.SubscribingQueueName);

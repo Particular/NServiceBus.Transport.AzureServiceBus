@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 /// <summary>
-/// Serializable object that defines the topic-per-event topology
+/// Serializable object that defines the topology
 /// </summary>
-[JsonDerivedType(typeof(TopologyOptions), typeDiscriminator: "topology-options")]
+[JsonDerivedType(typeof(TopicPerEventTopologyOptions), typeDiscriminator: "topology-options")]
 #pragma warning disable CS0618 // Type or member is obsolete
 [JsonDerivedType(typeof(MigrationTopologyOptions), typeDiscriminator: "migration-topology-options")]
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -43,9 +43,4 @@ public class TopologyOptions
         get;
         init => field = value ?? [];
     } = [];
-
-    /// <summary>
-    /// Determines if an exception should be thrown when attempting to publish an event not mapped in PublishedEventToTopicsMap
-    /// </summary>
-    public bool ThrowIfUnmappedEventTypes { get; set; } = false;
 }
