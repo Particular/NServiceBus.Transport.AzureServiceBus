@@ -142,6 +142,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         public System.Collections.Generic.HashSet<string> EventsToMigrateMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusRules]
         public System.Collections.Generic.Dictionary<string, string> SubscribedEventToRuleNameMap { get; init; }
+        [System.Text.Json.Serialization.JsonIgnore]
         public new bool ThrowIfUnmappedEventTypes { get; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.ComponentModel.DataAnnotations.Required]
