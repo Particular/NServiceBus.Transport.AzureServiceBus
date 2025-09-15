@@ -19,6 +19,7 @@ static partial class EntityValidator
             : ValidationResult.Success;
     }
 
+    //enforces naming according to the specification https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftservicebus
     [GeneratedRegex(@"^(?=.{1,260}$)(?=^[A-Za-z0-9])(?!.*[\\?#])(?:[A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9./_-]*[A-Za-z0-9])$")]
     private static partial Regex TopicNameRegex();
 
@@ -34,6 +35,7 @@ static partial class EntityValidator
             : ValidationResult.Success;
     }
 
+    //enforces naming according to the specification https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftservicebus
     // Note the queue pattern is the same as the topic pattern. Deliberately kept separate for future extensibility.
     [GeneratedRegex(@"^(?=.{1,260}$)(?=^[A-Za-z0-9])(?!.*[\\?#])(?:[A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9./_-]*[A-Za-z0-9])$")]
     private static partial Regex QueueNameRegex();
@@ -50,6 +52,7 @@ static partial class EntityValidator
             : ValidationResult.Success;
     }
 
+    //enforces naming according to the specification https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftservicebus
     [GeneratedRegex(@"^(?!\$)(?=.{1,50}$)(?=^[A-Za-z0-9])(?!.*[\/\\?#])[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$")]
     private static partial Regex RuleNameRegex();
 
@@ -66,6 +69,7 @@ static partial class EntityValidator
             : ValidationResult.Success;
     }
 
+    //enforces naming according to the specification https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftservicebus
     // Note the subscription pattern is the same as the rule pattern. Deliberately kept separate for future extensibility.
     [GeneratedRegex(@"^(?!\$)(?=.{1,50}$)(?=^[A-Za-z0-9])(?!.*[\/\\?#])[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$")]
     private static partial Regex SubscriptionNameRegex();
