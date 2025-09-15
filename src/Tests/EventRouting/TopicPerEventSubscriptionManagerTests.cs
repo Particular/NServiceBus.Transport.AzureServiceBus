@@ -13,7 +13,7 @@ public class TopicPerEventSubscriptionManagerTests
     [Test]
     public async Task Should_create_topology_for_mapped_events()
     {
-        var topologyOptions = new TopicPerEventTopologyOptions
+        var topologyOptions = new TopologyOptions
         {
             SubscribedEventToTopicsMap =
             {
@@ -42,7 +42,7 @@ public class TopicPerEventSubscriptionManagerTests
     [Test]
     public async Task Should_create_topology_for_unmapped_events()
     {
-        var topologyOptions = new TopicPerEventTopologyOptions
+        var topologyOptions = new TopologyOptions
         {
             QueueNameToSubscriptionNameMap = { { "SubscribingQueue", "MySubscriptionName" } },
         };

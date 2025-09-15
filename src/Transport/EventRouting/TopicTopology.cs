@@ -3,7 +3,6 @@ namespace NServiceBus
     using System;
     using System.ComponentModel.DataAnnotations;
     using Microsoft.Extensions.Options;
-    using NServiceBus.Logging;
     using Particular.Obsoletes;
     using Transport.AzureServiceBus;
 
@@ -30,33 +29,32 @@ namespace NServiceBus
         internal TopologyOptions Options { get; }
 
         /// <summary>
+        /// Determines if an exception should be thrown when attempting to publish an event not mapped in PublishedEventToTopicsMap
+        /// </summary>
+        public bool ThrowIfUnmappedEventTypes
+        {
+            get => Options.ThrowIfUnmappedEventTypes;
+            set => Options.ThrowIfUnmappedEventTypes = value;
+        }
+
+
+        /// <summary>
         /// Creates an instance of the topology object based on serializable state.
         /// </summary>
         /// <param name="options">Serializable topology configuration.</param>
-        public static TopicTopology FromOptions(TopologyOptions options)
-        {
-            static TopicPerEventTopology Default()
-            {
-#pragma warning disable CS0618 // Type or member is obsolete
-                Log.Warn($"Unknown options type, expected '{nameof(TopicPerEventTopologyOptions)}' or '{nameof(MigrationTopologyOptions)}'");
-#pragma warning restore CS0618 // Type or member is obsolete
-                return TopicTopology.Default;
-            }
-
-            return options switch
+        public static TopicTopology FromOptions(TopologyOptions options) =>
+            options switch
             {
 #pragma warning disable CS0618 // Type or member is obsolete
                 MigrationTopologyOptions migrationOptions => new MigrationTopology(migrationOptions),
 #pragma warning restore CS0618 // Type or member is obsolete
-                TopicPerEventTopologyOptions tpeOptions => new TopicPerEventTopology(tpeOptions),
-                _ => Default()
+                _ => new TopicPerEventTopology(options)
             };
-        }
 
         /// <summary>
         /// Returns the default topology that uses topic per event type.
         /// </summary>
-        public static TopicPerEventTopology Default => new(new());
+        public static TopicPerEventTopology Default => new(new TopologyOptions());
 
         /// <summary>
         /// Returns a migration topology using a single topic named <c>bundle-1</c> for <see cref="MigrationTopology.TopicToPublishTo"/> and <see cref="MigrationTopology.TopicToSubscribeOn"/>
@@ -132,7 +130,5 @@ namespace NServiceBus
         /// </summary>
         /// <param name="eventTypeFullName">Full type name of the event.</param>
         protected abstract string GetPublishDestinationCore(string eventTypeFullName);
-
-        static ILog Log = LogManager.GetLogger<TopicTopology>();
     }
 }

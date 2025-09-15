@@ -7,7 +7,7 @@ using System;
 /// </summary>
 public sealed class TopicPerEventTopology : TopicTopology
 {
-    internal TopicPerEventTopology(TopicPerEventTopologyOptions options) : base(options, new TopologyOptionsValidator())
+    internal TopicPerEventTopology(TopologyOptions options) : base(options, new TopologyOptionsValidator())
     {
     }
 
@@ -105,14 +105,14 @@ public sealed class TopicPerEventTopology : TopicTopology
     /// <inheritdoc />
     protected override string GetPublishDestinationCore(string eventTypeFullName)
     {
-        if (!Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out string? topic) && (Options is TopicPerEventTopologyOptions tpeOptions) && tpeOptions.ThrowIfUnmappedEventTypes)
+        if (!Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out string? topic) && Options.ThrowIfUnmappedEventTypes)
         {
-            throw new Exception($"Unmapped event type '{eventTypeFullName}'. All events must be mapped in `{nameof(TopologyOptions.PublishedEventToTopicsMap)}` when `{nameof(TopicPerEventTopologyOptions.ThrowIfUnmappedEventTypes)}` is set");
+            throw new Exception($"Unmapped event type '{eventTypeFullName}'. All events must be mapped in `PublishedEventToTopicsMap` when `ThrowIfUnmappedEventTypes` is set");
         }
         return topic ?? eventTypeFullName;
     }
 
     internal override SubscriptionManager CreateSubscriptionManager(
         SubscriptionManagerCreationOptions creationOptions) =>
-        new TopicPerEventTopologySubscriptionManager(creationOptions, (TopicPerEventTopologyOptions)Options);
+        new TopicPerEventTopologySubscriptionManager(creationOptions, Options);
 }

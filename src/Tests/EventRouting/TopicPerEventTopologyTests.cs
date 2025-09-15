@@ -10,7 +10,7 @@ public class TopicPerEventTopologyTests
     [Test]
     public void PublishDestination_Should_return_mapped_topic_when_event_is_mapped()
     {
-        var topologyOptions = new TopicPerEventTopologyOptions
+        var topologyOptions = new TopologyOptions
         {
             PublishedEventToTopicsMap =
             {
@@ -28,7 +28,7 @@ public class TopicPerEventTopologyTests
     [Test]
     public void PublishDestination_Should_default_topic_to_event_name()
     {
-        var topologyOptions = new TopicPerEventTopologyOptions();
+        var topologyOptions = new TopologyOptions();
 
         var topology = TopicTopology.FromOptions(topologyOptions);
 
@@ -40,7 +40,7 @@ public class TopicPerEventTopologyTests
     [Test]
     public void Should_self_validate()
     {
-        var topologyOptions = new TopicPerEventTopologyOptions
+        var topologyOptions = new TopologyOptions
         {
             PublishedEventToTopicsMap = { { typeof(MyEvent).FullName, new string('c', 261) } },
             SubscribedEventToTopicsMap = { { typeof(MyEvent).FullName, [new string('d', 261), new string('e', 261)] } },
@@ -59,7 +59,7 @@ public class TopicPerEventTopologyTests
     [Test]
     public void Should_allow_disabling_validation()
     {
-        var topologyOptions = new TopicPerEventTopologyOptions
+        var topologyOptions = new TopologyOptions
         {
             PublishedEventToTopicsMap = { { typeof(MyEvent).FullName, new string('c', 261) } }
         };
@@ -73,12 +73,10 @@ public class TopicPerEventTopologyTests
     [Test]
     public void ThrowIfUnmappedEventTypes_Should_throw_when_type_unmapped()
     {
-        var topologyOptions = new TopicPerEventTopologyOptions
-        {
-            ThrowIfUnmappedEventTypes = true
-        };
+        var topologyOptions = new TopologyOptions();
 
         var topology = TopicTopology.FromOptions(topologyOptions);
+        topology.ThrowIfUnmappedEventTypes = true;
 
         Assert.Throws<System.Exception>(() => topology.GetPublishDestination(typeof(MyEvent)));
     }
