@@ -8,7 +8,7 @@
     using Azure.Messaging.ServiceBus.Administration;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
     using NUnit.Framework;
-    using Conventions = NServiceBus.AcceptanceTesting.Customization.Conventions;
+    using Conventions = AcceptanceTesting.Customization.Conventions;
 
     public class When_loading_from_options
     {
@@ -45,7 +45,8 @@
                         {
                             QueueNameToSubscriptionNameMap = { { Conventions.EndpointNamingConvention(typeof(Publisher)), TopicName } },
                             PublishedEventToTopicsMap = { { typeof(Event).FullName, TopicName } },
-                            SubscribedEventToTopicsMap = { { typeof(Event).FullName, [TopicName] } }
+                            SubscribedEventToTopicsMap = { { typeof(Event).FullName, [TopicName] } },
+                            ThrowIfUnmappedEventTypes = true
                         }, TopologyOptionsSerializationContext.Default.TopologyOptions);
                         var options = JsonSerializer.Deserialize(serializedOptions, TopologyOptionsSerializationContext.Default.TopologyOptions);
                         transport.Topology = TopicTopology.FromOptions(options);
@@ -70,7 +71,7 @@
                             SubscribedEventToRuleNameMap = { { typeof(Event).FullName, typeof(Event).FullName.Shorten() } },
                             TopicToPublishTo = TopicName,
                             TopicToSubscribeOn = TopicName,
-                            EventsToMigrateMap = [typeof(Event).FullName]
+                            EventsToMigrateMap = [typeof(Event).FullName],
                         }, TopologyOptionsSerializationContext.Default.TopologyOptions);
                         var options = JsonSerializer.Deserialize(serializedOptions, TopologyOptionsSerializationContext.Default.TopologyOptions);
                         var topology = (MigrationTopology)TopicTopology.FromOptions(options);

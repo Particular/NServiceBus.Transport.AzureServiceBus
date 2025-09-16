@@ -206,6 +206,8 @@ namespace NServiceBus.Transport.AzureServiceBus
             "your compiler.", true)]
         [System.Runtime.CompilerServices.CompilerFeatureRequired("RequiredMembers")]
         public MigrationTopologyOptions() { }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public new bool ThrowIfUnmappedEventTypes { get; }
         [NServiceBus.Transport.AzureServiceBus.ValidMigrationTopology]
         public System.Collections.Generic.HashSet<string> EventsToMigrateMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusRules]
@@ -248,6 +250,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     public class TopologyOptions
     {
         public TopologyOptions() { }
+        public bool ThrowIfUnmappedEventTypes { get; set; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         public System.Collections.Generic.Dictionary<string, string> PublishedEventToTopicsMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusQueues]
@@ -269,6 +272,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         public TopologyOptionsSerializationContext() { }
         public TopologyOptionsSerializationContext(System.Text.Json.JsonSerializerOptions options) { }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<bool> Boolean { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>>> DictionaryStringHashSetString { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<string, string>> DictionaryStringString { get; }
         protected override System.Text.Json.JsonSerializerOptions? GeneratedSerializerOptions { get; }
