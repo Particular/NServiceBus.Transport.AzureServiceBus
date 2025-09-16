@@ -24,7 +24,7 @@
                     Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
             try
             {
-                //  makes sure during local development the topic gets cleared before each test run
+                // makes sure during local development the topic gets cleared before each test run
                 await adminClient.DeleteTopicAsync(TopicName);
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
