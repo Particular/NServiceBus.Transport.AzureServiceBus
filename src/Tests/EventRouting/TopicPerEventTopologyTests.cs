@@ -1,5 +1,6 @@
 namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
+using System;
 using System.ComponentModel.DataAnnotations;
 using NUnit.Framework;
 using Particular.Approvals;
@@ -23,6 +24,31 @@ public class TopicPerEventTopologyTests
         var result = topology.GetPublishDestination(typeof(MyEvent));
 
         Assert.That(result, Is.EqualTo("MyTopic"));
+    }
+
+    [Test]
+    public void PublishDestination_Should_default_topic_to_event_name()
+    {
+        var topologyOptions = new TopologyOptions();
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var result = topology.GetPublishDestination(typeof(MyEvent));
+
+        Assert.That(result, Is.EqualTo(typeof(MyEvent).FullName));
+    }
+
+    [Test]
+    public void PublishDestination_Should_throw_when_instructed_to_and_type_unmapped()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            ThrowIfUnmappedEventTypes = true
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.Throws<Exception>(() => topology.GetPublishDestination(typeof(MyEvent)));
     }
 
     [Test]

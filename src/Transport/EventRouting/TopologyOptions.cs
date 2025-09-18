@@ -43,4 +43,9 @@ public class TopologyOptions
         get;
         init => field = value ?? [];
     } = [];
+
+    /// <summary>
+    /// Determines if an exception should be thrown when attempting to publish an event not mapped in PublishedEventToTopicsMap
+    /// </summary>
+    public bool ThrowIfUnmappedEventTypes { get; set; } = false;
 }

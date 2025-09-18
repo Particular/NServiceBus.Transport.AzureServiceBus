@@ -11,7 +11,7 @@ class QueueCreator(AzureServiceBusTransport transportSettings)
 {
     static readonly ILog Logger = LogManager.GetLogger<QueueCreator>();
 
-    public async Task Create(ServiceBusAdministrationClient adminClient, string[] queues,
+    public async Task Create(ServiceBusAdministrationClient adminClient, string[] queues, string? instanceName = null,
         CancellationToken cancellationToken = default)
     {
         foreach (var address in queues)
@@ -24,6 +24,15 @@ class QueueCreator(AzureServiceBusTransport transportSettings)
                 MaxSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
                 EnablePartitioning = transportSettings.EnablePartitioning
             };
+
+            // Only apply AutoDeleteOnIdle if an instance name is provided to avoid unintentional deletions
+            // of shared queues, e.g. error.
+            if (instanceName is not null
+               && string.Equals(instanceName, address, StringComparison.Ordinal)
+               && transportSettings.AutoDeleteOnIdle is not null)
+            {
+                queue.AutoDeleteOnIdle = transportSettings.AutoDeleteOnIdle.Value;
+            }
 
             try
             {

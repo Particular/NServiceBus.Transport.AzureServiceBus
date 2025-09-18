@@ -10,6 +10,7 @@ using Azure.Messaging.ServiceBus;
 using Logging;
 
 class MessageDispatcher(
+    ServiceBusClient defaultClient,
     MessageSenderRegistry messageSenderRegistry,
     TopicTopology topology,
     OutgoingNativeMessageCustomizationAction? customizerCallback = null)
@@ -25,7 +26,7 @@ class MessageDispatcher(
 
     public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
     {
-        _ = transaction.TryGet(out AzureServiceBusTransportTransaction azureServiceBusTransaction);
+        _ = transaction.TryGet<AzureServiceBusTransportTransaction>(out var azureServiceBusTransaction);
 
         var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
         var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
@@ -147,6 +148,7 @@ class MessageDispatcher(
     {
         int batchCount = 0;
         List<ServiceBusMessage>? messagesTooLargeToBeBatched = null;
+        client ??= defaultClient;
         var sender = messageSenderRegistry.GetMessageSender(destination, client);
         while (messagesToSend.Count > 0)
         {
@@ -227,6 +229,19 @@ class MessageDispatcher(
 
                 return;
             }
+            catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.ServiceCommunicationProblem)
+            {
+                if (client.TransportType == ServiceBusTransportType.AmqpTcp)
+                {
+                    Log.Error("Couldn't connect using AMQP over TCP. Ensure AMQP ports 5671 and 5672 on the server are reachable, or try using websockets");
+                }
+                else if (client.TransportType == ServiceBusTransportType.AmqpWebSockets)
+                {
+                    Log.Error("Couldn't connect using AMQP over web sockets.");
+                }
+
+                throw;
+            }
         }
 
         if (messagesTooLargeToBeBatched is not null)
@@ -292,6 +307,7 @@ class MessageDispatcher(
     async Task DispatchForDestination(string destination, bool isMulticast, ServiceBusClient? client,
         Transaction? transaction, ServiceBusMessage message, CancellationToken cancellationToken)
     {
+        client ??= defaultClient;
         var sender = messageSenderRegistry.GetMessageSender(destination, client);
         try
         {
@@ -306,6 +322,19 @@ class MessageDispatcher(
             {
                 Log.Debug($"Sending message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
             }
+        }
+        catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.ServiceCommunicationProblem)
+        {
+            if (client.TransportType == ServiceBusTransportType.AmqpTcp)
+            {
+                Log.Error("Couldn't connect using AMQP over TCP. Ensure AMQP ports 5671 and 5672 on the server are reachable, or try using websockets");
+            }
+            else if (client.TransportType == ServiceBusTransportType.AmqpWebSockets)
+            {
+                Log.Error("Couldn't connect using AMQP over web sockets.");
+            }
+
+            throw;
         }
     }
 }

@@ -45,7 +45,8 @@
                         {
                             QueueNameToSubscriptionNameMap = { { Conventions.EndpointNamingConvention(typeof(Publisher)), TopicName } },
                             PublishedEventToTopicsMap = { { typeof(Event).FullName, TopicName } },
-                            SubscribedEventToTopicsMap = { { typeof(Event).FullName, [TopicName] } }
+                            SubscribedEventToTopicsMap = { { typeof(Event).FullName, [TopicName] } },
+                            ThrowIfUnmappedEventTypes = true
                         }, TopologyOptionsSerializationContext.Default.TopologyOptions);
                         var options = JsonSerializer.Deserialize(serializedOptions, TopologyOptionsSerializationContext.Default.TopologyOptions);
                         transport.Topology = TopicTopology.FromOptions(options);
@@ -72,7 +73,7 @@
                             SubscribedEventToRuleNameMap = { { typeof(Event).FullName, typeof(Event).FullName.Shorten() } },
                             TopicToPublishTo = TopicName,
                             TopicToSubscribeOn = TopicName,
-                            EventsToMigrateMap = [typeof(Event).FullName]
+                            EventsToMigrateMap = [typeof(Event).FullName],
                         }, TopologyOptionsSerializationContext.Default.TopologyOptions);
 
                         var options = JsonSerializer.Deserialize(serializedOptions, TopologyOptionsSerializationContext.Default.TopologyOptions);
