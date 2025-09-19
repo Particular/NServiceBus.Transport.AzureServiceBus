@@ -1,7 +1,6 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -53,6 +52,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         });
 
         WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
+        WriteManifest(hostSettings.Manifest);
     }
 
     void WriteStartupDiagnostics(StartupDiagnosticEntries startupDiagnostic) =>
@@ -90,7 +90,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     SetupInfrastructure = hostSettings.SetupInfrastructure,
                     SubscribingQueueName = receiveAddress,
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
-                })
+                }, hostSettings)
                 : null,
             subQueue
         );
@@ -144,38 +144,21 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             ? SubQueue.DeadLetter
             : SubQueue.None;
 
-    public override IEnumerable<KeyValuePair<string, ManifestItem>> GetManifest(string[] eventTypes)
+    void WriteManifest(ManifestItems manifest)
     {
         var inputQueues = receiveSettingsAndClientPairs
-            .Select(settingsAndClient => new ManifestItem { StringValue = ToTransportAddress(settingsAndClient.receiveSettings.ReceiveAddress).ToLower() })
-            .ToArray();
-        var subscriptions = eventTypes
-            .SelectMany(eventTypeFullName =>
-                transportSettings.Topology.Options.SubscribedEventToTopicsMap
-                .GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
-                .Select(topicName => new { Topic = topicName.ToLower(), MessageType = eventTypeFullName }))
-            .GroupBy(topicAndMessageType => topicAndMessageType.Topic)
-            .Select(group => new ManifestItem
-            {
-                ItemValue = [
-                    new("topicName", new ManifestItem { StringValue = group.Key }),
-                    new("messageTypes", new ManifestItem { ArrayValue = group.Select(topicAndMessageType => new ManifestItem { StringValue = topicAndMessageType.MessageType }).ToArray() })
-                ]
-            })
+            .Select(settingsAndClient => (ManifestItems.ManifestItem)ToTransportAddress(settingsAndClient.receiveSettings.ReceiveAddress).ToLower())
             .ToArray();
 
-        return [
-            new("asbSettings", new ManifestItem
-                {
-                    ItemValue = [
-                        new("entityMaximumSize", $"{transportSettings.EntityMaximumSize}GB"),
-                        new("prefetchCount", transportSettings.PrefetchCount?.ToString() ?? "default"),
-                        new("prefetchMultiplier", transportSettings.PrefetchMultiplier.ToString()),
-                        new("enablePartitioning", transportSettings.EnablePartitioning.ToString().ToLower())
-                    ]
-                }),
-            new("inputQueues", new ManifestItem { ArrayValue = inputQueues }),
-            new("subscriptions", new ManifestItem { ArrayValue = subscriptions })
-        ];
+        manifest.Add("asbSettings", new ManifestItems.ManifestItem
+        {
+            ItemValue = [
+                new("entityMaximumSize", $"{transportSettings.EntityMaximumSize}GB"),
+                new("prefetchCount", transportSettings.PrefetchCount?.ToString() ?? "default"),
+                new("prefetchMultiplier", transportSettings.PrefetchMultiplier.ToString()),
+                new("enablePartitioning", transportSettings.EnablePartitioning.ToString().ToLower())
+            ]
+        });
+        manifest.Add("inputQueues", new ManifestItems.ManifestItem { ArrayValue = inputQueues });
     }
 }

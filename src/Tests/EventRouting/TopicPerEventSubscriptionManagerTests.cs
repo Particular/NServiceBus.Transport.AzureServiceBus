@@ -32,7 +32,7 @@ public class TopicPerEventSubscriptionManagerTests
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
             AdministrationClient = administrationClient
-        }, topologyOptions);
+        }, topologyOptions, new ManifestItems());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
 
@@ -56,7 +56,7 @@ public class TopicPerEventSubscriptionManagerTests
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
             AdministrationClient = administrationClient
-        }, topologyOptions);
+        }, topologyOptions, new ManifestItems());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
 

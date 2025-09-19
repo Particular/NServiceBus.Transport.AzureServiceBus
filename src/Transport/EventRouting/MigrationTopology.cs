@@ -187,7 +187,8 @@ public sealed class MigrationTopology : TopicTopology
         throw new Exception($"When using migration topology, every event needs to be marked either as migrated or pending migration to avoid message loss. In the topology configuration use either MigratedPublishedEvent<'{eventTypeFullName}'>() or EventToMigrate<'{eventTypeFullName}'>(), depending on the migration state of this event.");
     }
 
-    internal override SubscriptionManager CreateSubscriptionManager(SubscriptionManagerCreationOptions creationOptions) => new MigrationTopologySubscriptionManager(creationOptions, Options);
+    internal override SubscriptionManager CreateSubscriptionManager(SubscriptionManagerCreationOptions creationOptions, HostSettings hostSettings) =>
+        new MigrationTopologySubscriptionManager(creationOptions, Options, hostSettings.Manifest);
 
     sealed class OptionsValidatorDecorator(IValidateOptions<MigrationTopologyOptions> decorated)
         : IValidateOptions<TopologyOptions>
