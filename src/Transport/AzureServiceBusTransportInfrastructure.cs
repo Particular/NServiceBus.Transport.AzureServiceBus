@@ -52,6 +52,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         });
 
         WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
+        WriteManifest(hostSettings.Manifest);
     }
 
     void WriteStartupDiagnostics(StartupDiagnosticEntries startupDiagnostic) =>
@@ -89,7 +90,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     SetupInfrastructure = hostSettings.SetupInfrastructure,
                     SubscribingQueueName = receiveAddress,
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
-                })
+                }, hostSettings)
                 : null,
             subQueue
         );
@@ -142,4 +143,22 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase)
             ? SubQueue.DeadLetter
             : SubQueue.None;
+
+    void WriteManifest(ManifestItems manifest)
+    {
+        var inputQueues = receiveSettingsAndClientPairs
+            .Select(settingsAndClient => (ManifestItems.ManifestItem)ToTransportAddress(settingsAndClient.receiveSettings.ReceiveAddress).ToLower())
+            .ToArray();
+
+        manifest.Add("asbSettings", new ManifestItems.ManifestItem
+        {
+            ItemValue = [
+                new("entityMaximumSize", $"{transportSettings.EntityMaximumSize}GB"),
+                new("prefetchCount", transportSettings.PrefetchCount?.ToString() ?? "default"),
+                new("prefetchMultiplier", transportSettings.PrefetchMultiplier.ToString()),
+                new("enablePartitioning", transportSettings.EnablePartitioning.ToString().ToLower())
+            ]
+        });
+        manifest.Add("inputQueues", new ManifestItems.ManifestItem { ArrayValue = inputQueues });
+    }
 }

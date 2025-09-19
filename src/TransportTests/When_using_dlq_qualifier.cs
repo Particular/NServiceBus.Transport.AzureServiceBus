@@ -109,6 +109,7 @@ public class When_using_dlq_qualifier
             inputQueueName,
             string.Empty,
             new StartupDiagnosticEntries(),
+            new ManifestItems(),
             (message, ex, token) => { },
             false
         );
@@ -168,6 +169,7 @@ public class When_using_dlq_qualifier
             inputQueueName,
             string.Empty,
             new StartupDiagnosticEntries(),
+            new ManifestItems(),
             (_, _, _) => { },
             true
         );
@@ -211,6 +213,7 @@ public class When_using_dlq_qualifier
             inputQueueName,
             string.Empty,
             new StartupDiagnosticEntries(),
+            new ManifestItems(),
             (message, ex, token) => { },
             true
         );

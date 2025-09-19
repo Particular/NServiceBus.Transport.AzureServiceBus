@@ -3,6 +3,7 @@ namespace NServiceBus
     using System;
     using System.ComponentModel.DataAnnotations;
     using Microsoft.Extensions.Options;
+    using NServiceBus.Transport;
     using Particular.Obsoletes;
     using Transport.AzureServiceBus;
 
@@ -113,7 +114,7 @@ namespace NServiceBus
 
         // By having this internal abstract method it is not possible to extend the topology with a custom topology outside
         // of this assembly. That is a deliberate design decision.
-        internal abstract SubscriptionManager CreateSubscriptionManager(SubscriptionManagerCreationOptions creationOptions);
+        internal abstract SubscriptionManager CreateSubscriptionManager(SubscriptionManagerCreationOptions creationOptions, HostSettings hostSettings);
 
         /// <summary>
         /// Returns instructions where to publish a given event.
