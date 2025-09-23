@@ -52,7 +52,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         });
 
         WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
-        WriteManifest(hostSettings.Manifest);
+        WriteManifest(hostSettings.StartupDiagnostic);
     }
 
     void WriteStartupDiagnostics(StartupDiagnosticEntries startupDiagnostic) =>
@@ -69,6 +69,20 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             CustomRetryPolicy = transportSettings.RetryPolicyOptions?.ToString() ?? "default",
             AutoDeleteOnIdle = transportSettings.AutoDeleteOnIdle?.ToString() ?? "default",
         });
+
+    void WriteManifest(StartupDiagnosticEntries startupDiagnostic)
+    {
+        startupDiagnostic.Add("Manifest-ASBSettings", new
+        {
+            EntityMaximumSize = $"{transportSettings.EntityMaximumSize}GB",
+            PrefetchCount = transportSettings.PrefetchCount?.ToString() ?? "default",
+            PrefetchMultiplier = transportSettings.PrefetchMultiplier.ToString(),
+            EnablePartitioning = transportSettings.EnablePartitioning.ToString().ToLower()
+        });
+        startupDiagnostic.Add("Manifest-InputQueues", receiveSettingsAndClientPairs
+            .Select(settingsAndClient => ToTransportAddress(settingsAndClient.receiveSettings.ReceiveAddress).ToLower())
+            .ToArray());
+    }
 
     IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient receiveClient)
     {
@@ -143,22 +157,4 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         QueueAddressQualifier.DeadLetterQueue.Equals(address.Qualifier, StringComparison.OrdinalIgnoreCase)
             ? SubQueue.DeadLetter
             : SubQueue.None;
-
-    void WriteManifest(ManifestItems manifest)
-    {
-        var inputQueues = receiveSettingsAndClientPairs
-            .Select(settingsAndClient => (ManifestItems.ManifestItem)ToTransportAddress(settingsAndClient.receiveSettings.ReceiveAddress).ToLower())
-            .ToArray();
-
-        manifest.Add("asbSettings", new ManifestItems.ManifestItem
-        {
-            ItemValue = [
-                new("entityMaximumSize", $"{transportSettings.EntityMaximumSize}GB"),
-                new("prefetchCount", transportSettings.PrefetchCount?.ToString() ?? "default"),
-                new("prefetchMultiplier", transportSettings.PrefetchMultiplier.ToString()),
-                new("enablePartitioning", transportSettings.EnablePartitioning.ToString().ToLower())
-            ]
-        });
-        manifest.Add("inputQueues", new ManifestItems.ManifestItem { ArrayValue = inputQueues });
-    }
 }

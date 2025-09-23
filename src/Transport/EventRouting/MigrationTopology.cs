@@ -188,7 +188,7 @@ public sealed class MigrationTopology : TopicTopology
     }
 
     internal override SubscriptionManager CreateSubscriptionManager(SubscriptionManagerCreationOptions creationOptions, HostSettings hostSettings) =>
-        new MigrationTopologySubscriptionManager(creationOptions, Options, hostSettings.Manifest);
+        new MigrationTopologySubscriptionManager(creationOptions, Options, hostSettings.StartupDiagnostic);
 
     sealed class OptionsValidatorDecorator(IValidateOptions<MigrationTopologyOptions> decorated)
         : IValidateOptions<TopologyOptions>

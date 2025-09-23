@@ -114,5 +114,5 @@ public sealed class TopicPerEventTopology : TopicTopology
 
     internal override SubscriptionManager CreateSubscriptionManager(
         SubscriptionManagerCreationOptions creationOptions, HostSettings hostSettings) =>
-        new TopicPerEventTopologySubscriptionManager(creationOptions, Options, hostSettings.Manifest);
+        new TopicPerEventTopologySubscriptionManager(creationOptions, Options, hostSettings.StartupDiagnostic);
 }

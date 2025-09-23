@@ -14,15 +14,15 @@ using Unicast.Messages;
 sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 {
     readonly TopologyOptions topologyOptions;
-    readonly ManifestItems manifest;
+    readonly StartupDiagnosticEntries startupDiagnostic;
     readonly string subscriptionName;
 
     public TopicPerEventTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
         TopologyOptions topologyOptions,
-        ManifestItems manifest) : base(creationOptions)
+        StartupDiagnosticEntries startupDiagnostic) : base(creationOptions)
     {
         this.topologyOptions = topologyOptions;
-        this.manifest = manifest;
+        this.startupDiagnostic = startupDiagnostic;
         subscriptionName = topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(CreationOptions.SubscribingQueueName, CreationOptions.SubscribingQueueName);
     }
 
@@ -38,15 +38,13 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                 .GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
                 .Select(topicName => new { Topic = topicName.ToLower(), MessageType = eventTypeFullName }))
             .GroupBy(topicAndMessageType => topicAndMessageType.Topic)
-            .Select(group => new ManifestItems.ManifestItem
+            .Select(group => new
             {
-                ItemValue = [
-                    new("topicName", group.Key),
-                    new("messageTypes", new ManifestItems.ManifestItem { ArrayValue = group.Select(topicAndMessageType => (ManifestItems.ManifestItem)topicAndMessageType.MessageType).ToArray() })
-                ]
+                TopicName = group.Key,
+                MessageTypes = group.Select(topicAndMessageType => topicAndMessageType.MessageType).ToArray()
             })
             .ToArray();
-        manifest.Add("subscriptions", new ManifestItems.ManifestItem { ArrayValue = subscriptions });
+        startupDiagnostic.Add("Manifest-Subscriptions", subscriptions);
 
         return eventTypes.Length switch
         {

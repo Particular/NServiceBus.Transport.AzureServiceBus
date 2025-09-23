@@ -16,15 +16,15 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 #pragma warning disable CS0618 // Type or member is obsolete
     readonly MigrationTopologyOptions topologyOptions;
 #pragma warning restore CS0618 // Type or member is obsolete
-    readonly ManifestItems manifest;
+    readonly StartupDiagnosticEntries startupDiagnostic;
     readonly string subscriptionName;
 
 #pragma warning disable CS0618 // Type or member is obsolete
-    public MigrationTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions, MigrationTopologyOptions topologyOptions, ManifestItems manifest) : base(creationOptions)
+    public MigrationTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions, MigrationTopologyOptions topologyOptions, StartupDiagnosticEntries startupDiagnostic) : base(creationOptions)
 #pragma warning restore CS0618 // Type or member is obsolete
     {
         this.topologyOptions = topologyOptions;
-        this.manifest = manifest;
+        this.startupDiagnostic = startupDiagnostic;
         subscriptionName = topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(CreationOptions.SubscribingQueueName, CreationOptions.SubscribingQueueName);
     }
 
@@ -40,15 +40,13 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
                 .GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
                 .Select(topicName => new { Topic = topicName.ToLower(), MessageType = eventTypeFullName }))
             .GroupBy(topicAndMessageType => topicAndMessageType.Topic)
-            .Select(group => new ManifestItems.ManifestItem
+            .Select(group => new
             {
-                ItemValue = [
-                    new("topicName", group.Key),
-                    new("messageTypes", new ManifestItems.ManifestItem { ArrayValue = group.Select(topicAndMessageType => (ManifestItems.ManifestItem)topicAndMessageType.MessageType).ToArray() })
-                ]
+                TopicName = group.Key,
+                MessageTypes = group.Select(topicAndMessageType => topicAndMessageType.MessageType).ToArray()
             })
             .ToArray();
-        manifest.Add("subscriptions", new ManifestItems.ManifestItem { ArrayValue = subscriptions });
+        startupDiagnostic.Add("Manifest-Subscriptions", subscriptions);
 
         return eventTypes.Length switch
         {
