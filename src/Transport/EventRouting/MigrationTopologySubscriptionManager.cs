@@ -33,6 +33,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
     public override Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
         CancellationToken cancellationToken = default)
     {
+        //NOTE: identical to code in EventPerTopicTopolocySubscriptionManager but kept separate due to this class being obsolete
         var subscriptions = eventTypes
             .Select(eventType => eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"))
             .SelectMany(eventTypeFullName =>
