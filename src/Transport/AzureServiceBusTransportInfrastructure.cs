@@ -52,6 +52,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         });
 
         WriteStartupDiagnostics(hostSettings.StartupDiagnostic);
+        WriteManifest(hostSettings.StartupDiagnostic);
     }
 
     void WriteStartupDiagnostics(StartupDiagnosticEntries startupDiagnostic) =>
@@ -68,6 +69,20 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             CustomRetryPolicy = transportSettings.RetryPolicyOptions?.ToString() ?? "default",
             AutoDeleteOnIdle = transportSettings.AutoDeleteOnIdle?.ToString() ?? "default",
         });
+
+    void WriteManifest(StartupDiagnosticEntries startupDiagnostic)
+    {
+        startupDiagnostic.Add("Manifest-ASBSettings", new
+        {
+            EntityMaximumSize = $"{transportSettings.EntityMaximumSize}GB",
+            PrefetchCount = transportSettings.PrefetchCount?.ToString() ?? "default",
+            PrefetchMultiplier = transportSettings.PrefetchMultiplier.ToString(),
+            EnablePartitioning = transportSettings.EnablePartitioning.ToString().ToLower()
+        });
+        startupDiagnostic.Add("Manifest-InputQueues", receiveSettingsAndClientPairs
+            .Select(settingsAndClient => ToTransportAddress(settingsAndClient.receiveSettings.ReceiveAddress).ToLower())
+            .ToArray());
+    }
 
     IMessageReceiver CreateMessagePump(ReceiveSettings receiveSettings, ServiceBusClient receiveClient)
     {
@@ -89,7 +104,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     SetupInfrastructure = hostSettings.SetupInfrastructure,
                     SubscribingQueueName = receiveAddress,
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
-                })
+                }, hostSettings)
                 : null,
             subQueue
         );

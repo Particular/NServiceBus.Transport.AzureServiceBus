@@ -16,28 +16,48 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 #pragma warning disable CS0618 // Type or member is obsolete
     readonly MigrationTopologyOptions topologyOptions;
 #pragma warning restore CS0618 // Type or member is obsolete
+    readonly StartupDiagnosticEntries startupDiagnostic;
     readonly string subscriptionName;
 
 #pragma warning disable CS0618 // Type or member is obsolete
-    public MigrationTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions, MigrationTopologyOptions topologyOptions) : base(creationOptions)
+    public MigrationTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions, MigrationTopologyOptions topologyOptions, StartupDiagnosticEntries startupDiagnostic) : base(creationOptions)
 #pragma warning restore CS0618 // Type or member is obsolete
     {
         this.topologyOptions = topologyOptions;
+        this.startupDiagnostic = startupDiagnostic;
         subscriptionName = topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(CreationOptions.SubscribingQueueName, CreationOptions.SubscribingQueueName);
     }
 
     static readonly ILog Logger = LogManager.GetLogger<MigrationTopologySubscriptionManager>();
 
     public override Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
-        CancellationToken cancellationToken = default) =>
-        eventTypes.Length switch
+        CancellationToken cancellationToken = default)
+    {
+        //NOTE: identical to code in EventPerTopicTopolocySubscriptionManager but kept separate due to this class being obsolete
+        var subscriptions = eventTypes
+            .Select(eventType => eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"))
+            .SelectMany(eventTypeFullName =>
+                topologyOptions.SubscribedEventToTopicsMap
+                .GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
+                .Select(topicName => new { Topic = topicName.ToLower(), MessageType = eventTypeFullName }))
+            .GroupBy(topicAndMessageType => topicAndMessageType.Topic)
+            .Select(group => new
+            {
+                TopicName = group.Key,
+                MessageTypes = group.Select(topicAndMessageType => topicAndMessageType.MessageType).ToArray()
+            })
+            .ToArray();
+        startupDiagnostic.Add("Manifest-Subscriptions", subscriptions);
+
+        return eventTypes.Length switch
         {
             0 => Task.CompletedTask,
-            1 => SubscribeEvent(eventTypes[0].MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"), cancellationToken),
+            1 => SubscribeEvent(eventTypes[0].MessageType.FullName!, cancellationToken),
             _ => Task.WhenAll(eventTypes.Select(eventType =>
-                    SubscribeEvent(eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"), cancellationToken))
+                    SubscribeEvent(eventType.MessageType.FullName!, cancellationToken))
                 .ToArray())
         };
+    }
 
     async Task SubscribeEvent(string eventTypeFullName, CancellationToken cancellationToken)
     {

@@ -41,7 +41,7 @@ public class MigrationTopologySubscriptionManagerTests
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
             AdministrationClient = administrationClient
-        }, topologyOptions);
+        }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
 
@@ -72,7 +72,7 @@ public class MigrationTopologySubscriptionManagerTests
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
             AdministrationClient = administrationClient
-        }, topologyOptions);
+        }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
 
@@ -98,7 +98,7 @@ public class MigrationTopologySubscriptionManagerTests
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
             AdministrationClient = administrationClient
-        }, topologyOptions);
+        }, topologyOptions, new StartupDiagnosticEntries());
 
         await Assert.ThatAsync(() => subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag()), Throws.Exception);
     }

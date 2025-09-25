@@ -14,27 +14,47 @@ using Unicast.Messages;
 sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 {
     readonly TopologyOptions topologyOptions;
+    readonly StartupDiagnosticEntries startupDiagnostic;
     readonly string subscriptionName;
 
     public TopicPerEventTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
-        TopologyOptions topologyOptions) : base(creationOptions)
+        TopologyOptions topologyOptions,
+        StartupDiagnosticEntries startupDiagnostic) : base(creationOptions)
     {
         this.topologyOptions = topologyOptions;
+        this.startupDiagnostic = startupDiagnostic;
         subscriptionName = topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(CreationOptions.SubscribingQueueName, CreationOptions.SubscribingQueueName);
     }
 
     static readonly ILog Logger = LogManager.GetLogger<TopicPerEventTopologySubscriptionManager>();
 
     public override Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
-        CancellationToken cancellationToken = default) =>
-        eventTypes.Length switch
+        CancellationToken cancellationToken = default)
+    {
+        var subscriptions = eventTypes
+            .Select(eventType => eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"))
+            .SelectMany(eventTypeFullName =>
+                topologyOptions.SubscribedEventToTopicsMap
+                .GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
+                .Select(topicName => new { Topic = topicName.ToLower(), MessageType = eventTypeFullName }))
+            .GroupBy(topicAndMessageType => topicAndMessageType.Topic)
+            .Select(group => new
+            {
+                TopicName = group.Key,
+                MessageTypes = group.Select(topicAndMessageType => topicAndMessageType.MessageType).ToArray()
+            })
+            .ToArray();
+        startupDiagnostic.Add("Manifest-Subscriptions", subscriptions);
+
+        return eventTypes.Length switch
         {
             0 => Task.CompletedTask,
-            1 => SubscribeEvent(eventTypes[0].MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"), cancellationToken),
+            1 => SubscribeEvent(eventTypes[0].MessageType.FullName!, cancellationToken),
             _ => Task.WhenAll(eventTypes.Select(eventType =>
-                    SubscribeEvent(eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"), cancellationToken))
+                    SubscribeEvent(eventType.MessageType.FullName!, cancellationToken))
                 .ToArray())
         };
+    }
 
     Task SubscribeEvent(string eventTypeFullName, CancellationToken cancellationToken)
     {
