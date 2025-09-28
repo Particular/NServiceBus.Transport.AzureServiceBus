@@ -78,7 +78,9 @@ public partial class AzureServiceBusTransport : TransportDefinition
             {
                 TransportType = transportType,
                 EnableCrossEntityTransactions = enableCrossEntityTransactions,
-                Identifier = $"Client-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}",
+                Identifier = HierarchyNamespace is null
+                    ? $"Client-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
+                    : $"Client-{HierarchyNamespace}-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}",
             };
             ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
             ApplyWebProxyIfNeeded(receiveClientOptions);
@@ -93,7 +95,9 @@ public partial class AzureServiceBusTransport : TransportDefinition
             TransportType = transportType,
             // for the default client we never want things to automatically use cross entity transaction
             EnableCrossEntityTransactions = false,
-            Identifier = $"Client-{hostSettings.Name}-{Guid.NewGuid()}"
+            Identifier = HierarchyNamespace is null
+                ? $"Client-{hostSettings.Name}-{Guid.NewGuid()}"
+                : $"Client-{HierarchyNamespace}-{hostSettings.Name}-{Guid.NewGuid()}"
         };
         ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
         ApplyWebProxyIfNeeded(defaultClientOptions);
@@ -105,7 +109,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
             : new ServiceBusAdministrationClient(ConnectionString);
 
-        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient);
+        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient, HierarchyNamespace);
 
         if (hostSettings.SetupInfrastructure)
         {
@@ -114,7 +118,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
             var allQueues = infrastructure.Receivers
                 .Select(r => r.Value.ReceiveAddress)
-                .Concat(sendingAddresses)
+                .Concat(sendingAddresses.Select(s => HierarchyNamespace is null || s.StartsWith(HierarchyNamespace) ? s : $"{HierarchyNamespace}/{s}"))
                 .ToArray();
 
             var queueCreator = new TopologyCreator(this);
@@ -192,6 +196,13 @@ public partial class AzureServiceBusTransport : TransportDefinition
     }
 
     TopicTopology topology;
+
+    /// <summary>
+    /// Specifies the value that will be prepended to every entity name referenced by the endpoint.
+    /// This will ensure that all entities will be part of the <see href="https://learn.microsoft.com/en-us/rest/api/servicebus/addressing-and-protocol">same hierarchy</see> 
+    /// within the ServiceBus namespace.
+    /// </summary>
+    public string? HierarchyNamespace { get; set; }
 
     /// <summary>
     /// The maximum size used when creating queues and topics in GB.

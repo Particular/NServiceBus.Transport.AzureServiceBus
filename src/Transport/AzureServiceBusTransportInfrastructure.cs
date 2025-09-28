@@ -16,6 +16,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     readonly HostSettings hostSettings;
     readonly ServiceBusClient defaultClient;
     readonly ServiceBusAdministrationClient administrationClient;
+    readonly string? hierarchyNamespace;
     readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
 
     public AzureServiceBusTransportInfrastructure(
@@ -23,7 +24,8 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         HostSettings hostSettings,
         (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
         ServiceBusClient defaultClient,
-        ServiceBusAdministrationClient administrationClient
+        ServiceBusAdministrationClient administrationClient,
+        string? hierarchyNamespace
     )
     {
         this.transportSettings = transportSettings;
@@ -31,6 +33,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         this.hostSettings = hostSettings;
         this.defaultClient = defaultClient;
         this.administrationClient = administrationClient;
+        this.hierarchyNamespace = hierarchyNamespace;
         this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
 
         messageSenderRegistry = new MessageSenderRegistry();
@@ -39,6 +42,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             defaultClient,
             messageSenderRegistry,
             transportSettings.Topology,
+            hierarchyNamespace,
             transportSettings.OutgoingNativeMessageCustomization
         );
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
@@ -138,7 +142,9 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
     public override string ToTransportAddress(QueueAddress address)
     {
-        var queue = new StringBuilder(address.BaseAddress);
+        var queue = hierarchyNamespace is null
+            ? new StringBuilder(address.BaseAddress)
+            : new StringBuilder($"{hierarchyNamespace}/{address.BaseAddress}");
 
         if (address.Discriminator != null)
         {
