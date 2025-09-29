@@ -10,6 +10,7 @@ namespace NServiceBus
         public System.TimeSpan? AutoDeleteOnIdle { get; set; }
         public bool EnablePartitioning { get; set; }
         public int EntityMaximumSize { get; set; }
+        public string? HierarchyNamespace { get; set; }
         public System.TimeSpan? MaxAutoLockRenewalDuration { get; set; }
         public System.Action<NServiceBus.Transport.IOutgoingTransportOperation, Azure.Messaging.ServiceBus.ServiceBusMessage>? OutgoingNativeMessageCustomization { get; set; }
         public int? PrefetchCount { get; set; }
