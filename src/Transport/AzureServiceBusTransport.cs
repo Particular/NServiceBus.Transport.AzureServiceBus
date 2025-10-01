@@ -78,9 +78,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             {
                 TransportType = transportType,
                 EnableCrossEntityTransactions = enableCrossEntityTransactions,
-                Identifier = HierarchyNamespace is null
-                    ? $"Client-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
-                    : $"Client-{HierarchyNamespace}-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}",
+                Identifier = $"Client-{(HierarchyNamespace is not null ? $"{HierarchyNamespace}-" : "")}{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
             };
             ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
             ApplyWebProxyIfNeeded(receiveClientOptions);
@@ -95,9 +93,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             TransportType = transportType,
             // for the default client we never want things to automatically use cross entity transaction
             EnableCrossEntityTransactions = false,
-            Identifier = HierarchyNamespace is null
-                ? $"Client-{hostSettings.Name}-{Guid.NewGuid()}"
-                : $"Client-{HierarchyNamespace}-{hostSettings.Name}-{Guid.NewGuid()}"
+            Identifier = $"Client-{(HierarchyNamespace is not null ? $"{HierarchyNamespace}-" : "")}{hostSettings.Name}-{Guid.NewGuid()}"
         };
         ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
         ApplyWebProxyIfNeeded(defaultClientOptions);

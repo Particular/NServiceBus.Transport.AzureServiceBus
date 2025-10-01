@@ -142,9 +142,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
     public override string ToTransportAddress(QueueAddress address)
     {
-        var queue = hierarchyNamespace is null
-            ? new StringBuilder(address.BaseAddress)
-            : new StringBuilder($"{hierarchyNamespace}/{address.BaseAddress}");
+        var queue = new StringBuilder($"{(hierarchyNamespace is not null ? $"{hierarchyNamespace}/" : "")}{address.BaseAddress}");
 
         if (address.Discriminator != null)
         {
