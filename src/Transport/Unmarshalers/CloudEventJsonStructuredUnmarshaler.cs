@@ -61,7 +61,7 @@
             return new ReadOnlyMemory<byte>(Convert.FromBase64String(receivedCloudEvent.RootElement.GetProperty(DATA_BASE64_PROPERTY).GetString()!));
         }
 
-        static Dictionary<string, string> ExtractHeaders(Dictionary<string, string> existingHeaders, JsonDocument receivedCloudEvent)
+        static Dictionary<string, string?> ExtractHeaders(Dictionary<string, string?> existingHeaders, JsonDocument receivedCloudEvent)
         {
             var propertiesToIgnore = new[] { DATA_PROPERTY, DATA_BASE64_PROPERTY };
 
@@ -85,9 +85,9 @@
             return headersCopy;
         }
 
-        static string ExtractId(JsonDocument receivedCloudEvent) => receivedCloudEvent.RootElement.GetProperty(ID_PROPERTY).GetString();
+        static string ExtractId(JsonDocument receivedCloudEvent) => receivedCloudEvent.RootElement.GetProperty(ID_PROPERTY)!.GetString()!;
 
-        static void ThrowIfInvalidCloudEvent(JsonDocument receivedCloudEvent)
+        static void ThrowIfInvalidCloudEvent(JsonDocument? receivedCloudEvent)
         {
             if (receivedCloudEvent == null)
             {
@@ -96,9 +96,15 @@
 
             foreach (var property in new string[] { DATA_CONTENT_TYPE_PROPERTY, ID_PROPERTY, TYPE_PROPERTY })
             {
-                if (!receivedCloudEvent.RootElement.TryGetProperty(property, out _))
+                if (!receivedCloudEvent.RootElement.TryGetProperty(property, out JsonElement propertyValue))
                 {
                     throw new NotSupportedException($"Message lacks {property} property");
+                }
+
+                if (propertyValue.GetString() is null)
+                {
+                    // TODO AF Add tests (and do the same in Core version)
+                    throw new NotSupportedException($"Message has null value as {property} property");
                 }
             }
 
@@ -116,14 +122,20 @@
 
             ThrowIfInvalidCloudEvent(receivedCloudEvent);
 
-            return receivedCloudEvent;
+            return receivedCloudEvent!;
         }
 
         static void ThrowIfInvalidMessage(MessageToUnmarshal messageToUnmarshal)
         {
 
-            if (messageToUnmarshal.Headers.TryGetValue(Headers.ContentType, out string value))
+            if (messageToUnmarshal.Headers.TryGetValue(Headers.ContentType, out string? value))
             {
+                if (value is null)
+                {
+                    // TODO AF Add tests (and do the same in Core version)
+                    throw new NotSupportedException($"Empty content type");
+                }
+
                 if (value != SUPPORTED_CONTENT_TYPE)
                 {
                     throw new NotSupportedException($"Unsupported content type {value}");
@@ -136,6 +148,6 @@
         }
 
         public bool IsValidMessage(MessageToUnmarshal messageToUnmarshal) =>
-            messageToUnmarshal.Headers.TryGetValue(Headers.ContentType, out string value) && value == SUPPORTED_CONTENT_TYPE;
+            messageToUnmarshal.Headers.TryGetValue(Headers.ContentType, out string? value) && value == SUPPORTED_CONTENT_TYPE;
     }
 }

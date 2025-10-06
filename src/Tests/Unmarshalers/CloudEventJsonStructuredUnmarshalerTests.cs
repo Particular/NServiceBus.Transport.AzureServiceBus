@@ -6,8 +6,6 @@ using NUnit.Framework;
 using System.Text;
 using System.Text.Json;
 using NServiceBus;
-using Testing;
-using Transport;
 using NServiceBus.Transport.AzureServiceBus.Unmarshalers;
 
 [TestFixture]

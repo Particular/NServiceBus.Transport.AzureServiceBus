@@ -3,7 +3,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Unmarshalers;
 using System;
 using System.Collections.Generic;
 
-public class MessageToUnmarshal
+class MessageToUnmarshal
 {
     public MessageToUnmarshal(Dictionary<string, string?> headers, ReadOnlyMemory<byte> body)
     {

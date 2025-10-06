@@ -5,7 +5,7 @@ using Transport;
 /// <summary>
 /// Defines methods to unmarshal and validate incoming transport messages.
 /// </summary>
-public interface IUnmarshalMessages
+interface IUnmarshalMessages
 {
     /// <summary>
     /// Creates a <see cref="UnmarshalledMessage"/> from the given <see cref="MessageToUnmarshal"/>.
