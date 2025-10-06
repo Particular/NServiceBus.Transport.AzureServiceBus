@@ -10,6 +10,7 @@ using Azure.Messaging.ServiceBus;
 using BitFaster.Caching.Lru;
 using Extensibility;
 using Logging;
+using Unmarshalers;
 
 sealed class MessagePump(
     ServiceBusClient serviceBusClient,
@@ -21,6 +22,7 @@ sealed class MessagePump(
     SubQueue subQueue = SubQueue.None)
     : IMessageReceiver, IAsyncDisposable
 {
+    readonly IUnmarshalMessages unmarshaler = new BatchedUnmarshaller([new CloudEventJsonStructuredUnmarshaler()]);
     readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
 
     OnMessage? onMessage;
@@ -258,7 +260,13 @@ sealed class MessagePump(
         try
         {
             using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
-            var messageContext = new MessageContext(nativeMessageId, headers, body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
+            var unmarshaledMessage = unmarshaler.CreateIncomingMessage(new MessageToUnmarshal
+            {
+                Body = body, Headers = headers, NativeMessageId = nativeMessageId
+            });
+
+            var messageContext = new MessageContext(unmarshaledMessage.NativeMessageId, unmarshaledMessage.Headers, 
+                unmarshaledMessage.Body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
             await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
