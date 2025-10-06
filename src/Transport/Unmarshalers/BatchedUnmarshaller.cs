@@ -1,18 +1,12 @@
-namespace NServiceBus;
+namespace NServiceBus.Transport.AzureServiceBus.Unmarshalers;
 
 using System.Collections.Generic;
 using System.Linq;
-using Transport.AzureServiceBus.Unmarshalers;
 
 class BatchedUnmarshaller(IEnumerable<IUnmarshalMessages> translators) : IUnmarshalMessages
 {
     static UnmarshalledMessage GetDefaultIncomingMessage(MessageToUnmarshal messageToUnmarshal) =>
-        new UnmarshalledMessage
-        {
-            NativeMessageId = messageToUnmarshal.NativeMessageId,
-            Headers = messageToUnmarshal.Headers,
-            Body = messageToUnmarshal.Body
-        };
+        new UnmarshalledMessage(messageToUnmarshal.Headers, messageToUnmarshal.Body);
 
     public UnmarshalledMessage CreateIncomingMessage(MessageToUnmarshal messageToUnmarshal)
     {

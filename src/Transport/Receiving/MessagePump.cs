@@ -260,12 +260,9 @@ sealed class MessagePump(
         try
         {
             using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
-            var unmarshaledMessage = unmarshaler.CreateIncomingMessage(new MessageToUnmarshal
-            {
-                Body = body, Headers = headers, NativeMessageId = nativeMessageId
-            });
+            var unmarshaledMessage = unmarshaler.CreateIncomingMessage(new MessageToUnmarshal(headers, body));
 
-            var messageContext = new MessageContext(unmarshaledMessage.NativeMessageId, unmarshaledMessage.Headers, 
+            var messageContext = new MessageContext(nativeMessageId, unmarshaledMessage.Headers, 
                 unmarshaledMessage.Body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
             await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);

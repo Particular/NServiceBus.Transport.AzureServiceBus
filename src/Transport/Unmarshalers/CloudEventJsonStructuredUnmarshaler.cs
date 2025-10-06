@@ -1,13 +1,10 @@
-﻿namespace NServiceBus
+﻿namespace NServiceBus.Transport.AzureServiceBus.Unmarshalers
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Text;
     using System.Text.Json;
-    using Azure.Messaging;
-    using Transport;
-    using Transport.AzureServiceBus.Unmarshalers;
 
     class CloudEventJsonStructuredUnmarshaler : IUnmarshalMessages
     {
@@ -31,11 +28,7 @@
             var headers = ExtractHeaders(messageToUnmarshal.Headers, receivedCloudEvent);
             var body = ExtractBody(receivedCloudEvent);
 
-            return new UnmarshalledMessage {
-                NativeMessageId = messageToUnmarshal.NativeMessageId,
-                Headers = headers,
-                Body = body
-            };
+            return new UnmarshalledMessage(headers, body);
         }
 
         static ReadOnlyMemory<byte> ExtractBody(JsonDocument receivedCloudEvent)
