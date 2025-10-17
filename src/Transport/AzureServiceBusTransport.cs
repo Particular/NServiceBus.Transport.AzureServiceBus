@@ -271,7 +271,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         {
             if (value.HasValue)
             {
-                ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value.Value, nameof(PrefetchCount));
+                ArgumentOutOfRangeException.ThrowIfNegative(value.Value, nameof(PrefetchCount));
             }
 
             field = value;
