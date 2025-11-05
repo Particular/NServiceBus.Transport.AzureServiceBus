@@ -12,6 +12,17 @@ using Particular.Obsoletes;
 public static partial class AzureServiceBusTransportSettingsExtensions
 {
     /// <summary>
+    /// Configure the endpoint to use the Azure Service bus transport.
+    /// </summary>
+    /// <param name="endpointConfiguration">this endpoint configuration.</param>
+    /// <param name="transport">The Azure Service bus transport.</param>
+    public static RoutingSettings<AzureServiceBusTransport> UseTransport(this EndpointConfiguration endpointConfiguration, AzureServiceBusTransport transport)
+    {
+        endpointConfiguration.EnableFeature<NativeMessageCustomizationFeature>();
+        return endpointConfiguration.UseTransport<AzureServiceBusTransport>(transport);
+    }
+
+    /// <summary>
     /// Configure the endpoint to use the Azure Service bus transport. This configuration method will eventually be deprecated.
     /// Consider using endpointConfiguration.UseTransport(new AzureServiceBusTransport(connectionString, topology)) instead.
     /// </summary>
