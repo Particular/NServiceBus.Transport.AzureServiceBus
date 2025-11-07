@@ -40,7 +40,6 @@ namespace NServiceBus
             "emoved in version 7.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SendTransportEncodingHeader(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TimeToWaitBeforeTriggeringCircuitBreaker(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan timeToWait) { }
-        public static NServiceBus.RoutingSettings<NServiceBus.AzureServiceBusTransport> UseTransport(this NServiceBus.EndpointConfiguration endpointConfiguration, NServiceBus.AzureServiceBusTransport transport) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration, string connectionString, NServiceBus.TopicTopology topology)
             where TTransport : NServiceBus.AzureServiceBusTransport { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration, string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential, NServiceBus.TopicTopology topology)

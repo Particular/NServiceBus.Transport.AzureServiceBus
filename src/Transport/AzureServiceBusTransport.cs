@@ -34,6 +34,8 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
         ConnectionString = connectionString;
         Topology = topology;
+
+        EnableEndpointFeature<NativeMessageCustomizationFeature>();
     }
 
     /// <summary>
@@ -55,6 +57,8 @@ public partial class AzureServiceBusTransport : TransportDefinition
         FullyQualifiedNamespace = fullyQualifiedNamespace;
         TokenCredential = tokenCredential;
         Topology = topology;
+
+        EnableEndpointFeature<NativeMessageCustomizationFeature>();
     }
 
     /// <inheritdoc />
