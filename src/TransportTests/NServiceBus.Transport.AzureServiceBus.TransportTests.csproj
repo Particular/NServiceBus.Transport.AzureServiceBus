@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NServiceBus.TransportTests.Sources" Version="10.0.0-alpha.19" GeneratePathProperty="true" />
+    <PackageReference Include="NServiceBus.TransportTests.Sources" Version="10.0.0-alpha.20" GeneratePathProperty="true" />
     <PackageReference Include="System.IO.Hashing" Version="10.0.0" />
   </ItemGroup>
 
