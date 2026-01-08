@@ -33,7 +33,7 @@
         public async Task Should_not_lose_any_events()
         {
             //Before migration begins
-            var beforeMigration = await Scenario.Define<Context>(c => c.Step = "Before migration")
+            await Scenario.Define<Context>(c => c.Step = "Before migration")
                 .WithEndpoint<Publisher>(b =>
                 {
                     b.CustomConfig(c =>
@@ -45,7 +45,7 @@
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                     });
-                    b.When((session, ctx) => session.Publish(new MyEvent()));
+                    b.When(session => session.Publish(new MyEvent()));
                 })
                 .WithEndpoint<Subscriber>(b =>
                 {
@@ -65,7 +65,7 @@
              * When auto-subscribe enabled, Subscriber creates a new topic/subscription
              * but continues to receive events via the bundle topic
              */
-            var subscriberMigrated = await Scenario.Define<Context>(c => c.Step = "Subscriber migrated")
+            await Scenario.Define<Context>(c => c.Step = "Subscriber migrated")
                 .WithEndpoint<Publisher>(b =>
                 {
                     b.CustomConfig(c =>
@@ -77,7 +77,7 @@
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                     });
-                    b.When((session, ctx) => session.Publish(new MyEvent()));
+                    b.When(session => session.Publish(new MyEvent()));
                 })
                 .WithEndpoint<Subscriber>(b =>
                 {
@@ -105,7 +105,7 @@
             }
 
             //Event delivery path switched to new once publisher changes config
-            var topicMigrated = await Scenario.Define<Context>(c => c.Step = "Topic migrated")
+            await Scenario.Define<Context>(c => c.Step = "Topic migrated")
                 .WithEndpoint<Publisher>(b =>
                 {
                     b.CustomConfig(c =>
@@ -115,7 +115,7 @@
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                     });
-                    b.When((session, ctx) => session.Publish(new MyEvent()));
+                    b.When(session => session.Publish(new MyEvent()));
                 })
                 .WithEndpoint<Subscriber>(b =>
                 {
