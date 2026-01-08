@@ -7,6 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using NServiceBus.Transport.AzureServiceBus.Sending;
+using NServiceBus.Transport.AzureServiceBus.EventRouting;
 
 sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 {
@@ -17,13 +19,14 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     readonly ServiceBusClient defaultClient;
     readonly ServiceBusAdministrationClient administrationClient;
     readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
-
+    readonly string? hierarchyNamespace;
     public AzureServiceBusTransportInfrastructure(
         AzureServiceBusTransport transportSettings,
         HostSettings hostSettings,
         (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
         ServiceBusClient defaultClient,
-        ServiceBusAdministrationClient administrationClient
+        ServiceBusAdministrationClient administrationClient,
+        string? hierarchyNamespace
     )
     {
         this.transportSettings = transportSettings;
@@ -32,6 +35,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         this.defaultClient = defaultClient;
         this.administrationClient = administrationClient;
         this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
+        this.hierarchyNamespace = hierarchyNamespace;
 
         messageSenderRegistry = new MessageSenderRegistry();
 
@@ -39,6 +43,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             defaultClient,
             messageSenderRegistry,
             transportSettings.Topology,
+            hierarchyNamespace,
             transportSettings.OutgoingNativeMessageCustomization
         );
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
@@ -138,8 +143,16 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
     public override string ToTransportAddress(QueueAddress address)
     {
-        var queue = new StringBuilder(address.BaseAddress);
+        var baseAddress = address.BaseAddress;
+        if (hierarchyNamespace is not null)
+        {
+            if (!baseAddress.StartsWith(hierarchyNamespace + "/", StringComparison.OrdinalIgnoreCase))
+            {
+                baseAddress = $"{hierarchyNamespace}/{baseAddress}";
+            }
+        }
 
+        var queue = new StringBuilder(baseAddress);
         if (address.Discriminator != null)
         {
             queue.Append($"-{address.Discriminator}");

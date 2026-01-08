@@ -82,7 +82,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             {
                 TransportType = transportType,
                 EnableCrossEntityTransactions = enableCrossEntityTransactions,
-                Identifier = $"Client-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}",
+                Identifier = $"Client-{(HierarchyNamespace is not null ? $"{HierarchyNamespace}-" : "")}{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
             };
             ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
             ApplyWebProxyIfNeeded(receiveClientOptions);
@@ -97,7 +97,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             TransportType = transportType,
             // for the default client we never want things to automatically use cross entity transaction
             EnableCrossEntityTransactions = false,
-            Identifier = $"Client-{hostSettings.Name}-{Guid.NewGuid()}"
+            Identifier = $"Client-{(HierarchyNamespace is not null ? $"{HierarchyNamespace}-" : "")}{hostSettings.Name}-{Guid.NewGuid()}"
         };
         ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
         ApplyWebProxyIfNeeded(defaultClientOptions);
@@ -108,8 +108,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         var administrationClient = TokenCredential != null
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
             : new ServiceBusAdministrationClient(ConnectionString);
-
-        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient);
+        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient, HierarchyNamespace);
 
         if (hostSettings.SetupInfrastructure)
         {
@@ -118,7 +117,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
             var allQueues = infrastructure.Receivers
                 .Select(r => r.Value.ReceiveAddress)
-                .Concat(sendingAddresses)
+                .Concat(sendingAddresses.Select(s => GetEntityPathWithPrefix(s)))
                 .ToArray();
 
             var queueCreator = new TopologyCreator(this);
@@ -197,9 +196,35 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
     TopicTopology topology;
 
+    static string GetEntityPath(string destination, string? prefix)
+    {
+        if (string.IsNullOrWhiteSpace(prefix))
+        {
+            return destination;
+        }
+
+        // Idempotent: if the destination is already prefixed, return as-is
+        if (destination.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase))
+        {
+            return destination;
+        }
+
+        return $"{prefix}/{destination}";
+    }
+
+    internal string GetEntityPathWithPrefix(string destination) => GetEntityPath(destination, HierarchyNamespace);
+
+    /// <summary>
+    /// Specifies the value that will be prepended to every entity name referenced by the endpoint.
+    /// This behaves similarly to the SQS transport's HierarchyNamespace: the prefix is applied
+    /// idempotently so that names are not double-prefixed.
+    /// </summary>
+    public string? HierarchyNamespace { get; set; }
+
     /// <summary>
     /// The maximum size used when creating queues and topics in GB.
     /// </summary>
+    /// 
     public int EntityMaximumSize
     {
         get;
