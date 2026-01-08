@@ -53,7 +53,6 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
             var context = await Scenario.Define<Context>()
                 .WithEndpoint<Sender>(b => b.When(session => session.Send(new MyMessage())))
                 .WithEndpoint<Receiver>()
-                .Done(c => c.MessageReceived)
                 .Run();
 
             Assert.That(context.MessageReceived, Is.True);
@@ -85,7 +84,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                 public Task Handle(MyMessage message, IMessageHandlerContext context)
                 {
                     testContext.MessageReceived = true;
-                    return Task.FromResult(0);
+                    testContext.MarkAsCompleted();
+                    return Task.CompletedTask;
                 }
             }
         }

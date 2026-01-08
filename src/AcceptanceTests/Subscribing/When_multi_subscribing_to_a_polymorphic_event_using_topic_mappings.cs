@@ -26,20 +26,21 @@
                     return session.Publish(new MyEvent2());
                 }))
                 .WithEndpoint<Subscriber>()
-                .Done(c => c.SubscriberGotMyEvent1 && c.SubscriberGotMyEvent2)
                 .Run();
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(context.SubscriberGotMyEvent1, Is.True);
                 Assert.That(context.SubscriberGotMyEvent2, Is.True);
-            });
+            }
         }
 
         public class Context : ScenarioContext
         {
             public bool SubscriberGotMyEvent1 { get; set; }
             public bool SubscriberGotMyEvent2 { get; set; }
+
+            public void MaybeMarkAsCompleted() => MarkAsCompleted(SubscriberGotMyEvent1 && SubscriberGotMyEvent2);
         }
 
         public class Publisher1 : EndpointConfigurationBuilder
@@ -104,7 +105,7 @@
                         default:
                             break;
                     }
-
+                    testContext.MaybeMarkAsCompleted();
                     return Task.CompletedTask;
                 }
             }

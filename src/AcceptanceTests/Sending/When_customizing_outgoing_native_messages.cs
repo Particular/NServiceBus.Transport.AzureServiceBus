@@ -16,7 +16,6 @@ namespace NServiceBus.Transport.RabbitMQ.AcceptanceTests.Sending
         {
             var scenario = await Scenario.Define<Context>()
                 .WithEndpoint<Receiver>(b => b.When((bus, c) => bus.SendLocal(new Message())))
-                .Done(c => c.ReceivedMessage != null)
                 .Run();
 
             Assert.That(scenario.ReceivedMessage.Subject, Is.EqualTo(TestSubject));
@@ -41,6 +40,7 @@ namespace NServiceBus.Transport.RabbitMQ.AcceptanceTests.Sending
                 public Task Handle(Message message, IMessageHandlerContext context)
                 {
                     testContext.ReceivedMessage = context.Extensions.Get<ServiceBusReceivedMessage>();
+                    testContext.MarkAsCompleted();
                     return Task.CompletedTask;
                 }
             }
