@@ -7,8 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
-using NServiceBus.Transport.AzureServiceBus.Sending;
-using NServiceBus.Transport.AzureServiceBus.EventRouting;
 
 sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 {

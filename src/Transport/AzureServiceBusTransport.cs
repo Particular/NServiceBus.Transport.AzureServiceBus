@@ -211,14 +211,9 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
         return $"{prefix}/{destination}";
     }
-
+    
     internal string GetEntityPathWithPrefix(string destination) => GetEntityPath(destination, HierarchyNamespace);
-
-    /// <summary>
-    /// Specifies the value that will be prepended to every entity name referenced by the endpoint.
-    /// This behaves similarly to the SQS transport's HierarchyNamespace: the prefix is applied
-    /// idempotently so that names are not double-prefixed.
-    /// </summary>
+    
     public string? HierarchyNamespace { get; set; }
 
     /// <summary>
