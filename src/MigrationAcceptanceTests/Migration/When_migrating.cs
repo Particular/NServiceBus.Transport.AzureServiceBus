@@ -33,7 +33,7 @@
         public async Task Should_not_lose_any_events()
         {
             //Before migration begins
-            var beforeMigration = await Scenario.Define<Context>(c => c.Step = "Before migration")
+            await Scenario.Define<Context>(c => c.Step = "Before migration")
                 .WithEndpoint<Publisher>(b =>
                 {
                     b.CustomConfig(c =>
@@ -45,7 +45,7 @@
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                     });
-                    b.When((session, ctx) => session.Publish(new MyEvent()));
+                    b.When(session => session.Publish(new MyEvent()));
                 })
                 .WithEndpoint<Subscriber>(b =>
                 {
@@ -59,16 +59,13 @@
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                     });
                 })
-                .Done(c => c.GotTheEvent)
-                .Run(TimeSpan.FromSeconds(60));
-
-            Assert.That(beforeMigration.GotTheEvent, Is.True);
+                .Run();
 
             /*
              * When auto-subscribe enabled, Subscriber creates a new topic/subscription
              * but continues to receive events via the bundle topic
              */
-            var subscriberMigrated = await Scenario.Define<Context>(c => c.Step = "Subscriber migrated")
+            await Scenario.Define<Context>(c => c.Step = "Subscriber migrated")
                 .WithEndpoint<Publisher>(b =>
                 {
                     b.CustomConfig(c =>
@@ -80,7 +77,7 @@
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                     });
-                    b.When((session, ctx) => session.Publish(new MyEvent()));
+                    b.When(session => session.Publish(new MyEvent()));
                 })
                 .WithEndpoint<Subscriber>(b =>
                 {
@@ -92,10 +89,7 @@
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                     });
                 })
-                .Done(c => c.GotTheEvent)
-                .Run(TimeSpan.FromSeconds(60));
-
-            Assert.That(subscriberMigrated.GotTheEvent, Is.True);
+                .Run();
 
             //Make sure the bundle topic does not exist and the event is delivered on the new path
             var adminClient =
@@ -111,7 +105,7 @@
             }
 
             //Event delivery path switched to new once publisher changes config
-            var topicMigrated = await Scenario.Define<Context>(c => c.Step = "Topic migrated")
+            await Scenario.Define<Context>(c => c.Step = "Topic migrated")
                 .WithEndpoint<Publisher>(b =>
                 {
                     b.CustomConfig(c =>
@@ -121,7 +115,7 @@
 
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                     });
-                    b.When((session, ctx) => session.Publish(new MyEvent()));
+                    b.When(session => session.Publish(new MyEvent()));
                 })
                 .WithEndpoint<Subscriber>(b =>
                 {
@@ -133,38 +127,30 @@
                         c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
                     });
                 })
-                .Done(c => c.GotTheEvent)
-                .Run(TimeSpan.FromSeconds(60));
-
-            Assert.That(topicMigrated.GotTheEvent, Is.True);
+                .Run();
         }
 
         public class Context : ScenarioContext
         {
-            public bool GotTheEvent { get; set; }
             public string Step { get; set; }
         }
 
         public class Publisher : EndpointConfigurationBuilder
         {
             public Publisher() =>
-                EndpointSetup<DefaultServer>((c, rd) =>
-                {
-                }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent>(this));
+                EndpointSetup<DefaultServer>((_, _) => { }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent>(this));
         }
 
         public class Subscriber : EndpointConfigurationBuilder
         {
             public Subscriber() =>
-                EndpointSetup<DefaultServer>((c, rd) =>
-                {
-                }, metadata => metadata.RegisterPublisherFor<MyEvent, Publisher>());
+                EndpointSetup<DefaultServer>((_, _) => { }, metadata => metadata.RegisterPublisherFor<MyEvent, Publisher>());
 
             public class MyEventMessageHandler(Context testContext) : IHandleMessages<MyEvent>
             {
                 public Task Handle(MyEvent @event, IMessageHandlerContext context)
                 {
-                    testContext.GotTheEvent = true;
+                    testContext.MarkAsCompleted();
                     return Task.CompletedTask;
                 }
             }
