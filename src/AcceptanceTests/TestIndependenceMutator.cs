@@ -1,22 +1,21 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests
+﻿namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests;
+
+using System.Threading.Tasks;
+using AcceptanceTesting;
+using MessageMutator;
+
+class TestIndependenceMutator : IMutateOutgoingTransportMessages
 {
-    using System.Threading.Tasks;
-    using AcceptanceTesting;
-    using MessageMutator;
+    readonly string testRunId;
 
-    class TestIndependenceMutator : IMutateOutgoingTransportMessages
+    public TestIndependenceMutator(ScenarioContext scenarioContext)
     {
-        readonly string testRunId;
+        testRunId = scenarioContext.TestRunId.ToString();
+    }
 
-        public TestIndependenceMutator(ScenarioContext scenarioContext)
-        {
-            testRunId = scenarioContext.TestRunId.ToString();
-        }
-
-        public Task MutateOutgoing(MutateOutgoingTransportMessageContext context)
-        {
-            context.OutgoingHeaders["$AcceptanceTesting.TestRunId"] = testRunId;
-            return Task.CompletedTask;
-        }
+    public Task MutateOutgoing(MutateOutgoingTransportMessageContext context)
+    {
+        context.OutgoingHeaders["$AcceptanceTesting.TestRunId"] = testRunId;
+        return Task.CompletedTask;
     }
 }

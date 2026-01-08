@@ -15,7 +15,6 @@ class When_sending_message_outside_of_a_handler_with_incorrect_transaction_scope
     {
         var context = await Scenario.Define<Context>()
             .WithEndpoint<Receiver>()
-            .Done(context => context.MessageReceived)
             .Run();
 
         Assert.That(context.MessageReceived, Is.True);

@@ -1,23 +1,22 @@
-﻿namespace NServiceBus.AcceptanceTests
+﻿namespace NServiceBus.AcceptanceTests;
+
+using AcceptanceTesting.Support;
+
+public partial class TestSuiteConstraints
 {
-    using AcceptanceTesting.Support;
+    public bool SupportsDtc => false;
 
-    public partial class TestSuiteConstraints
-    {
-        public bool SupportsDtc => false;
+    public bool SupportsCrossQueueTransactions => true;
 
-        public bool SupportsCrossQueueTransactions => true;
+    public bool SupportsNativePubSub => true;
 
-        public bool SupportsNativePubSub => true;
+    public bool SupportsDelayedDelivery => true;
 
-        public bool SupportsDelayedDelivery => true;
+    public bool SupportsOutbox => true;
 
-        public bool SupportsOutbox => true;
+    public bool SupportsPurgeOnStartup => false;
 
-        public bool SupportsPurgeOnStartup => false;
+    public IConfigureEndpointTestExecution CreateTransportConfiguration() => new ConfigureEndpointAzureServiceBusTransport();
 
-        public IConfigureEndpointTestExecution CreateTransportConfiguration() => new ConfigureEndpointAzureServiceBusTransport();
-
-        public IConfigureEndpointTestExecution CreatePersistenceConfiguration() => new ConfigureEndpointAcceptanceTestingPersistence();
-    }
+    public IConfigureEndpointTestExecution CreatePersistenceConfiguration() => new ConfigureEndpointAcceptanceTestingPersistence();
 }
