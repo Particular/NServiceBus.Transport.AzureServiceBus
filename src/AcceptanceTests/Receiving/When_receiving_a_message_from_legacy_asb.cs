@@ -14,7 +14,7 @@
         [Test]
         public async Task Should_process_message_correctly()
         {
-            await Scenario.Define<Context>()
+            var context = await Scenario.Define<Context>()
                 .WithEndpoint<Endpoint>(b => b.When((session, c) =>
                 {
                     var sendOptions = new SendOptions();
@@ -33,13 +33,14 @@
                     });
                     return session.Send(new Message(), sendOptions);
                 }))
-                .Done(c => c.MessageRecieved)
                 .Run();
+
+            Assert.That(context.MessageReceived, Is.True);
         }
 
         public class Context : ScenarioContext
         {
-            public bool MessageRecieved { get; set; }
+            public bool MessageReceived { get; set; }
         }
 
         public class Endpoint : EndpointConfigurationBuilder
@@ -50,8 +51,8 @@
             {
                 public Task Handle(Message request, IMessageHandlerContext context)
                 {
-                    testContext.MessageRecieved = true;
-
+                    testContext.MessageReceived = true;
+                    testContext.MarkAsCompleted();
                     return Task.CompletedTask;
                 }
             }
