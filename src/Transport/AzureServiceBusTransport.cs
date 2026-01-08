@@ -211,9 +211,11 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
         return $"{prefix}/{destination}";
     }
-    
-    internal string GetEntityPathWithPrefix(string destination) => GetEntityPath(destination, HierarchyNamespace);
-    
+    string GetEntityPathWithPrefix(string destination) => GetEntityPath(destination, HierarchyNamespace);
+    /// <summary>
+    /// Gets or sets an optional hierarchy namespace prefix applied to entity paths created by the transport.
+    /// When set, entity paths will be prefixed using the format `{prefix}/{entity}`. Leave null to disable prefixing.
+    /// </summary>
     public string? HierarchyNamespace { get; set; }
 
     /// <summary>
