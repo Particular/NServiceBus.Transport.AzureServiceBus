@@ -117,7 +117,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
             var allQueues = infrastructure.Receivers
                 .Select(r => r.Value.ReceiveAddress)
-                .Concat(sendingAddresses.Select(s => GetEntityPathWithPrefix(s)))
+                .Concat(sendingAddresses.Select(GetHierarchyAwareQueueAddress))
                 .ToArray();
 
             var queueCreator = new TopologyCreator(this);
@@ -196,22 +196,22 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
     TopicTopology topology;
 
-    static string GetEntityPath(string destination, string? prefix)
+    string GetHierarchyAwareQueueAddress(string destination)
     {
-        if (string.IsNullOrWhiteSpace(prefix))
+        if (string.IsNullOrWhiteSpace(HierarchyNamespace))
         {
             return destination;
         }
 
         // Idempotent: if the destination is already prefixed, return as-is
-        if (destination.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase))
+        if (destination.StartsWith(HierarchyNamespace + "/", StringComparison.OrdinalIgnoreCase))
         {
             return destination;
         }
 
-        return $"{prefix}/{destination}";
+        return $"{HierarchyNamespace}/{destination}";
     }
-    string GetEntityPathWithPrefix(string destination) => GetEntityPath(destination, HierarchyNamespace);
+
     /// <summary>
     /// Gets or sets an optional hierarchy namespace prefix applied to entity paths created by the transport.
     /// When set, entity paths will be prefixed using the format `{prefix}/{entity}`. Leave null to disable prefixing.
