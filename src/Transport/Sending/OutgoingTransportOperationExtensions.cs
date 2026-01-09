@@ -59,10 +59,18 @@ static class OutgoingTransportOperationExtensions
                 throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));
         }
 
-        return destinationCache.GetOrAdd(
-            destination,
-            static (dest, ns) => ns is null || dest.StartsWith(ns)
-                ? dest
-                : $"{ns}/{dest}", hierarchyNamespace);
+        destination = GetHierarchyNamespaceAwareDestination(destination, hierarchyNamespace);
+
+        return destinationCache.GetOrAdd(destination, destination);
+    }
+
+    static string GetHierarchyNamespaceAwareDestination(string destination, string? hierarchyNamespace)
+    {
+        if (hierarchyNamespace is null || destination.StartsWith(hierarchyNamespace))
+        {
+            return destination;
+        }
+
+        return $"{hierarchyNamespace}/{destination}";
     }
 }
