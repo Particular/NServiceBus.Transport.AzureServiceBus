@@ -12,6 +12,7 @@ using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Transport;
 using Transport.AzureServiceBus;
+using Transport.AzureServiceBus.Sending;
 
 /// <summary>
 /// Transport definition for Azure Service Bus.
@@ -117,7 +118,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
             var allQueues = infrastructure.Receivers
                 .Select(r => r.Value.ReceiveAddress)
-                .Concat(sendingAddresses.Select(GetHierarchyAwareQueueAddress))
+                .Concat(sendingAddresses.Select(s => s.ToHierarchyNamespaceAwareDestination(HierarchyNamespace)))
                 .ToArray();
 
             var queueCreator = new TopologyCreator(this);
@@ -195,22 +196,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
     }
 
     TopicTopology topology;
-
-    string GetHierarchyAwareQueueAddress(string destination)
-    {
-        if (string.IsNullOrWhiteSpace(HierarchyNamespace))
-        {
-            return destination;
-        }
-
-        // Idempotent: if the destination is already prefixed, return as-is
-        if (destination.StartsWith(HierarchyNamespace + "/", StringComparison.OrdinalIgnoreCase))
-        {
-            return destination;
-        }
-
-        return $"{HierarchyNamespace}/{destination}";
-    }
 
     /// <summary>
     /// Gets or sets an optional hierarchy namespace prefix applied to entity paths created by the transport.

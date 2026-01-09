@@ -4,6 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using Azure.Messaging.ServiceBus;
 using Logging;
+using Sending;
 
 static class OutgoingTransportOperationExtensions
 {
@@ -59,18 +60,8 @@ static class OutgoingTransportOperationExtensions
                 throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));
         }
 
-        destination = GetHierarchyNamespaceAwareDestination(destination, hierarchyNamespace);
+        destination = destination.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
 
         return destinationCache.GetOrAdd(destination, destination);
-    }
-
-    static string GetHierarchyNamespaceAwareDestination(string destination, string? hierarchyNamespace)
-    {
-        if (hierarchyNamespace is null || destination.StartsWith(hierarchyNamespace))
-        {
-            return destination;
-        }
-
-        return $"{hierarchyNamespace}/{destination}";
     }
 }
