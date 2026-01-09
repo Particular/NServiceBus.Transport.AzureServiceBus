@@ -1,7 +1,6 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
-using System.Collections.Concurrent;
 using Azure.Messaging.ServiceBus;
 using Logging;
 using Sending;
