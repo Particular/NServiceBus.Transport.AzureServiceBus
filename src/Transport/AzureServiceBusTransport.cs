@@ -82,7 +82,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             {
                 TransportType = transportType,
                 EnableCrossEntityTransactions = enableCrossEntityTransactions,
-                Identifier = $"Client-{(HierarchyNamespace is not null ? $"{HierarchyNamespace}-" : "")}{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
+                Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
             };
             ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
             ApplyWebProxyIfNeeded(receiveClientOptions);
@@ -97,7 +97,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             TransportType = transportType,
             // for the default client we never want things to automatically use cross entity transaction
             EnableCrossEntityTransactions = false,
-            Identifier = $"Client-{(HierarchyNamespace is not null ? $"{HierarchyNamespace}-" : "")}{hostSettings.Name}-{Guid.NewGuid()}"
+            Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{hostSettings.Name}-{Guid.NewGuid()}"
         };
         ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
         ApplyWebProxyIfNeeded(defaultClientOptions);
@@ -217,6 +217,8 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// When set, entity paths will be prefixed using the format `{prefix}/{entity}`. Leave null to disable prefixing.
     /// </summary>
     public string? HierarchyNamespace { get; set; }
+
+    internal string HierarchyNamespaceClientIdentifier => HierarchyNamespace is not null ? $"{HierarchyNamespace}-" : "";
 
     /// <summary>
     /// The maximum size used when creating queues and topics in GB.
