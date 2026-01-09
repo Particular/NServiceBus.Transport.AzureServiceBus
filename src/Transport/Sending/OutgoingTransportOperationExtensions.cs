@@ -8,8 +8,6 @@ using Sending;
 
 static class OutgoingTransportOperationExtensions
 {
-    static readonly ConcurrentDictionary<string, string> destinationCache = [];
-
     public static void ApplyCustomizationToOutgoingNativeMessage(
         this IOutgoingTransportOperation transportOperation,
         ServiceBusMessage message, TransportTransaction transportTransaction, ILog logger)
@@ -60,8 +58,6 @@ static class OutgoingTransportOperationExtensions
                 throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));
         }
 
-        destination = destination.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
-
-        return destinationCache.GetOrAdd(destination, destination);
+        return destination.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
     }
 }
