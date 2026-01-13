@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
@@ -120,6 +121,14 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 .Select(r => r.Value.ReceiveAddress)
                 .Concat(sendingAddresses.Select(s => s.ToHierarchyNamespaceAwareDestination(HierarchyNamespace)))
                 .ToArray();
+            // Validate the actual names that will be created (including hierarchy namespace prefix)
+            var validationResult = EntityValidator.ValidateQueues(allQueues, nameof(TopologyOptions.QueueNameToSubscriptionNameMap));
+            if (validationResult != ValidationResult.Success)
+            {
+                // Throw a clear exception so startup fails fast with a descriptive message
+                var message = validationResult?.ErrorMessage ?? "One or more queue names do not comply with the Azure Service Bus queue limits.";
+                throw new ValidationException(message);
+            }
 
             var queueCreator = new TopologyCreator(this);
 
