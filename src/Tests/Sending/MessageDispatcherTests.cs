@@ -737,6 +737,115 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             });
         }
 
+        [Test]
+        public async Task Should_respect_hierarchy_namespace_on_unicast_dispatch()
+        {
+            var client = new FakeServiceBusClient();
+            var hierarchyNamespace = "SomeHierarchyNamespace";
+
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), hierarchyNamespace);
+
+            var operation1 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            var operation2 =
+                new TransportOperation(new OutgoingMessage("SomeOtherId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            var batchOperation1 =
+                new TransportOperation(new OutgoingMessage("SomeBatchId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Default);
+
+            var batchOperation2 =
+                new TransportOperation(new OutgoingMessage("SomeOtherBatchId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation1, operation2, batchOperation1, batchOperation2), new TransportTransaction());
+
+            var sender = client.Senders[$"{hierarchyNamespace}/SomeDestination"];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
+                Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public async Task Should_respect_hierarchy_namespace_on_multicast_dispatch()
+        {
+            var client = new FakeServiceBusClient();
+            var hierarchyNamespace = "SomeHierarchyNamespace";
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
+                }),
+                hierarchyNamespace);
+
+            var operation1 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            var operation2 =
+                new TransportOperation(new OutgoingMessage("SomeOtherId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            var batchOperation1 =
+                new TransportOperation(new OutgoingMessage("SomeBatchId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            var batchOperation2 =
+                new TransportOperation(new OutgoingMessage("SomeOtherBatchId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation1, operation2, batchOperation1, batchOperation2), new TransportTransaction());
+
+            var sender = client.Senders[$"{hierarchyNamespace}/sometopic"];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
+                Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
+        }
+
         class SomeEvent;
 
         class SomeOtherEvent;

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
@@ -12,6 +13,7 @@ using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Transport;
 using Transport.AzureServiceBus;
+using Transport.AzureServiceBus.Sending;
 
 /// <summary>
 /// Transport definition for Azure Service Bus.
@@ -82,7 +84,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             {
                 TransportType = transportType,
                 EnableCrossEntityTransactions = enableCrossEntityTransactions,
-                Identifier = $"Client-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}",
+                Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
             };
             ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
             ApplyWebProxyIfNeeded(receiveClientOptions);
@@ -97,7 +99,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             TransportType = transportType,
             // for the default client we never want things to automatically use cross entity transaction
             EnableCrossEntityTransactions = false,
-            Identifier = $"Client-{hostSettings.Name}-{Guid.NewGuid()}"
+            Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{hostSettings.Name}-{Guid.NewGuid()}"
         };
         ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
         ApplyWebProxyIfNeeded(defaultClientOptions);
@@ -108,8 +110,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         var administrationClient = TokenCredential != null
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
             : new ServiceBusAdministrationClient(ConnectionString);
-
-        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient);
+        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient, HierarchyNamespace);
 
         if (hostSettings.SetupInfrastructure)
         {
@@ -118,8 +119,16 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
             var allQueues = infrastructure.Receivers
                 .Select(r => r.Value.ReceiveAddress)
-                .Concat(sendingAddresses)
+                .Concat(sendingAddresses.Select(s => s.ToHierarchyNamespaceAwareDestination(HierarchyNamespace)))
                 .ToArray();
+            // Validate the actual names that will be created (including hierarchy namespace prefix)
+            var validationResult = EntityValidator.ValidateQueues(allQueues, nameof(TopologyOptions.QueueNameToSubscriptionNameMap));
+            if (validationResult != ValidationResult.Success)
+            {
+                // Throw a clear exception so startup fails fast with a descriptive message
+                var message = validationResult?.ErrorMessage ?? "One or more queue names do not comply with the Azure Service Bus queue limits.";
+                throw new ValidationException(message);
+            }
 
             var queueCreator = new TopologyCreator(this);
 
@@ -198,8 +207,17 @@ public partial class AzureServiceBusTransport : TransportDefinition
     TopicTopology topology;
 
     /// <summary>
+    /// Gets or sets an optional hierarchy namespace prefix applied to entity paths created by the transport.
+    /// When set, entity paths will be prefixed using the format `{prefix}/{entity}`. Leave null to disable prefixing.
+    /// </summary>
+    public string? HierarchyNamespace { get; set; }
+
+    internal string HierarchyNamespaceClientIdentifier => HierarchyNamespace is not null ? $"{HierarchyNamespace}-" : "";
+
+    /// <summary>
     /// The maximum size used when creating queues and topics in GB.
     /// </summary>
+    /// 
     public int EntityMaximumSize
     {
         get;

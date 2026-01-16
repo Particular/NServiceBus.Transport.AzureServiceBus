@@ -3,6 +3,7 @@ namespace NServiceBus.Transport.AzureServiceBus;
 using System;
 using Azure.Messaging.ServiceBus;
 using Logging;
+using Sending;
 
 static class OutgoingTransportOperationExtensions
 {
@@ -28,14 +29,19 @@ static class OutgoingTransportOperationExtensions
     }
 
     public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation,
-        TopicTopology topology)
+        TopicTopology topology,
+        string? hierarchyNamespace)
     {
+        string destination;
+
         switch (outgoingTransportOperation)
         {
             case MulticastTransportOperation multicastTransportOperation:
-                return topology.GetPublishDestination(multicastTransportOperation.MessageType);
+                destination = topology.GetPublishDestination(multicastTransportOperation.MessageType);
+                break;
+
             case UnicastTransportOperation unicastTransportOperation:
-                var destination = unicastTransportOperation.Destination;
+                destination = unicastTransportOperation.Destination;
 
                 // Workaround for reply-to address set by ASB transport
                 var index = unicastTransportOperation.Destination.IndexOf('@');
@@ -45,9 +51,12 @@ static class OutgoingTransportOperationExtensions
                     destination = destination[..index];
                 }
 
-                return destination;
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));
         }
+
+        return destination.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
     }
 }
