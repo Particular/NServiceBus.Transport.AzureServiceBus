@@ -4,7 +4,7 @@ using AzureServiceBus.Sending;
 using NUnit.Framework;
 
 [TestFixture]
-public class QueueNameGeneratorTests
+public class HierarchyNamespaceAwareDestinationTests
 {
     [Test]
     public void Default_queue_name_generator_is_idempotent()

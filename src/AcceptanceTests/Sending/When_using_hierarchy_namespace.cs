@@ -1,9 +1,7 @@
 // new acceptance test to verify HierarchyNamespace configuration
 namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
 {
-    using System;
     using System.Threading.Tasks;
-    using System.Collections.Generic;
     using AcceptanceTesting;
     using Conventions = NServiceBus.AcceptanceTesting.Customization.Conventions;
     using NServiceBus.AcceptanceTests;
@@ -16,8 +14,6 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
         [Test]
         public async Task Should_send_and_receive_with_hierarchy_namespace()
         {
-            var longHierarchy = new string('a', 260);
-
             var context = await Scenario.Define<Context>()
                 .WithEndpoint<Sender>(endpoint =>
                 {
