@@ -208,7 +208,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
     /// <summary>
     /// Gets or sets an optional hierarchy namespace prefix applied to entity paths created by the transport.
-    /// When set, entity paths will be prefixed using the format `{prefix}/{entity}`. Leave null to disable prefixing.
+    /// When set, entity paths will be prefixed using the format `{NamespaceHierarchy}/{entity}`. Leave null to disable prefixing.
     /// </summary>
     public string? HierarchyNamespace { get; set; }
 
