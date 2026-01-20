@@ -18,6 +18,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     readonly ServiceBusAdministrationClient administrationClient;
     readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
     readonly string? hierarchyNamespace;
+
     public AzureServiceBusTransportInfrastructure(
         AzureServiceBusTransport transportSettings,
         HostSettings hostSettings,
