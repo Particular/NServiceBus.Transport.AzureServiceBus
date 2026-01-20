@@ -11,10 +11,16 @@ using Azure.Messaging.ServiceBus.Administration;
 [JsonSerializable(typeof(CreateRuleOptions))]
 public partial class SkdJsonSerializerContext : JsonSerializerContext
 {
+#if !NET10_0_OR_GREATER
     static JsonSerializerOptions options;
+#endif
 
     public static JsonSerializerOptions PolymorphicOptions =>
+#if NET10_0_OR_GREATER
+        field ??= new JsonSerializerOptions(Default.Options)
+#else
         options ??= new JsonSerializerOptions(Default.Options)
+#endif
         {
             TypeInfoResolver = new DefaultJsonTypeInfoResolver
             {
