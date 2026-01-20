@@ -210,9 +210,20 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// Gets or sets an optional hierarchy namespace prefix applied to entity paths created by the transport.
     /// When set, entity paths will be prefixed using the format `{HierarchyNamespace}/{entity}`. Leave null to disable prefixing.
     /// </summary>
-    public string? HierarchyNamespace { get; set; }
+    public string? HierarchyNamespace
+    {
+        get;
+        set
+        {
+            if (value?.EndsWith('/') ?? false)
+            {
+                throw new ArgumentException($"{nameof(HierarchyNamespace)} cannot end with `/`", nameof(HierarchyNamespace));
+            }
+            field = value;
+        }
+    }
 
-    internal string HierarchyNamespaceClientIdentifier => HierarchyNamespace is not null ? $"{HierarchyNamespace}-" : "";
+    internal string HierarchyNamespaceClientIdentifier => HierarchyNamespace is not null ? $"{HierarchyNamespace.Replace('/', '-')}-" : "";
 
     /// <summary>
     /// The maximum size used when creating queues and topics in GB.
