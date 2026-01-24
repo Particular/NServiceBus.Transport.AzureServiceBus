@@ -23,8 +23,15 @@
             {
                 Description = "Sets the fully qualified namespace for connecting with cached credentials, such as those from Azure PowerShell or CLI"
             };
+
+            var hierarchyNamespace = new CommandOption("-h|--hierarchy-namespace", CommandOptionType.SingleValue)
+            {
+                Description = "Sets the hierarchy namespace for prefixing destinations in the format <hierarchy-namespace>/<topic-or-queue>"
+            };
+
             fullyQualifiedNamespace.OnValidate(v => ValidateConnectionAndNamespaceNotUsedTogether(connectionString, fullyQualifiedNamespace));
             connectionString.OnValidate(v => ValidateConnectionAndNamespaceNotUsedTogether(connectionString, fullyQualifiedNamespace));
+            hierarchyNamespace.OnValidate(v => ValidateHierarchyNamespaceValidity(hierarchyNamespace));
 
             var size = new CommandOption<int>(app.ValueParsers.GetParser<int>(), "-s|--size", CommandOptionType.SingleValue)
             {
@@ -48,6 +55,7 @@
                 subscribeCommand.AddOption(fullyQualifiedNamespace);
                 subscribeCommand.AddOption(size);
                 subscribeCommand.AddOption(partitioning);
+                subscribeCommand.AddOption(hierarchyNamespace);
                 var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
 
                 subscribeCommand.OnExecuteAsync(async ct =>
@@ -66,6 +74,7 @@
 
                 unsubscribeCommand.AddOption(connectionString);
                 unsubscribeCommand.AddOption(fullyQualifiedNamespace);
+                unsubscribeCommand.AddOption(hierarchyNamespace);
                 var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
 
                 unsubscribeCommand.OnExecuteAsync(async ct =>
@@ -94,6 +103,7 @@
                     createCommand.AddOption(fullyQualifiedNamespace);
                     createCommand.AddOption(size);
                     createCommand.AddOption(partitioning);
+                    createCommand.AddOption(hierarchyNamespace);
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
@@ -253,6 +263,7 @@
                     createCommand.AddOption(fullyQualifiedNamespace);
                     createCommand.AddOption(size);
                     createCommand.AddOption(partitioning);
+                    createCommand.AddOption(hierarchyNamespace);
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
@@ -272,6 +283,7 @@
                 {
                     deleteCommand.AddOption(connectionString);
                     deleteCommand.AddOption(fullyQualifiedNamespace);
+                    deleteCommand.AddOption(hierarchyNamespace);
 
                     deleteCommand.Description = "Deletes a queue";
                     var name = deleteCommand.Argument("name", "Name of the queue (required)").IsRequired();
@@ -336,6 +348,34 @@
             }
 
             return ValidationResult.Success;
+        }
+
+        static ValidationResult ValidateHierarchyNamespaceValidity(CommandOption hierarchyNamespace)
+        {
+            if (hierarchyNamespace.HasValue() && (hierarchyNamespace.Value()?.EndsWith('/') ?? false))
+            {
+                return new ValidationResult(
+                    "The hierarchy namespace cannot end with a '/' character.");
+            }
+
+            return ValidationResult.Success;
+        }
+
+        static string GetHierarchyNamespaceAwareName(string name, string hierarchyNamespace)
+        {
+            if (string.IsNullOrEmpty(hierarchyNamespace))
+            {
+                return name;
+            }
+
+            var prefix = string.Concat(hierarchyNamespace, '/');
+
+            if (name.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                return name;
+            }
+
+            return string.Concat(prefix, name);
         }
     }
 }
