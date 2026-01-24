@@ -140,6 +140,7 @@
                         createCommand.AddOption(fullyQualifiedNamespace);
                         createCommand.AddOption(size);
                         createCommand.AddOption(partitioning);
+                        createCommand.AddOption(hierarchyNamespace);
 
                         var topicName = createCommand.Option("-t|--topic",
                             "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
@@ -191,6 +192,8 @@
 
                             subscribeCommand.AddOption(connectionString);
                             subscribeCommand.AddOption(fullyQualifiedNamespace);
+                            subscribeCommand.AddOption(hierarchyNamespace);
+
                             var topicName = subscribeCommand.Option("-t|--topic",
                                 "Topic name to subscribe on (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                             topicName.DefaultValue = Topic.DefaultTopicName;
@@ -221,6 +224,8 @@
 
                         unsubscribeCommand.AddOption(connectionString);
                         unsubscribeCommand.AddOption(fullyQualifiedNamespace);
+                        unsubscribeCommand.AddOption(hierarchyNamespace);
+
                         var topicName = unsubscribeCommand.Option("-t|--topic",
                             "Topic name to unsubscribe from (defaults to 'bundle-1')",
                             CommandOptionType.SingleValue);
