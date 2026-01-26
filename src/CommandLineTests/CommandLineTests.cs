@@ -19,6 +19,7 @@
         const string HierarchyTopicName = "cli-topic-sub";
         const string SubscriptionName = QueueName;
         const string HierarchySubscriptionName = $"forwardTo-{HierarchyTopicName}";
+        const string HierarchyNamespace = "cli-hierarchy-namespace";
 
         [Test]
         public async Task Create_endpoint()
@@ -35,6 +36,33 @@
             });
 
             await VerifyQueue(QueueName);
+        }
+
+        [Test]
+        public async Task Create_hierarchy_namespace_endpoint()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(queueName);
+        }
+
+        [Test]
+        public async Task Create_hierarchy_namespace_endpoint_validates_hierarchy_namespace_does_not_end_with_slash()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace}/");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
         }
 
         [Test]
@@ -167,6 +195,24 @@
         }
 
         [Test]
+        public async Task Subscribe_hierarchy_namespace_endpoint()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = "MyMessage1".ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+
+            await DeleteQueue(queueName);
+            await DeleteTopic(topicName);
+
+            await Execute($"endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace}");
+
+            await VerifyQueue(queueName);
+            await VerifyTopic(topicName);
+            await VerifyTopicPerEventTypeSubscription(topicName, SubscriptionName, queueName);
+            await VerifySubscriptionContainsOnlyDefaultMatchAllRule(topicName, SubscriptionName);
+        }
+
+        [Test]
         public async Task Subscribe_migration_endpoint()
         {
             await DeleteQueue(QueueName);
@@ -223,6 +269,15 @@
         }
 
         [Test]
+        public async Task Subscribe_hierarchy_namespace_endpoint_validates_hierarchy_namespace_does_not_end_with_slash()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace}/");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+        }
+
+        [Test]
         public async Task Unsubscribe_endpoint()
         {
             await DeleteQueue(QueueName);
@@ -235,6 +290,24 @@
             await VerifyQueue(QueueName);
             await VerifyTopic("MyMessage1");
             await VerifySubscriptionDoesNotExist("MyMessage1", SubscriptionName);
+        }
+
+        [Test]
+        public async Task Unsubscribe_hierarchy_namespace_endpoint()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = "MyMessage1".ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+
+            await DeleteQueue(queueName);
+            await DeleteTopic(topicName);
+
+            await Execute($"endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace}");
+
+            await VerifyQueue(queueName);
+            await VerifyTopic(topicName);
+            await VerifySubscriptionDoesNotExist(topicName, SubscriptionName);
         }
 
         [Test]
@@ -296,6 +369,15 @@
         }
 
         [Test]
+        public async Task Unsubscribe_hierarchy_namespace_endpoint_validates_hierarchy_namespace_does_not_end_with_slash()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace}/");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+        }
+
+        [Test]
         public async Task Create_queue_when_it_does_not_exist()
         {
             await DeleteQueue(QueueName);
@@ -313,12 +395,39 @@
         }
 
         [Test]
+        public async Task Create_hierarchy_namespace_queue_when_it_does_not_exist()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+
+            var (output, error, exitCode) = await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(queueName);
+        }
+
+        [Test]
         public async Task Create_queue_validates_namespace_and_connection_string_cannot_be_used_together()
         {
             var (_, error, exitCode) = await Execute($"queue create {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
             Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+        }
+
+        [Test]
+        public async Task Create_hierarchy_namespace_queue_validates_hierarchy_namespace_does_not_end_with_slash()
+        {
+            var (_, error, exitCode) = await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}/");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
         }
 
         [Test]
@@ -340,6 +449,25 @@
         }
 
         [Test]
+        public async Task Create_hierarchy_namespace_queue_when_it_exists_should_skip()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}");
+
+            var (output, error, exitCode) = await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output.Contains("skipping"), Is.True);
+            });
+
+            await VerifyQueue(queueName);
+        }
+
+        [Test]
         public async Task Delete_queue_when_it_exists()
         {
             await DeleteQueue(QueueName);
@@ -357,12 +485,39 @@
         }
 
         [Test]
+        public async Task Delete_hierarchy_namespace_queue_when_it_exists()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}");
+
+            var (_, error, exitCode) = await Execute($"queue delete {QueueName} --hierarchy-namespace {HierarchyNamespace}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+            });
+
+            await VerifyQueueExists(false, queueName);
+        }
+
+        [Test]
         public async Task Delete_queue_validates_namespace_and_connection_string_cannot_be_used_together()
         {
             var (_, error, exitCode) = await Execute($"queue delete {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
             Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+        }
+
+        [Test]
+        public async Task Delete_hierarchy_namespace_queue_validates_hierarchy_namespace_does_not_end_with_slash()
+        {
+            var (_, error, exitCode) = await Execute($"queue delete {QueueName} --hierarchy-namespace {HierarchyNamespace}/");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
         }
 
         [SetUp]
@@ -507,9 +662,9 @@
             });
         }
 
-        async Task VerifyQueueExists(bool queueShouldExist)
+        async Task VerifyQueueExists(bool queueShouldExist, string queueName = QueueName)
         {
-            var queueExists = (await client.QueueExistsAsync(QueueName)).Value;
+            var queueExists = (await client.QueueExistsAsync(queueName)).Value;
             Assert.That(queueExists, Is.EqualTo(queueShouldExist));
         }
 
