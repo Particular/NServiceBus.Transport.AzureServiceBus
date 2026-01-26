@@ -8,11 +8,11 @@ using McMaster.Extensions.CommandLineUtils;
 
 static class TopicPerEventTopologyEndpoint
 {
-    public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption<int> size, CommandOption partitioning)
+    public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption<int> size, CommandOption partitioning, CommandOption hierarchyNamespace)
     {
         try
         {
-            await Queue.Create(client, name, size, partitioning);
+            await Queue.Create(client, name, size, partitioning, hierarchyNamespace);
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
@@ -20,11 +20,11 @@ static class TopicPerEventTopologyEndpoint
         }
     }
 
-    public static async Task Subscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandArgument topicName, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning)
+    public static async Task Subscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandArgument topicName, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning, CommandOption hierarchyNamespace)
     {
         try
         {
-            await Topic.Create(client, topicName, size, partitioning);
+            await Topic.Create(client, topicName, size, partitioning, hierarchyNamespace);
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
@@ -33,7 +33,7 @@ static class TopicPerEventTopologyEndpoint
 
         try
         {
-            await Subscription.CreateWithMatchAll(client, name, topicName, subscriptionName);
+            await Subscription.CreateWithMatchAll(client, name, topicName, subscriptionName, hierarchyNamespace);
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
@@ -41,11 +41,11 @@ static class TopicPerEventTopologyEndpoint
         }
     }
 
-    public static async Task Unsubscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandArgument topicName, CommandOption subscriptionName)
+    public static async Task Unsubscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandArgument topicName, CommandOption subscriptionName, CommandOption hierarchyNamespace)
     {
         try
         {
-            await Subscription.Delete(client, name, topicName, subscriptionName);
+            await Subscription.Delete(client, name, topicName, subscriptionName, hierarchyNamespace);
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
