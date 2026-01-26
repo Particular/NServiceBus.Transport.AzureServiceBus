@@ -60,7 +60,7 @@
 
                 subscribeCommand.OnExecuteAsync(async ct =>
                 {
-                    await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, size, partitioning));
+                    await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, size, partitioning, hierarchyNamespace));
 
                     Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{topicName.Value}'.");
                 });
@@ -79,7 +79,7 @@
 
                 unsubscribeCommand.OnExecuteAsync(async ct =>
                 {
-                    await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Unsubscribe(client, name, topicName, subscriptionName));
+                    await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Unsubscribe(client, name, topicName, subscriptionName, hierarchyNamespace));
 
                     Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{topicName.Value}'.");
                 });
@@ -108,7 +108,7 @@
                     createCommand.OnExecuteAsync(async ct =>
                     {
                         await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
-                            client => TopicPerEventTopologyEndpoint.Create(client, name, size, partitioning));
+                            client => TopicPerEventTopologyEndpoint.Create(client, name, size, partitioning, hierarchyNamespace));
 
                         Console.WriteLine($"Endpoint '{name.Value}' is ready.");
                     });
@@ -173,7 +173,7 @@
                             await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
                                 client => MigrationTopologyEndpoint.Create(client, name, topicName,
                                     topicToPublishTo, topicToSubscribeOn,
-                                    subscriptionName, size, partitioning));
+                                    subscriptionName, size, partitioning, hierarchyNamespace));
 
 
                             Console.WriteLine($"Endpoint '{name.Value}' is ready.");
@@ -274,7 +274,7 @@
                     {
                         try
                         {
-                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Create(client, name, size, partitioning));
+                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Create(client, name, size, partitioning, hierarchyNamespace));
                             Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
                         }
                         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
@@ -295,7 +295,7 @@
 
                     deleteCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Delete(client, name));
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Delete(client, name, hierarchyNamespace));
 
                         Console.WriteLine($"Queue name '{name.Value}' deleted");
                     });
@@ -364,23 +364,6 @@
             }
 
             return ValidationResult.Success;
-        }
-
-        static string GetHierarchyNamespaceAwareName(string name, string hierarchyNamespace)
-        {
-            if (string.IsNullOrEmpty(hierarchyNamespace))
-            {
-                return name;
-            }
-
-            var prefix = string.Concat(hierarchyNamespace, '/');
-
-            if (name.StartsWith(prefix, StringComparison.Ordinal))
-            {
-                return name;
-            }
-
-            return string.Concat(prefix, name);
         }
     }
 }
