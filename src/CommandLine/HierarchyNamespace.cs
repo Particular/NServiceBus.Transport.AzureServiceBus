@@ -3,7 +3,7 @@ namespace NServiceBus.Transport.AzureServiceBus.CommandLine;
 using System;
 using McMaster.Extensions.CommandLineUtils;
 
-static class HierarchyNamespaceExtensions
+public static class HierarchyNamespaceExtensions
 {
     internal static string ToHierarchyNamespaceAwareDestination(this CommandArgument destinationArg, CommandOption hierarchyNamespaceOption)
         => destinationArg.Value.ToHierarchyNamespaceAwareDestination(hierarchyNamespaceOption);
@@ -15,6 +15,11 @@ static class HierarchyNamespaceExtensions
     {
         var hierarchyNamespace = hierarchyNamespaceOption.HasValue() ? hierarchyNamespaceOption.Value() : null;
 
+        return destination.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
+    }
+
+    public static string ToHierarchyNamespaceAwareDestination(this string destination, string hierarchyNamespace)
+    {
         if (string.IsNullOrEmpty(destination) || string.IsNullOrEmpty(hierarchyNamespace))
         {
             return destination;

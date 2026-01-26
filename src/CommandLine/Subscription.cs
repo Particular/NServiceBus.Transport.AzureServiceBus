@@ -12,7 +12,6 @@
             var topicNameToUse = topicName.HasValue() ? topicName.Value() : Topic.DefaultTopicName;
             topicNameToUse = topicNameToUse.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
-            subscriptionNameToUse = subscriptionNameToUse.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
 
             var options = new CreateSubscriptionOptions(topicNameToUse, subscriptionNameToUse)
             {
@@ -21,7 +20,7 @@
                 EnableDeadLetteringOnFilterEvaluationExceptions = false,
                 MaxDeliveryCount = int.MaxValue,
                 EnableBatchedOperations = true,
-                UserMetadata = endpointName.Value
+                UserMetadata = endpointName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace)
             };
 
             return client.CreateSubscriptionAsync(options, new CreateRuleOptions("$default", new FalseRuleFilter()));
@@ -30,7 +29,6 @@
         public static Task CreateWithMatchAll(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandArgument topicName, CommandOption subscriptionName, CommandOption hierarchyNamespace)
         {
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
-            subscriptionNameToUse = subscriptionNameToUse.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
 
             var topicNameToUse = topicName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
 
@@ -41,7 +39,7 @@
                 EnableDeadLetteringOnFilterEvaluationExceptions = false,
                 MaxDeliveryCount = int.MaxValue,
                 EnableBatchedOperations = true,
-                UserMetadata = endpointName.Value
+                UserMetadata = endpointName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace)
             };
 
             return client.CreateSubscriptionAsync(options, new CreateRuleOptions("$default", new TrueRuleFilter()));
@@ -49,14 +47,14 @@
 
         public static Task CreateForwarding(ServiceBusAdministrationClient client, CommandOption topicToPublishTo, CommandOption topicToSubscribeTo, string subscriptionName, CommandOption hierarchyNamespace)
         {
-            var options = new CreateSubscriptionOptions(topicToPublishTo.ToHierarchyNamespaceAwareDestination(hierarchyNamespace), subscriptionName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace))
+            var options = new CreateSubscriptionOptions(topicToPublishTo.ToHierarchyNamespaceAwareDestination(hierarchyNamespace), subscriptionName)
             {
                 LockDuration = TimeSpan.FromMinutes(5),
                 ForwardTo = topicToSubscribeTo.ToHierarchyNamespaceAwareDestination(hierarchyNamespace),
                 EnableDeadLetteringOnFilterEvaluationExceptions = false,
                 MaxDeliveryCount = int.MaxValue,
                 EnableBatchedOperations = true,
-                UserMetadata = topicToSubscribeTo.Value()
+                UserMetadata = topicToSubscribeTo.ToHierarchyNamespaceAwareDestination(hierarchyNamespace)
             };
 
             return client.CreateSubscriptionAsync(options, new CreateRuleOptions("$default", new TrueRuleFilter()));
@@ -66,7 +64,6 @@
             CommandArgument topicName, CommandOption subscriptionName, CommandOption hierarchyNamespace)
         {
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
-            subscriptionNameToUse = subscriptionNameToUse.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
 
             var topicNameToUse = topicName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
 
