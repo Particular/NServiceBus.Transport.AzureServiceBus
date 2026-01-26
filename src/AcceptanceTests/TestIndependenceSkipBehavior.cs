@@ -19,7 +19,7 @@
         {
             if (context.Message.Headers.TryGetValue("$AcceptanceTesting.TestRunId", out var runId) && runId != testRunId)
             {
-                TestContext.WriteLine($"Skipping message {context.Message.MessageId} from previous test run");
+                TestContext.Out.WriteLine($"Skipping message {context.Message.MessageId} from previous test run");
                 return Task.CompletedTask;
             }
 
