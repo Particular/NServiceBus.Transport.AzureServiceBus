@@ -306,6 +306,7 @@
         {
             var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
             var topicName = TopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var myMessage4Topic = "MyNamespace1.MyMessage4".ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
             await DeleteQueue(queueName);
             await DeleteTopic(topicName);
 
@@ -319,7 +320,7 @@
             await VerifyQueue(queueName);
             await VerifyTopic(topicName);
             await VerifySingleTopicSubscription(topicName, SubscriptionName, queueName);
-            await VerifyTopicPerEventTypeSubscription("MyNamespace1.MyMessage4", SubscriptionName, queueName);
+            await VerifyTopicPerEventTypeSubscription(myMessage4Topic, SubscriptionName, queueName);
         }
 
         [Test]

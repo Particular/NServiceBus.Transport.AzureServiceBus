@@ -206,7 +206,7 @@
                             {
                                 await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
                                     client => MigrationTopologyEndpoint.Subscribe(client, name, topicName,
-                                        subscriptionName, eventType, shortenedRuleName));
+                                        subscriptionName, eventType, shortenedRuleName, hierarchyNamespace));
 
                                 Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{eventType.Value}'.");
                             });
@@ -239,7 +239,7 @@
                         {
                             await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
                                 client => MigrationTopologyEndpoint.Unsubscribe(client, name, topicName,
-                                    subscriptionName, eventType, shortenedRuleName));
+                                    subscriptionName, eventType, shortenedRuleName, hierarchyNamespace));
 
                             Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{eventType.Value}'.");
                         });

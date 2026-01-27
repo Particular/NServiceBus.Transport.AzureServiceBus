@@ -85,11 +85,11 @@
             }
         }
 
-        public static async Task Subscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName)
+        public static async Task Subscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName, CommandOption hierarchyNamespace)
         {
             try
             {
-                await Rule.Create(client, name, topicName, subscriptionName, eventType, ruleName);
+                await Rule.Create(client, name, topicName, subscriptionName, eventType, ruleName, hierarchyNamespace);
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
@@ -97,11 +97,11 @@
             }
         }
 
-        public static async Task Unsubscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName)
+        public static async Task Unsubscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName, CommandOption hierarchyNamespace)
         {
             try
             {
-                await Rule.Delete(client, name, topicName, subscriptionName, eventType, ruleName);
+                await Rule.Delete(client, name, topicName, subscriptionName, eventType, ruleName, hierarchyNamespace);
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
