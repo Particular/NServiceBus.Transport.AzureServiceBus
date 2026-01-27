@@ -17,7 +17,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     readonly ServiceBusClient defaultClient;
     readonly ServiceBusAdministrationClient administrationClient;
     readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
-    readonly string? hierarchyNamespace;
+    readonly HierarchyNamespaceOptions? hierarchyNamespaceOptions;
 
     public AzureServiceBusTransportInfrastructure(
         AzureServiceBusTransport transportSettings,
@@ -25,7 +25,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
         ServiceBusClient defaultClient,
         ServiceBusAdministrationClient administrationClient,
-        string? hierarchyNamespace
+        HierarchyNamespaceOptions? hierarchyNamespaceOptions
     )
     {
         this.transportSettings = transportSettings;
@@ -34,7 +34,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         this.defaultClient = defaultClient;
         this.administrationClient = administrationClient;
         this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
-        this.hierarchyNamespace = hierarchyNamespace;
+        this.hierarchyNamespaceOptions = hierarchyNamespaceOptions;
 
         messageSenderRegistry = new MessageSenderRegistry();
 
@@ -42,7 +42,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             defaultClient,
             messageSenderRegistry,
             transportSettings.Topology,
-            hierarchyNamespace,
+            hierarchyNamespaceOptions,
             transportSettings.OutgoingNativeMessageCustomization
         );
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
@@ -143,11 +143,11 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     public override string ToTransportAddress(QueueAddress address)
     {
         var baseAddress = address.BaseAddress;
-        if (hierarchyNamespace is not null)
+        if (hierarchyNamespaceOptions is not null)
         {
-            if (!baseAddress.StartsWith(hierarchyNamespace + "/", StringComparison.OrdinalIgnoreCase))
+            if (!baseAddress.StartsWith(hierarchyNamespaceOptions + "/", StringComparison.OrdinalIgnoreCase))
             {
-                baseAddress = $"{hierarchyNamespace}/{baseAddress}";
+                baseAddress = $"{hierarchyNamespaceOptions}/{baseAddress}";
             }
         }
 

@@ -20,7 +20,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                     endpoint.CustomConfig(cfg =>
                     {
                         var transport = cfg.ConfigureTransport<AzureServiceBusTransport>();
-                        transport.HierarchyNamespace = "my-hierarchy";
+                        transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
                     });
 
                     endpoint.When(async session => await session.Send(Conventions.EndpointNamingConvention(typeof(Receiver)).Shorten(), new MyMessage()));
@@ -30,7 +30,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                     endpoint.CustomConfig(cfg =>
                     {
                         var transport = cfg.ConfigureTransport<AzureServiceBusTransport>();
-                        transport.HierarchyNamespace = "my-hierarchy";
+                        transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
                     });
                 })
                 .Done(c => c.MessageReceived)

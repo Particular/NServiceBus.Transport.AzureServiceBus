@@ -110,7 +110,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         var administrationClient = TokenCredential != null
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
             : new ServiceBusAdministrationClient(ConnectionString);
-        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient, HierarchyNamespace);
+        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient, HierarchyNamespaceOptions);
 
         if (hostSettings.SetupInfrastructure)
         {
@@ -119,7 +119,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
             var allQueues = infrastructure.Receivers
                 .Select(r => r.Value.ReceiveAddress)
-                .Concat(sendingAddresses.Select(s => s.ToHierarchyNamespaceAwareDestination(HierarchyNamespace)))
+                .Concat(sendingAddresses.Select(s => s.ToHierarchyNamespaceAwareDestination(HierarchyNamespaceOptions)))
                 .ToArray();
             // Validate the actual names that will be created (including hierarchy namespace prefix)
             var validationResult = EntityValidator.ValidateQueues(allQueues, nameof(TopologyOptions.QueueNameToSubscriptionNameMap));
@@ -207,23 +207,11 @@ public partial class AzureServiceBusTransport : TransportDefinition
     TopicTopology topology;
 
     /// <summary>
-    /// Gets or sets an optional hierarchy namespace prefix applied to entity paths created by the transport.
-    /// When set, entity paths will be prefixed using the format `{HierarchyNamespace}/{entity}`. Leave null to disable prefixing.
+    /// Configures hierarchy namespace support
     /// </summary>
-    public string? HierarchyNamespace
-    {
-        get;
-        set
-        {
-            if (value?.EndsWith('/') ?? false)
-            {
-                throw new ArgumentException($"{nameof(HierarchyNamespace)} cannot end with `/`", nameof(HierarchyNamespace));
-            }
-            field = value;
-        }
-    }
+    public HierarchyNamespaceOptions? HierarchyNamespaceOptions { get; set; }
 
-    internal string HierarchyNamespaceClientIdentifier => HierarchyNamespace is not null ? $"{HierarchyNamespace.Replace('/', '-')}-" : "";
+    internal string HierarchyNamespaceClientIdentifier => HierarchyNamespaceOptions?.HierarchyNamespace is not null ? $"{HierarchyNamespaceOptions.HierarchyNamespace.Replace('/', '-')}-" : "";
 
     /// <summary>
     /// The maximum size used when creating queues and topics in GB.

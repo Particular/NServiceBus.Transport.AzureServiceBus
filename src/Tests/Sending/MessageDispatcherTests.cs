@@ -741,9 +741,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         public async Task Should_respect_hierarchy_namespace_on_unicast_dispatch()
         {
             var client = new FakeServiceBusClient();
-            var hierarchyNamespace = "SomeHierarchyNamespace";
+            var hierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "SomeHierarchyNamespace" };
 
-            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), hierarchyNamespace);
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), hierarchyNamespaceOptions);
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -779,7 +779,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2, batchOperation1, batchOperation2), new TransportTransaction());
 
-            var sender = client.Senders[$"{hierarchyNamespace}/SomeDestination"];
+            var sender = client.Senders[$"{hierarchyNamespaceOptions.HierarchyNamespace}/SomeDestination"];
 
             Assert.Multiple(() =>
             {
@@ -792,7 +792,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         public async Task Should_respect_hierarchy_namespace_on_multicast_dispatch()
         {
             var client = new FakeServiceBusClient();
-            var hierarchyNamespace = "SomeHierarchyNamespace";
+            var hierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "SomeHierarchyNamespace" };
 
             var dispatcher = new MessageDispatcher(
                 client,
@@ -801,7 +801,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
                 }),
-                hierarchyNamespace);
+                hierarchyNamespaceOptions);
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -837,7 +837,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             await dispatcher.Dispatch(new TransportOperations(operation1, operation2, batchOperation1, batchOperation2), new TransportTransaction());
 
-            var sender = client.Senders[$"{hierarchyNamespace}/sometopic"];
+            var sender = client.Senders[$"{hierarchyNamespaceOptions.HierarchyNamespace}/sometopic"];
 
             Assert.Multiple(() =>
             {
