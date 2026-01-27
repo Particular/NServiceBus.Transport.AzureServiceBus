@@ -6,9 +6,9 @@
 
     static class Rule
     {
-        public static Task Create(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName)
+        public static Task Create(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName, CommandOption hierarchyNamespace)
         {
-            var topicNameToUse = topicName.HasValue() ? topicName.Value() : Topic.DefaultTopicName;
+            var topicNameToUse = topicName.HasValue() ? topicName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace) : Topic.DefaultTopicName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
             var eventToSubscribeTo = eventType.Value;
             var ruleNameToUse = ruleName.HasValue() ? ruleName.Value() : eventToSubscribeTo;
@@ -17,9 +17,9 @@
             return client.CreateRuleAsync(topicNameToUse, subscriptionNameToUse, description);
         }
 
-        public static Task Delete(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName)
+        public static Task Delete(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName, CommandOption hierarchyNamespace)
         {
-            var topicNameToUse = topicName.HasValue() ? topicName.Value() : Topic.DefaultTopicName;
+            var topicNameToUse = topicName.HasValue() ? topicName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace) : Topic.DefaultTopicName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
             var eventToSubscribeTo = eventType.Value;
             var ruleNameToUse = ruleName.HasValue() ? ruleName.Value() : eventToSubscribeTo;
