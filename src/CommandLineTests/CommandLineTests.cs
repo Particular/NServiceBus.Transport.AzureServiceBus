@@ -91,7 +91,7 @@
             Assert.That(publishExitCode, Is.EqualTo(1));
             Assert.That(subscribeExitCode, Is.EqualTo(1));
             Assert.That(publishError, Does.Contain("The --topic option and the --topic-to-publish-to option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option."));
-            Assert.That(subscribeError, Does.Contain("The --topic option and the--topic-to-subscribe-on option cannot be combined. Choose either single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option."));
+            Assert.That(subscribeError, Does.Contain("The --topic option and the--topic-to-subscribe-on option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option."));
         }
 
         [Test]
