@@ -46,7 +46,7 @@
 
             Assert.That(exitCode, Is.EqualTo(0));
             Assert.That(error, Is.Empty);
-            Assert.That(output,Does.Not.Contain("skipping"));
+            Assert.That(output, Does.Not.Contain("skipping"));
 
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
@@ -64,7 +64,7 @@
 
             Assert.That(exitCode, Is.EqualTo(0));
             Assert.That(error, Is.Empty);
-            Assert.That(output,Does.Not.Contain("skipping"));
+            Assert.That(output, Does.Not.Contain("skipping"));
 
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
