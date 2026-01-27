@@ -203,7 +203,7 @@
 
             Assert.That(exitCode, Is.EqualTo(0));
             Assert.That(error, Is.Empty);
-            Assert.That(output, Does.Contain("skipping"));
+            Assert.That(output, Does.Not.Contain("skipping"));
 
             await VerifyQueue(QueueName);
         }
