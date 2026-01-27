@@ -30,7 +30,7 @@ static class OutgoingTransportOperationExtensions
 
     public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation,
         TopicTopology topology,
-        string? hierarchyNamespace)
+        HierarchyNamespaceOptions? hierarchyNamespaceOptions)
     {
         string destination;
 
@@ -57,6 +57,6 @@ static class OutgoingTransportOperationExtensions
                 throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));
         }
 
-        return destination.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
+        return destination.ToHierarchyNamespaceAwareDestination(hierarchyNamespaceOptions);
     }
 }

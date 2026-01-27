@@ -12,7 +12,7 @@ public class When_using_hierarchy_namespace : NServiceBusTransportTest
     public void Should_throw_when_hierarchy_namespace_plus_queue_name_too_long()
     {
         var transport = (AzureServiceBusTransport)new ConfigureAzureServiceBusTransportInfrastructure().CreateTransportDefinition();
-        transport.HierarchyNamespace = new string('a', 200);
+        transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = new string('a', 200) };
 
         var hostSettings = new HostSettings(
             "WhenUsingHierarchyNamespace",
@@ -34,7 +34,7 @@ public class When_using_hierarchy_namespace : NServiceBusTransportTest
     public void Should_throw_when_hierarchy_namespace_contains_invalid_characters()
     {
         var transport = (AzureServiceBusTransport)new ConfigureAzureServiceBusTransportInfrastructure().CreateTransportDefinition();
-        transport.HierarchyNamespace = "bad?prefix";
+        transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "bad?prefix" };
 
         var hostSettings = new HostSettings(
             "WhenUsingHierarchyNamespace",

@@ -13,7 +13,7 @@ class MessageDispatcher(
     ServiceBusClient defaultClient,
     MessageSenderRegistry messageSenderRegistry,
     TopicTopology topology,
-    string? hierarchyNamespace = null,
+    HierarchyNamespaceOptions? hierarchyNamespaceOptions = null,
     OutgoingNativeMessageCustomizationAction? customizerCallback = null)
     : IMessageDispatcher
 {
@@ -43,7 +43,7 @@ class MessageDispatcher(
 
         foreach (var operation in transportOperations)
         {
-            var destination = operation.ExtractDestination(topology, hierarchyNamespace);
+            var destination = operation.ExtractDestination(topology, hierarchyNamespaceOptions);
             switch (operation.RequiredDispatchConsistency)
             {
                 case DispatchConsistency.Default:
