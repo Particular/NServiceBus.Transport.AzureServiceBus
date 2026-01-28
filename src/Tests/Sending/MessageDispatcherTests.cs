@@ -851,7 +851,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         {
             var client = new FakeServiceBusClient();
             var hierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "SomeHierarchyNamespace" };
-            hierarchyNamespaceOptions.ExcludeMessageType<SomeOtherCommand>();
+            hierarchyNamespaceOptions.ExcludeMessageTypes([typeof(SomeOtherCommand), typeof(ISomeCommandInterface)]);
 
             var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), hierarchyNamespaceOptions);
 
@@ -881,7 +881,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var batchOperation2 =
                 new TransportOperation(new OutgoingMessage("SomeOtherBatchId",
-                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, typeof(SomeOtherCommand).FullName } },
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, $"{typeof(SomeImplementedCommand).FullName};{typeof(ISomeCommandInterface).FullName}" } },
                         ReadOnlyMemory<byte>.Empty),
                     new UnicastAddressTag("SomeDestination"),
                     [],
@@ -907,19 +907,20 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var client = new FakeServiceBusClient();
             var hierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "SomeHierarchyNamespace" };
             hierarchyNamespaceOptions.ExcludeMessageType<SomeOtherEvent>();
+            hierarchyNamespaceOptions.ExcludeMessageType<ISomeEventInterface>();
 
             var dispatcher = new MessageDispatcher(
                 client,
                 new MessageSenderRegistry(),
                 TopicTopology.FromOptions(new TopologyOptions
                 {
-                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" }, { typeof(SomeOtherEvent).FullName, "sometopic" } }
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" }, { typeof(SomeOtherEvent).FullName, "sometopic" }, { typeof(SomeImplementedEvent).FullName, "sometopic" } }
                 }),
                 hierarchyNamespaceOptions);
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
-                        [],
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, typeof(SomeEvent).FullName } },
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeEvent)),
                     [],
@@ -927,7 +928,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var operation2 =
                 new TransportOperation(new OutgoingMessage("SomeOtherId",
-                        [],
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, typeof(SomeOtherEvent).FullName } },
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeOtherEvent)),
                     [],
@@ -935,7 +936,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var batchOperation1 =
                 new TransportOperation(new OutgoingMessage("SomeBatchId",
-                        [],
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, typeof(SomeEvent).FullName } },
                         ReadOnlyMemory<byte>.Empty),
                     new MulticastAddressTag(typeof(SomeEvent)),
                     [],
@@ -943,9 +944,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             var batchOperation2 =
                 new TransportOperation(new OutgoingMessage("SomeOtherBatchId",
-                        [],
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, $"{typeof(SomeImplementedEvent).FullName};{typeof(ISomeEventInterface).FullName}" } },
                         ReadOnlyMemory<byte>.Empty),
-                    new MulticastAddressTag(typeof(SomeOtherEvent)),
+                    new MulticastAddressTag(typeof(SomeImplementedEvent)),
                     [],
                     DispatchConsistency.Default);
 
@@ -967,8 +968,16 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
         class SomeOtherEvent;
 
+        class SomeImplementedEvent : ISomeEventInterface;
+
+        interface ISomeEventInterface;
+
         class SomeCommand;
 
         class SomeOtherCommand;
+
+        class SomeImplementedCommand : ISomeCommandInterface;
+
+        interface ISomeCommandInterface;
     }
 }

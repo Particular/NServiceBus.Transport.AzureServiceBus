@@ -1,17 +1,20 @@
 namespace NServiceBus.Transport.AzureServiceBus.Sending;
 
 using System;
+using System.Linq;
 
 static class HierarchyNamespaceExtensions
 {
     internal static string ToHierarchyNamespaceAwareDestination(this string destination, HierarchyNamespaceOptions? hierarchyNamespaceOptions, string? messageTypeFullName = null)
+        => destination.ToHierarchyNamespaceAwareDestination(hierarchyNamespaceOptions, string.IsNullOrWhiteSpace(messageTypeFullName) ? [] : [messageTypeFullName]);
+    internal static string ToHierarchyNamespaceAwareDestination(this string destination, HierarchyNamespaceOptions? hierarchyNamespaceOptions, string[] messageTypeFullNames)
     {
         if (string.IsNullOrWhiteSpace(hierarchyNamespaceOptions?.HierarchyNamespace))
         {
             return destination;
         }
 
-        if (messageTypeFullName is not null && hierarchyNamespaceOptions.MessageTypeFullNamesToExclude.Contains(messageTypeFullName))
+        if (messageTypeFullNames is { Length: > 0 } && hierarchyNamespaceOptions.MessageTypeFullNamesToExclude.Any(messageTypeFullNames.Contains))
         {
             return destination;
         }
