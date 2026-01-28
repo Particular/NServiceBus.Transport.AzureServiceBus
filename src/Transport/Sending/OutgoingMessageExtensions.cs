@@ -32,34 +32,39 @@ static class OutgoingMessageExtensions
         return message;
     }
 
-    public static string? GetMessageTypeNameFromEnclosedMessageHeaders(this OutgoingMessage message)
+    public static string[] GetMessageTypeNamesFromEnclosedMessageHeaders(this OutgoingMessage message)
     {
         if (message.Headers.TryGetValue(Headers.EnclosedMessageTypes, out var enclosedMessageTypes))
         {
             var enclosedMessageTypesSpan = enclosedMessageTypes.AsSpan();
             var messageTypesEnumerator = enclosedMessageTypesSpan.Split(EnclosedMessageTypeSeparator);
+            var messageTypeNames = new List<string>();
 
-            if (messageTypesEnumerator.MoveNext())
+            foreach (var messageTypeRange in messageTypesEnumerator)
             {
-                var messageTypeSpan = enclosedMessageTypesSpan[messageTypesEnumerator.Current];
+                var messageTypeSpan = enclosedMessageTypesSpan[messageTypeRange];
 
                 int lastIndexOf = messageTypeSpan.LastIndexOf(']');
                 if (lastIndexOf > 0)
                 {
-                    return messageTypeSpan[..++lastIndexOf].ToString();
+                    messageTypeNames.Add(messageTypeSpan[..++lastIndexOf].ToString());
+                    continue;
                 }
 
                 int firstIndexOfComma = messageTypeSpan.IndexOf(',');
                 if (firstIndexOfComma > 0)
                 {
-                    return messageTypeSpan[..firstIndexOfComma].ToString();
+                    messageTypeNames.Add(messageTypeSpan[..firstIndexOfComma].ToString());
+                    continue;
                 }
 
-                return messageTypeSpan.ToString();
+                messageTypeNames.Add(messageTypeSpan.ToString());
             }
+
+            return messageTypeNames.ToArray();
         }
 
-        return null;
+        return [];
     }
 
     static void ApplyDeliveryConstraints(ServiceBusMessage message, DispatchProperties dispatchProperties)

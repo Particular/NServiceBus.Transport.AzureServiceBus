@@ -33,18 +33,18 @@ static class OutgoingTransportOperationExtensions
         HierarchyNamespaceOptions? hierarchyNamespaceOptions)
     {
         string destination;
-        string? messageType;
+        string[] messageTypes;
 
         switch (outgoingTransportOperation)
         {
             case MulticastTransportOperation multicastTransportOperation:
                 destination = topology.GetPublishDestination(multicastTransportOperation.MessageType);
-                messageType = multicastTransportOperation.MessageType.FullName;
+                messageTypes = multicastTransportOperation.Message.GetMessageTypeNamesFromEnclosedMessageHeaders();
                 break;
 
             case UnicastTransportOperation unicastTransportOperation:
                 destination = unicastTransportOperation.Destination;
-                messageType = unicastTransportOperation.Message.GetMessageTypeNameFromEnclosedMessageHeaders();
+                messageTypes = unicastTransportOperation.Message.GetMessageTypeNamesFromEnclosedMessageHeaders();
 
                 // Workaround for reply-to address set by ASB transport
                 var index = unicastTransportOperation.Destination.IndexOf('@');
@@ -60,6 +60,6 @@ static class OutgoingTransportOperationExtensions
                 throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));
         }
 
-        return destination.ToHierarchyNamespaceAwareDestination(hierarchyNamespaceOptions, messageType);
+        return destination.ToHierarchyNamespaceAwareDestination(hierarchyNamespaceOptions, messageTypes);
     }
 }
