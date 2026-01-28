@@ -31,7 +31,7 @@
 
             fullyQualifiedNamespace.OnValidate(v => ValidateConnectionAndNamespaceNotUsedTogether(connectionString, fullyQualifiedNamespace));
             connectionString.OnValidate(v => ValidateConnectionAndNamespaceNotUsedTogether(connectionString, fullyQualifiedNamespace));
-            hierarchyNamespace.OnValidate(v => ValidateHierarchyNamespaceValidity(hierarchyNamespace));
+            hierarchyNamespace.OnValidate(v => ValidateHierarchyNamespace(hierarchyNamespace));
 
             var size = new CommandOption<int>(app.ValueParsers.GetParser<int>(), "-s|--size", CommandOptionType.SingleValue)
             {
@@ -355,7 +355,7 @@
             return ValidationResult.Success;
         }
 
-        static ValidationResult ValidateHierarchyNamespaceValidity(CommandOption hierarchyNamespace)
+        static ValidationResult ValidateHierarchyNamespace(CommandOption hierarchyNamespace)
         {
             if (hierarchyNamespace.HasValue() && (hierarchyNamespace.Value()?.EndsWith('/') ?? false))
             {

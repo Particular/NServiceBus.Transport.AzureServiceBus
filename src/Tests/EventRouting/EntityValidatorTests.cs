@@ -18,7 +18,7 @@ public class EntityValidatorTests
                 .SetName("Topics_Valid_MultipleNames");
             yield return new TestCaseData([new[] { new string('t', 260) }])
                 .SetName("Topics_Max_Length");
-            yield return new TestCaseData([new[] { "Topic123".ToHierarchyNamespaceAwareDestination("SomeNamespace") }])
+            yield return new TestCaseData([new[] { "Topic123".ToHierarchyNamespaceAwareDestination(new HierarchyNamespaceOptions { HierarchyNamespace = "SomeNamespace" }) }])
                 .SetName("Topics_Valid_HierarchicalNamespace");
         }
     }
@@ -71,7 +71,7 @@ public class EntityValidatorTests
                 .SetName("Queues_Valid_MultipleNames");
             yield return new TestCaseData([new[] { new string('q', 260) }])
                 .SetName("Queues_Max_Length");
-            yield return new TestCaseData([new[] { "Queue123".ToHierarchyNamespaceAwareDestination("SomeNamespace") }])
+            yield return new TestCaseData([new[] { "Queue123".ToHierarchyNamespaceAwareDestination(new HierarchyNamespaceOptions { HierarchyNamespace = "SomeNamespace" }) }])
                 .SetName("Topics_Valid_HierarchicalNamespace");
         }
     }
