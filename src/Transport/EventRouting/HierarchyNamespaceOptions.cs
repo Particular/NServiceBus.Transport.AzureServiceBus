@@ -24,13 +24,20 @@ public class HierarchyNamespaceOptions
             field = value;
         }
     }
-    internal HashSet<Type> MessageTypesToExclude { get; } = [];
+    internal HashSet<string> MessageTypeFullNamesToExclude { get; } = [];
 
     /// <summary>
     /// Adds a message type to be excluded from the hierarchy namespace.
     /// </summary>
     /// <typeparam name="TMessageType"></typeparam>
-    public void ExcludeMessageType<TMessageType>() => MessageTypesToExclude.Add(typeof(TMessageType));
+    public void ExcludeMessageType<TMessageType>()
+    {
+        var fullName = typeof(TMessageType).FullName;
+        if (!string.IsNullOrWhiteSpace(fullName))
+        {
+            MessageTypeFullNamesToExclude.Add(fullName);
+        }
+    }
 
     /// <summary>
     /// Adds message types to be excluded from the hierarchy namespace.
@@ -40,7 +47,10 @@ public class HierarchyNamespaceOptions
     {
         foreach (var messageType in messageTypes)
         {
-            MessageTypesToExclude.Add(messageType);
+            if (!string.IsNullOrWhiteSpace(messageType.FullName))
+            {
+                MessageTypeFullNamesToExclude.Add(messageType.FullName);
+            }
         }
     }
 }
