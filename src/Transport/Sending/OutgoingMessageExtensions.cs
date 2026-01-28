@@ -32,6 +32,36 @@ static class OutgoingMessageExtensions
         return message;
     }
 
+    public static string? GetMessageTypeNameFromEnclosedMessageHeaders(this OutgoingMessage message)
+    {
+        if (message.Headers.TryGetValue(Headers.EnclosedMessageTypes, out var enclosedMessageTypes))
+        {
+            var enclosedMessageTypesSpan = enclosedMessageTypes.AsSpan();
+            var messageTypesEnumerator = enclosedMessageTypesSpan.Split(EnclosedMessageTypeSeparator);
+
+            if (messageTypesEnumerator.MoveNext())
+            {
+                var messageTypeSpan = enclosedMessageTypesSpan[messageTypesEnumerator.Current];
+
+                int lastIndexOf = messageTypeSpan.LastIndexOf(']');
+                if (lastIndexOf > 0)
+                {
+                    return messageTypeSpan[..++lastIndexOf].ToString();
+                }
+
+                int firstIndexOfComma = messageTypeSpan.IndexOf(',');
+                if (firstIndexOfComma > 0)
+                {
+                    return messageTypeSpan[..firstIndexOfComma].ToString();
+                }
+
+                return messageTypeSpan.ToString();
+            }
+        }
+
+        return null;
+    }
+
     static void ApplyDeliveryConstraints(ServiceBusMessage message, DispatchProperties dispatchProperties)
     {
         if (dispatchProperties.DoNotDeliverBefore != null)
@@ -81,4 +111,6 @@ static class OutgoingMessageExtensions
             outgoingMessage.ApplicationProperties[header.Key] = header.Value;
         }
     }
+
+    static ReadOnlySpan<char> EnclosedMessageTypeSeparator => ";".AsSpan();
 }

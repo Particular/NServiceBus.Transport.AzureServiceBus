@@ -846,8 +846,129 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             });
         }
 
+        [Test]
+        public async Task Should_exclude_configured_message_types_from_hierarchy_namespace_on_unicast_dispatch()
+        {
+            var client = new FakeServiceBusClient();
+            var hierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "SomeHierarchyNamespace" };
+            hierarchyNamespaceOptions.ExcludeMessageType<SomeOtherCommand>();
+
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), hierarchyNamespaceOptions);
+
+            var operation1 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, typeof(SomeCommand).FullName } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            var operation2 =
+                new TransportOperation(new OutgoingMessage("SomeOtherId",
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, typeof(SomeOtherCommand).FullName } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            var batchOperation1 =
+                new TransportOperation(new OutgoingMessage("SomeBatchId",
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, typeof(SomeCommand).FullName } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Default);
+
+            var batchOperation2 =
+                new TransportOperation(new OutgoingMessage("SomeOtherBatchId",
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, typeof(SomeOtherCommand).FullName } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new UnicastAddressTag("SomeDestination"),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation1, operation2, batchOperation1, batchOperation2), new TransportTransaction());
+
+            var externalSender = client.Senders["SomeDestination"];
+            var hierarchySender = client.Senders[$"{hierarchyNamespaceOptions.HierarchyNamespace}/SomeDestination"];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(externalSender.IndividuallySentMessages, Has.Count.EqualTo(1));
+                Assert.That(externalSender.BatchSentMessages, Has.Count.EqualTo(1));
+                Assert.That(hierarchySender.IndividuallySentMessages, Has.Count.EqualTo(1));
+                Assert.That(hierarchySender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public async Task Should_exclude_configured_message_types_from_hierarchy_namespace_on_multicast_dispatch()
+        {
+            var client = new FakeServiceBusClient();
+            var hierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "SomeHierarchyNamespace" };
+            hierarchyNamespaceOptions.ExcludeMessageType<SomeOtherEvent>();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" }, { typeof(SomeOtherEvent).FullName, "sometopic" } }
+                }),
+                hierarchyNamespaceOptions);
+
+            var operation1 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            var operation2 =
+                new TransportOperation(new OutgoingMessage("SomeOtherId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeOtherEvent)),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            var batchOperation1 =
+                new TransportOperation(new OutgoingMessage("SomeBatchId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            var batchOperation2 =
+                new TransportOperation(new OutgoingMessage("SomeOtherBatchId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeOtherEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation1, operation2, batchOperation1, batchOperation2), new TransportTransaction());
+
+            var externalSender = client.Senders["sometopic"];
+            var hierarchySender = client.Senders[$"{hierarchyNamespaceOptions.HierarchyNamespace}/sometopic"];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(externalSender.IndividuallySentMessages, Has.Count.EqualTo(1));
+                Assert.That(externalSender.BatchSentMessages, Has.Count.EqualTo(1));
+                Assert.That(hierarchySender.IndividuallySentMessages, Has.Count.EqualTo(1));
+                Assert.That(hierarchySender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
+        }
+
         class SomeEvent;
 
         class SomeOtherEvent;
+
+        class SomeCommand;
+
+        class SomeOtherCommand;
     }
 }

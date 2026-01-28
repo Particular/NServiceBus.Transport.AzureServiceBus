@@ -24,9 +24,14 @@ static class HierarchyNamespaceExtensions
         });
     }
 
-    internal static string ToHierarchyNamespaceAwareDestination(this string destination, HierarchyNamespaceOptions? hierarchyNamespaceOptions)
+    internal static string ToHierarchyNamespaceAwareDestination(this string destination, HierarchyNamespaceOptions? hierarchyNamespaceOptions, string? messageTypeFullName = null)
     {
         if (string.IsNullOrWhiteSpace(hierarchyNamespaceOptions?.HierarchyNamespace))
+        {
+            return destination;
+        }
+
+        if (messageTypeFullName is not null && hierarchyNamespaceOptions.MessageTypeFullNamesToExclude.Contains(messageTypeFullName))
         {
             return destination;
         }
