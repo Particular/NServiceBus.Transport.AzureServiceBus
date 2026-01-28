@@ -27,9 +27,9 @@
 
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName}");
 
-            Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
-            Assert.IsFalse(output.Contains("skipping"));
+            Assert.That(exitCode, Is.EqualTo(0));
+            Assert.That(error, Is.Empty);
+            Assert.That(output, Does.Not.Contain("skipping"));
 
             await VerifyQueue(QueueName);
             await VerifyTopic(DefaultTopicName);
@@ -44,9 +44,9 @@
 
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName}");
 
-            Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
-            Assert.IsFalse(output.Contains("skipping"));
+            Assert.That(exitCode, Is.EqualTo(0));
+            Assert.That(error, Is.Empty);
+            Assert.That(output, Does.Not.Contain("skipping"));
 
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
@@ -62,9 +62,9 @@
 
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
 
-            Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
-            Assert.IsFalse(output.Contains("skipping"));
+            Assert.That(exitCode, Is.EqualTo(0));
+            Assert.That(error, Is.Empty);
+            Assert.That(output, Does.Not.Contain("skipping"));
 
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
@@ -78,8 +78,8 @@
         {
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.AreEqual(1, exitCode);
-            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
         }
 
         [Test]
@@ -88,10 +88,10 @@
             var (_, publishError, publishExitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --topic-to-publish-to {HierarchyTopicName}");
             var (_, subscribeError, subscribeExitCode) = await Execute($"endpoint create {EndpointName} --topic {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
 
-            Assert.AreEqual(1, publishExitCode);
-            Assert.AreEqual(1, subscribeExitCode);
-            StringAssert.Contains("The --topic option and the --topic-to-publish-to option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option.", publishError);
-            StringAssert.Contains("The --topic option and the--topic-to-subscribe-on option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option.", subscribeError);
+            Assert.That(publishExitCode, Is.EqualTo(1));
+            Assert.That(subscribeExitCode, Is.EqualTo(1));
+            Assert.That(publishError, Does.Contain("The --topic option and the --topic-to-publish-to option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option."));
+            Assert.That(subscribeError, Does.Contain("The --topic option and the--topic-to-subscribe-on option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option."));
         }
 
         [Test]
@@ -99,8 +99,8 @@
         {
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic-to-subscribe-on {HierarchyTopicName} --topic-to-publish-to {HierarchyTopicName}");
 
-            Assert.AreEqual(1, exitCode);
-            StringAssert.Contains("A valid topic hierarchy requires the topic-to-publish-to option and the topic-to-subscribe-on option to be different.", error);
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("A valid topic hierarchy requires the topic-to-publish-to option and the topic-to-subscribe-on option to be different."));
         }
 
         [Test]
@@ -144,8 +144,8 @@
         {
             var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.AreEqual(1, exitCode);
-            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
         }
 
         [Test]
@@ -190,8 +190,8 @@
         {
             var (_, error, exitCode) = await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.AreEqual(1, exitCode);
-            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
         }
 
         [Test]
@@ -201,9 +201,9 @@
 
             var (output, error, exitCode) = await Execute($"queue create {QueueName}");
 
-            Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
-            Assert.IsFalse(output.Contains("skipping"));
+            Assert.That(exitCode, Is.EqualTo(0));
+            Assert.That(error, Is.Empty);
+            Assert.That(output, Does.Not.Contain("skipping"));
 
             await VerifyQueue(QueueName);
         }
@@ -213,8 +213,8 @@
         {
             var (_, error, exitCode) = await Execute($"queue create {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.AreEqual(1, exitCode);
-            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
         }
 
         [Test]
@@ -225,9 +225,9 @@
 
             var (output, error, exitCode) = await Execute($"queue create {QueueName}");
 
-            Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
-            Assert.IsTrue(output.Contains("skipping"));
+            Assert.That(exitCode, Is.EqualTo(0));
+            Assert.That(error, Is.Empty);
+            Assert.That(output, Does.Contain("skipping"));
 
             await VerifyQueue(QueueName);
         }
@@ -240,8 +240,8 @@
 
             var (_, error, exitCode) = await Execute($"queue delete {QueueName}");
 
-            Assert.AreEqual(0, exitCode);
-            Assert.IsTrue(error == string.Empty);
+            Assert.That(exitCode, Is.EqualTo(0));
+            Assert.That(error, Is.Empty);
 
             await VerifyQueueExists(false);
         }
@@ -251,8 +251,8 @@
         {
             var (_, error, exitCode) = await Execute($"queue delete {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.AreEqual(1, exitCode);
-            StringAssert.Contains("The connection string and the namespace option cannot be used together.", error);
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
         }
 
         [SetUp]
@@ -263,32 +263,32 @@
         {
             var actual = (await client.GetQueueAsync(queueName)).Value;
 
-            Assert.AreEqual(int.MaxValue, actual.MaxDeliveryCount);
-            Assert.AreEqual(TimeSpan.FromMinutes(5), actual.LockDuration);
-            Assert.AreEqual(true, actual.EnableBatchedOperations);
-            Assert.AreEqual(enablePartitioning, actual.EnablePartitioning);
-            Assert.AreEqual(size, actual.MaxSizeInMegabytes);
+            Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
+            Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
+            Assert.That(actual.EnableBatchedOperations, Is.True);
+            Assert.That(actual.EnablePartitioning, Is.EqualTo(enablePartitioning));
+            Assert.That(actual.MaxSizeInMegabytes, Is.EqualTo(size));
         }
 
         async Task VerifyTopic(string topicName, bool enablePartitioning = false, int size = 5 * 1024)
         {
             var actual = (await client.GetTopicAsync(topicName)).Value;
 
-            Assert.AreEqual(true, actual.EnableBatchedOperations);
-            Assert.AreEqual(enablePartitioning, actual.EnablePartitioning);
-            Assert.AreEqual(size, actual.MaxSizeInMegabytes);
+            Assert.That(actual.EnableBatchedOperations, Is.True);
+            Assert.That(actual.EnablePartitioning, Is.EqualTo(enablePartitioning));
+            Assert.That(actual.MaxSizeInMegabytes, Is.EqualTo(size));
         }
 
         async Task VerifySubscription(string topicName, string subscriptionName, string queueName)
         {
             var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
 
-            Assert.AreEqual(TimeSpan.FromMinutes(5), actual.LockDuration);
-            Assert.IsTrue(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal));
-            Assert.AreEqual(false, actual.EnableDeadLetteringOnFilterEvaluationExceptions);
-            Assert.AreEqual(int.MaxValue, actual.MaxDeliveryCount);
-            Assert.AreEqual(true, actual.EnableBatchedOperations);
-            Assert.AreEqual(queueName, actual.UserMetadata);
+            Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
+            Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
+            Assert.That(actual.EnableDeadLetteringOnFilterEvaluationExceptions, Is.False);
+            Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
+            Assert.That(actual.EnableBatchedOperations, Is.True);
+            Assert.That(actual.UserMetadata, Is.EqualTo(queueName));
 
             // rules
             var rules = new List<RuleProperties>();
@@ -298,23 +298,23 @@
                 rules.Add(rule);
             }
 
-            Assert.IsTrue(rules.Count == 4);
+            Assert.That(rules.Count, Is.EqualTo(4));
 
             var defaultRule = rules[0];
-            Assert.AreEqual("$default", defaultRule.Name);
-            Assert.AreEqual(new FalseRuleFilter().SqlExpression, ((FalseRuleFilter)defaultRule.Filter).SqlExpression);
+            Assert.That(defaultRule.Name, Is.EqualTo("$default"));
+            Assert.That(((FalseRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new FalseRuleFilter().SqlExpression));
 
             var customRuleNameRule = rules[1];
-            Assert.AreEqual("CustomRuleName", customRuleNameRule.Name);
-            Assert.AreEqual(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage3%'").SqlExpression, ((SqlRuleFilter)customRuleNameRule.Filter).SqlExpression);
+            Assert.That(customRuleNameRule.Name, Is.EqualTo("CustomRuleName"));
+            Assert.That(((SqlRuleFilter)customRuleNameRule.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage3%'").SqlExpression));
 
             var myMessage1Rule = rules[2];
-            Assert.AreEqual("MyMessage1", myMessage1Rule.Name);
-            Assert.AreEqual(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyMessage1%'").SqlExpression, ((SqlRuleFilter)myMessage1Rule.Filter).SqlExpression);
+            Assert.That(myMessage1Rule.Name, Is.EqualTo("MyMessage1"));
+            Assert.That(((SqlRuleFilter)myMessage1Rule.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyMessage1%'").SqlExpression));
 
             var myMessage2WithNamespace = rules[3];
-            Assert.AreEqual("MyNamespace1.MyMessage2", myMessage2WithNamespace.Name);
-            Assert.AreEqual(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage2%'").SqlExpression, ((SqlRuleFilter)myMessage2WithNamespace.Filter).SqlExpression);
+            Assert.That(myMessage2WithNamespace.Name, Is.EqualTo("MyNamespace1.MyMessage2"));
+            Assert.That(((SqlRuleFilter)myMessage2WithNamespace.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage2%'").SqlExpression));
         }
 
         async Task VerifySubscriptionContainsOnlyDefaultRule(string topicName, string subscriptionName)
@@ -326,11 +326,11 @@
                 rules.Add(rule);
             }
 
-            Assert.IsTrue(rules.Count == 1);
+            Assert.That(rules.Count, Is.EqualTo(1));
 
             var defaultRule = rules[0];
-            Assert.AreEqual("$default", defaultRule.Name);
-            Assert.AreEqual(new FalseRuleFilter().SqlExpression, ((FalseRuleFilter)defaultRule.Filter).SqlExpression);
+            Assert.That(defaultRule.Name, Is.EqualTo("$default"));
+            Assert.That(((FalseRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new FalseRuleFilter().SqlExpression));
         }
 
         async Task VerifySubscriptionContainsOnlyDefaultMatchAllRule(string topicName, string subscriptionName)
@@ -342,17 +342,17 @@
                 rules.Add(rule);
             }
 
-            Assert.IsTrue(rules.Count == 1);
+            Assert.That(rules.Count, Is.EqualTo(1));
 
             var defaultRule = rules[0];
-            Assert.AreEqual("$default", defaultRule.Name);
-            Assert.AreEqual(new TrueRuleFilter().SqlExpression, ((TrueRuleFilter)defaultRule.Filter).SqlExpression);
+            Assert.That(defaultRule.Name, Is.EqualTo("$default"));
+            Assert.That(((TrueRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new TrueRuleFilter().SqlExpression));
         }
 
         async Task VerifyQueueExists(bool queueShouldExist)
         {
             var queueExists = (await client.QueueExistsAsync(QueueName)).Value;
-            Assert.AreEqual(queueShouldExist, queueExists);
+            Assert.That(queueExists, Is.EqualTo(queueShouldExist));
         }
 
         static async Task<(string output, string error, int exitCode)> Execute(string command)
