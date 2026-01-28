@@ -23,9 +23,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                         transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
                     });
 
-                    endpoint.When(async session => await session.Send(Conventions.EndpointNamingConvention(typeof(Receiver)).Shorten(), new MyMessage()));
+                    endpoint.When(async session => await session.Send(Conventions.EndpointNamingConvention(typeof(HierarchyReceiver)).Shorten(), new MyMessage()));
                 })
-                .WithEndpoint<Receiver>(endpoint =>
+                .WithEndpoint<HierarchyReceiver>(endpoint =>
                 {
                     endpoint.CustomConfig(cfg =>
                     {
@@ -33,15 +33,47 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                         transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
                     });
                 })
-                .Done(c => c.MessageReceived)
+                .Done(c => c.HierarchyMessageReceived)
                 .Run();
 
-            Assert.That(context.MessageReceived, Is.True);
+            Assert.That(context.HierarchyMessageReceived, Is.True);
+        }
+
+        [Test]
+        public async Task Should_exclude_configured_message_types_from_hierarchy_namespace()
+        {
+            var context = await Scenario.Define<Context>()
+                .WithEndpoint<Sender>(endpoint =>
+                {
+                    endpoint.CustomConfig(cfg =>
+                    {
+                        var transport = cfg.ConfigureTransport<AzureServiceBusTransport>();
+                        transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+                        transport.HierarchyNamespaceOptions.ExcludeMessageType<MyMessage>();
+                    });
+
+                    endpoint.When(async session => await session.Send(Conventions.EndpointNamingConvention(typeof(ExternalReceiver)).Shorten(), new MyMessage()));
+                })
+                .WithEndpoint<ExternalReceiver>()
+                .WithEndpoint<HierarchyReceiver>(endpoint =>
+                {
+                    endpoint.CustomConfig(cfg =>
+                    {
+                        var transport = cfg.ConfigureTransport<AzureServiceBusTransport>();
+                        transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+                    });
+                })
+                .Done(c => c.ExternalMessageReceived)
+                .Run();
+
+            Assert.That(context.HierarchyMessageReceived, Is.False);
+            Assert.That(context.ExternalMessageReceived, Is.True);
         }
 
         public class Context : ScenarioContext
         {
-            public bool MessageReceived { get; set; }
+            public bool HierarchyMessageReceived { get; set; }
+            public bool ExternalMessageReceived { get; set; }
         }
 
         public class Sender : EndpointConfigurationBuilder
@@ -49,9 +81,9 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
             public Sender() => EndpointSetup<DefaultServer>();
         }
 
-        public class Receiver : EndpointConfigurationBuilder
+        public class HierarchyReceiver : EndpointConfigurationBuilder
         {
-            public Receiver() => EndpointSetup<DefaultServer>();
+            public HierarchyReceiver() => EndpointSetup<DefaultServer>();
 
             public class MyMessageHandler : IHandleMessages<MyMessage>
             {
@@ -61,12 +93,31 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
 
                 public Task Handle(MyMessage message, IMessageHandlerContext context)
                 {
-                    testContext.MessageReceived = true;
+                    testContext.HierarchyMessageReceived = true;
+                    return Task.CompletedTask;
+                }
+            }
+        }
+
+        public class ExternalReceiver : EndpointConfigurationBuilder
+        {
+            public ExternalReceiver() => EndpointSetup<DefaultServer>();
+
+            public class MyMessageHandler : IHandleMessages<MyMessage>
+            {
+                readonly Context testContext;
+
+                public MyMessageHandler(Context testContext) => this.testContext = testContext;
+
+                public Task Handle(MyMessage message, IMessageHandlerContext context)
+                {
+                    testContext.ExternalMessageReceived = true;
                     return Task.CompletedTask;
                 }
             }
         }
 
         public class MyMessage : ICommand;
+
     }
 }
