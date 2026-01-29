@@ -23,8 +23,15 @@
             {
                 Description = "Sets the fully qualified namespace for connecting with cached credentials, such as those from Azure PowerShell or CLI"
             };
+
+            var hierarchyNamespace = new CommandOption("-h|--hierarchy-namespace", CommandOptionType.SingleValue)
+            {
+                Description = "Sets the hierarchy namespace for prefixing destinations in the format <hierarchy-namespace>/<topic-or-queue>"
+            };
+
             fullyQualifiedNamespace.OnValidate(v => ValidateConnectionAndNamespaceNotUsedTogether(connectionString, fullyQualifiedNamespace));
             connectionString.OnValidate(v => ValidateConnectionAndNamespaceNotUsedTogether(connectionString, fullyQualifiedNamespace));
+            hierarchyNamespace.OnValidate(v => ValidateHierarchyNamespace(hierarchyNamespace));
 
             var size = new CommandOption<int>(app.ValueParsers.GetParser<int>(), "-s|--size", CommandOptionType.SingleValue)
             {
@@ -48,11 +55,12 @@
                 subscribeCommand.AddOption(fullyQualifiedNamespace);
                 subscribeCommand.AddOption(size);
                 subscribeCommand.AddOption(partitioning);
+                subscribeCommand.AddOption(hierarchyNamespace);
                 var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
 
                 subscribeCommand.OnExecuteAsync(async ct =>
                 {
-                    await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, size, partitioning));
+                    await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, size, partitioning, hierarchyNamespace));
 
                     Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{topicName.Value}'.");
                 });
@@ -66,11 +74,12 @@
 
                 unsubscribeCommand.AddOption(connectionString);
                 unsubscribeCommand.AddOption(fullyQualifiedNamespace);
+                unsubscribeCommand.AddOption(hierarchyNamespace);
                 var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
 
                 unsubscribeCommand.OnExecuteAsync(async ct =>
                 {
-                    await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Unsubscribe(client, name, topicName, subscriptionName));
+                    await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Unsubscribe(client, name, topicName, subscriptionName, hierarchyNamespace));
 
                     Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{topicName.Value}'.");
                 });
@@ -94,11 +103,12 @@
                     createCommand.AddOption(fullyQualifiedNamespace);
                     createCommand.AddOption(size);
                     createCommand.AddOption(partitioning);
+                    createCommand.AddOption(hierarchyNamespace);
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
                         await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
-                            client => TopicPerEventTopologyEndpoint.Create(client, name, size, partitioning));
+                            client => TopicPerEventTopologyEndpoint.Create(client, name, size, partitioning, hierarchyNamespace));
 
                         Console.WriteLine($"Endpoint '{name.Value}' is ready.");
                     });
@@ -130,6 +140,7 @@
                         createCommand.AddOption(fullyQualifiedNamespace);
                         createCommand.AddOption(size);
                         createCommand.AddOption(partitioning);
+                        createCommand.AddOption(hierarchyNamespace);
 
                         var topicName = createCommand.Option("-t|--topic",
                             "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
@@ -162,7 +173,7 @@
                             await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
                                 client => MigrationTopologyEndpoint.Create(client, name, topicName,
                                     topicToPublishTo, topicToSubscribeOn,
-                                    subscriptionName, size, partitioning));
+                                    subscriptionName, size, partitioning, hierarchyNamespace));
 
 
                             Console.WriteLine($"Endpoint '{name.Value}' is ready.");
@@ -181,6 +192,8 @@
 
                             subscribeCommand.AddOption(connectionString);
                             subscribeCommand.AddOption(fullyQualifiedNamespace);
+                            subscribeCommand.AddOption(hierarchyNamespace);
+
                             var topicName = subscribeCommand.Option("-t|--topic",
                                 "Topic name to subscribe on (defaults to 'bundle-1')", CommandOptionType.SingleValue);
                             topicName.DefaultValue = Topic.DefaultTopicName;
@@ -193,7 +206,7 @@
                             {
                                 await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
                                     client => MigrationTopologyEndpoint.Subscribe(client, name, topicName,
-                                        subscriptionName, eventType, shortenedRuleName));
+                                        subscriptionName, eventType, shortenedRuleName, hierarchyNamespace));
 
                                 Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{eventType.Value}'.");
                             });
@@ -211,6 +224,8 @@
 
                         unsubscribeCommand.AddOption(connectionString);
                         unsubscribeCommand.AddOption(fullyQualifiedNamespace);
+                        unsubscribeCommand.AddOption(hierarchyNamespace);
+
                         var topicName = unsubscribeCommand.Option("-t|--topic",
                             "Topic name to unsubscribe from (defaults to 'bundle-1')",
                             CommandOptionType.SingleValue);
@@ -224,7 +239,7 @@
                         {
                             await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
                                 client => MigrationTopologyEndpoint.Unsubscribe(client, name, topicName,
-                                    subscriptionName, eventType, shortenedRuleName));
+                                    subscriptionName, eventType, shortenedRuleName, hierarchyNamespace));
 
                             Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{eventType.Value}'.");
                         });
@@ -253,12 +268,13 @@
                     createCommand.AddOption(fullyQualifiedNamespace);
                     createCommand.AddOption(size);
                     createCommand.AddOption(partitioning);
+                    createCommand.AddOption(hierarchyNamespace);
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
                         try
                         {
-                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Create(client, name, size, partitioning));
+                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Create(client, name, size, partitioning, hierarchyNamespace));
                             Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
                         }
                         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
@@ -272,13 +288,14 @@
                 {
                     deleteCommand.AddOption(connectionString);
                     deleteCommand.AddOption(fullyQualifiedNamespace);
+                    deleteCommand.AddOption(hierarchyNamespace);
 
                     deleteCommand.Description = "Deletes a queue";
                     var name = deleteCommand.Argument("name", "Name of the queue (required)").IsRequired();
 
                     deleteCommand.OnExecuteAsync(async ct =>
                     {
-                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Delete(client, name));
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Delete(client, name, hierarchyNamespace));
 
                         Console.WriteLine($"Queue name '{name.Value}' deleted");
                     });
@@ -333,6 +350,17 @@
             {
                 return new ValidationResult(
                     "The connection string and the namespace option cannot be used together. Choose either the connection string or the namespace option to establish the connection");
+            }
+
+            return ValidationResult.Success;
+        }
+
+        static ValidationResult ValidateHierarchyNamespace(CommandOption hierarchyNamespace)
+        {
+            if (hierarchyNamespace.HasValue() && (hierarchyNamespace.Value()?.EndsWith('/') ?? false))
+            {
+                return new ValidationResult(
+                    "The hierarchy namespace cannot end with a '/' character.");
             }
 
             return ValidationResult.Success;

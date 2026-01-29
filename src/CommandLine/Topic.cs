@@ -7,15 +7,16 @@
     static class Topic
     {
         public static Task Create(ServiceBusAdministrationClient client, CommandOption topicNameToUse, CommandOption<int> size,
-            CommandOption partitioning) =>
-            Create(client, topicNameToUse.Value(), size, partitioning);
+            CommandOption partitioning, CommandOption hierarchyNamespace) =>
+            Create(client, topicNameToUse.Value(), size, partitioning, hierarchyNamespace);
 
         public static Task Create(ServiceBusAdministrationClient client, CommandArgument topicNameToUse, CommandOption<int> size,
-            CommandOption partitioning) =>
-            Create(client, topicNameToUse.Value, size, partitioning);
+            CommandOption partitioning, CommandOption hierarchyNamespace) =>
+            Create(client, topicNameToUse.Value, size, partitioning, hierarchyNamespace);
 
-        static Task Create(ServiceBusAdministrationClient client, string topicNameToUse, CommandOption<int> size, CommandOption partitioning)
+        static Task Create(ServiceBusAdministrationClient client, string topicNameToUse, CommandOption<int> size, CommandOption partitioning, CommandOption hierarchyNamespace)
         {
+            topicNameToUse = topicNameToUse.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
             var options = new CreateTopicOptions(topicNameToUse)
             {
                 EnableBatchedOperations = true,

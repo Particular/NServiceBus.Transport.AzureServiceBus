@@ -24,7 +24,8 @@ public class When_using_dlq_qualifier
     {
         var test = TestContext.CurrentContext.Test;
         inputQueueName = $"{test.DisplayName}.{test.Name}";
-        inputQueueName = string.Join("_", inputQueueName.Split(['(', ')']));
+        // Remove empty segments so we don't get leading/trailing underscores when parentheses are at the ends
+        inputQueueName = string.Join("_", inputQueueName.Split(new[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries));
     }
 
     [Test]
