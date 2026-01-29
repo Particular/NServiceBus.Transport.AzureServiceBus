@@ -7,13 +7,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using Azure.Messaging.ServiceBus;
+using EventRouting;
 using Logging;
 
 class MessageDispatcher(
     ServiceBusClient defaultClient,
     MessageSenderRegistry messageSenderRegistry,
     TopicTopology topology,
-    HierarchyNamespaceOptions? hierarchyNamespaceOptions = null,
+    DestinationManager destinationManager,
     OutgoingNativeMessageCustomizationAction? customizerCallback = null)
     : IMessageDispatcher
 {
@@ -24,6 +25,14 @@ class MessageDispatcher(
 
     readonly OutgoingNativeMessageCustomizationAction
         customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
+
+    public MessageDispatcher(
+        ServiceBusClient defaultClient,
+        MessageSenderRegistry messageSenderRegistry,
+        TopicTopology topology,
+        OutgoingNativeMessageCustomizationAction? customizerCallback = null) : this(defaultClient, messageSenderRegistry, topology, new DestinationManager(null), customizerCallback)
+    {
+    }
 
     public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
     {
@@ -43,7 +52,7 @@ class MessageDispatcher(
 
         foreach (var operation in transportOperations)
         {
-            var destination = operation.ExtractDestination(topology, hierarchyNamespaceOptions);
+            var destination = operation.ExtractDestination(topology, destinationManager);
             switch (operation.RequiredDispatchConsistency)
             {
                 case DispatchConsistency.Default:

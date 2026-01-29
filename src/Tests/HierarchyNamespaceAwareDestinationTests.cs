@@ -1,19 +1,19 @@
 namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
-using AzureServiceBus.Sending;
+using EventRouting;
 using NUnit.Framework;
 
 [TestFixture]
 public class HierarchyNamespaceAwareDestinationTests
 {
     [Test]
-    public void Hierarchy_namespace_aware_destination_generation_is_idempotent()
+    public void Hierarchy_namespace_destination_generation_is_idempotent()
     {
-        var hierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "Prefix" };
+        var destinationManager = new DestinationManager(new HierarchyNamespaceOptions { HierarchyNamespace = "Prefix" });
         const string destination = "Destination";
 
-        var once = destination.ToHierarchyNamespaceAwareDestination(hierarchyNamespaceOptions);
-        var twice = once.ToHierarchyNamespaceAwareDestination(hierarchyNamespaceOptions);
+        var once = destinationManager.GetDestination(destination);
+        var twice = destinationManager.GetDestination(once);
 
         Assert.That(twice, Is.EqualTo(once), "Applying the default queue name generator twice should impact the outcome");
     }

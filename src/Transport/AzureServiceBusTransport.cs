@@ -13,7 +13,7 @@ using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Transport;
 using Transport.AzureServiceBus;
-using Transport.AzureServiceBus.Sending;
+using Transport.AzureServiceBus.EventRouting;
 
 /// <summary>
 /// Transport definition for Azure Service Bus.
@@ -110,7 +110,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         var administrationClient = TokenCredential != null
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
             : new ServiceBusAdministrationClient(ConnectionString);
-        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient, HierarchyNamespaceOptions);
+        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient, DestinationManager);
 
         if (hostSettings.SetupInfrastructure)
         {
@@ -119,7 +119,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
             var allQueues = infrastructure.Receivers
                 .Select(r => r.Value.ReceiveAddress)
-                .Concat(sendingAddresses.Select(s => s.ToHierarchyNamespaceAwareDestination(HierarchyNamespaceOptions)))
+                .Concat(sendingAddresses.Select(s => DestinationManager.GetDestination(s)))
                 .ToArray();
             // Validate the actual names that will be created (including hierarchy namespace prefix)
             var validationResult = EntityValidator.ValidateQueues(allQueues, nameof(TopologyOptions.QueueNameToSubscriptionNameMap));
@@ -211,7 +211,10 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// </summary>
     public HierarchyNamespaceOptions? HierarchyNamespaceOptions { get; set; }
 
-    internal string HierarchyNamespaceClientIdentifier => HierarchyNamespaceOptions?.HierarchyNamespace is not null ? $"{HierarchyNamespaceOptions.HierarchyNamespace.Replace('/', '-')}-" : "";
+    [field: AllowNull, MaybeNull]
+    DestinationManager DestinationManager => field ??= new DestinationManager(HierarchyNamespaceOptions);
+
+    string HierarchyNamespaceClientIdentifier => HierarchyNamespaceOptions?.HierarchyNamespace is not null ? $"{HierarchyNamespaceOptions.HierarchyNamespace.Replace('/', '-')}-" : "";
 
     /// <summary>
     /// The maximum size used when creating queues and topics in GB.

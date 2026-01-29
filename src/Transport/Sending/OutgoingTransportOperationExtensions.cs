@@ -2,8 +2,8 @@ namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
 using Azure.Messaging.ServiceBus;
+using EventRouting;
 using Logging;
-using Sending;
 
 static class OutgoingTransportOperationExtensions
 {
@@ -30,7 +30,7 @@ static class OutgoingTransportOperationExtensions
 
     public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation,
         TopicTopology topology,
-        HierarchyNamespaceOptions? hierarchyNamespaceOptions)
+        DestinationManager destinationManager)
     {
         string destination;
         string[] messageTypes;
@@ -60,6 +60,6 @@ static class OutgoingTransportOperationExtensions
                 throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));
         }
 
-        return destination.ToHierarchyNamespaceAwareDestination(hierarchyNamespaceOptions, messageTypes);
+        return destinationManager.GetDestination(destination, messageTypes);
     }
 }

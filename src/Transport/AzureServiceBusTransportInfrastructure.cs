@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using EventRouting;
 
 sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 {
@@ -17,7 +18,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     readonly ServiceBusClient defaultClient;
     readonly ServiceBusAdministrationClient administrationClient;
     readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
-    readonly HierarchyNamespaceOptions? hierarchyNamespaceOptions;
+    readonly DestinationManager destinationManager;
 
     public AzureServiceBusTransportInfrastructure(
         AzureServiceBusTransport transportSettings,
@@ -25,7 +26,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
         ServiceBusClient defaultClient,
         ServiceBusAdministrationClient administrationClient,
-        HierarchyNamespaceOptions? hierarchyNamespaceOptions
+        DestinationManager destinationManager
     )
     {
         this.transportSettings = transportSettings;
@@ -34,7 +35,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         this.defaultClient = defaultClient;
         this.administrationClient = administrationClient;
         this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
-        this.hierarchyNamespaceOptions = hierarchyNamespaceOptions;
+        this.destinationManager = destinationManager;
 
         messageSenderRegistry = new MessageSenderRegistry();
 
@@ -42,7 +43,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             defaultClient,
             messageSenderRegistry,
             transportSettings.Topology,
-            hierarchyNamespaceOptions,
+            destinationManager,
             transportSettings.OutgoingNativeMessageCustomization
         );
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
@@ -142,14 +143,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
     public override string ToTransportAddress(QueueAddress address)
     {
-        var baseAddress = address.BaseAddress;
-        if (hierarchyNamespaceOptions?.HierarchyNamespace is not null)
-        {
-            if (!baseAddress.StartsWith(hierarchyNamespaceOptions.HierarchyNamespace + "/", StringComparison.OrdinalIgnoreCase))
-            {
-                baseAddress = $"{hierarchyNamespaceOptions.HierarchyNamespace}/{baseAddress}";
-            }
-        }
+        var baseAddress = destinationManager.GetDestination(address.BaseAddress);
 
         var queue = new StringBuilder(baseAddress);
         if (address.Discriminator != null)
