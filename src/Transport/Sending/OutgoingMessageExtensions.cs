@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Azure.Messaging.ServiceBus;
 
@@ -36,32 +37,37 @@ static class OutgoingMessageExtensions
     {
         if (message.Headers.TryGetValue(Headers.EnclosedMessageTypes, out var enclosedMessageTypes))
         {
-            var enclosedMessageTypesSpan = enclosedMessageTypes.AsSpan();
-            var messageTypesEnumerator = enclosedMessageTypesSpan.Split(EnclosedMessageTypeSeparator);
-            var messageTypeNames = new List<string>();
-
-            foreach (var messageTypeRange in messageTypesEnumerator)
-            {
-                var messageTypeSpan = enclosedMessageTypesSpan[messageTypeRange];
-
-                int lastIndexOf = messageTypeSpan.LastIndexOf(']');
-                if (lastIndexOf > 0)
+            var messageTypeNames = enclosedMessageTypesStringToMessageTypeNames.GetOrAdd(enclosedMessageTypes,
+                static (key) =>
                 {
-                    messageTypeNames.Add(messageTypeSpan[..++lastIndexOf].ToString());
-                    continue;
-                }
+                    var enclosedMessageTypesSpan = key.AsSpan();
+                    var messageTypeNames = new List<string>();
 
-                int firstIndexOfComma = messageTypeSpan.IndexOf(',');
-                if (firstIndexOfComma > 0)
-                {
-                    messageTypeNames.Add(messageTypeSpan[..firstIndexOfComma].ToString());
-                    continue;
-                }
+                    foreach (var messageTypeRange in enclosedMessageTypesSpan.Split(EnclosedMessageTypeSeparator))
+                    {
+                        var messageTypeSpan = enclosedMessageTypesSpan[messageTypeRange].Trim();
 
-                messageTypeNames.Add(messageTypeSpan.ToString());
-            }
+                        int lastIndexOf = messageTypeSpan.LastIndexOf(']');
+                        if (lastIndexOf > 0)
+                        {
+                            messageTypeNames.Add(messageTypeSpan[..++lastIndexOf].ToString());
+                            continue;
+                        }
 
-            return messageTypeNames.ToArray();
+                        int firstIndexOfComma = messageTypeSpan.IndexOf(',');
+                        if (firstIndexOfComma > 0)
+                        {
+                            messageTypeNames.Add(messageTypeSpan[..firstIndexOfComma].ToString());
+                            continue;
+                        }
+
+                        messageTypeNames.Add(messageTypeSpan.ToString());
+                    }
+
+                    return messageTypeNames.ToArray();
+                });
+
+            return messageTypeNames;
         }
 
         return [];
@@ -118,4 +124,5 @@ static class OutgoingMessageExtensions
     }
 
     static ReadOnlySpan<char> EnclosedMessageTypeSeparator => ";".AsSpan();
+    static readonly ConcurrentDictionary<string, string[]> enclosedMessageTypesStringToMessageTypeNames = new();
 }

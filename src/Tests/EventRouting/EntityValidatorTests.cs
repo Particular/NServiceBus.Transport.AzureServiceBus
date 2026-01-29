@@ -2,7 +2,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using AzureServiceBus.Sending;
+using EventRouting;
 using NUnit.Framework;
 
 [TestFixture]
@@ -18,7 +18,7 @@ public class EntityValidatorTests
                 .SetName("Topics_Valid_MultipleNames");
             yield return new TestCaseData([new[] { new string('t', 260) }])
                 .SetName("Topics_Max_Length");
-            yield return new TestCaseData([new[] { "Topic123".ToHierarchyNamespaceAwareDestination(new HierarchyNamespaceOptions { HierarchyNamespace = "SomeNamespace" }) }])
+            yield return new TestCaseData([new[] { new DestinationManager(new HierarchyNamespaceOptions { HierarchyNamespace = "SomeNamespace" }).GetDestination("Topic123") }])
                 .SetName("Topics_Valid_HierarchicalNamespace");
         }
     }
@@ -71,7 +71,7 @@ public class EntityValidatorTests
                 .SetName("Queues_Valid_MultipleNames");
             yield return new TestCaseData([new[] { new string('q', 260) }])
                 .SetName("Queues_Max_Length");
-            yield return new TestCaseData([new[] { "Queue123".ToHierarchyNamespaceAwareDestination(new HierarchyNamespaceOptions { HierarchyNamespace = "SomeNamespace" }) }])
+            yield return new TestCaseData([new[] { new DestinationManager(new HierarchyNamespaceOptions { HierarchyNamespace = "SomeNamespace" }).GetDestination("Queue123") }])
                 .SetName("Topics_Valid_HierarchicalNamespace");
         }
     }
