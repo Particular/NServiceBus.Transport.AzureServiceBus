@@ -126,7 +126,6 @@ namespace NServiceBus.Transport.AzureServiceBus
         public static NServiceBus.Transport.AzureServiceBus.HierarchyNamespaceOptions None { get; }
         public override bool Equals(object? obj) { }
         public void ExcludeMessageType<TMessageType>() { }
-        public void ExcludeMessageTypes(System.Collections.Generic.IEnumerable<System.Type> messageTypes) { }
         public override int GetHashCode() { }
         public static bool operator !=(NServiceBus.Transport.AzureServiceBus.HierarchyNamespaceOptions? left, NServiceBus.Transport.AzureServiceBus.HierarchyNamespaceOptions? right) { }
         public static bool operator ==(NServiceBus.Transport.AzureServiceBus.HierarchyNamespaceOptions? left, NServiceBus.Transport.AzureServiceBus.HierarchyNamespaceOptions? right) { }

@@ -54,26 +54,6 @@ public sealed class HierarchyNamespaceOptions
     }
 
     /// <summary>
-    /// Adds message types to be excluded from the hierarchy namespace.
-    /// </summary>
-    /// <param name="messageTypes"></param>
-    public void ExcludeMessageTypes(IEnumerable<Type> messageTypes)
-    {
-        if (Locked)
-        {
-            throw new InvalidOperationException("Cannot modify a locked HierarchyNamespaceOptions instance.");
-        }
-
-        foreach (var messageType in messageTypes)
-        {
-            if (!string.IsNullOrWhiteSpace(messageType.FullName))
-            {
-                MessageTypeFullNamesToExclude.Add(messageType.FullName);
-            }
-        }
-    }
-
-    /// <summary>
     /// Indicates whether two HierarchyNamespaceOptions objects are equal.
     /// </summary>
     /// <param name="left">The first object to compare.</param>
