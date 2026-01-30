@@ -33,18 +33,18 @@ static class OutgoingTransportOperationExtensions
         DestinationManager destinationManager)
     {
         string destination;
-        string[] messageTypes;
+        string? enclosedMessageTypes;
 
         switch (outgoingTransportOperation)
         {
             case MulticastTransportOperation multicastTransportOperation:
                 destination = topology.GetPublishDestination(multicastTransportOperation.MessageType);
-                messageTypes = multicastTransportOperation.Message.GetMessageTypeNamesFromEnclosedMessageHeaders();
+                _ = multicastTransportOperation.Message.Headers.TryGetValue(Headers.EnclosedMessageTypes, out enclosedMessageTypes);
                 break;
 
             case UnicastTransportOperation unicastTransportOperation:
                 destination = unicastTransportOperation.Destination;
-                messageTypes = unicastTransportOperation.Message.GetMessageTypeNamesFromEnclosedMessageHeaders();
+                _ = unicastTransportOperation.Message.Headers.TryGetValue(Headers.EnclosedMessageTypes, out enclosedMessageTypes);
 
                 // Workaround for reply-to address set by ASB transport
                 var index = unicastTransportOperation.Destination.IndexOf('@');
@@ -60,6 +60,6 @@ static class OutgoingTransportOperationExtensions
                 throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));
         }
 
-        return destinationManager.GetDestination(destination, messageTypes);
+        return destinationManager.GetDestination(destination, enclosedMessageTypes);
     }
 }

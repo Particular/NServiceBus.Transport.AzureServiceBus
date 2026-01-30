@@ -2,45 +2,76 @@ namespace NServiceBus.Transport.AzureServiceBus.EventRouting;
 
 using System;
 using System.Collections.Concurrent;
-using System.Linq;
 
 class DestinationManager(HierarchyNamespaceOptions options)
 {
-    internal string GetDestination(string baseDestination, string? messageTypeFullName = null) =>
-        GetDestination(baseDestination, string.IsNullOrWhiteSpace(messageTypeFullName) ? [] : [messageTypeFullName]);
+    internal string GetDestination(string destination, string? enclosedMessageTypes = null)
+    {
+        if (options == HierarchyNamespaceOptions.None)
+        {
+            return destination;
+        }
 
-    internal string GetDestination(string destination, string[] messageTypeFullNames) =>
-        destinationMessageTypesToHierarchyNamespaceDestination.GetOrAdd((destination, messageTypeFullNames),
+        if (IsAnyEnclosedMessageTypeExcluded(enclosedMessageTypes))
+        {
+            return destination;
+        }
+
+        var hierarchyNamespaceSpan = options.HierarchyNameSpaceWithTrailingSlash;
+        var destinationSpan = destination.AsSpan();
+
+        if (destinationSpan.StartsWith(hierarchyNamespaceSpan, StringComparison.Ordinal))
+        {
+            return destination;
+        }
+
+        return string.Create(options.HierarchyNameSpaceWithTrailingSlash.Length + destination.Length, (options.HierarchyNameSpaceWithTrailingSlash, destination), static (chars, state) =>
+        {
+            var position = 0;
+            (string hierarchyNamespace, string destination) = state;
+            hierarchyNamespace.AsSpan().CopyTo(chars);
+            position += hierarchyNamespace.Length;
+            destination.AsSpan().CopyTo(chars[position..]);
+        });
+    }
+
+    bool IsAnyEnclosedMessageTypeExcluded(string? enclosedMessageTypes)
+    {
+        if (string.IsNullOrWhiteSpace(enclosedMessageTypes))
+        {
+            return false;
+        }
+
+        return enclosedMessageTypesToExcluded.GetOrAdd(enclosedMessageTypes,
             static (key, hierarchyNamespaceOptions) =>
             {
-                var (destination, messageTypeFullNames) = key;
-                if (hierarchyNamespaceOptions == HierarchyNamespaceOptions.None)
+                var enclosedMessageTypesSpan = key.AsSpan();
+
+                foreach (var messageTypeRange in enclosedMessageTypesSpan.Split(EnclosedMessageTypeSeparator))
                 {
-                    return destination;
+                    var messageTypeSpan = enclosedMessageTypesSpan[messageTypeRange].Trim();
+
+                    int lastIndexOf = messageTypeSpan.LastIndexOf(']');
+                    int firstIndexOfComma = messageTypeSpan.IndexOf(',');
+                    if (lastIndexOf > 0)
+                    {
+                        messageTypeSpan = messageTypeSpan[..lastIndexOf];
+                    }
+                    else if (firstIndexOfComma > 0)
+                    {
+                        messageTypeSpan = messageTypeSpan[..firstIndexOfComma];
+                    }
+
+                    if (hierarchyNamespaceOptions.MessageTypeFullNamesToExclude.Contains(messageTypeSpan.ToString()))
+                    {
+                        return true;
+                    }
                 }
 
-                if (messageTypeFullNames is { Length: > 0 } && hierarchyNamespaceOptions.MessageTypeFullNamesToExclude.Any(messageTypeFullNames.Contains))
-                {
-                    return destination;
-                }
-
-                var hierarchyNamespaceSpan = hierarchyNamespaceOptions.HierarchyNameSpaceWithTrailingSlash;
-                var destinationSpan = destination.AsSpan();
-
-                if (destinationSpan.StartsWith(hierarchyNamespaceSpan, StringComparison.Ordinal))
-                {
-                    return destination;
-                }
-
-                return string.Create(hierarchyNamespaceOptions.HierarchyNameSpaceWithTrailingSlash.Length + destination.Length, (hierarchyNamespaceOptions.HierarchyNameSpaceWithTrailingSlash, destination), static (chars, state) =>
-                {
-                    var position = 0;
-                    (string hierarchyNamespace, string destination) = state;
-                    hierarchyNamespace.AsSpan().CopyTo(chars);
-                    position += hierarchyNamespace.Length;
-                    destination.AsSpan().CopyTo(chars[position..]);
-                });
+                return false;
             }, options);
+    }
 
-    readonly ConcurrentDictionary<(string, string[]), string> destinationMessageTypesToHierarchyNamespaceDestination = new();
+    static ReadOnlySpan<char> EnclosedMessageTypeSeparator => ";".AsSpan();
+    readonly ConcurrentDictionary<string, bool> enclosedMessageTypesToExcluded = new();
 }
