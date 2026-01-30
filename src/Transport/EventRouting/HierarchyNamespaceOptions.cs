@@ -10,50 +10,6 @@ using System.Diagnostics.CodeAnalysis;
 public sealed class HierarchyNamespaceOptions
 {
     /// <summary>
-    ///
-    /// </summary>
-    /// <param name="left"></param>
-    /// <param name="right"></param>
-    /// <returns></returns>
-    public static bool operator ==(HierarchyNamespaceOptions? left, HierarchyNamespaceOptions? right) => Equals(left, right);
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="left"></param>
-    /// <param name="right"></param>
-    /// <returns></returns>
-    public static bool operator !=(HierarchyNamespaceOptions? left, HierarchyNamespaceOptions? right) => !Equals(left, right);
-
-    bool Equals(HierarchyNamespaceOptions other) => HierarchyNamespace == other.HierarchyNamespace;
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="obj"></param>
-    /// <returns></returns>
-    public override bool Equals(object? obj)
-    {
-        if (obj is null)
-        {
-            return false;
-        }
-
-        if (ReferenceEquals(this, obj))
-        {
-            return true;
-        }
-
-        return obj.GetType() == GetType() && Equals((HierarchyNamespaceOptions)obj);
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public override int GetHashCode() => HierarchyNamespace.GetHashCode();
-
-    /// <summary>
     /// Defines the hierarchy namespace to be used for entity path prefixing using the format `{HierarchyNamespace}/{entity}`
     /// </summary>
     /// <exception cref="ArgumentException"></exception>
@@ -78,12 +34,6 @@ public sealed class HierarchyNamespaceOptions
         HierarchyNamespace = string.Empty,
         Locked = true
     };
-
-    bool Locked { get; init; }
-
-    internal string HierarchyNameSpaceWithTrailingSlash { get; init; }
-
-    internal HashSet<string> MessageTypeFullNamesToExclude { get; } = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Adds a message type to be excluded from the hierarchy namespace.
@@ -122,4 +72,54 @@ public sealed class HierarchyNamespaceOptions
             }
         }
     }
+
+    /// <summary>
+    /// Indicates whether two HierarchyNamespaceOptions objects are equal.
+    /// </summary>
+    /// <param name="left">The first object to compare.</param>
+    /// <param name="right">The second object to compare.</param>
+    /// <returns>true if left is equal to right; otherwise, false.</returns>
+    public static bool operator ==(HierarchyNamespaceOptions? left, HierarchyNamespaceOptions? right) => Equals(left, right);
+
+    /// <summary>
+    /// Indicates whether two HierarchyNamespaceOptions objects are equal.
+    /// </summary>
+    /// <param name="left">The first object to compare.</param>
+    /// <param name="right">The second object to compare.</param>
+    /// <returns>true if left is not equal to right; otherwise, false.</returns>
+    public static bool operator !=(HierarchyNamespaceOptions? left, HierarchyNamespaceOptions? right) => !Equals(left, right);
+
+    bool Equals(HierarchyNamespaceOptions other) => HierarchyNamespace == other.HierarchyNamespace;
+
+    /// <summary>
+    /// Determines whether the specified object is equal to the current object.
+    /// </summary>
+    /// <param name="obj">The object to compare with the current object.</param>
+    /// <returns>true if the specified object is equal to the current object; otherwise, false.</returns>
+    public override bool Equals(object? obj)
+    {
+        if (obj is null)
+        {
+            return false;
+        }
+
+        if (ReferenceEquals(this, obj))
+        {
+            return true;
+        }
+
+        return obj.GetType() == GetType() && Equals((HierarchyNamespaceOptions)obj);
+    }
+
+    /// <summary>
+    /// Returns the hash code for this string.
+    /// </summary>
+    /// <returns>A 32-bit signed integer hash code.</returns>
+    public override int GetHashCode() => HierarchyNamespace.GetHashCode();
+
+    bool Locked { get; init; }
+
+    internal string HierarchyNameSpaceWithTrailingSlash { get; init; }
+
+    internal HashSet<string> MessageTypeFullNamesToExclude { get; } = new(StringComparer.Ordinal);
 }
