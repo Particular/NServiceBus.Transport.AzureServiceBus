@@ -209,12 +209,12 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// <summary>
     /// Configures hierarchy namespace support
     /// </summary>
-    public HierarchyNamespaceOptions? HierarchyNamespaceOptions { get; set; }
+    public HierarchyNamespaceOptions HierarchyNamespaceOptions { get; set; } = HierarchyNamespaceOptions.None;
 
     [field: AllowNull, MaybeNull]
     DestinationManager DestinationManager => field ??= new DestinationManager(HierarchyNamespaceOptions);
 
-    string HierarchyNamespaceClientIdentifier => HierarchyNamespaceOptions?.HierarchyNamespace is not null ? $"{HierarchyNamespaceOptions.HierarchyNamespace.Replace('/', '-')}-" : "";
+    string HierarchyNamespaceClientIdentifier => HierarchyNamespaceOptions != HierarchyNamespaceOptions.None ? $"{HierarchyNamespaceOptions.HierarchyNamespace.Replace('/', '-')}-" : string.Empty;
 
     /// <summary>
     /// The maximum size used when creating queues and topics in GB.
