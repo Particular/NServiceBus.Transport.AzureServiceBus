@@ -1,4 +1,3 @@
-// new acceptance test to verify HierarchyNamespace configuration
 namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
 {
     using System;
@@ -38,8 +37,11 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                 })
                 .Run();
 
-            Assert.That(context.HierarchyMessageReceived, Is.False);
-            Assert.That(context.ExternalMessageReceived, Is.True);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(context.HierarchyMessageReceived, Is.False);
+                Assert.That(context.ExternalMessageReceived, Is.True);
+            }
         }
 
         class Context : ScenarioContext
@@ -57,12 +59,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
         {
             public HierarchyReceiver() => EndpointSetup<DefaultServer>();
 
-            public class MyMessageHandler : IHandleMessages<MyMessage>
+            public class MyMessageHandler(Context testContext) : IHandleMessages<MyMessage>
             {
-                readonly Context testContext;
-
-                public MyMessageHandler(Context testContext) => this.testContext = testContext;
-
                 public Task Handle(MyMessage message, IMessageHandlerContext context)
                 {
                     testContext.HierarchyMessageReceived = true;
@@ -76,12 +74,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
         {
             public ExternalReceiver() => EndpointSetup<DefaultServer>();
 
-            public class MyMessageHandler : IHandleMessages<MyMessage>
+            public class MyMessageHandler(Context testContext) : IHandleMessages<MyMessage>
             {
-                readonly Context testContext;
-
-                public MyMessageHandler(Context testContext) => this.testContext = testContext;
-
                 public Task Handle(MyMessage message, IMessageHandlerContext context)
                 {
                     testContext.ExternalMessageReceived = true;
@@ -92,6 +86,5 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
         }
 
         public class MyMessage : ICommand;
-
     }
 }
