@@ -10,10 +10,10 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
 
     using NUnit.Framework;
 
-    public class When_using_hierarchy_namespace : NServiceBusAcceptanceTest
+    public class When_excluding_types_from_hierarchy : NServiceBusAcceptanceTest
     {
         [Test]
-        public async Task Should_send_and_receive_with_hierarchy_namespace()
+        public async Task Should_exclude_configured_message_types_from_hierarchy_namespace()
         {
             var context = await Scenario.Define<Context>()
                 .WithEndpoint<Sender>(endpoint =>
@@ -22,9 +22,10 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                     {
                         var transport = cfg.ConfigureTransport<AzureServiceBusTransport>();
                         transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+                        transport.HierarchyNamespaceOptions.ExcludeMessageType<MyMessage>();
                     });
 
-                    endpoint.When(async session => await session.Send(Conventions.EndpointNamingConvention(typeof(HierarchyReceiver)).Shorten(), new MyMessage()));
+                    endpoint.When(async session => await session.Send(Conventions.EndpointNamingConvention(typeof(ExternalReceiver)).Shorten(), new MyMessage()));
                 })
                 .WithEndpoint<ExternalReceiver>()
                 .WithEndpoint<HierarchyReceiver>(endpoint =>
@@ -37,11 +38,11 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                 })
                 .Run();
 
-            Assert.That(context.HierarchyMessageReceived, Is.True);
-            Assert.That(context.ExternalMessageReceived, Is.False);
+            Assert.That(context.HierarchyMessageReceived, Is.False);
+            Assert.That(context.ExternalMessageReceived, Is.True);
         }
 
-        public class Context : ScenarioContext
+        class Context : ScenarioContext
         {
             public bool HierarchyMessageReceived { get; set; }
             public bool ExternalMessageReceived { get; set; }
@@ -65,7 +66,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                 public Task Handle(MyMessage message, IMessageHandlerContext context)
                 {
                     testContext.HierarchyMessageReceived = true;
-                    testContext.MarkAsCompleted();
+                    testContext.MarkAsFailed(new Exception("Hierarchy receiver should not receive the excluded message"));
                     return Task.CompletedTask;
                 }
             }
@@ -84,7 +85,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                 public Task Handle(MyMessage message, IMessageHandlerContext context)
                 {
                     testContext.ExternalMessageReceived = true;
-                    testContext.MarkAsFailed(new Exception("External receiver should not receive the hierarchy message"));
+                    testContext.MarkAsCompleted();
                     return Task.CompletedTask;
                 }
             }
