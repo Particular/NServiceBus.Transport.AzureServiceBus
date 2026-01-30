@@ -149,8 +149,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
                         .ConfigureAwait(false);
                 }
             }
-
-            return infrastructure;
         }
 
         return infrastructure;
