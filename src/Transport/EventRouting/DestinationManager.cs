@@ -7,12 +7,7 @@ class DestinationManager(HierarchyNamespaceOptions options)
 {
     internal string GetDestination(string destination, string? enclosedMessageTypes = null)
     {
-        if (options == HierarchyNamespaceOptions.None)
-        {
-            return destination;
-        }
-
-        if (IsAnyEnclosedMessageTypeExcluded(enclosedMessageTypes))
+        if (options == HierarchyNamespaceOptions.None || IsAnyEnclosedMessageTypeExcluded(enclosedMessageTypes))
         {
             return destination;
         }
@@ -62,7 +57,8 @@ class DestinationManager(HierarchyNamespaceOptions options)
                         messageTypeSpan = messageTypeSpan[..firstIndexOfComma];
                     }
 
-                    if (hierarchyNamespaceOptions.MessageTypeFullNamesToExclude.Contains(messageTypeSpan.ToString()))
+                    var alternativeLookup = hierarchyNamespaceOptions.MessageTypeFullNamesToExclude.GetAlternateLookup<ReadOnlySpan<char>>();
+                    if (alternativeLookup.Contains(messageTypeSpan))
                     {
                         return true;
                     }
