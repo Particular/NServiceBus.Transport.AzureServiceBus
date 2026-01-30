@@ -30,7 +30,7 @@ class MessageDispatcher(
         ServiceBusClient defaultClient,
         MessageSenderRegistry messageSenderRegistry,
         TopicTopology topology,
-        OutgoingNativeMessageCustomizationAction? customizerCallback = null) : this(defaultClient, messageSenderRegistry, topology, new DestinationManager(null), customizerCallback)
+        OutgoingNativeMessageCustomizationAction? customizerCallback = null) : this(defaultClient, messageSenderRegistry, topology, new DestinationManager(HierarchyNamespaceOptions.None), customizerCallback)
     {
     }
 
