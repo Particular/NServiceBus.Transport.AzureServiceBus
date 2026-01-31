@@ -2,6 +2,7 @@ namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
@@ -50,6 +51,16 @@ public sealed class HierarchyNamespaceOptions
         if (!string.IsNullOrWhiteSpace(fullName))
         {
             MessageTypeFullNamesToExclude.Add(fullName);
+        }
+    }
+
+    internal void ValidateDestinations(IEnumerable<string> destinations)
+    {
+        var validationResult = EntityValidator.ValidateQueues(destinations, nameof(ValidateDestinations), this);
+        if (validationResult != ValidationResult.Success)
+        {
+            var message = validationResult?.ErrorMessage ?? "One or more queue names do not comply with the Azure Service Bus queue limits.";
+            throw new ValidationException(message);
         }
     }
 

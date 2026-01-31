@@ -2,7 +2,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using EventRouting;
+using System.Linq;
 using NUnit.Framework;
 
 [TestFixture]
@@ -12,13 +12,13 @@ public class EntityValidatorTests
     {
         get
         {
-            yield return new TestCaseData([new[] { "A" }])
+            yield return new TestCaseData([new[] { "A" }, null])
                 .SetName("Topics_Valid_SingleCharacter");
-            yield return new TestCaseData([new[] { "Topic123", "Topic.Name-123", "1Topic", "Topic/Name", "T_N" }])
+            yield return new TestCaseData([new[] { "Topic123", "Topic.Name-123", "1Topic", "Topic/Name", "T_N" }, null])
                 .SetName("Topics_Valid_MultipleNames");
-            yield return new TestCaseData([new[] { new string('t', 260) }])
+            yield return new TestCaseData([new[] { new string('t', 260) }, null])
                 .SetName("Topics_Max_Length");
-            yield return new TestCaseData([new[] { new DestinationManager(new HierarchyNamespaceOptions { HierarchyNamespace = "SomeNamespace" }).GetDestination("Topic123") }])
+            yield return new TestCaseData([new[] { "Topic123" }, new HierarchyNamespaceOptions { HierarchyNamespace = "SomeNamespace" }])
                 .SetName("Topics_Valid_HierarchicalNamespace");
         }
     }
@@ -27,35 +27,37 @@ public class EntityValidatorTests
     {
         get
         {
-            yield return new TestCaseData([new[] { " topic" }])
+            yield return new TestCaseData([new[] { " topic" }, null])
                 .SetName("Topics_Invalid_LeadingSpace");
-            yield return new TestCaseData([new[] { "Topic?" }])
+            yield return new TestCaseData([new[] { "Topic?" }, null])
                 .SetName("Topics_Invalid_ContainsQuestionMark");
-            yield return new TestCaseData([new[] { "Topic#" }])
+            yield return new TestCaseData([new[] { "Topic#" }, null])
                 .SetName("Topics_Invalid_ContainsHash");
-            yield return new TestCaseData([new[] { "Topic\\" }])
+            yield return new TestCaseData([new[] { "Topic\\" }, null])
                 .SetName("Topics_Invalid_ContainsBackslash");
-            yield return new TestCaseData([new[] { "Topic_" }])
+            yield return new TestCaseData([new[] { "Topic_" }, null])
                 .SetName("Topics_Invalid_TrailingUnderscore");
-            yield return new TestCaseData([new[] { "" }])
+            yield return new TestCaseData([new[] { "" }, null])
                 .SetName("Topics_Invalid_EmptyString");
-            yield return new TestCaseData([new[] { new string('t', 261) }])
+            yield return new TestCaseData([new[] { new string('t', 261) }, null])
                 .SetName("Topics_Too_Long");
+            yield return new TestCaseData([new[] { "Topic123" }, new HierarchyNamespaceOptions { HierarchyNamespace = "Some bad Namespace" }])
+                .SetName("Topics_Invalid_HierarchicalNamespace");
         }
     }
 
     [Test, TestCaseSource(nameof(ValidTopicsData))]
-    public void Should_accept_valid_topics(IEnumerable<string> topicNames)
+    public void Should_accept_valid_topics(IEnumerable<string> topicNames, HierarchyNamespaceOptions hierarchyNamespaceOptions)
     {
-        var result = EntityValidator.ValidateTopics(topicNames, "Topics");
+        var result = EntityValidator.ValidateTopics(topicNames.Select((t, i) => (t, i)).ToDictionary(item => $"MyEvent{item.i}", item => item.t), "Topics", hierarchyNamespaceOptions);
 
         Assert.That(result, Is.EqualTo(ValidationResult.Success));
     }
 
     [Test, TestCaseSource(nameof(InvalidTopicsData))]
-    public void Should_reject_invalid_topics(IEnumerable<string> topicNames)
+    public void Should_reject_invalid_topics(IEnumerable<string> topicNames, HierarchyNamespaceOptions hierarchyNamespaceOptions)
     {
-        var result = EntityValidator.ValidateTopics(topicNames, "Topics");
+        var result = EntityValidator.ValidateTopics(topicNames.Select((t, i) => (t, i)).ToDictionary(item => $"MyEvent{item.i}", item => item.t), "Topics", hierarchyNamespaceOptions);
 
         Assert.That(result, Is.Not.EqualTo(ValidationResult.Success));
         Assert.That(result?.ErrorMessage, Does.Contain("do not comply with the Azure Service Bus topic limits"));
@@ -65,14 +67,14 @@ public class EntityValidatorTests
     {
         get
         {
-            yield return new TestCaseData([new[] { "A" }])
+            yield return new TestCaseData([new[] { "A" }, null])
                 .SetName("Queues_Valid_SingleCharacter");
-            yield return new TestCaseData([new[] { "Queue123", "Queue.Name-123", "1Queue", "Queue/Name", "Q_N" }])
+            yield return new TestCaseData([new[] { "Queue123", "Queue.Name-123", "1Queue", "Queue/Name", "Q_N" }, null])
                 .SetName("Queues_Valid_MultipleNames");
-            yield return new TestCaseData([new[] { new string('q', 260) }])
+            yield return new TestCaseData([new[] { new string('q', 260) }, null])
                 .SetName("Queues_Max_Length");
-            yield return new TestCaseData([new[] { new DestinationManager(new HierarchyNamespaceOptions { HierarchyNamespace = "SomeNamespace" }).GetDestination("Queue123") }])
-                .SetName("Topics_Valid_HierarchicalNamespace");
+            yield return new TestCaseData([new[] { "Queue123" }, new HierarchyNamespaceOptions { HierarchyNamespace = "SomeNamespace" }])
+                .SetName("Queues_Valid_HierarchicalNamespace");
         }
     }
 
@@ -80,35 +82,37 @@ public class EntityValidatorTests
     {
         get
         {
-            yield return new TestCaseData([new[] { " queue" }])
+            yield return new TestCaseData([new[] { " queue" }, null])
                 .SetName("Queues_Invalid_LeadingSpace");
-            yield return new TestCaseData([new[] { "Queue?" }])
+            yield return new TestCaseData([new[] { "Queue?" }, null])
                 .SetName("Queues_Invalid_ContainsQuestionMark");
-            yield return new TestCaseData([new[] { "Queue#" }])
+            yield return new TestCaseData([new[] { "Queue#" }, null])
                 .SetName("Queues_Invalid_ContainsHash");
-            yield return new TestCaseData([new[] { "Queue\\" }])
+            yield return new TestCaseData([new[] { "Queue\\" }, null])
                 .SetName("Queues_Invalid_ContainsBackslash");
-            yield return new TestCaseData([new[] { "Queue_" }])
+            yield return new TestCaseData([new[] { "Queue_" }, null])
                 .SetName("Queues_Invalid_TrailingUnderscore");
-            yield return new TestCaseData([new[] { "" }])
+            yield return new TestCaseData([new[] { "" }, null])
                 .SetName("Queues_Invalid_EmptyString");
-            yield return new TestCaseData([new[] { new string('q', 261) }])
+            yield return new TestCaseData([new[] { new string('q', 261) }, null])
                 .SetName("Queues_Too_Long");
+            yield return new TestCaseData([new[] { "Queue123" }, new HierarchyNamespaceOptions { HierarchyNamespace = "Some bad Namespace" }])
+                .SetName("Queues_Invalid_HierarchicalNamespace");
         }
     }
 
     [Test, TestCaseSource(nameof(ValidQueuesData))]
-    public void Should_accept_valid_queues(IEnumerable<string> queueNames)
+    public void Should_accept_valid_queues(IEnumerable<string> queueNames, HierarchyNamespaceOptions hierarchyNamespaceOptions)
     {
-        var result = EntityValidator.ValidateQueues(queueNames, "Queues");
+        var result = EntityValidator.ValidateQueues(queueNames, "Queues", hierarchyNamespaceOptions);
 
         Assert.That(result, Is.EqualTo(ValidationResult.Success));
     }
 
     [Test, TestCaseSource(nameof(InvalidQueuesData))]
-    public void Should_reject_invalid_queues(IEnumerable<string> queueNames)
+    public void Should_reject_invalid_queues(IEnumerable<string> queueNames, HierarchyNamespaceOptions hierarchyNamespaceOptions)
     {
-        var result = EntityValidator.ValidateQueues(queueNames, "Queues");
+        var result = EntityValidator.ValidateQueues(queueNames, "Queues", hierarchyNamespaceOptions);
 
         Assert.That(result, Is.Not.EqualTo(ValidationResult.Success));
         Assert.That(result?.ErrorMessage, Does.Contain("do not comply with the Azure Service Bus queue limits"));

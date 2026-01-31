@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
@@ -73,7 +72,9 @@ public partial class AzureServiceBusTransport : TransportDefinition
             throw new Exception("The transport has not been initialized. Either provide a connection string or a fully qualified namespace and token credential.");
         }
 
+        Topology.Options.HierarchyNamespaceOptions = HierarchyNamespaceOptions;
         Topology.Validate();
+        HierarchyNamespaceOptions.ValidateDestinations(receivers.Select(x => x.ReceiveAddress.ToString()));
 
         var transportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp;
         bool enableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive;
@@ -121,14 +122,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 .Select(r => r.Value.ReceiveAddress)
                 .Concat(sendingAddresses.Select(s => DestinationManager.GetDestination(s)))
                 .ToArray();
-            // Validate the actual names that will be created (including hierarchy namespace prefix)
-            var validationResult = EntityValidator.ValidateQueues(allQueues, nameof(TopologyOptions.QueueNameToSubscriptionNameMap));
-            if (validationResult != ValidationResult.Success)
-            {
-                // Throw a clear exception so startup fails fast with a descriptive message
-                var message = validationResult?.ErrorMessage ?? "One or more queue names do not comply with the Azure Service Bus queue limits.";
-                throw new ValidationException(message);
-            }
 
             var queueCreator = new TopologyCreator(this);
 

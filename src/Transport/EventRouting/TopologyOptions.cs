@@ -48,4 +48,11 @@ public class TopologyOptions
     /// Determines if an exception should be thrown when attempting to publish an event not mapped in PublishedEventToTopicsMap
     /// </summary>
     public bool ThrowIfUnmappedEventTypes { get; set; } = false;
+
+    [JsonIgnore]
+    internal HierarchyNamespaceOptions HierarchyNamespaceOptions
+    {
+        get;
+        set => field = value ?? HierarchyNamespaceOptions.None;
+    } = HierarchyNamespaceOptions.None;
 }
