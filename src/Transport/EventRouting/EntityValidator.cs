@@ -55,7 +55,7 @@ static partial class EntityValidator
         queueNames = queueNames.Select(m => destinationManager.GetDestination(m));
 
         var queueNameRegex = QueueNameRegex();
-        var invalidQueues = queueNames.Where(t => !queueNameRegex.IsMatch(t)).ToArray();
+        var invalidQueues = queueNames.Where(t => !queueNameRegex.IsMatch(t.TrimStart('$'))).ToArray(); // Dead-letter queue naming is special and can start with $
 
         return invalidQueues.Any()
             ? new ValidationResult(
