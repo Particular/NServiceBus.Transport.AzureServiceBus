@@ -219,7 +219,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// <summary>
     /// The maximum size used when creating queues and topics in GB.
     /// </summary>
-    /// 
     public int EntityMaximumSize
     {
         get;
