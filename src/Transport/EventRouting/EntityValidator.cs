@@ -55,7 +55,7 @@ static partial class EntityValidator
         queueNames = queueNames.Select(m => destinationManager.GetDestination(m));
 
         var queueNameRegex = QueueNameRegex();
-        var invalidQueues = queueNames.Where(t => !queueNameRegex.IsMatch(t.TrimStart('$'))).ToArray(); // Dead-letter queue naming is special and can start with $
+        var invalidQueues = queueNames.Where(t => !queueNameRegex.IsMatch(t)).ToArray();
 
         return invalidQueues.Any()
             ? new ValidationResult(
@@ -65,8 +65,8 @@ static partial class EntityValidator
     }
 
     // Enforces naming according to the specification https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftservicebus
-    // Note the queue pattern is the same as the topic pattern. Deliberately kept separate for future extensibility.
-    [GeneratedRegex(@"^(?=.{1,260}$)(?=^[A-Za-z0-9])(?!.*[\\?#])(?:[A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9./_-]*[A-Za-z0-9])$")]
+    // Note the queue pattern includes the $ optional prefix to allow dead-letter queues.
+    [GeneratedRegex(@"^(?=.{1,260}$)(?=^[A-Za-z0-9\$])(?!.*[\\?#])(?:[A-Za-z0-9\$]|[A-Za-z0-9\$][A-Za-z0-9./_-]*[A-Za-z0-9])$")]
     private static partial Regex QueueNameRegex();
 
     public static ValidationResult? ValidateRules(IEnumerable<string> ruleNames, string? memberName)
