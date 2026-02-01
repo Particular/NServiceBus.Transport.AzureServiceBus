@@ -72,7 +72,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
             throw new Exception("The transport has not been initialized. Either provide a connection string or a fully qualified namespace and token credential.");
         }
 
-        Topology.Options.HierarchyNamespaceOptions = HierarchyNamespaceOptions;
         Topology.Validate();
         HierarchyNamespaceOptions.ValidateDestinations(receivers.Select(x => x.ReceiveAddress.ToString()));
 
@@ -202,7 +201,15 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// <summary>
     /// Configures hierarchy namespace support
     /// </summary>
-    public HierarchyNamespaceOptions HierarchyNamespaceOptions { get; set; } = HierarchyNamespaceOptions.None;
+    public HierarchyNamespaceOptions HierarchyNamespaceOptions
+    {
+        get;
+        set
+        {
+            field = value;
+            Topology.Options.HierarchyNamespaceOptions = field;
+        }
+    } = HierarchyNamespaceOptions.None;
 
     [field: AllowNull, MaybeNull]
     DestinationManager DestinationManager => field ??= new DestinationManager(HierarchyNamespaceOptions);
