@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using EventRouting;
 
 sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 {
@@ -17,13 +18,15 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     readonly ServiceBusClient defaultClient;
     readonly ServiceBusAdministrationClient administrationClient;
     readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
+    readonly DestinationManager destinationManager;
 
     public AzureServiceBusTransportInfrastructure(
         AzureServiceBusTransport transportSettings,
         HostSettings hostSettings,
         (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
         ServiceBusClient defaultClient,
-        ServiceBusAdministrationClient administrationClient
+        ServiceBusAdministrationClient administrationClient,
+        DestinationManager destinationManager
     )
     {
         this.transportSettings = transportSettings;
@@ -32,6 +35,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         this.defaultClient = defaultClient;
         this.administrationClient = administrationClient;
         this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
+        this.destinationManager = destinationManager;
 
         messageSenderRegistry = new MessageSenderRegistry();
 
@@ -39,6 +43,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             defaultClient,
             messageSenderRegistry,
             transportSettings.Topology,
+            destinationManager,
             transportSettings.OutgoingNativeMessageCustomization
         );
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
@@ -138,8 +143,9 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
     public override string ToTransportAddress(QueueAddress address)
     {
-        var queue = new StringBuilder(address.BaseAddress);
+        var baseAddress = destinationManager.GetDestination(address.BaseAddress);
 
+        var queue = new StringBuilder(baseAddress);
         if (address.Discriminator != null)
         {
             queue.Append($"-{address.Discriminator}");

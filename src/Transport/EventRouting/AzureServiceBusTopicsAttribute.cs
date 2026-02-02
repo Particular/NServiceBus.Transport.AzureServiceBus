@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using Configuration;
 
 /// <summary>
@@ -16,13 +15,15 @@ using Configuration;
 public sealed class AzureServiceBusTopicsAttribute : ValidationAttribute
 {
     /// <inheritdoc />
-    protected override ValidationResult? IsValid(object? value, ValidationContext validationContext) =>
-        value switch
+    protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
+    {
+        var hierarchyOptions = (validationContext.ObjectInstance as TopologyOptions)?.HierarchyNamespaceOptions ?? HierarchyNamespaceOptions.None;
+        return value switch
         {
-            string topic => EntityValidator.ValidateTopics([topic], validationContext.MemberName),
-            Dictionary<string, string> dic => EntityValidator.ValidateTopics(dic.Values, validationContext.MemberName),
-            Dictionary<string, HashSet<string>> set => EntityValidator.ValidateTopics(set.Values.SelectMany(x => x),
-                validationContext.MemberName),
+            string topic => EntityValidator.ValidateTopics([topic], validationContext.MemberName, hierarchyOptions),
+            Dictionary<string, string> dic => EntityValidator.ValidateTopics(dic, validationContext.MemberName, hierarchyOptions),
+            Dictionary<string, HashSet<string>> set => EntityValidator.ValidateTopics(set, validationContext.MemberName, hierarchyOptions),
             _ => ValidationResult.Success,
         };
+    }
 }

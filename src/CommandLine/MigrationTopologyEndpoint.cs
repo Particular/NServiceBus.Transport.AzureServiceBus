@@ -8,11 +8,11 @@
 
     static class MigrationTopologyEndpoint
     {
-        public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption topicToPublishTo, CommandOption topicToSubscribeOn, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning)
+        public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption topicToPublishTo, CommandOption topicToSubscribeOn, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning, CommandOption hierarchyNamespace)
         {
             try
             {
-                await Queue.Create(client, name, size, partitioning);
+                await Queue.Create(client, name, size, partitioning, hierarchyNamespace);
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
@@ -23,7 +23,7 @@
             {
                 try
                 {
-                    await Topic.Create(client, topicName, size, partitioning);
+                    await Topic.Create(client, topicName, size, partitioning, hierarchyNamespace);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -32,7 +32,7 @@
 
                 try
                 {
-                    await Subscription.CreateWithRejectAll(client, name, topicName, subscriptionName);
+                    await Subscription.CreateWithRejectAll(client, name, topicName, subscriptionName, hierarchyNamespace);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -48,7 +48,7 @@
             {
                 try
                 {
-                    await Topic.Create(client, topicToPublishTo, size, partitioning);
+                    await Topic.Create(client, topicToPublishTo, size, partitioning, hierarchyNamespace);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -57,7 +57,7 @@
 
                 try
                 {
-                    await Topic.Create(client, topicToSubscribeOn, size, partitioning);
+                    await Topic.Create(client, topicToSubscribeOn, size, partitioning, hierarchyNamespace);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -67,7 +67,7 @@
                 var forwardingSubscriptionName = $"forwardTo-{topicToSubscribeOn.Value()}";
                 try
                 {
-                    await Subscription.CreateForwarding(client, topicToPublishTo, topicToSubscribeOn, forwardingSubscriptionName);
+                    await Subscription.CreateForwarding(client, topicToPublishTo, topicToSubscribeOn, forwardingSubscriptionName, hierarchyNamespace);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -76,7 +76,7 @@
 
                 try
                 {
-                    await Subscription.CreateWithRejectAll(client, name, topicToSubscribeOn, subscriptionName);
+                    await Subscription.CreateWithRejectAll(client, name, topicToSubscribeOn, subscriptionName, hierarchyNamespace);
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
@@ -85,11 +85,11 @@
             }
         }
 
-        public static async Task Subscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName)
+        public static async Task Subscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName, CommandOption hierarchyNamespace)
         {
             try
             {
-                await Rule.Create(client, name, topicName, subscriptionName, eventType, ruleName);
+                await Rule.Create(client, name, topicName, subscriptionName, eventType, ruleName, hierarchyNamespace);
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
@@ -97,11 +97,11 @@
             }
         }
 
-        public static async Task Unsubscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName)
+        public static async Task Unsubscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandOption topicName, CommandOption subscriptionName, CommandArgument eventType, CommandOption ruleName, CommandOption hierarchyNamespace)
         {
             try
             {
-                await Rule.Delete(client, name, topicName, subscriptionName, eventType, ruleName);
+                await Rule.Delete(client, name, topicName, subscriptionName, eventType, ruleName, hierarchyNamespace);
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {

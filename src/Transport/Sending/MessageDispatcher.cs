@@ -1,4 +1,4 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus;
+namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
 using System.Collections.Generic;
@@ -7,12 +7,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using Azure.Messaging.ServiceBus;
+using EventRouting;
 using Logging;
 
 class MessageDispatcher(
     ServiceBusClient defaultClient,
     MessageSenderRegistry messageSenderRegistry,
     TopicTopology topology,
+    DestinationManager destinationManager,
     OutgoingNativeMessageCustomizationAction? customizerCallback = null)
     : IMessageDispatcher
 {
@@ -24,6 +26,14 @@ class MessageDispatcher(
     readonly OutgoingNativeMessageCustomizationAction
         customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
 
+    public MessageDispatcher(
+        ServiceBusClient defaultClient,
+        MessageSenderRegistry messageSenderRegistry,
+        TopicTopology topology,
+        OutgoingNativeMessageCustomizationAction? customizerCallback = null) : this(defaultClient, messageSenderRegistry, topology, new DestinationManager(HierarchyNamespaceOptions.None), customizerCallback)
+    {
+    }
+
     public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
     {
         _ = transaction.TryGet<AzureServiceBusTransportTransaction>(out var azureServiceBusTransaction);
@@ -31,9 +41,7 @@ class MessageDispatcher(
         var unicastTransportOperations = outgoingMessages.UnicastTransportOperations;
         var multicastTransportOperations = outgoingMessages.MulticastTransportOperations;
 
-        var transportOperations =
-            new List<IOutgoingTransportOperation>(unicastTransportOperations.Count +
-                                                  multicastTransportOperations.Count);
+        var transportOperations = new List<IOutgoingTransportOperation>(unicastTransportOperations.Count + multicastTransportOperations.Count);
         transportOperations.AddRange(unicastTransportOperations);
         transportOperations.AddRange(multicastTransportOperations);
 
@@ -44,7 +52,7 @@ class MessageDispatcher(
 
         foreach (var operation in transportOperations)
         {
-            var destination = operation.ExtractDestination(topology);
+            var destination = operation.ExtractDestination(topology, destinationManager);
             switch (operation.RequiredDispatchConsistency)
             {
                 case DispatchConsistency.Default:

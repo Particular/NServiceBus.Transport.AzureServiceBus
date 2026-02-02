@@ -19,6 +19,7 @@
         const string HierarchyTopicName = "cli-topic-sub";
         const string SubscriptionName = QueueName;
         const string HierarchySubscriptionName = $"forwardTo-{HierarchyTopicName}";
+        const string HierarchyNamespace = "cli-hierarchy-namespace";
 
         [Test]
         public async Task Create_endpoint()
@@ -35,6 +36,33 @@
             });
 
             await VerifyQueue(QueueName);
+        }
+
+        [Test]
+        public async Task Create_hierarchy_namespace_endpoint()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(queueName);
+        }
+
+        [Test]
+        public async Task Create_hierarchy_namespace_endpoint_validates_hierarchy_namespace_does_not_end_with_slash()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace}/");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
         }
 
         [Test]
@@ -67,6 +95,28 @@
         }
 
         [Test]
+        public async Task Create_hierarchy_namespace_migration_endpoint_without_specifying_a_topic()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = DefaultTopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await DeleteTopic(topicName);
+
+            var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(queueName);
+            await VerifyTopic(topicName);
+            await VerifySubscriptionContainsOnlyDefaultRejectAllRule(topicName, SubscriptionName);
+        }
+
+        [Test]
         public async Task Create_migration_endpoint_when_there_are_no_entities()
         {
             await DeleteQueue(QueueName);
@@ -84,6 +134,28 @@
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
             await VerifySubscriptionContainsOnlyDefaultRejectAllRule(TopicName, SubscriptionName);
+        }
+
+        [Test]
+        public async Task Create_hierarchy_namespace_migration_endpoint_when_there_are_no_entities()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = TopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await DeleteTopic(topicName);
+
+            var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --hierarchy-namespace {HierarchyNamespace}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(queueName);
+            await VerifyTopic(topicName);
+            await VerifySubscriptionContainsOnlyDefaultRejectAllRule(topicName, SubscriptionName);
         }
 
         [Test]
@@ -107,6 +179,32 @@
             await VerifyTopic(HierarchyTopicName);
             await VerifySubscriptionContainsOnlyDefaultMatchAllRule(TopicName, HierarchySubscriptionName);
             await VerifySubscriptionContainsOnlyDefaultRejectAllRule(HierarchyTopicName, SubscriptionName);
+        }
+
+        [Test]
+        public async Task Create_hierarchy_namespace_migration_endpoint_with_hierarchy_when_there_are_no_entities()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = TopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var hierarchyTopicName = HierarchyTopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await DeleteTopic(topicName);
+            await DeleteTopic(hierarchyTopicName);
+
+            var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName} --hierarchy-namespace {HierarchyNamespace}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(queueName);
+            await VerifyTopic(topicName);
+            await VerifyTopic(hierarchyTopicName);
+            await VerifySubscriptionContainsOnlyDefaultMatchAllRule(topicName, HierarchySubscriptionName);
+            await VerifySubscriptionContainsOnlyDefaultRejectAllRule(hierarchyTopicName, SubscriptionName);
         }
 
         [Test]
@@ -167,6 +265,24 @@
         }
 
         [Test]
+        public async Task Subscribe_hierarchy_namespace_endpoint()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = "MyMessage1".ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+
+            await DeleteQueue(queueName);
+            await DeleteTopic(topicName);
+
+            await Execute($"endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace}");
+
+            await VerifyQueue(queueName);
+            await VerifyTopic(topicName);
+            await VerifyTopicPerEventTypeSubscription(topicName, SubscriptionName, queueName);
+            await VerifySubscriptionContainsOnlyDefaultMatchAllRule(topicName, SubscriptionName);
+        }
+
+        [Test]
         public async Task Subscribe_migration_endpoint()
         {
             await DeleteQueue(QueueName);
@@ -183,6 +299,28 @@
             await VerifyTopic(TopicName);
             await VerifySingleTopicSubscription(TopicName, SubscriptionName, QueueName);
             await VerifyTopicPerEventTypeSubscription("MyNamespace1.MyMessage4", SubscriptionName, QueueName);
+        }
+
+        [Test]
+        public async Task Subscribe_hierarchy_namespace_migration_endpoint()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = TopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var myMessage4Topic = "MyNamespace1.MyMessage4".ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await DeleteTopic(topicName);
+
+            await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --hierarchy-namespace {HierarchyNamespace}");
+
+            await Execute($"migration endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint subscribe-migrated {EndpointName} MyNamespace1.MyMessage4 --hierarchy-namespace {HierarchyNamespace}");
+
+            await VerifyQueue(queueName);
+            await VerifyTopic(topicName);
+            await VerifySingleTopicSubscription(topicName, SubscriptionName, queueName);
+            await VerifyTopicPerEventTypeSubscription(myMessage4Topic, SubscriptionName, queueName);
         }
 
         [Test]
@@ -205,6 +343,28 @@
         }
 
         [Test]
+        public async Task Subscribe_hierarchy_namespace_migration_endpoint_supports_hierarchy()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = TopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var hierarchyTopicName = HierarchyTopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await DeleteTopic(topicName);
+            await DeleteTopic(hierarchyTopicName);
+
+            await Execute($"migration endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName} --hierarchy-namespace {HierarchyNamespace}");
+
+            await Execute($"migration endpoint subscribe {EndpointName} MyMessage1 --topic {HierarchyTopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName --hierarchy-namespace {HierarchyNamespace}");
+
+            await VerifyQueue(queueName);
+            await VerifyTopic(topicName);
+            await VerifyTopic(hierarchyTopicName);
+            await VerifySingleTopicSubscription(hierarchyTopicName, SubscriptionName, queueName);
+        }
+
+        [Test]
         public async Task Subscribe_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
         {
             var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
@@ -223,6 +383,15 @@
         }
 
         [Test]
+        public async Task Subscribe_hierarchy_namespace_endpoint_validates_hierarchy_namespace_does_not_end_with_slash()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace}/");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+        }
+
+        [Test]
         public async Task Unsubscribe_endpoint()
         {
             await DeleteQueue(QueueName);
@@ -235,6 +404,24 @@
             await VerifyQueue(QueueName);
             await VerifyTopic("MyMessage1");
             await VerifySubscriptionDoesNotExist("MyMessage1", SubscriptionName);
+        }
+
+        [Test]
+        public async Task Unsubscribe_hierarchy_namespace_endpoint()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = "MyMessage1".ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+
+            await DeleteQueue(queueName);
+            await DeleteTopic(topicName);
+
+            await Execute($"endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace}");
+
+            await VerifyQueue(queueName);
+            await VerifyTopic(topicName);
+            await VerifySubscriptionDoesNotExist(topicName, SubscriptionName);
         }
 
         [Test]
@@ -259,6 +446,30 @@
         }
 
         [Test]
+        public async Task Unsubscribe_hierarchy_namespace_migration_endpoint()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = TopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var myMessage4Topic = "MyNamespace1.MyMessage4".ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await DeleteTopic(topicName);
+
+            await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint subscribe-migrated {EndpointName} MyNamespace1.MyMessage4 --hierarchy-namespace {HierarchyNamespace}");
+
+            await Execute($"migration endpoint unsubscribe {EndpointName} MyMessage1 --topic {TopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage2 --topic {TopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {TopicName} --rule-name CustomRuleName --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint unsubscribe-migrated {EndpointName} MyNamespace1.MyMessage4 --hierarchy-namespace {HierarchyNamespace}");
+
+            await VerifySubscriptionContainsOnlyDefaultRejectAllRule(topicName, SubscriptionName);
+            await VerifySubscriptionDoesNotExist(myMessage4Topic, SubscriptionName);
+        }
+
+        [Test]
         public async Task Unsubscribe_migration_endpoint_supports_hierarchy()
         {
             await DeleteQueue(QueueName);
@@ -275,6 +486,28 @@
             await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName");
 
             await VerifySubscriptionContainsOnlyDefaultRejectAllRule(HierarchyTopicName, SubscriptionName);
+        }
+
+        [Test]
+        public async Task Unsubscribe_hierarchy_namespace_migration_endpoint_supports_hierarchy()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = TopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var hierarchyTopicName = HierarchyTopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await DeleteTopic(topicName);
+            await DeleteTopic(hierarchyTopicName);
+
+            await Execute($"migration endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyMessage1 --topic {HierarchyTopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint subscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName --hierarchy-namespace {HierarchyNamespace}");
+
+            await Execute($"migration endpoint unsubscribe {EndpointName} MyMessage1 --topic {HierarchyTopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage2 --topic {HierarchyTopicName} --hierarchy-namespace {HierarchyNamespace}");
+            await Execute($"migration endpoint unsubscribe {EndpointName} MyNamespace1.MyMessage3 --topic {HierarchyTopicName} --rule-name CustomRuleName --hierarchy-namespace {HierarchyNamespace}");
+
+            await VerifySubscriptionContainsOnlyDefaultRejectAllRule(hierarchyTopicName, SubscriptionName);
         }
 
         [Test]
@@ -296,6 +529,15 @@
         }
 
         [Test]
+        public async Task Unsubscribe_hierarchy_namespace_endpoint_validates_hierarchy_namespace_does_not_end_with_slash()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace}/");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+        }
+
+        [Test]
         public async Task Create_queue_when_it_does_not_exist()
         {
             await DeleteQueue(QueueName);
@@ -313,12 +555,39 @@
         }
 
         [Test]
+        public async Task Create_hierarchy_namespace_queue_when_it_does_not_exist()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+
+            var (output, error, exitCode) = await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(queueName);
+        }
+
+        [Test]
         public async Task Create_queue_validates_namespace_and_connection_string_cannot_be_used_together()
         {
             var (_, error, exitCode) = await Execute($"queue create {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
             Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+        }
+
+        [Test]
+        public async Task Create_hierarchy_namespace_queue_validates_hierarchy_namespace_does_not_end_with_slash()
+        {
+            var (_, error, exitCode) = await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}/");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
         }
 
         [Test]
@@ -340,6 +609,25 @@
         }
 
         [Test]
+        public async Task Create_hierarchy_namespace_queue_when_it_exists_should_skip()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}");
+
+            var (output, error, exitCode) = await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output.Contains("skipping"), Is.True);
+            });
+
+            await VerifyQueue(queueName);
+        }
+
+        [Test]
         public async Task Delete_queue_when_it_exists()
         {
             await DeleteQueue(QueueName);
@@ -357,12 +645,39 @@
         }
 
         [Test]
+        public async Task Delete_hierarchy_namespace_queue_when_it_exists()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}");
+
+            var (_, error, exitCode) = await Execute($"queue delete {QueueName} --hierarchy-namespace {HierarchyNamespace}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+            });
+
+            await VerifyQueueExists(false, queueName);
+        }
+
+        [Test]
         public async Task Delete_queue_validates_namespace_and_connection_string_cannot_be_used_together()
         {
             var (_, error, exitCode) = await Execute($"queue delete {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
             Assert.That(exitCode, Is.EqualTo(1));
             Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+        }
+
+        [Test]
+        public async Task Delete_hierarchy_namespace_queue_validates_hierarchy_namespace_does_not_end_with_slash()
+        {
+            var (_, error, exitCode) = await Execute($"queue delete {QueueName} --hierarchy-namespace {HierarchyNamespace}/");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
         }
 
         [SetUp]
@@ -507,9 +822,9 @@
             });
         }
 
-        async Task VerifyQueueExists(bool queueShouldExist)
+        async Task VerifyQueueExists(bool queueShouldExist, string queueName = QueueName)
         {
-            var queueExists = (await client.QueueExistsAsync(QueueName)).Value;
+            var queueExists = (await client.QueueExistsAsync(queueName)).Value;
             Assert.That(queueExists, Is.EqualTo(queueShouldExist));
         }
 

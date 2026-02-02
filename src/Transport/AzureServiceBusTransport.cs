@@ -12,6 +12,7 @@ using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Transport;
 using Transport.AzureServiceBus;
+using Transport.AzureServiceBus.EventRouting;
 
 /// <summary>
 /// Transport definition for Azure Service Bus.
@@ -72,6 +73,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         }
 
         Topology.Validate();
+        HierarchyNamespaceOptions.ValidateDestinations(receivers.Select(x => x.ReceiveAddress.ToString()));
 
         var transportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp;
         bool enableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive;
@@ -82,7 +84,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             {
                 TransportType = transportType,
                 EnableCrossEntityTransactions = enableCrossEntityTransactions,
-                Identifier = $"Client-{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}",
+                Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
             };
             ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
             ApplyWebProxyIfNeeded(receiveClientOptions);
@@ -97,7 +99,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             TransportType = transportType,
             // for the default client we never want things to automatically use cross entity transaction
             EnableCrossEntityTransactions = false,
-            Identifier = $"Client-{hostSettings.Name}-{Guid.NewGuid()}"
+            Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{hostSettings.Name}-{Guid.NewGuid()}"
         };
         ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
         ApplyWebProxyIfNeeded(defaultClientOptions);
@@ -108,8 +110,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         var administrationClient = TokenCredential != null
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
             : new ServiceBusAdministrationClient(ConnectionString);
-
-        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient);
+        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient, DestinationManager);
 
         if (hostSettings.SetupInfrastructure)
         {
@@ -118,7 +119,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
             var allQueues = infrastructure.Receivers
                 .Select(r => r.Value.ReceiveAddress)
-                .Concat(sendingAddresses)
+                .Concat(sendingAddresses.Select(s => DestinationManager.GetDestination(s)))
                 .ToArray();
 
             var queueCreator = new TopologyCreator(this);
@@ -196,6 +197,24 @@ public partial class AzureServiceBusTransport : TransportDefinition
     }
 
     TopicTopology topology;
+
+    /// <summary>
+    /// Configures hierarchy namespace support
+    /// </summary>
+    public HierarchyNamespaceOptions HierarchyNamespaceOptions
+    {
+        get;
+        set
+        {
+            field = value;
+            Topology.Options.HierarchyNamespaceOptions = field;
+        }
+    } = HierarchyNamespaceOptions.None;
+
+    [field: AllowNull, MaybeNull]
+    DestinationManager DestinationManager => field ??= new DestinationManager(HierarchyNamespaceOptions);
+
+    string HierarchyNamespaceClientIdentifier => HierarchyNamespaceOptions != HierarchyNamespaceOptions.None ? $"{HierarchyNamespaceOptions.HierarchyNamespace.Replace('/', '-')}-" : string.Empty;
 
     /// <summary>
     /// The maximum size used when creating queues and topics in GB.

@@ -4,11 +4,35 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.RegularExpressions;
+using EventRouting;
 
 static partial class EntityValidator
 {
-    public static ValidationResult? ValidateTopics(IEnumerable<string> topicNames, string? memberName)
+    public static ValidationResult? ValidateTopics(Dictionary<string, string> typeToTopicNameMap, string? memberName, HierarchyNamespaceOptions? hierarchyNamespaceOptions = null)
     {
+        hierarchyNamespaceOptions ??= HierarchyNamespaceOptions.None;
+        var destinationManager = new DestinationManager(hierarchyNamespaceOptions);
+
+        var topicNames = typeToTopicNameMap.Select(m => destinationManager.GetDestination(m.Value, m.Key)).ToArray();
+        return ValidateTopics(topicNames, memberName);
+    }
+
+    public static ValidationResult? ValidateTopics(Dictionary<string, HashSet<string>> typeToTopicNamesMap, string? memberName, HierarchyNamespaceOptions? hierarchyNamespaceOptions = null)
+    {
+        hierarchyNamespaceOptions ??= HierarchyNamespaceOptions.None;
+        var destinationManager = new DestinationManager(hierarchyNamespaceOptions);
+
+        var topicNames = typeToTopicNamesMap.SelectMany(set => set.Value.Select(m => destinationManager.GetDestination(m, set.Key)));
+        return ValidateTopics(topicNames, memberName);
+    }
+
+    public static ValidationResult? ValidateTopics(IEnumerable<string> topicNames, string? memberName, HierarchyNamespaceOptions? hierarchyNamespaceOptions = null)
+    {
+        if (hierarchyNamespaceOptions is not null)
+        {
+            var destinationManager = new DestinationManager(hierarchyNamespaceOptions);
+            topicNames = topicNames.Select(m => destinationManager.GetDestination(m));
+        }
         var topicNameRegex = TopicNameRegex();
         var invalidTopics = topicNames.Where(t => !topicNameRegex.IsMatch(t)).ToArray();
 
@@ -23,8 +47,13 @@ static partial class EntityValidator
     [GeneratedRegex(@"^(?=.{1,260}$)(?=^[A-Za-z0-9])(?!.*[\\?#])(?:[A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9./_-]*[A-Za-z0-9])$")]
     private static partial Regex TopicNameRegex();
 
-    public static ValidationResult? ValidateQueues(IEnumerable<string> queueNames, string? memberName)
+    public static ValidationResult? ValidateQueues(IEnumerable<string> queueNames, string? memberName, HierarchyNamespaceOptions? hierarchyNamespaceOptions = null)
     {
+        hierarchyNamespaceOptions ??= HierarchyNamespaceOptions.None;
+        var destinationManager = new DestinationManager(hierarchyNamespaceOptions);
+
+        queueNames = queueNames.Select(m => destinationManager.GetDestination(m));
+
         var queueNameRegex = QueueNameRegex();
         var invalidQueues = queueNames.Where(t => !queueNameRegex.IsMatch(t)).ToArray();
 
@@ -36,8 +65,8 @@ static partial class EntityValidator
     }
 
     // Enforces naming according to the specification https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftservicebus
-    // Note the queue pattern is the same as the topic pattern. Deliberately kept separate for future extensibility.
-    [GeneratedRegex(@"^(?=.{1,260}$)(?=^[A-Za-z0-9])(?!.*[\\?#])(?:[A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9./_-]*[A-Za-z0-9])$")]
+    // Note the queue pattern includes the $ optional prefix to allow dead-letter queues.
+    [GeneratedRegex(@"^(?=.{1,260}$)(?=^[A-Za-z0-9\$])(?!.*[\\?#])(?:[A-Za-z0-9\$]|[A-Za-z0-9\$][A-Za-z0-9./_-]*[A-Za-z0-9])$")]
     private static partial Regex QueueNameRegex();
 
     public static ValidationResult? ValidateRules(IEnumerable<string> ruleNames, string? memberName)
