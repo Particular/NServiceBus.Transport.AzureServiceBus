@@ -81,7 +81,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     public override Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
     {
         var eventTypeFullName = eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null");
-        var topics = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName]);
+        var topics = MapEventToDestinationTopics(eventTypeFullName);
         return DeleteSubscriptionsForTopics(topics, subscriptionName, CreationOptions.AdministrationClient, cancellationToken);
     }
 
