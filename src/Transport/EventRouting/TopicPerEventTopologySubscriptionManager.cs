@@ -65,7 +65,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
     Task SubscribeEvent(string eventTypeFullName, CancellationToken cancellationToken)
     {
-        var topics = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [destinationManager.GetDestination(eventTypeFullName, eventTypeFullName)]);
+        var topics = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName]);
+        topics = [.. topics.Select(t => destinationManager.GetDestination(t, eventTypeFullName))];
         return CreateSubscriptionsForTopics(topics, subscriptionName, CreationOptions, cancellationToken);
     }
 
