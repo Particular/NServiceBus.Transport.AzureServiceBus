@@ -70,7 +70,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
         {
             public HierarchyReceiver() => EndpointSetup<DefaultServer>(
                 config => { },
-                publishMetadata => publishMetadata.RegisterPublisherFor<MyEvent,Sender>());
+                publishMetadata => publishMetadata.RegisterPublisherFor<MyEvent, Sender>());
 
             public class MyMessageHandler(Context testContext) :
                 IHandleMessages<MyMessage>,
@@ -96,7 +96,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
         {
             public ExternalReceiver() => EndpointSetup<DefaultServer>(
                 config => { },
-                publishMetadata => publishMetadata.RegisterPublisherFor<MyEvent,Sender>()
+                publishMetadata => publishMetadata.RegisterPublisherFor<MyEvent, Sender>()
             );
 
             public class MyMessageHandler(Context testContext) :
