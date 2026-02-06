@@ -30,6 +30,28 @@ class DestinationManager(HierarchyNamespaceOptions options)
         });
     }
 
+    internal string StripHierarchyNamespace(string destination)
+    {
+        if (options == HierarchyNamespaceOptions.None)
+        {
+            return destination;
+        }
+
+        var hierarchyNamespaceSpan = options.HierarchyNameSpaceWithTrailingSlash.AsSpan();
+        var destinationSpan = destination.AsSpan();
+
+        if (destinationSpan.StartsWith(hierarchyNamespaceSpan, StringComparison.Ordinal))
+        {
+            return string.Create(destination.Length - hierarchyNamespaceSpan.Length, (hierarchyNamespaceSpan.Length, destination), static (chars, state) =>
+            {
+                (int hierarchyPrefixLength, string destination) = state;
+                destination.AsSpan()[hierarchyPrefixLength..].CopyTo(chars);
+            });
+        }
+
+        return destination;
+    }
+
     bool IsAnyEnclosedMessageTypeExcluded(string? enclosedMessageTypes)
     {
         if (string.IsNullOrWhiteSpace(enclosedMessageTypes))

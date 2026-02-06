@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using EventRouting;
 using Extensibility;
 using Logging;
 using Unicast.Messages;
@@ -26,6 +27,11 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
         this.topologyOptions = topologyOptions;
         this.startupDiagnostic = startupDiagnostic;
         subscriptionName = topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(CreationOptions.SubscribingQueueName, CreationOptions.SubscribingQueueName);
+
+        // The subscription name is limited to 50 characters and the hierarchy is respected by the topic name
+        // so there is no need to add it to the subscription name.
+        var destinationManager = new DestinationManager(topologyOptions.HierarchyNamespaceOptions);
+        subscriptionName = destinationManager.StripHierarchyNamespace(subscriptionName);
     }
 
     static readonly ILog Logger = LogManager.GetLogger<MigrationTopologySubscriptionManager>();
