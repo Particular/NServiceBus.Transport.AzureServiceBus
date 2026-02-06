@@ -43,6 +43,7 @@ public class When_excluding_types_from_hierarchy : NServiceBusAcceptanceTest
 
         using (Assert.EnterMultipleScope())
         {
+            Assert.That(context.HierarchyEventReceived, Is.False);
             Assert.That(context.HierarchyMessageReceived, Is.False);
             Assert.That(context.ExternalMessageReceived, Is.True);
             Assert.That(context.ExternalEventReceived, Is.True);
