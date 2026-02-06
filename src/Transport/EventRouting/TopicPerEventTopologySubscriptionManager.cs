@@ -55,9 +55,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         {
             0 => Task.CompletedTask,
             1 => SubscribeEvent(eventTypes[0].MessageType.FullName!, cancellationToken),
-            _ => Task.WhenAll(eventTypes.Select(eventType =>
-                    SubscribeEvent(eventType.MessageType.FullName!, cancellationToken))
-                .ToArray())
+            _ => Task.WhenAll([.. eventTypes.Select(eventType =>
+                    SubscribeEvent(eventType.MessageType.FullName!, cancellationToken))])
         };
     }
 
@@ -86,7 +85,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken = default)
     {
-        return Task.WhenAll(topics.Select(CreateSubscription).ToArray());
+        return Task.WhenAll([.. topics.Select(CreateSubscription)]);
 
         async Task CreateSubscription(string topicName)
         {
@@ -152,7 +151,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         ServiceBusAdministrationClient administrationClient,
         CancellationToken cancellationToken = default)
     {
-        return Task.WhenAll(topics.Select(DeleteSubscription).ToArray());
+        return Task.WhenAll([.. topics.Select(DeleteSubscription)]);
 
         async Task DeleteSubscription(string topicName)
         {
