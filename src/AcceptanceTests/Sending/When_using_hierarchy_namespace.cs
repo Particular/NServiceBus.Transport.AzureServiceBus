@@ -108,7 +108,7 @@ public class When_using_hierarchy_namespace : NServiceBusAcceptanceTest
 
             public Task Handle(MyEvent message, IMessageHandlerContext context)
             {
-                testContext.ExternalEventReceived = true;
+                testContext.HierarchyEventReceived = true;
                 testContext.MarkAsCompleted();
                 return Task.CompletedTask;
             }
@@ -133,7 +133,7 @@ public class When_using_hierarchy_namespace : NServiceBusAcceptanceTest
 
             public Task Handle(MyEvent message, IMessageHandlerContext context)
             {
-                testContext.ExternalMessageReceived = true;
+                testContext.ExternalEventReceived = true;
                 testContext.MarkAsFailed(new Exception("External receiver should not receive the hierarchy event"));
                 return Task.CompletedTask;
             }
