@@ -40,9 +40,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     {
         var subscriptions = eventTypes
             .Select(eventType => eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"))
-            .SelectMany(eventTypeFullName =>
-                topologyOptions.SubscribedEventToTopicsMap
-                .GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
+            .SelectMany(eventTypeFullName => MapEventToDestinationTopics(eventTypeFullName)
                 .Select(topicName => new { Topic = topicName.ToLower(), MessageType = eventTypeFullName }))
             .GroupBy(topicAndMessageType => topicAndMessageType.Topic)
             .Select(group => new
@@ -65,9 +63,15 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
     Task SubscribeEvent(string eventTypeFullName, CancellationToken cancellationToken)
     {
+        var topics = MapEventToDestinationTopics(eventTypeFullName);
+        return CreateSubscriptionsForTopics(topics, subscriptionName, CreationOptions, cancellationToken);
+    }
+
+    HashSet<string> MapEventToDestinationTopics(string eventTypeFullName)
+    {
         var topics = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName]);
         topics = [.. topics.Select(t => destinationManager.GetDestination(t, eventTypeFullName))];
-        return CreateSubscriptionsForTopics(topics, subscriptionName, CreationOptions, cancellationToken);
+        return topics;
     }
 
     public override Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
