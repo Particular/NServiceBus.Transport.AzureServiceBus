@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using EventRouting;
 using Extensibility;
 using Logging;
 using Unicast.Messages;
@@ -18,6 +19,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 #pragma warning restore CS0618 // Type or member is obsolete
     readonly StartupDiagnosticEntries startupDiagnostic;
     readonly string subscriptionName;
+    readonly DestinationManager destinationManager;
 
 #pragma warning disable CS0618 // Type or member is obsolete
     public MigrationTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions, MigrationTopologyOptions topologyOptions, StartupDiagnosticEntries startupDiagnostic) : base(creationOptions)
@@ -26,6 +28,11 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
         this.topologyOptions = topologyOptions;
         this.startupDiagnostic = startupDiagnostic;
         subscriptionName = topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(CreationOptions.SubscribingQueueName, CreationOptions.SubscribingQueueName);
+
+        // The subscription name is limited to 50 characters and the hierarchy is respected by the topic name
+        // so there is no need to add it to the subscription name.
+        destinationManager = new DestinationManager(topologyOptions.HierarchyNamespaceOptions);
+        subscriptionName = destinationManager.StripHierarchyNamespace(subscriptionName);
     }
 
     static readonly ILog Logger = LogManager.GetLogger<MigrationTopologySubscriptionManager>();
@@ -33,21 +40,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
     public override Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
         CancellationToken cancellationToken = default)
     {
-        //NOTE: identical to code in EventPerTopicTopolocySubscriptionManager but kept separate due to this class being obsolete
-        var subscriptions = eventTypes
-            .Select(eventType => eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"))
-            .SelectMany(eventTypeFullName =>
-                topologyOptions.SubscribedEventToTopicsMap
-                .GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
-                .Select(topicName => new { Topic = topicName.ToLower(), MessageType = eventTypeFullName }))
-            .GroupBy(topicAndMessageType => topicAndMessageType.Topic)
-            .Select(group => new
-            {
-                TopicName = group.Key,
-                MessageTypes = group.Select(topicAndMessageType => topicAndMessageType.MessageType).ToArray()
-            })
-            .ToArray();
-        startupDiagnostic.Add("Manifest-Subscriptions", subscriptions);
+        WriteSubscriptionManifest(eventTypes);
 
         return eventTypes.Length switch
         {
@@ -57,6 +50,30 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
                     SubscribeEvent(eventType.MessageType.FullName!, cancellationToken))
                 .ToArray())
         };
+    }
+
+    void WriteSubscriptionManifest(MessageMetadata[] eventTypes)
+    {
+        //NOTE: identical to code in EventPerTopicTopolocySubscriptionManager but kept separate due to this class being obsolete
+        var subscriptions = eventTypes
+            .Select(eventType => eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"))
+            .SelectMany(eventTypeFullName => MapEventToDestinationTopics(eventTypeFullName)
+                    .Select(topicName => new { Topic = topicName.ToLower(), MessageType = eventTypeFullName }))
+            .GroupBy(topicAndMessageType => topicAndMessageType.Topic)
+            .Select(group => new
+            {
+                TopicName = group.Key,
+                MessageTypes = group.Select(topicAndMessageType => topicAndMessageType.MessageType).ToArray()
+            })
+            .ToArray();
+        startupDiagnostic.Add("Manifest-Subscriptions", subscriptions);
+    }
+
+    HashSet<string> MapEventToDestinationTopics(string eventTypeFullName)
+    {
+        var topics = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName]);
+        topics = [.. topics.Select(t => destinationManager.GetDestination(t, eventTypeFullName))];
+        return topics;
     }
 
     async Task SubscribeEvent(string eventTypeFullName, CancellationToken cancellationToken)
@@ -81,6 +98,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 
         if (topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
         {
+            topics = [.. topics.Select(t => destinationManager.GetDestination(t, eventTypeFullName))];
             await TopicPerEventTopologySubscriptionManager
                 .CreateSubscriptionsForTopics(topics, subscriptionName, CreationOptions, cancellationToken)
                 .ConfigureAwait(false);
@@ -115,6 +133,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 
         if (topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
         {
+            topics = [.. topics.Select(t => destinationManager.GetDestination(t, eventTypeFullName))];
             await TopicPerEventTopologySubscriptionManager.DeleteSubscriptionsForTopics(topics, subscriptionName,
                     CreationOptions.AdministrationClient, cancellationToken)
                 .ConfigureAwait(false);
