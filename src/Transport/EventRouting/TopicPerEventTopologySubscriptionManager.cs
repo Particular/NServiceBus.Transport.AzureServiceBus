@@ -38,6 +38,19 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     public override Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
         CancellationToken cancellationToken = default)
     {
+        WriteSubscriptionManifest(eventTypes);
+
+        return eventTypes.Length switch
+        {
+            0 => Task.CompletedTask,
+            1 => SubscribeEvent(eventTypes[0].MessageType.FullName!, cancellationToken),
+            _ => Task.WhenAll([.. eventTypes.Select(eventType =>
+                    SubscribeEvent(eventType.MessageType.FullName!, cancellationToken))])
+        };
+    }
+
+    void WriteSubscriptionManifest(MessageMetadata[] eventTypes)
+    {
         var subscriptions = eventTypes
             .Select(eventType => eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"))
             .SelectMany(eventTypeFullName => MapEventToDestinationTopics(eventTypeFullName)
@@ -50,14 +63,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             })
             .ToArray();
         startupDiagnostic.Add("Manifest-Subscriptions", subscriptions);
-
-        return eventTypes.Length switch
-        {
-            0 => Task.CompletedTask,
-            1 => SubscribeEvent(eventTypes[0].MessageType.FullName!, cancellationToken),
-            _ => Task.WhenAll([.. eventTypes.Select(eventType =>
-                    SubscribeEvent(eventType.MessageType.FullName!, cancellationToken))])
-        };
     }
 
     Task SubscribeEvent(string eventTypeFullName, CancellationToken cancellationToken)
