@@ -23,7 +23,12 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     {
         this.topologyOptions = topologyOptions;
         this.startupDiagnostic = startupDiagnostic;
-        subscriptionName = topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(CreationOptions.SubscribingQueueName, CreationOptions.SubscribingQueueName);
+        var baseSubscriptionName = topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(
+            CreationOptions.SubscribingQueueName, CreationOptions.SubscribingQueueName).AsSpan();
+        var prefix = topologyOptions.HierarchyNamespaceOptions.HierarchyNameSpaceWithTrailingSlash.AsSpan();
+        subscriptionName = !prefix.IsEmpty && baseSubscriptionName.StartsWith(prefix, StringComparison.Ordinal)
+            ? baseSubscriptionName[prefix.Length..].ToString()
+            : baseSubscriptionName.ToString();
     }
 
     static readonly ILog Logger = LogManager.GetLogger<TopicPerEventTopologySubscriptionManager>();
@@ -35,14 +40,10 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             .Select(eventType => eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"))
             .SelectMany(eventTypeFullName =>
                 topologyOptions.SubscribedEventToTopicsMap
-                .GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
-                .Select(topicName => new { Topic = topicName.ToLower(), MessageType = eventTypeFullName }))
+                    .GetValueOrDefault(eventTypeFullName, [eventTypeFullName])
+                    .Select(topicName => new { Topic = topicName.ToLower(), MessageType = eventTypeFullName }))
             .GroupBy(topicAndMessageType => topicAndMessageType.Topic)
-            .Select(group => new
-            {
-                TopicName = group.Key,
-                MessageTypes = group.Select(topicAndMessageType => topicAndMessageType.MessageType).ToArray()
-            })
+            .Select(group => new { TopicName = group.Key, MessageTypes = group.Select(topicAndMessageType => topicAndMessageType.MessageType).ToArray() })
             .ToArray();
         startupDiagnostic.Add("Manifest-Subscriptions", subscriptions);
 
@@ -80,12 +81,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         {
             if (creationOptions.SetupInfrastructure)
             {
-                var topicOptions = new CreateTopicOptions(topicName)
-                {
-                    EnableBatchedOperations = true,
-                    EnablePartitioning = creationOptions.EnablePartitioning,
-                    MaxSizeInMegabytes = creationOptions.EntityMaximumSizeInMegabytes
-                };
+                var topicOptions = new CreateTopicOptions(topicName) { EnableBatchedOperations = true, EnablePartitioning = creationOptions.EnablePartitioning, MaxSizeInMegabytes = creationOptions.EntityMaximumSizeInMegabytes };
 
                 try
                 {
@@ -95,7 +91,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                 {
                     // ignored due to race conditions
                 }
-                catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
+                catch (ServiceBusException sbe) when (sbe.IsTransient) // An operation is in progress.
                 {
                     Logger.Info($"Topic creation for topic {topicOptions.Name} is already in progress");
                 }
@@ -124,7 +120,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             {
                 // ignored due to race conditions
             }
-            catch (ServiceBusException sbe) when (sbe.IsTransient)// An operation is in progress.
+            catch (ServiceBusException sbe) when (sbe.IsTransient) // An operation is in progress.
             {
                 Logger.Info($"Default subscription creation for topic {subscriptionOptions.TopicName} is already in progress");
             }
