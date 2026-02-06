@@ -19,6 +19,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 #pragma warning restore CS0618 // Type or member is obsolete
     readonly StartupDiagnosticEntries startupDiagnostic;
     readonly string subscriptionName;
+    readonly DestinationManager destinationManager;
 
 #pragma warning disable CS0618 // Type or member is obsolete
     public MigrationTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions, MigrationTopologyOptions topologyOptions, StartupDiagnosticEntries startupDiagnostic) : base(creationOptions)
@@ -30,7 +31,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 
         // The subscription name is limited to 50 characters and the hierarchy is respected by the topic name
         // so there is no need to add it to the subscription name.
-        var destinationManager = new DestinationManager(topologyOptions.HierarchyNamespaceOptions);
+        destinationManager = new DestinationManager(topologyOptions.HierarchyNamespaceOptions);
         subscriptionName = destinationManager.StripHierarchyNamespace(subscriptionName);
     }
 
@@ -87,6 +88,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 
         if (topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
         {
+            topics = [..topics.Select(t => destinationManager.GetDestination(t))];
             await TopicPerEventTopologySubscriptionManager
                 .CreateSubscriptionsForTopics(topics, subscriptionName, CreationOptions, cancellationToken)
                 .ConfigureAwait(false);

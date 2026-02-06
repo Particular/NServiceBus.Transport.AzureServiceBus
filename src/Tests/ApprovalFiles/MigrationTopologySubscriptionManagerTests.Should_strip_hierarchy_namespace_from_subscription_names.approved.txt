@@ -1,0 +1,59 @@
+CreateRuleOptions(topicName: 'my-hierarchy/SubscribeTopic', subscriptionName: 'MySubscriptionName'): {
+  "Filter": {
+    "filter-type": "sql",
+    "SqlExpression": "[NServiceBus.EnclosedMessageTypes] LIKE \u0027%NServiceBus.Transport.AzureServiceBus.Tests.MigrationTopologySubscriptionManagerTests\u002BMyEvent1%\u0027",
+    "Parameters": {}
+  },
+  "Action": null,
+  "Name": "MyRuleName"
+}
+CreateSubscriptionOptions: {
+  "LockDuration": "00:05:00",
+  "RequiresSession": false,
+  "DefaultMessageTimeToLive": "10675199.02:48:05.4775807",
+  "AutoDeleteOnIdle": "10675199.02:48:05.4775807",
+  "DeadLetteringOnMessageExpiration": false,
+  "EnableDeadLetteringOnFilterEvaluationExceptions": false,
+  "TopicName": "my-hierarchy/MyTopic1",
+  "SubscriptionName": "MySubscriptionName",
+  "MaxDeliveryCount": 2147483647,
+  "Status": {},
+  "ForwardTo": "my-hierarchy/SubscribingQueue",
+  "ForwardDeadLetteredMessagesTo": null,
+  "EnableBatchedOperations": true,
+  "UserMetadata": "my-hierarchy/SubscribingQueue"
+}
+CreateRuleOptions: {
+  "Filter": {
+    "filter-type": "true",
+    "SqlExpression": "1=1",
+    "Parameters": {}
+  },
+  "Action": null,
+  "Name": "$Default"
+}
+CreateSubscriptionOptions: {
+  "LockDuration": "00:05:00",
+  "RequiresSession": false,
+  "DefaultMessageTimeToLive": "10675199.02:48:05.4775807",
+  "AutoDeleteOnIdle": "10675199.02:48:05.4775807",
+  "DeadLetteringOnMessageExpiration": false,
+  "EnableDeadLetteringOnFilterEvaluationExceptions": false,
+  "TopicName": "my-hierarchy/MyTopic2",
+  "SubscriptionName": "MySubscriptionName",
+  "MaxDeliveryCount": 2147483647,
+  "Status": {},
+  "ForwardTo": "my-hierarchy/SubscribingQueue",
+  "ForwardDeadLetteredMessagesTo": null,
+  "EnableBatchedOperations": true,
+  "UserMetadata": "my-hierarchy/SubscribingQueue"
+}
+CreateRuleOptions: {
+  "Filter": {
+    "filter-type": "true",
+    "SqlExpression": "1=1",
+    "Parameters": {}
+  },
+  "Action": null,
+  "Name": "$Default"
+}

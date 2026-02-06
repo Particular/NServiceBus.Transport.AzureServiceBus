@@ -17,6 +17,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     readonly TopologyOptions topologyOptions;
     readonly StartupDiagnosticEntries startupDiagnostic;
     readonly string subscriptionName;
+    readonly DestinationManager destinationManager;
 
     public TopicPerEventTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
         TopologyOptions topologyOptions,
@@ -28,7 +29,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         // The subscription name is limited to 50 characters and the hierarchy is respected by the topic name
         // so there is no need to add it to the subscription name.
-        var destinationManager = new DestinationManager(topologyOptions.HierarchyNamespaceOptions);
+        destinationManager = new DestinationManager(topologyOptions.HierarchyNamespaceOptions);
         subscriptionName = destinationManager.StripHierarchyNamespace(subscriptionName);
     }
 
@@ -64,7 +65,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
     Task SubscribeEvent(string eventTypeFullName, CancellationToken cancellationToken)
     {
-        var topics = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName]);
+        var topics = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [destinationManager.GetDestination(eventTypeFullName)]);
         return CreateSubscriptionsForTopics(topics, subscriptionName, CreationOptions, cancellationToken);
     }
 

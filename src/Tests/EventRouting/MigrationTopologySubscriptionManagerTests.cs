@@ -2,6 +2,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
 using System.Text;
 using System.Threading.Tasks;
+using EventRouting;
 using Extensibility;
 using NUnit.Framework;
 using Particular.Approvals;
@@ -101,6 +102,41 @@ public class MigrationTopologySubscriptionManagerTests
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await Assert.ThatAsync(() => subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag()), Throws.Exception);
+    }
+
+    [Test]
+    public async Task Should_strip_hierarchy_namespace_from_subscription_names()
+    {
+        var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+        var destinationManager = new DestinationManager(hierarchyOptions);
+        var queueName = destinationManager.GetDestination("SubscribingQueue");
+#pragma warning disable CS0618 // Type or member is obsolete
+        var topologyOptions = new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
+        {
+            TopicToPublishTo = destinationManager.GetDestination("PublishTopic"),
+            TopicToSubscribeOn = destinationManager.GetDestination("SubscribeTopic"),
+            EventsToMigrateMap = { typeof(MyEvent1).FullName },
+            QueueNameToSubscriptionNameMap = { { queueName, destinationManager.GetDestination("MySubscriptionName") } },
+            SubscribedEventToRuleNameMap = { { typeof(MyEvent1).FullName, "MyRuleName" } },
+            SubscribedEventToTopicsMap = { { typeof(MyEvent2).FullName, [destinationManager.GetDestination("MyTopic1"), destinationManager.GetDestination("MyTopic2")] } },
+            HierarchyNamespaceOptions = hierarchyOptions
+        };
+
+        var builder = new StringBuilder();
+        var client = new RecordingServiceBusClient(builder);
+        var administrationClient = new RecordingServiceBusAdministrationClient(builder);
+
+        var subscriptionManager = new MigrationTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = queueName,
+            Client = client,
+            AdministrationClient = administrationClient
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
+
+        Approver.Verify(builder.ToString());
     }
 
     class MyEvent1;
