@@ -6,7 +6,6 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
     using Conventions = NServiceBus.AcceptanceTesting.Customization.Conventions;
     using NServiceBus.AcceptanceTests;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
-
     using NUnit.Framework;
 
     public class When_using_hierarchy_namespace : NServiceBusAcceptanceTest
@@ -40,13 +39,13 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
             {
                 Assert.That(context.HierarchyMessageReceived, Is.True);
                 Assert.That(context.ExternalMessageReceived, Is.False);
+                Assert.That(context.ExternalEventReceived, Is.False);
             }
         }
 
         [Test]
         public async Task Should_publish_and_receive_with_hierarchy_namespace()
         {
-            Requires.NativePubSubSupport();
             var context = await Scenario.Define<Context>()
                 .WithEndpoint<Sender>(endpoint =>
                 {
@@ -67,23 +66,27 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                     });
                 })
                 .Run();
+
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(context.HierarchyMessageReceived, Is.True);
+                Assert.That(context.HierarchyEventReceived, Is.True);
                 Assert.That(context.ExternalMessageReceived, Is.False);
+                Assert.That(context.ExternalEventReceived, Is.False);
             }
         }
 
         public class Context : ScenarioContext
         {
             public bool HierarchyMessageReceived { get; set; }
+            public bool HierarchyEventReceived { get; set; }
             public bool ExternalMessageReceived { get; set; }
+            public bool ExternalEventReceived { get; set; }
         }
 
         class Sender : EndpointConfigurationBuilder
         {
             public Sender() => EndpointSetup<DefaultServer>(
-                config => { },
+                _ => { },
                 publishMetadata => publishMetadata.RegisterSelfAsPublisherFor<MyEvent>(this)
             );
         }
@@ -91,12 +94,10 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
         class HierarchyReceiver : EndpointConfigurationBuilder
         {
             public HierarchyReceiver() => EndpointSetup<DefaultServer>(
-                config => { },
+                _ => { },
                 publishMetadata => publishMetadata.RegisterPublisherFor<MyEvent, Sender>());
 
-            public class MyHandler(Context testContext) :
-                IHandleMessages<MyMessage>,
-                IHandleMessages<MyEvent>
+            public class MyHandler(Context testContext) : IHandleMessages<MyMessage>, IHandleMessages<MyEvent>
             {
                 public Task Handle(MyMessage message, IMessageHandlerContext context)
                 {
@@ -107,24 +108,21 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
 
                 public Task Handle(MyEvent message, IMessageHandlerContext context)
                 {
-                    testContext.HierarchyMessageReceived = true;
+                    testContext.ExternalEventReceived = true;
                     testContext.MarkAsCompleted();
                     return Task.CompletedTask;
                 }
             }
-
         }
 
         class ExternalReceiver : EndpointConfigurationBuilder
         {
             public ExternalReceiver() => EndpointSetup<DefaultServer>(
-                config => { },
+                _ => { },
                 publishMetadata => publishMetadata.RegisterPublisherFor<MyEvent, Sender>()
             );
 
-            public class MyMessageHandler(Context testContext) :
-                IHandleMessages<MyMessage>,
-                IHandleMessages<MyEvent>
+            public class MyMessageHandler(Context testContext) : IHandleMessages<MyMessage>, IHandleMessages<MyEvent>
             {
                 public Task Handle(MyMessage message, IMessageHandlerContext context)
                 {
@@ -132,6 +130,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
                     testContext.MarkAsFailed(new Exception("External receiver should not receive the hierarchy message"));
                     return Task.CompletedTask;
                 }
+
                 public Task Handle(MyEvent message, IMessageHandlerContext context)
                 {
                     testContext.ExternalMessageReceived = true;
@@ -142,6 +141,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending
         }
 
         public class MyMessage : ICommand;
+
         public class MyEvent : IEvent;
     }
 }
