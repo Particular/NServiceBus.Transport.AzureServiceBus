@@ -88,7 +88,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 
         if (topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
         {
-            topics = [..topics.Select(t => destinationManager.GetDestination(t))];
+            topics = [.. topics.Select(t => destinationManager.GetDestination(t))];
             await TopicPerEventTopologySubscriptionManager
                 .CreateSubscriptionsForTopics(topics, subscriptionName, CreationOptions, cancellationToken)
                 .ConfigureAwait(false);
