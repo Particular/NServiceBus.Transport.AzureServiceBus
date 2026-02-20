@@ -16,4 +16,6 @@ sealed class SubscriptionManagerCreationOptions
     public int EntityMaximumSizeInMegabytes { get; init; }
 
     public bool SetupInfrastructure { get; init; }
+
+    public int MaxDeliveryCount { get; init; } = int.MaxValue;
 }

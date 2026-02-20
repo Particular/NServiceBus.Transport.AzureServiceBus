@@ -68,7 +68,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
         }
 
         Topology.Validate();
-
         var transportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp;
         bool enableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive;
 
@@ -102,8 +101,8 @@ public partial class AzureServiceBusTransport : TransportDefinition
             : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
         var administrationClient = TokenCredential != null
-            ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
-            : new ServiceBusAdministrationClient(ConnectionString);
+            ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential, AdministrationClientOptions ?? new ServiceBusAdministrationClientOptions())
+            : new ServiceBusAdministrationClient(ConnectionString, AdministrationClientOptions ?? new ServiceBusAdministrationClientOptions());
 
         var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient);
 
@@ -119,7 +118,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
             var queueCreator = new TopologyCreator(this);
 
-            // Pass in the instance specific queue address (if it exists) so that the queue creator can set the 
+            // Pass in the instance specific queue address (if it exists) so that the queue creator can set the
             // AutoDeleteOnIdle (if set) only on that queue and not on shared queues like error.
             string? instanceReceiverAddress = null;
             if (infrastructure.Receivers.TryGetValue("InstanceSpecific", out var instanceReceiver))
@@ -211,7 +210,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// <summary>
     /// Gets or sets the maximum time period that a queue can remain idle before Azure Service Bus automatically deletes it.
     /// </summary>
-    /// <value>The idle timeout after which unused entities are automatically deleted. The minimum allowed value is 5 minutes.</value>    
+    /// <value>The idle timeout after which unused entities are automatically deleted. The minimum allowed value is 5 minutes.</value>
     /// <remarks>
     /// <para>
     /// This property controls the AutoDeleteOnIdle setting for queues created by the transport.
@@ -221,7 +220,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// </para>
     /// <para>
     /// This setting only applies to queues, not to topics or subscriptions. Topics and subscriptions are considered
-    /// shared infrastructure and are not affected by this property. Only instance-specific input queues (such when using 'MakeInstanceUniquelyAddressable') 
+    /// shared infrastructure and are not affected by this property. Only instance-specific input queues (such when using 'MakeInstanceUniquelyAddressable')
     /// will have AutoDeleteOnIdle applied, while shared queues (such as error and audit queues) remain unaffected to prevent unintended deletion of critical infrastructure.
     /// </para>
     /// <para>
@@ -248,6 +247,21 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// Enables entity partitioning when creating queues and topics.
     /// </summary>
     public bool EnablePartitioning { get; set; }
+
+    /// <summary>
+    /// Overrides the default dead-letter max delivery count for queues created by the transport.
+    /// Defaults to <see cref="int.MaxValue"/>. Some environments (e.g. emulators) impose a lower limit.
+    /// </summary>
+    public int MaxDeliveryCount
+    {
+        get => maxDeliveryCount;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(MaxDeliveryCount));
+            maxDeliveryCount = value;
+        }
+    }
+    int maxDeliveryCount = int.MaxValue;
 
     /// <summary>
     /// Specifies the multiplier to apply to the maximum concurrency value to calculate the prefetch count.
@@ -364,15 +378,33 @@ public partial class AzureServiceBusTransport : TransportDefinition
     }
 
     /// <summary>
-    /// Gets or sets the action that allows customization of the native <see cref="ServiceBusMessage"/> 
-    /// just before it is dispatched to the Azure Service Bus SDK client. 
+    /// Overrides the default options for the <see cref="ServiceBusAdministrationClient"/>.
+    /// </summary>
+    /// <remarks>
+    /// This can be used to customize the administration client, for example to configure a custom
+    /// HTTP transport when connecting to an emulator that does not use TLS.
+    /// </remarks>
+    public ServiceBusAdministrationClientOptions? AdministrationClientOptions
+    {
+        get => administrationClientOptions;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value, nameof(AdministrationClientOptions));
+            administrationClientOptions = value;
+        }
+    }
+    ServiceBusAdministrationClientOptions? administrationClientOptions;
+
+    /// <summary>
+    /// Gets or sets the action that allows customization of the native <see cref="ServiceBusMessage"/>
+    /// just before it is dispatched to the Azure Service Bus SDK client.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This customization is applied after any configured transport customizations, meaning that 
-    /// any changes made here may override or conflict with previous transport-level adjustments. 
-    /// Exercise caution, as modifying the message at this stage can lead to unintended behavior 
-    /// downstream if the message structure or properties are altered in ways that do not align 
+    /// This customization is applied after any configured transport customizations, meaning that
+    /// any changes made here may override or conflict with previous transport-level adjustments.
+    /// Exercise caution, as modifying the message at this stage can lead to unintended behavior
+    /// downstream if the message structure or properties are altered in ways that do not align
     /// with expectations elsewhere in the system.
     /// </para>
     /// </remarks>

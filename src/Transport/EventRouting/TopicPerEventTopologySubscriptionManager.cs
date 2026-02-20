@@ -91,7 +91,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                 LockDuration = TimeSpan.FromMinutes(5),
                 ForwardTo = creationOptions.SubscribingQueueName,
                 EnableDeadLetteringOnFilterEvaluationExceptions = false,
-                MaxDeliveryCount = int.MaxValue,
+                MaxDeliveryCount = creationOptions.MaxDeliveryCount,
                 EnableBatchedOperations = true,
                 UserMetadata = creationOptions.SubscribingQueueName
             };
