@@ -16,10 +16,12 @@ namespace NServiceBus
             "ersion 6.0.0.", true)]
         public AzureServiceBusTransport(string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential) { }
         public AzureServiceBusTransport(string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential, NServiceBus.TopicTopology topology) { }
+        public Azure.Messaging.ServiceBus.Administration.ServiceBusAdministrationClientOptions? AdministrationClientOptions { get; set; }
         public System.TimeSpan? AutoDeleteOnIdle { get; set; }
         public bool EnablePartitioning { get; set; }
         public int EntityMaximumSize { get; set; }
         public System.TimeSpan? MaxAutoLockRenewalDuration { get; set; }
+        public int MaxDeliveryCount { get; set; }
         public System.Action<NServiceBus.Transport.IOutgoingTransportOperation, Azure.Messaging.ServiceBus.ServiceBusMessage>? OutgoingNativeMessageCustomization { get; set; }
         public int? PrefetchCount { get; set; }
         public int PrefetchMultiplier { get; set; }

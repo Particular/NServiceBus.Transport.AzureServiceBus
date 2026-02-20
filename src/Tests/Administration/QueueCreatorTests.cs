@@ -27,6 +27,24 @@ public class QueueCreatorTests
     }
 
     [Test]
+    public async Task Should_use_configured_MaxDeliveryCount()
+    {
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
+        {
+            MaxDeliveryCount = 10
+        };
+
+        var recordingClient = new RecordingServiceBusAdministrationClient();
+        var creator = new QueueCreator(transport);
+
+        await creator.Create(recordingClient, ["test-queue"], "test-queue");
+
+        var output = recordingClient.ToString();
+
+        Approver.Verify(output);
+    }
+
+    [Test]
     public async Task Should_not_set_AutoDeleteOnIdle_when_null()
     {
         var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
