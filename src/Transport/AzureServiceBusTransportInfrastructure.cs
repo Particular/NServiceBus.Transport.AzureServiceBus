@@ -106,9 +106,10 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     AdministrationClient = administrationClient,
                     Client = defaultClient,
                     EnablePartitioning = transportSettings.EnablePartitioning,
+                    EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
+                    MaxDeliveryCount = transportSettings.MaxDeliveryCount,
                     SetupInfrastructure = hostSettings.SetupInfrastructure,
-                    SubscribingQueueName = receiveAddress,
-                    EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
+                    SubscribingQueueName = receiveAddress
                 }, hostSettings)
                 : null,
             subQueue
