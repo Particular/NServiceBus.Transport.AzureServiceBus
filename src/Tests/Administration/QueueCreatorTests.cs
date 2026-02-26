@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.Tests.Administration;
 
 using System;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Particular.Approvals;
@@ -95,6 +96,36 @@ public class QueueCreatorTests
 
         // Create queue with different instance name
         await creator.Create(recordingClient, ["some-queue"], "different-instance");
+
+        var output = recordingClient.ToString();
+
+        Approver.Verify(output);
+    }
+
+    [Test]
+    public async Task Should_set_MaxDeliveryCount_to_max_int_when_not_using_emulator()
+    {
+        var transport = new AzureServiceBusTransport("connection-string", TopicTopology.Default);
+
+        var recordingClient = new RecordingServiceBusAdministrationClient();
+        var creator = new QueueCreator(transport);
+
+        await creator.Create(recordingClient, ["test-queue"], null);
+
+        var output = recordingClient.ToString();
+
+        Approver.Verify(output);
+    }
+
+    [Test]
+    public async Task Should_set_MaxDeliveryCount_to_10_when_using_emulator()
+    {
+        var transport = new AzureServiceBusTransport("UseDevelopmentEmulator=true", TopicTopology.Default);
+
+        var recordingClient = new RecordingServiceBusAdministrationClient();
+        var creator = new QueueCreator(transport);
+
+        await creator.Create(recordingClient, ["test-queue"], null);
 
         var output = recordingClient.ToString();
 
