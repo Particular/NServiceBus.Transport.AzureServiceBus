@@ -1,7 +1,6 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.Tests.Administration;
 
 using System;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Particular.Approvals;
