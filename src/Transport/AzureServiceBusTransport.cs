@@ -384,6 +384,11 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
     internal string? ConnectionString { get; set; }
 
+    internal bool IsUsingDevelopmentEmulator =>
+        ConnectionString?.Contains("UseDevelopmentEmulator=true", StringComparison.OrdinalIgnoreCase) == true;
+
+    internal int MaxDeliveryCount => IsUsingDevelopmentEmulator ? 10 : int.MaxValue;
+
     internal string? FullyQualifiedNamespace { get; set; }
     internal TokenCredential? TokenCredential { get; set; }
 }

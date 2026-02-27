@@ -100,4 +100,34 @@ public class QueueCreatorTests
 
         Approver.Verify(output);
     }
+
+    [Test]
+    public async Task Should_set_MaxDeliveryCount_to_max_int_when_not_using_emulator()
+    {
+        var transport = new AzureServiceBusTransport("connection-string", TopicTopology.Default);
+
+        var recordingClient = new RecordingServiceBusAdministrationClient();
+        var creator = new QueueCreator(transport);
+
+        await creator.Create(recordingClient, ["test-queue"], null);
+
+        var output = recordingClient.ToString();
+
+        Approver.Verify(output);
+    }
+
+    [Test]
+    public async Task Should_set_MaxDeliveryCount_to_10_when_using_emulator()
+    {
+        var transport = new AzureServiceBusTransport("UseDevelopmentEmulator=true", TopicTopology.Default);
+
+        var recordingClient = new RecordingServiceBusAdministrationClient();
+        var creator = new QueueCreator(transport);
+
+        await creator.Create(recordingClient, ["test-queue"], null);
+
+        var output = recordingClient.ToString();
+
+        Approver.Verify(output);
+    }
 }
