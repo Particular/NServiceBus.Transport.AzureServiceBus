@@ -403,7 +403,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     internal string? ConnectionString { get; set; }
 
     internal bool IsUsingDevelopmentEmulator =>
-        ConnectionString?.Contains("UseDevelopmentEmulator=true", StringComparison.OrdinalIgnoreCase) == true;
+        ConnectionString?.Contains("UseDevelopmentEmulator=true", StringComparison.OrdinalIgnoreCase) ?? false;
 
     internal int MaxDeliveryCount => IsUsingDevelopmentEmulator ? 10 : int.MaxValue;
 
