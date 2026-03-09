@@ -8,6 +8,7 @@
     <Project Path="AcceptanceTests/NServiceBus.Transport.AzureServiceBus.AcceptanceTests.csproj" />
     <Project Path="CommandLineTests/NServiceBus.Transport.AzureServiceBus.CommandLine.Tests.csproj" />
     <Project Path="MigrationAcceptanceTests/NServiceBus.Transport.AzureServiceBus.Migration.AcceptanceTests.csproj" />
+    <Project Path="PerformanceTests/NServiceBus.Transport.AzureServiceBus.PerformanceTests.csproj" />
     <Project Path="Tests/NServiceBus.Transport.AzureServiceBus.Tests.csproj" />
     <Project Path="TransportTests/NServiceBus.Transport.AzureServiceBus.TransportTests.csproj" />
   </Folder>
