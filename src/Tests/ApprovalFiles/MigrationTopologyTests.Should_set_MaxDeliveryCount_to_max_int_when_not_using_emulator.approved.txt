@@ -1,0 +1,25 @@
+CreateSubscriptionOptions: {
+  "LockDuration": "00:05:00",
+  "RequiresSession": false,
+  "DefaultMessageTimeToLive": "10675199.02:48:05.4775807",
+  "AutoDeleteOnIdle": "10675199.02:48:05.4775807",
+  "DeadLetteringOnMessageExpiration": false,
+  "EnableDeadLetteringOnFilterEvaluationExceptions": false,
+  "TopicName": "bundle-1",
+  "SubscriptionName": "MySub",
+  "MaxDeliveryCount": 2147483647,
+  "Status": {},
+  "ForwardTo": "SubscribingQueue",
+  "ForwardDeadLetteredMessagesTo": null,
+  "EnableBatchedOperations": true,
+  "UserMetadata": "SubscribingQueue"
+}
+CreateRuleOptions: {
+  "Filter": {
+    "filter-type": "false",
+    "SqlExpression": "1=0",
+    "Parameters": {}
+  },
+  "Action": null,
+  "Name": "$default"
+}

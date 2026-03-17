@@ -107,9 +107,12 @@ public partial class AzureServiceBusTransport : TransportDefinition
             ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
             : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
+        var administrationConnectionString = IsUsingDevelopmentEmulator
+            ? InjectEmulatorAdminPort(ConnectionString!)
+            : ConnectionString!;
         var administrationClient = TokenCredential != null
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
-            : new ServiceBusAdministrationClient(ConnectionString);
+            : new ServiceBusAdministrationClient(administrationConnectionString);
         var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient, DestinationManager);
 
         if (hostSettings.SetupInfrastructure)
@@ -146,6 +149,21 @@ public partial class AzureServiceBusTransport : TransportDefinition
         }
 
         return infrastructure;
+    }
+
+    internal static string InjectEmulatorAdminPort(string connectionString)
+    {
+        // The Service Bus emulator requires port 5300 appended to the endpoint host for administration operations.
+        // If the connection string already contains a port in the endpoint, leave it as-is.
+        var properties = ServiceBusConnectionStringProperties.Parse(connectionString);
+        if (properties.Endpoint.Port != -1)
+        {
+            return connectionString;
+        }
+        return connectionString.Replace(
+            $"Endpoint=sb://{properties.Endpoint.Host};",
+            $"Endpoint=sb://{properties.Endpoint.Host}:5300;",
+            StringComparison.OrdinalIgnoreCase);
     }
 
     void ApplyRetryPolicyOptionsIfNeeded(ServiceBusClientOptions options)
@@ -383,6 +401,11 @@ public partial class AzureServiceBusTransport : TransportDefinition
     public OutgoingNativeMessageCustomizationAction? OutgoingNativeMessageCustomization { get; set; }
 
     internal string? ConnectionString { get; set; }
+
+    internal bool IsUsingDevelopmentEmulator =>
+        ConnectionString?.Contains("UseDevelopmentEmulator=true", StringComparison.OrdinalIgnoreCase) ?? false;
+
+    internal int MaxDeliveryCount => IsUsingDevelopmentEmulator ? 10 : int.MaxValue;
 
     internal string? FullyQualifiedNamespace { get; set; }
     internal TokenCredential? TokenCredential { get; set; }

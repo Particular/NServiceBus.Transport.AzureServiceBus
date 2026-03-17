@@ -1,0 +1,40 @@
+CreateTopicOptions: {
+  "DefaultMessageTimeToLive": "10675199.02:48:05.4775807",
+  "AutoDeleteOnIdle": "10675199.02:48:05.4775807",
+  "MaxSizeInMegabytes": 5120,
+  "RequiresDuplicateDetection": false,
+  "DuplicateDetectionHistoryTimeWindow": "00:01:00",
+  "Name": "NServiceBus.Transport.AzureServiceBus.Tests.TopicPerEventTopologyTests\u002BMyEvent",
+  "AuthorizationRules": [],
+  "Status": {},
+  "EnablePartitioning": false,
+  "SupportOrdering": false,
+  "EnableBatchedOperations": true,
+  "UserMetadata": null,
+  "MaxMessageSizeInKilobytes": null
+}
+CreateSubscriptionOptions: {
+  "LockDuration": "00:05:00",
+  "RequiresSession": false,
+  "DefaultMessageTimeToLive": "10675199.02:48:05.4775807",
+  "AutoDeleteOnIdle": "10675199.02:48:05.4775807",
+  "DeadLetteringOnMessageExpiration": false,
+  "EnableDeadLetteringOnFilterEvaluationExceptions": false,
+  "TopicName": "NServiceBus.Transport.AzureServiceBus.Tests.TopicPerEventTopologyTests\u002BMyEvent",
+  "SubscriptionName": "SubscribingQueue",
+  "MaxDeliveryCount": 10,
+  "Status": {},
+  "ForwardTo": "SubscribingQueue",
+  "ForwardDeadLetteredMessagesTo": null,
+  "EnableBatchedOperations": true,
+  "UserMetadata": "SubscribingQueue"
+}
+CreateRuleOptions: {
+  "Filter": {
+    "filter-type": "true",
+    "SqlExpression": "1=1",
+    "Parameters": {}
+  },
+  "Action": null,
+  "Name": "$Default"
+}

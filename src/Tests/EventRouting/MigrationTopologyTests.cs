@@ -1,6 +1,9 @@
 namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
 using System.ComponentModel.DataAnnotations;
+using System.Text;
+using System.Threading.Tasks;
+using EventRouting;
 using NUnit.Framework;
 using Particular.Approvals;
 
@@ -78,6 +81,74 @@ public class MigrationTopologyTests
         topology.OptionsValidator = new TopologyOptionsDisableValidationValidator();
 
         Assert.DoesNotThrow(() => topology.Validate());
+    }
+
+    [Test]
+    public async Task Should_set_MaxDeliveryCount_to_max_int_when_not_using_emulator()
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        var topology = TopicTopology.MigrateFromSingleDefaultTopic();
+        topology.OverrideSubscriptionNameFor("SubscribingQueue", "MySub");
+
+        var transport = new AzureServiceBusTransport("connectionString", topology);
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var builder = new StringBuilder();
+        var client = new RecordingServiceBusClient(builder);
+        var administrationClient = new RecordingServiceBusAdministrationClient(builder);
+
+        var hostSettings = new HostSettings("endpoint", "host", new StartupDiagnosticEntries(), (_, _, _) => { }, true);
+        var receiveSettings = new ReceiveSettings("TestReceiver", new QueueAddress("SubscribingQueue"), true, false, "error");
+        var destinationManager = new DestinationManager(HierarchyNamespaceOptions.None);
+
+        var infrastructure = new AzureServiceBusTransportInfrastructure(
+            transport,
+            hostSettings,
+            [(receiveSettings, client)],
+            client,
+            administrationClient,
+            destinationManager);
+
+        var messagePump = (MessagePump)infrastructure.Receivers["TestReceiver"];
+        var subscriptionManager = (SubscriptionManager)messagePump.Subscriptions!;
+
+        await subscriptionManager.SetupInfrastructureIfNecessary();
+
+        Approver.Verify(builder.ToString());
+    }
+
+    [Test]
+    public async Task Should_set_MaxDeliveryCount_to_10_when_using_emulator()
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        var topology = TopicTopology.MigrateFromSingleDefaultTopic();
+        topology.OverrideSubscriptionNameFor("SubscribingQueue", "MySub");
+
+        var transport = new AzureServiceBusTransport("UseDevelopmentEmulator=true", topology);
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var builder = new StringBuilder();
+        var client = new RecordingServiceBusClient(builder);
+        var administrationClient = new RecordingServiceBusAdministrationClient(builder);
+
+        var hostSettings = new HostSettings("endpoint", "host", new StartupDiagnosticEntries(), (_, _, _) => { }, true);
+        var receiveSettings = new ReceiveSettings("TestReceiver", new QueueAddress("SubscribingQueue"), true, false, "error");
+        var destinationManager = new DestinationManager(HierarchyNamespaceOptions.None);
+
+        var infrastructure = new AzureServiceBusTransportInfrastructure(
+            transport,
+            hostSettings,
+            [(receiveSettings, client)],
+            client,
+            administrationClient,
+            destinationManager);
+
+        var messagePump = (MessagePump)infrastructure.Receivers["TestReceiver"];
+        var subscriptionManager = (SubscriptionManager)messagePump.Subscriptions!;
+
+        await subscriptionManager.SetupInfrastructureIfNecessary();
+
+        Approver.Verify(builder.ToString());
     }
 
     class MyEvent;
