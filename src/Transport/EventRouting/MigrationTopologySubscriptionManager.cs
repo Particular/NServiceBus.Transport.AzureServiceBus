@@ -150,7 +150,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
             LockDuration = TimeSpan.FromMinutes(5),
             ForwardTo = CreationOptions.SubscribingQueueName,
             EnableDeadLetteringOnFilterEvaluationExceptions = false,
-            MaxDeliveryCount = int.MaxValue,
+            MaxDeliveryCount = CreationOptions.MaxDeliveryCount,
             EnableBatchedOperations = true,
             UserMetadata = CreationOptions.SubscribingQueueName
         };

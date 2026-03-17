@@ -67,7 +67,7 @@ sealed class MigrationTopologyCreator(AzureServiceBusTransport transportSettings
                         LockDuration = TimeSpan.FromMinutes(5),
                         ForwardTo = migrationTopology.TopicToSubscribeOn,
                         EnableDeadLetteringOnFilterEvaluationExceptions = false,
-                        MaxDeliveryCount = int.MaxValue,
+                        MaxDeliveryCount = transportSettings.MaxDeliveryCount,
                         EnableBatchedOperations = true,
                         UserMetadata = migrationTopology.TopicToSubscribeOn
                     };

@@ -20,7 +20,7 @@ class QueueCreator(AzureServiceBusTransport transportSettings)
             {
                 EnableBatchedOperations = true,
                 LockDuration = TimeSpan.FromMinutes(5),
-                MaxDeliveryCount = int.MaxValue,
+                MaxDeliveryCount = transportSettings.MaxDeliveryCount,
                 MaxSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
                 EnablePartitioning = transportSettings.EnablePartitioning
             };
