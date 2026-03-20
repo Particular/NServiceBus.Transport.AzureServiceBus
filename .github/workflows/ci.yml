@@ -50,7 +50,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_ACI_CREDENTIALS }}
       - name: Setup Azure Service Bus Emulator
-        uses: Particular/setup-azureservicebus-action@v2.1.0
+        uses: Particular/setup-azureservicebus-action@7b42e7752dd09ea112a383b5d562710891c65f83
         with:
           connection-string-name: AzureServiceBus_Emulator_ConnectionString
           azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
