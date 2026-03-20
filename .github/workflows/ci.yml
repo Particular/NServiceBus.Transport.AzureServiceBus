@@ -64,5 +64,3 @@ jobs:
           tag: ASBTransport
       - name: Run tests
         uses: Particular/run-tests-action@v1.7.0
-        env:
-          AzureServiceBus_Emulator_ConnectionString: ${{ env.AzureServiceBus_Emulator_ConnectionString_WithoutPort }}
