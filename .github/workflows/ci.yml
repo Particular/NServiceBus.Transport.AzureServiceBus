@@ -50,7 +50,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_ACI_CREDENTIALS }}
       - name: Setup Azure Service Bus Emulator
-        uses: Particular/setup-azureservicebus-action@7b42e7752dd09ea112a383b5d562710891c65f83
+        uses: Particular/setup-azureservicebus-action@6a4904ce0426055920b49b141d313719adf9790e
         with:
           connection-string-name: AzureServiceBus_Emulator_ConnectionString
           azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
@@ -64,3 +64,5 @@ jobs:
           tag: ASBTransport
       - name: Run tests
         uses: Particular/run-tests-action@v1.7.0
+        env:
+          AzureServiceBus_Emulator_ConnectionString: ${{ env.AzureServiceBus_Emulator_ConnectionString_WithoutPort }}
