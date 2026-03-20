@@ -54,7 +54,7 @@ jobs:
         with:
           connection-string-name: AzureServiceBus_Emulator_ConnectionString
           azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
-          UseEmulator: true
+          use-emulator: true
           tag: ASBTransport          
       - name: Setup Azure Service Bus
         uses: Particular/setup-azureservicebus-action@v2.1.0
