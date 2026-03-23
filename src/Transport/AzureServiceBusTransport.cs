@@ -154,16 +154,10 @@ public partial class AzureServiceBusTransport : TransportDefinition
     internal static string InjectEmulatorAdminPort(string connectionString)
     {
         // The Service Bus emulator requires port 5300 appended to the endpoint host for administration operations.
-        // If the connection string already contains a port in the endpoint, leave it as-is.
+        // Currently, we have to also override any port already specified to workaround limitations in the transport
+        // since we are not exposing the admin client we assume to always run on the default port with the emulator.
         var properties = ServiceBusConnectionStringProperties.Parse(connectionString);
-        if (properties.Endpoint.Port != -1)
-        {
-            return connectionString;
-        }
-        return connectionString.Replace(
-            $"Endpoint=sb://{properties.Endpoint.Host};",
-            $"Endpoint=sb://{properties.Endpoint.Host}:5300;",
-            StringComparison.OrdinalIgnoreCase);
+        return connectionString.Replace(properties.Endpoint.Port != -1 ? $"Endpoint=sb://{properties.Endpoint.Host}:{properties.Endpoint.Port};" : $"Endpoint=sb://{properties.Endpoint.Host};", $"Endpoint=sb://{properties.Endpoint.Host}:5300;", StringComparison.OrdinalIgnoreCase);
     }
 
     void ApplyRetryPolicyOptionsIfNeeded(ServiceBusClientOptions options)
