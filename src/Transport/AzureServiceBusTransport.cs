@@ -62,6 +62,23 @@ public partial class AzureServiceBusTransport : TransportDefinition
         EnableEndpointFeature<NativeMessageCustomizationFeature>();
     }
 
+    /// <summary>
+    /// Creates a new instance of <see cref="AzureServiceBusTransport"/> using the default topology.
+    /// </summary>
+    /// <param name="connectionString">Connection string to use when connecting to Azure Service Bus.</param>
+    public AzureServiceBusTransport(string connectionString) : this(connectionString, TopicTopology.Default)
+    {
+    }
+
+    /// <summary>
+    /// Creates a new instance of <see cref="AzureServiceBusTransport"/> using the default topology.
+    /// </summary>
+    /// <param name="fullyQualifiedNamespace">Fully-qualified name of Azure Service Bus namespace.</param>
+    /// <param name="tokenCredential">Credentials to use when connecting to Azure Service Bus.</param>
+    public AzureServiceBusTransport(string fullyQualifiedNamespace, TokenCredential tokenCredential) : this(fullyQualifiedNamespace, tokenCredential, TopicTopology.Default)
+    {
+    }
+
     /// <inheritdoc />
     public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings,
         ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)
