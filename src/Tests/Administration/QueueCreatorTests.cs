@@ -1,4 +1,4 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus.Tests.Administration;
+namespace NServiceBus.Transport.AzureServiceBus.Tests.Administration;
 
 using System;
 using System.Collections.Generic;
@@ -96,6 +96,22 @@ public class QueueCreatorTests
         var creator = new QueueCreator();
 
         await creator.Create(recordingClient, transport.DetermineQueuesToCreate(receiveSettings.ToArray(), sendingAddresses));
+        await creator.Create(recordingClient, [("test-queue", false)], null);
+
+        var output = recordingClient.ToString();
+
+        Approver.Verify(output);
+    }
+
+    [Test]
+    public async Task Should_set_RequiresSession_to_true_when_setting_enable_session()
+    {
+        var transport = new AzureServiceBusTransport("UseDevelopmentEmulator=true", TopicTopology.Default);
+
+        var recordingClient = new RecordingServiceBusAdministrationClient();
+        var creator = new QueueCreator(transport);
+
+        await creator.Create(recordingClient, [("test-queue", true)], null);
 
         return recordingClient.ToString();
     }

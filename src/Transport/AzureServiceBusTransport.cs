@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Azure.Core;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using Microsoft.Azure.Amqp.Framing;
 using Transport;
 using Transport.AzureServiceBus;
 using Transport.AzureServiceBus.EventRouting;
@@ -120,7 +121,15 @@ public partial class AzureServiceBusTransport : TransportDefinition
             await administrationClient.AssertNamespaceManageRightsAvailable(cancellationToken)
                 .ConfigureAwait(false);
 
-            var queuesToCreate = DetermineQueuesToCreate(receivers, sendingAddresses);
+            var allQueues = infrastructure.Receivers
+                .Select(r => (r.Value.ReceiveAddress, EnableSessions))
+                .Concat(sendingAddresses.Select(s =>
+                {
+                    var queueName = DestinationManager.GetDestination(s);
+                    //HINT: The queues passed in sendingAddresses are assumed to be non session-enabled.
+                    return (queueName, false);
+                }))
+                .ToArray();
 
             var queueCreator = new TopologyCreator(this);
             await queueCreator.Create(administrationClient, queuesToCreate, cancellationToken).ConfigureAwait(false);
@@ -330,6 +339,11 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// Enables entity partitioning when creating queues and topics.
     /// </summary>
     public bool EnablePartitioning { get; set; }
+
+    /// <summary>
+    /// Enables sessions on the queue or topic
+    /// </summary>
+    public bool EnableSessions { get; set; }
 
     /// <summary>
     /// Controls whether dead-lettered messages are automatically forwarded to the configured error queue.
