@@ -130,4 +130,20 @@ public class QueueCreatorTests
 
         Approver.Verify(output);
     }
+
+    [Test]
+    public async Task Should_set_RequiresSession_to_true_when_setting_enable_session()
+    {
+        var transport = new AzureServiceBusTransport("UseDevelopmentEmulator=true", TopicTopology.Default);
+        transport.EnableSessions = true;
+
+        var recordingClient = new RecordingServiceBusAdministrationClient();
+        var creator = new QueueCreator(transport);
+
+        await creator.Create(recordingClient, ["test-queue"], null);
+
+        var output = recordingClient.ToString();
+
+        Approver.Verify(output);
+    }
 }

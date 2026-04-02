@@ -284,6 +284,11 @@ public partial class AzureServiceBusTransport : TransportDefinition
     public bool EnablePartitioning { get; set; }
 
     /// <summary>
+    /// Enables sessions on the queue or topic
+    /// </summary>
+    public bool EnableSessions { get; set; }
+
+    /// <summary>
     /// Specifies the multiplier to apply to the maximum concurrency value to calculate the prefetch count.
     /// </summary>
     public int PrefetchMultiplier

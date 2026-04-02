@@ -22,7 +22,9 @@ class QueueCreator(AzureServiceBusTransport transportSettings)
                 LockDuration = TimeSpan.FromMinutes(5),
                 MaxDeliveryCount = transportSettings.MaxDeliveryCount,
                 MaxSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
-                EnablePartitioning = transportSettings.EnablePartitioning
+                EnablePartitioning = transportSettings.EnablePartitioning,
+                RequiresSession = transportSettings.EnableSessions,
+                // TODO: enabledeadletteringonmessagexpiry
             };
 
             // Only apply AutoDeleteOnIdle if an instance name is provided to avoid unintentional deletions
