@@ -71,7 +71,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
         {
             throw new Exception("The transport has not been initialized. Either provide a connection string or a fully qualified namespace and token credential.");
         }
-
         Topology.Validate();
         HierarchyNamespaceOptions.ValidateDestinations(receivers.Select(x => x.ReceiveAddress.ToString()));
 
@@ -91,15 +90,17 @@ public partial class AzureServiceBusTransport : TransportDefinition
             var receiveClient = TokenCredential != null
                 ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, receiveClientOptions)
                 : new ServiceBusClient(ConnectionString, receiveClientOptions);
+
             return (receiver, receiveClient);
         }).ToArray();
 
+        var clientId = Guid.NewGuid();
         var defaultClientOptions = new ServiceBusClientOptions
         {
             TransportType = transportType,
             // for the default client we never want things to automatically use cross entity transaction
             EnableCrossEntityTransactions = false,
-            Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{hostSettings.Name}-{Guid.NewGuid()}"
+            Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{hostSettings.Name}-{clientId}"
         };
         ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
         ApplyWebProxyIfNeeded(defaultClientOptions);
@@ -107,13 +108,42 @@ public partial class AzureServiceBusTransport : TransportDefinition
             ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
             : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
+        ServiceBusClient? forwardingClient = null;
+        if (EnableSessions)
+        {
+            if (receivers.Length == 0)
+            {
+                throw new Exception("Cannot use a session-enabled receiver in send-only mode");
+            }
+
+            if (TransportTransactionMode == TransportTransactionMode.None)
+            {
+                throw new Exception("TransportTransactionMode.None is not supported for session-enabled receivers");
+            }
+
+            //Outbox acceptance test fails because subscribers are on ReceiveOnly transaction mode and enableCrossEntityTransactions is true only when SendsAtomicWithReceive is true.
+            //This forms a separate  client options for the forwarding client which always uses cross entity transactions for the subscription bridge
+            var forwardingClientOptions = new ServiceBusClientOptions
+            {
+                TransportType = defaultClientOptions.TransportType,
+                EnableCrossEntityTransactions = true,
+                Identifier = $"Client-Forwarder-to-{receivers.First().ReceiveAddress}-{clientId}"
+            };
+            ApplyRetryPolicyOptionsIfNeeded(forwardingClientOptions);
+            ApplyWebProxyIfNeeded(forwardingClientOptions);
+            forwardingClient = TokenCredential != null
+                ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, forwardingClientOptions)
+                : new ServiceBusClient(ConnectionString, forwardingClientOptions);
+        }
+
         var administrationConnectionString = IsUsingDevelopmentEmulator(ConnectionString)
             ? InjectEmulatorAdminPort(ConnectionString!)
             : ConnectionString!;
         var administrationClient = TokenCredential != null
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
             : new ServiceBusAdministrationClient(administrationConnectionString);
-        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient, DestinationManager);
+
+        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, forwardingClient, administrationClient, DestinationManager);
 
         if (hostSettings.SetupInfrastructure)
         {
@@ -225,12 +255,24 @@ public partial class AzureServiceBusTransport : TransportDefinition
     }
 
     /// <inheritdoc />
-    public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes() =>
-    [
-        TransportTransactionMode.None,
-        TransportTransactionMode.ReceiveOnly,
-        TransportTransactionMode.SendsAtomicWithReceive
-    ];
+    public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes()
+    {
+        if (EnableSessions)
+        {
+            return
+            [
+                TransportTransactionMode.ReceiveOnly,
+                TransportTransactionMode.SendsAtomicWithReceive
+            ];
+        }
+
+        return
+        [
+            TransportTransactionMode.None,
+            TransportTransactionMode.ReceiveOnly,
+            TransportTransactionMode.SendsAtomicWithReceive
+        ];
+    }
 
     /// <summary>
     /// Gets the topic topology used.
