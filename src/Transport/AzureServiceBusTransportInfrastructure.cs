@@ -94,6 +94,28 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         string receiveAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
         SubQueue subQueue = ToSubQueue(receiveSettings.ReceiveAddress);
 
+        if (transportSettings.EnableSessions)
+        {
+            return new SessionsEnabledMessagePump(receiveClient,
+                transportSettings,
+                receiveAddress,
+                receiveSettings,
+                hostSettings.CriticalErrorAction,
+                receiveSettings.UsePublishSubscribe
+                    ? transportSettings.Topology.CreateSubscriptionManager(new SubscriptionManagerCreationOptions
+                    {
+                        AdministrationClient = administrationClient,
+                        Client = defaultClient,
+                        EnablePartitioning = transportSettings.EnablePartitioning,
+                        EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
+                        MaxDeliveryCount = transportSettings.MaxDeliveryCount,
+                        SetupInfrastructure = hostSettings.SetupInfrastructure,
+                        SubscribingQueueName = receiveAddress
+                    }, hostSettings)
+                    : null,
+                subQueue);
+        }
+
         return new MessagePump(
             receiveClient,
             transportSettings,
