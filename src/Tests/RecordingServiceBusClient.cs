@@ -23,6 +23,12 @@ public class RecordingServiceBusClient(StringBuilder builder = null) : ServiceBu
             return Task.CompletedTask;
         }
 
+        public override Task DeleteRuleAsync(string ruleName, CancellationToken cancellationToken = default)
+        {
+            builder.AppendLine($"DeleteRule(topicName: '{topicName}', subscriptionName: '{subscriptionName}', ruleName: '{ruleName}')");
+            return Task.CompletedTask;
+        }
+
         public override Task CreateRuleAsync(string ruleName, RuleFilter filter, CancellationToken cancellationToken = default)
         {
             builder.AppendLine($"RuleFilter(topicName: '{topicName}', subscriptionName: '{subscriptionName}', , ruleName: '{ruleName}'): {JsonSerializer.Serialize(filter, SkdJsonSerializerContext.PolymorphicOptions)}");

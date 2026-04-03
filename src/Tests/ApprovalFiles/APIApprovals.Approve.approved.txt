@@ -173,19 +173,53 @@ namespace NServiceBus.Transport.AzureServiceBus
         public MigrationTopologyOptionsValidator() { }
         public Microsoft.Extensions.Options.ValidateOptionsResult Validate(string? name, NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions options) { }
     }
+    public sealed class MultiplexingOptions
+    {
+        public MultiplexingOptions() { }
+        public NServiceBus.Transport.AzureServiceBus.PublishMultiplexingMode Mode { get; set; }
+    }
+    public enum PublishMultiplexingMode
+    {
+        NotMultiplexed = 0,
+        MultiplexedUsingCorrelationFilter = 1,
+        MultiplexedUsingSqlFilter = 2,
+    }
     public static class QueueAddressQualifier
     {
         public const string DeadLetterQueue = "$DeadLetterQueue";
+    }
+    [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscriptionEntryConverter))]
+    public readonly struct SubscriptionEntry : System.IEquatable<NServiceBus.Transport.AzureServiceBus.SubscriptionEntry>
+    {
+        public SubscriptionEntry(string Topic, NServiceBus.Transport.AzureServiceBus.SubscriptionFilterMode FilterMode = 2) { }
+        public NServiceBus.Transport.AzureServiceBus.SubscriptionFilterMode FilterMode { get; init; }
+        public string Topic { get; init; }
+        public static NServiceBus.Transport.AzureServiceBus.SubscriptionEntry op_Implicit(string topic) { }
+    }
+    public enum SubscriptionFilterMode
+    {
+        CorrelationFilter = 0,
+        SqlFilter = 1,
+        CatchAll = 2,
+    }
+    public sealed class SubscriptionOptions
+    {
+        public SubscriptionOptions() { }
+        public NServiceBus.Transport.AzureServiceBus.SubscriptionFilterMode FilterMode { get; set; }
     }
     public sealed class TopicPerEventTopology : NServiceBus.TopicTopology
     {
         protected override string GetPublishDestinationCore(string eventTypeFullName) { }
         public void OverrideSubscriptionNameFor(string queueName, string subscriptionName) { }
         public void PublishTo(System.Type eventType, string topicName) { }
+        public void PublishTo(System.Type eventType, string topicName, System.Action<NServiceBus.Transport.AzureServiceBus.MultiplexingOptions> configure) { }
         public void PublishTo<TEventType>(string topicName) { }
+        public void PublishTo<TEventType>(string topicName, System.Action<NServiceBus.Transport.AzureServiceBus.MultiplexingOptions> configure) { }
         public void SubscribeTo(System.Type eventType, System.Type eventTypeImplementation) { }
         public void SubscribeTo(System.Type eventType, string topicName) { }
+        public void SubscribeTo(System.Type eventType, string topicName, System.Action<NServiceBus.Transport.AzureServiceBus.SubscriptionOptions> configure) { }
         public void SubscribeTo<TEventType>(string topicName) { }
+        public void SubscribeTo<TEventType>(string topicName, System.Action<NServiceBus.Transport.AzureServiceBus.SubscriptionOptions> configure) { }
         public void SubscribeTo<TEventType, TEventTypeImplementation>()
             where TEventTypeImplementation : TEventType { }
     }
@@ -194,6 +228,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     public class TopologyOptions
     {
         public TopologyOptions() { }
+        public System.Collections.Generic.Dictionary<string, NServiceBus.Transport.AzureServiceBus.MultiplexingOptions> MultiplexingPublishOptionsMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         public System.Collections.Generic.Dictionary<string, string> PublishedEventToTopicsMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusQueues]
@@ -201,7 +236,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         public System.Collections.Generic.Dictionary<string, string> QueueNameToSubscriptionNameMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscribedEventToTopicsMapConverter))]
-        public System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>> SubscribedEventToTopicsMap { get; init; }
+        public System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<NServiceBus.Transport.AzureServiceBus.SubscriptionEntry>> SubscribedEventToTopicsMap { get; init; }
         public bool ThrowIfUnmappedEventTypes { get; set; }
     }
     public sealed class TopologyOptionsDisableValidationValidator : Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions>
@@ -217,12 +252,17 @@ namespace NServiceBus.Transport.AzureServiceBus
         public TopologyOptionsSerializationContext() { }
         public TopologyOptionsSerializationContext(System.Text.Json.JsonSerializerOptions options) { }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<bool> Boolean { get; }
-        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>>> DictionaryStringHashSetString { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<NServiceBus.Transport.AzureServiceBus.SubscriptionEntry>>> DictionaryStringHashSetSubscriptionEntry { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<string, NServiceBus.Transport.AzureServiceBus.MultiplexingOptions>> DictionaryStringMultiplexingOptions { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<string, string>> DictionaryStringString { get; }
         protected override System.Text.Json.JsonSerializerOptions? GeneratedSerializerOptions { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.HashSet<string>> HashSetString { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.HashSet<NServiceBus.Transport.AzureServiceBus.SubscriptionEntry>> HashSetSubscriptionEntry { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions> MigrationTopologyOptions { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.MultiplexingOptions> MultiplexingOptions { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.PublishMultiplexingMode> PublishMultiplexingMode { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<string> String { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.SubscriptionEntry> SubscriptionEntry { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.TopologyOptions> TopologyOptions { get; }
         public static NServiceBus.Transport.AzureServiceBus.TopologyOptionsSerializationContext Default { get; }
         public override System.Text.Json.Serialization.Metadata.JsonTypeInfo? GetTypeInfo(System.Type type) { }

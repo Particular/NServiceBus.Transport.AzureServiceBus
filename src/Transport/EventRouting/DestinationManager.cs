@@ -62,25 +62,10 @@ class DestinationManager(HierarchyNamespaceOptions options)
         return enclosedMessageTypesToExcluded.GetOrAdd(enclosedMessageTypes,
             static (key, hierarchyNamespaceOptions) =>
             {
-                var enclosedMessageTypesSpan = key.AsSpan();
-
-                foreach (var messageTypeRange in enclosedMessageTypesSpan.Split(EnclosedMessageTypeSeparator))
+                foreach (var messageType in EnclosedMessageTypesParser.Parse(key))
                 {
-                    var messageTypeSpan = enclosedMessageTypesSpan[messageTypeRange].Trim();
-
-                    int lastIndexOf = messageTypeSpan.LastIndexOf(']');
-                    int firstIndexOfComma = messageTypeSpan.IndexOf(',');
-                    if (lastIndexOf > 0)
-                    {
-                        messageTypeSpan = messageTypeSpan[..lastIndexOf];
-                    }
-                    else if (firstIndexOfComma > 0)
-                    {
-                        messageTypeSpan = messageTypeSpan[..firstIndexOfComma];
-                    }
-
                     var alternativeLookup = hierarchyNamespaceOptions.MessageTypeFullNamesToExclude.GetAlternateLookup<ReadOnlySpan<char>>();
-                    if (alternativeLookup.Contains(messageTypeSpan))
+                    if (alternativeLookup.Contains(messageType.AsSpan()))
                     {
                         return true;
                     }
@@ -90,6 +75,5 @@ class DestinationManager(HierarchyNamespaceOptions options)
             }, options);
     }
 
-    static ReadOnlySpan<char> EnclosedMessageTypeSeparator => ";".AsSpan();
     readonly ConcurrentDictionary<string, bool> enclosedMessageTypesToExcluded = new();
 }

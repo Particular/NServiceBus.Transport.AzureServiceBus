@@ -27,7 +27,7 @@ public class TopologyOptions
     /// </summary>
     [AzureServiceBusTopics]
     [JsonConverter(typeof(SubscribedEventToTopicsMapConverter))]
-    public Dictionary<string, HashSet<string>> SubscribedEventToTopicsMap
+    public Dictionary<string, HashSet<SubscriptionEntry>> SubscribedEventToTopicsMap
     {
         get;
         init => field = value ?? [];
@@ -39,6 +39,15 @@ public class TopologyOptions
     [AzureServiceBusQueues]
     [AzureServiceBusSubscriptions]
     public Dictionary<string, string> QueueNameToSubscriptionNameMap
+    {
+        get;
+        init => field = value ?? [];
+    } = [];
+
+    /// <summary>
+    /// Maps event type full names to multiplexing options for publishing.
+    /// </summary>
+    public Dictionary<string, MultiplexingOptions> MultiplexingPublishOptionsMap
     {
         get;
         init => field = value ?? [];
