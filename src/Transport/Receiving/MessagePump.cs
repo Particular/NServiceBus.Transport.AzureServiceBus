@@ -123,14 +123,14 @@ sealed class MessagePump(
 
             // Deliberately not using the cancellation token to make sure we abandon the message even when the
             // cancellation token is already set.
-            if (await arg.TrySafeCompleteMessage(message, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
+            if (await arg.TrySafeCompleteMessage(message, nativeMessageId, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
             {
                 return;
             }
 
             // Deliberately not using the cancellation token to make sure we abandon the message even when the
             // cancellation token is already set.
-            if (await arg.TrySafeAbandonMessage(message, TransactionMode, CancellationToken.None).ConfigureAwait(false))
+            if (await arg.TrySafeAbandonMessage(message, nativeMessageId, TransactionMode, CancellationToken.None).ConfigureAwait(false))
             {
                 return;
             }
@@ -263,6 +263,7 @@ sealed class MessagePump(
             await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
             await processMessageEventArgs.SafeCompleteMessage(message,
+                    nativeMessageId,
                     TransactionMode,
                     azureServiceBusTransaction,
                     messagesToBeCompleted,
@@ -287,6 +288,7 @@ sealed class MessagePump(
                     if (result == ErrorHandleResult.Handled)
                     {
                         await processMessageEventArgs.SafeCompleteMessage(message,
+                                nativeMessageId,
                                 TransactionMode,
                                 azureServiceBusTransaction,
                                 messagesToBeCompleted,
@@ -300,6 +302,7 @@ sealed class MessagePump(
                 if (result == ErrorHandleResult.RetryRequired)
                 {
                     await processMessageEventArgs.SafeAbandonMessage(message,
+                            nativeMessageId,
                             TransactionMode,
                             cancellationToken: messageProcessingCancellationToken)
                         .ConfigureAwait(false);
@@ -310,15 +313,17 @@ sealed class MessagePump(
                 Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
                 await processMessageEventArgs.SafeAbandonMessage(message,
+                        nativeMessageId,
                         TransactionMode,
                         cancellationToken: messageProcessingCancellationToken)
                     .ConfigureAwait(false);
             }
             catch (Exception onErrorEx) when (!onErrorEx.IsCausedBy(messageProcessingCancellationToken))
             {
-                criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{message.MessageId}`", onErrorEx, messageProcessingCancellationToken);
+                criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{nativeMessageId}`", onErrorEx, messageProcessingCancellationToken);
 
                 await processMessageEventArgs.SafeAbandonMessage(message,
+                        nativeMessageId,
                         TransactionMode,
                         cancellationToken: messageProcessingCancellationToken)
                     .ConfigureAwait(false);
