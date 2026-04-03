@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Threading.Tasks;
 using EventRouting;
+using NServiceBus.Transport.AzureServiceBus.EventRouting;
 using NUnit.Framework;
 using Particular.Approvals;
 using Unicast.Messages;
@@ -148,6 +149,21 @@ public class TopicPerEventTopologyTests
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent))], new Extensibility.ContextBag());
 
         Approver.Verify(builder.ToString());
+    }
+
+    [Test]
+    public void Should_preserve_hierarchy_options_when_topology_is_assigned_after_transport_hierarchy_configuration()
+    {
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
+        {
+            HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" }
+        };
+
+        var topology = TopicTopology.Default;
+
+        transport.Topology = topology;
+
+        Assert.That(topology.Options.HierarchyNamespaceOptions.HierarchyNamespace, Is.EqualTo("my-hierarchy"));
     }
 
     class MyEvent;

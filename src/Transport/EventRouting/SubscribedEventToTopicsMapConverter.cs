@@ -2,16 +2,16 @@ namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<string, HashSet<string>>>
+sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<string, HashSet<SubscriptionEntry>>>
 {
     public override bool CanConvert(Type typeToConvert) =>
-        typeof(Dictionary<string, HashSet<string>>).IsAssignableFrom(typeToConvert);
+        typeToConvert == typeof(Dictionary<string, HashSet<SubscriptionEntry>>) ||
+        typeToConvert == typeof(Dictionary<string, HashSet<string>>);
 
-    public override Dictionary<string, HashSet<string>> Read(ref Utf8JsonReader reader, Type typeToConvert,
+    public override Dictionary<string, HashSet<SubscriptionEntry>> Read(ref Utf8JsonReader reader, Type typeToConvert,
         JsonSerializerOptions options)
     {
         if (reader.TokenType != JsonTokenType.StartObject)
@@ -19,7 +19,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
             throw new JsonException("Expected StartObject token");
         }
 
-        var map = new Dictionary<string, HashSet<string>>();
+        var map = new Dictionary<string, HashSet<SubscriptionEntry>>();
 
         while (reader.Read())
         {
@@ -39,35 +39,87 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
             if (reader.TokenType == JsonTokenType.String)
             {
                 string value = reader.GetString() ?? throw new JsonException("Value cannot be null");
-                map[key] = [value];
+                map[key] = [new SubscriptionEntry(value, SubscriptionFilterMode.CatchAll)];
             }
             else if (reader.TokenType == JsonTokenType.StartArray)
             {
-                var set = new HashSet<string>();
+                var set = new HashSet<SubscriptionEntry>();
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                 {
                     if (reader.TokenType == JsonTokenType.String)
                     {
-                        _ = set.Add(reader.GetString() ?? throw new JsonException("Value cannot be null"));
+                        string value = reader.GetString() ?? throw new JsonException("Value cannot be null");
+                        _ = set.Add(new SubscriptionEntry(value, SubscriptionFilterMode.CatchAll));
+                    }
+                    else if (reader.TokenType == JsonTokenType.StartObject)
+                    {
+                        SubscriptionEntry entry = ReadSubscriptionEntry(ref reader);
+                        _ = set.Add(entry);
                     }
                     else
                     {
-                        throw new JsonException("Expected String token");
+                        throw new JsonException("Expected String or StartObject token");
                     }
                 }
 
                 map[key] = set;
             }
+            else if (reader.TokenType == JsonTokenType.StartObject)
+            {
+                SubscriptionEntry entry = ReadSubscriptionEntry(ref reader);
+                map[key] = [entry];
+            }
             else
             {
-                throw new JsonException("Expected String or StartArray token");
+                throw new JsonException("Expected String, StartArray, or StartObject token");
             }
         }
 
         return map;
     }
 
-    public override void Write(Utf8JsonWriter writer, Dictionary<string, HashSet<string>> value,
+    SubscriptionEntry ReadSubscriptionEntry(ref Utf8JsonReader reader)
+    {
+        string? topicName = null;
+        SubscriptionFilterMode filterMode = SubscriptionFilterMode.CatchAll;
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                break;
+            }
+
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                continue;
+            }
+
+            string propertyName = reader.GetString() ?? throw new JsonException("Property name cannot be null");
+            _ = reader.Read();
+
+            switch (propertyName)
+            {
+                case "Topic":
+                    topicName = reader.GetString() ?? throw new JsonException("Topic cannot be null");
+                    break;
+                case "FilterMode":
+                    filterMode = Enum.Parse<SubscriptionFilterMode>(reader.GetString() ?? throw new JsonException("FilterMode cannot be null"));
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        if (topicName is null)
+        {
+            throw new JsonException("Topic is required");
+        }
+
+        return new SubscriptionEntry(topicName, filterMode);
+    }
+
+    public override void Write(Utf8JsonWriter writer, Dictionary<string, HashSet<SubscriptionEntry>> value,
         JsonSerializerOptions options)
     {
         if (value == null)
@@ -78,7 +130,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
 
         writer.WriteStartObject();
 
-        foreach (KeyValuePair<string, HashSet<string>> pair in value)
+        foreach (KeyValuePair<string, HashSet<SubscriptionEntry>> pair in value)
         {
             writer.WritePropertyName(pair.Key);
 
@@ -89,20 +141,38 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
 
             if (pair.Value.Count == 1)
             {
-                writer.WriteStringValue(pair.Value.ElementAt(0));
+                var entry = pair.Value.GetEnumerator();
+                entry.MoveNext();
+                WriteSubscriptionEntry(writer, entry.Current);
             }
             else
             {
                 writer.WriteStartArray();
-                foreach (string item in pair.Value)
+                foreach (var entry in pair.Value)
                 {
-                    writer.WriteStringValue(item);
+                    WriteSubscriptionEntry(writer, entry);
                 }
-
                 writer.WriteEndArray();
             }
         }
 
         writer.WriteEndObject();
+    }
+
+    void WriteSubscriptionEntry(Utf8JsonWriter writer, SubscriptionEntry entry)
+    {
+        if (entry.FilterMode == SubscriptionFilterMode.CatchAll)
+        {
+            writer.WriteStringValue(entry.Topic);
+        }
+        else
+        {
+            writer.WriteStartObject();
+            writer.WritePropertyName("Topic");
+            writer.WriteStringValue(entry.Topic);
+            writer.WritePropertyName("FilterMode");
+            writer.WriteStringValue(entry.FilterMode.ToString());
+            writer.WriteEndObject();
+        }
     }
 }
