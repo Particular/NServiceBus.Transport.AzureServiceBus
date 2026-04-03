@@ -45,10 +45,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
         [Test]
         public void Should_use_nservicebus_message_id_header_when_broker_message_id_is_missing()
         {
-            var message = ServiceBusModelFactory.ServiceBusReceivedMessage(properties: new Dictionary<string, object>
-            {
-                [Headers.MessageId] = "NServiceBusId"
-            });
+            var message = ServiceBusModelFactory.ServiceBusReceivedMessage(properties: new Dictionary<string, object> { [Headers.MessageId] = "NServiceBusId" });
 
             var messageId = message.GetMessageId();
 
@@ -56,11 +53,23 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
         }
 
         [Test]
-        public void Should_derive_message_id_from_enqueued_time_and_sequence_number_when_ids_are_missing()
+        public void Should_derive_message_id_from_enqueued_time_and_sequence_number_if_not_set()
         {
             var enqueuedTime = DateTimeOffset.UtcNow;
             const long sequenceNumber = 42;
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(enqueuedTime: enqueuedTime, sequenceNumber: sequenceNumber);
+
+            var messageId = message.GetMessageId();
+
+            Assert.That(messageId, Is.EqualTo(GuidHelper.CreateVersion8(enqueuedTime, sequenceNumber).ToString()));
+        }
+
+        [Test]
+        public void Should_derive_message_id_from_enqueued_time_and_sequence_number_if_blank_space()
+        {
+            var enqueuedTime = DateTimeOffset.UtcNow;
+            const long sequenceNumber = 42;
+            var message = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "   ", enqueuedTime: enqueuedTime, sequenceNumber: sequenceNumber);
 
             var messageId = message.GetMessageId();
 
