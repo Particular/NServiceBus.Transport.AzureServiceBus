@@ -40,12 +40,17 @@ static class MessageExtensions
 
     public static string GetMessageId(this ServiceBusReceivedMessage message)
     {
-        if (string.IsNullOrEmpty(message.MessageId))
+        if (!string.IsNullOrWhiteSpace(message.MessageId))
         {
-            throw new Exception("Azure Service Bus MessageId is required, but was not found. Ensure to assign MessageId to all Service Bus messages.");
+            return message.MessageId;
         }
 
-        return message.MessageId;
+        if (message.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId) && messageId is not null)
+        {
+            return messageId.ToString()!;
+        }
+
+        return GuidHelper.CreateVersion8(message.EnqueuedTime, message.SequenceNumber).ToString();
     }
 
     public static BinaryData GetBody(this ServiceBusReceivedMessage message)
