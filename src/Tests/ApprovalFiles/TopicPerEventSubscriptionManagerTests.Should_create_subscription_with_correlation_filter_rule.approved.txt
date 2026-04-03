@@ -1,0 +1,43 @@
+CreateSubscriptionOptions: {
+  "LockDuration": "00:05:00",
+  "RequiresSession": false,
+  "DefaultMessageTimeToLive": "10675199.02:48:05.4775807",
+  "AutoDeleteOnIdle": "10675199.02:48:05.4775807",
+  "DeadLetteringOnMessageExpiration": false,
+  "EnableDeadLetteringOnFilterEvaluationExceptions": false,
+  "TopicName": "MyTopic",
+  "SubscriptionName": "MySubscriptionName",
+  "MaxDeliveryCount": 2147483647,
+  "Status": {},
+  "ForwardTo": "SubscribingQueue",
+  "ForwardDeadLetteredMessagesTo": null,
+  "EnableBatchedOperations": true,
+  "UserMetadata": "SubscribingQueue"
+}
+CreateRuleOptions: {
+  "Filter": {
+    "filter-type": "false",
+    "SqlExpression": "1=0",
+    "Parameters": {}
+  },
+  "Action": null,
+  "Name": "$default"
+}
+CreateRuleOptions(topicName: 'MyTopic', subscriptionName: 'MySubscriptionName'): {
+  "Filter": {
+    "filter-type": "correlation",
+    "CorrelationId": null,
+    "MessageId": null,
+    "To": null,
+    "ReplyTo": null,
+    "Subject": null,
+    "SessionId": null,
+    "ReplyToSessionId": null,
+    "ContentType": null,
+    "ApplicationProperties": {
+      "NServiceBus.Transport.AzureServiceBus.Tests.TopicPerEventSubscriptionManagerTests\u002BMyEvent1": true
+    }
+  },
+  "Action": null,
+  "Name": "Rule-db44afc39bdcd4d7"
+}

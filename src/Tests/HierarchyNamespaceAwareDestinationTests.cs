@@ -1,6 +1,7 @@
 namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
 using EventRouting;
+using NServiceBus.Transport.AzureServiceBus.EventRouting;
 using NUnit.Framework;
 
 [TestFixture]

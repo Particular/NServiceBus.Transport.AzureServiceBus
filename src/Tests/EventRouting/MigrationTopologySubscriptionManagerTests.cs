@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using EventRouting;
 using Extensibility;
+using NServiceBus.Transport.AzureServiceBus.EventRouting;
 using NUnit.Framework;
 using Particular.Approvals;
 using Unicast.Messages;
