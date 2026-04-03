@@ -11,7 +11,7 @@ sealed class SubscriptionEntryConverter : JsonConverter<SubscriptionEntry>
         if (reader.TokenType == JsonTokenType.String)
         {
             string topic = reader.GetString() ?? throw new JsonException("Topic cannot be null");
-            return new SubscriptionEntry(topic, SubscriptionFilterMode.CatchAll);
+            return new SubscriptionEntry(topic, SubscriptionFilterMode.Default);
         }
 
         if (reader.TokenType != JsonTokenType.StartObject)
@@ -20,7 +20,7 @@ sealed class SubscriptionEntryConverter : JsonConverter<SubscriptionEntry>
         }
 
         string? topicName = null;
-        SubscriptionFilterMode filterMode = SubscriptionFilterMode.CatchAll;
+        SubscriptionFilterMode filterMode = SubscriptionFilterMode.Default;
 
         while (reader.Read())
         {
@@ -60,7 +60,7 @@ sealed class SubscriptionEntryConverter : JsonConverter<SubscriptionEntry>
 
     public override void Write(Utf8JsonWriter writer, SubscriptionEntry value, JsonSerializerOptions options)
     {
-        if (value.FilterMode == SubscriptionFilterMode.CatchAll)
+        if (value.FilterMode == SubscriptionFilterMode.Default)
         {
             writer.WriteStringValue(value.Topic);
         }

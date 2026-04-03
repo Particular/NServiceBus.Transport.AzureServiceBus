@@ -119,11 +119,11 @@ public sealed class TopicPerEventTopology : TopicTopology
         var eventTypeFullName = eventType.FullName;
         if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entries))
         {
-            entries.Add(topicName);
+            entries.Add(new SubscriptionEntry(topicName, SubscriptionFilterMode.Default));
         }
         else
         {
-            Options.SubscribedEventToTopicsMap[eventTypeFullName] = [topicName];
+            Options.SubscribedEventToTopicsMap[eventTypeFullName] = [new SubscriptionEntry(topicName, SubscriptionFilterMode.Default)];
         }
     }
 
