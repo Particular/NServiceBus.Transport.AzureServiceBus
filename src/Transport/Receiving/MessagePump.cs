@@ -110,17 +110,15 @@ sealed class MessagePump(
     async Task OnProcessMessage(ProcessMessageEventArgs arg)
 #pragma warning restore PS0018
     {
-        string nativeMessageId;
+        var message = arg.Message;
+        var nativeMessageId = message.GetMessageId();
         Dictionary<string, string?> headers;
         BinaryData body;
-        var message = arg.Message;
 
         circuitBreaker!.Success();
 
         try
         {
-            nativeMessageId = message.GetMessageId();
-
             // Deliberately not using the cancellation token to make sure we abandon the message even when the
             // cancellation token is already set.
             if (await arg.TrySafeCompleteMessage(message, nativeMessageId, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
