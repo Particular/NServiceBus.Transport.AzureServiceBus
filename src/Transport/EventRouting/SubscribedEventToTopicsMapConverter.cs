@@ -39,7 +39,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
             if (reader.TokenType == JsonTokenType.String)
             {
                 string value = reader.GetString() ?? throw new JsonException("Value cannot be null");
-                map[key] = [new SubscriptionEntry(value, SubscriptionFilterMode.CatchAll)];
+                map[key] = [new SubscriptionEntry(value, SubscriptionFilterMode.Default)];
             }
             else if (reader.TokenType == JsonTokenType.StartArray)
             {
@@ -49,7 +49,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
                     if (reader.TokenType == JsonTokenType.String)
                     {
                         string value = reader.GetString() ?? throw new JsonException("Value cannot be null");
-                        _ = set.Add(new SubscriptionEntry(value, SubscriptionFilterMode.CatchAll));
+                        _ = set.Add(new SubscriptionEntry(value, SubscriptionFilterMode.Default));
                     }
                     else if (reader.TokenType == JsonTokenType.StartObject)
                     {
@@ -81,7 +81,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
     SubscriptionEntry ReadSubscriptionEntry(ref Utf8JsonReader reader)
     {
         string? topicName = null;
-        SubscriptionFilterMode filterMode = SubscriptionFilterMode.CatchAll;
+        SubscriptionFilterMode filterMode = SubscriptionFilterMode.Default;
 
         while (reader.Read())
         {
@@ -161,7 +161,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
 
     void WriteSubscriptionEntry(Utf8JsonWriter writer, SubscriptionEntry entry)
     {
-        if (entry.FilterMode == SubscriptionFilterMode.CatchAll)
+        if (entry.FilterMode == SubscriptionFilterMode.Default)
         {
             writer.WriteStringValue(entry.Topic);
         }

@@ -8,5 +8,5 @@ public sealed class MultiplexingOptions
     /// <summary>
     /// Controls whether multiplexing is used and which publish-side behavior applies.
     /// </summary>
-    public PublishMultiplexingMode Mode { get; set; } = PublishMultiplexingMode.NotMultiplexed;
+    public PublishMultiplexingMode Mode { get; set; } = PublishMultiplexingMode.Default;
 }

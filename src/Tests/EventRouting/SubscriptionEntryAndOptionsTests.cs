@@ -9,14 +9,14 @@ using NUnit.Framework;
 public class SubscriptionEntryTests
 {
     [Test]
-    public void Implicit_conversion_from_string_creates_catch_all_entry()
+    public void Implicit_conversion_from_string_creates_default_entry()
     {
         SubscriptionEntry entry = "MyTopic";
 
         Assert.Multiple(() =>
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
-            Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.CatchAll));
+            Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
         });
     }
 
@@ -33,11 +33,11 @@ public class SubscriptionEntryTests
     }
 
     [Test]
-    public void Default_filter_mode_is_catch_all()
+    public void Default_filter_mode_is_default()
     {
         var entry = new SubscriptionEntry("MyTopic");
 
-        Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.CatchAll));
+        Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
     }
 
     [Test]
@@ -46,12 +46,14 @@ public class SubscriptionEntryTests
         var correlationEntry = new SubscriptionEntry("Topic1", SubscriptionFilterMode.CorrelationFilter);
         var sqlEntry = new SubscriptionEntry("Topic2", SubscriptionFilterMode.SqlFilter);
         var catchAllEntry = new SubscriptionEntry("Topic3", SubscriptionFilterMode.CatchAll);
+        var defaultEntry = new SubscriptionEntry("Topic4", SubscriptionFilterMode.Default);
 
         Assert.Multiple(() =>
         {
             Assert.That(correlationEntry.FilterMode, Is.EqualTo(SubscriptionFilterMode.CorrelationFilter));
             Assert.That(sqlEntry.FilterMode, Is.EqualTo(SubscriptionFilterMode.SqlFilter));
             Assert.That(catchAllEntry.FilterMode, Is.EqualTo(SubscriptionFilterMode.CatchAll));
+            Assert.That(defaultEntry.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
         });
     }
 }
@@ -64,7 +66,7 @@ public class MultiplexingOptionsTests
     {
         var options = new MultiplexingOptions();
 
-        Assert.That(options.Mode, Is.EqualTo(PublishMultiplexingMode.NotMultiplexed));
+        Assert.That(options.Mode, Is.EqualTo(PublishMultiplexingMode.Default));
     }
 
     [Test]
@@ -92,7 +94,15 @@ public class SubscriptionOptionsTests
     {
         var options = new SubscriptionOptions();
 
-        Assert.That(options.FilterMode, Is.EqualTo(SubscriptionFilterMode.CatchAll));
+        Assert.That(options.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
+    }
+
+    [Test]
+    public void Can_set_default_filter_mode()
+    {
+        var options = new SubscriptionOptions { FilterMode = SubscriptionFilterMode.Default };
+
+        Assert.That(options.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
     }
 
     [Test]
@@ -116,7 +126,7 @@ public class SubscriptionOptionsTests
 public class SubscriptionEntryJsonConverterTests
 {
     [Test]
-    public void String_deserializes_to_catch_all_entry()
+    public void String_deserializes_to_default_entry()
     {
         const string json = "\"MyTopic\"";
 
@@ -125,18 +135,28 @@ public class SubscriptionEntryJsonConverterTests
         Assert.Multiple(() =>
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
-            Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.CatchAll));
+            Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
         });
     }
 
     [Test]
-    public void Catch_all_serializes_to_string()
+    public void Default_serializes_to_string()
+    {
+        var entry = new SubscriptionEntry("MyTopic", SubscriptionFilterMode.Default);
+
+        var json = JsonSerializer.Serialize(entry);
+
+        Assert.That(json, Is.EqualTo("\"MyTopic\""));
+    }
+
+    [Test]
+    public void Catch_all_serializes_to_object()
     {
         var entry = new SubscriptionEntry("MyTopic", SubscriptionFilterMode.CatchAll);
 
         var json = JsonSerializer.Serialize(entry);
 
-        Assert.That(json, Is.EqualTo("\"MyTopic\""));
+        Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"FilterMode\":\"CatchAll\"}"));
     }
 
     [Test]
@@ -184,6 +204,20 @@ public class SubscriptionEntryJsonConverterTests
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
             Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.SqlFilter));
+        });
+    }
+
+    [Test]
+    public void Deserializes_default_filter_object()
+    {
+        const string json = "{\"Topic\":\"MyTopic\",\"FilterMode\":\"Default\"}";
+
+        var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
+            Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
         });
     }
 }

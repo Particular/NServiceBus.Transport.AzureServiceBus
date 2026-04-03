@@ -6,10 +6,10 @@ using System.Text.Json.Serialization;
 /// Represents a subscription entry with topic and filter mode information.
 /// </summary>
 [JsonConverter(typeof(SubscriptionEntryConverter))]
-public readonly record struct SubscriptionEntry(string Topic, SubscriptionFilterMode FilterMode = SubscriptionFilterMode.CatchAll)
+public readonly record struct SubscriptionEntry(string Topic, SubscriptionFilterMode FilterMode = SubscriptionFilterMode.Default)
 {
     /// <summary>
-    /// Implicitly converts a string to a SubscriptionEntry with CatchAll filter mode.
+    /// Implicitly converts a string to a SubscriptionEntry with Default filter mode.
     /// </summary>
-    public static implicit operator SubscriptionEntry(string topic) => new(topic, SubscriptionFilterMode.CatchAll);
+    public static implicit operator SubscriptionEntry(string topic) => new(topic, SubscriptionFilterMode.Default);
 }

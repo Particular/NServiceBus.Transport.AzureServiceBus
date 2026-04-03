@@ -8,5 +8,5 @@ public sealed class SubscriptionOptions
     /// <summary>
     /// The filter mode to use for subscription filtering.
     /// </summary>
-    public SubscriptionFilterMode FilterMode { get; set; } = SubscriptionFilterMode.CatchAll;
+    public SubscriptionFilterMode FilterMode { get; set; } = SubscriptionFilterMode.Default;
 }
