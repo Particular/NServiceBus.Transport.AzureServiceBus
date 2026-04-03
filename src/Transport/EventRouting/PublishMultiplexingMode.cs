@@ -6,6 +6,11 @@ namespace NServiceBus.Transport.AzureServiceBus;
 public enum PublishMultiplexingMode
 {
     /// <summary>
+    /// Inherits the topology-wide default publish multiplexing mode.
+    /// </summary>
+    Default,
+
+    /// <summary>
     /// Publishes without multiplexing-specific stamping.
     /// </summary>
     NotMultiplexed,

@@ -54,6 +54,16 @@ public class TopologyOptions
     } = [];
 
     /// <summary>
+    /// The topology-wide default publish multiplexing mode.
+    /// </summary>
+    public PublishMultiplexingMode DefaultPublishMultiplexingMode { get; set; } = PublishMultiplexingMode.NotMultiplexed;
+
+    /// <summary>
+    /// The topology-wide default subscription filter mode.
+    /// </summary>
+    public SubscriptionFilterMode DefaultSubscriptionFilterMode { get; set; } = SubscriptionFilterMode.CatchAll;
+
+    /// <summary>
     /// Determines if an exception should be thrown when attempting to publish an event not mapped in PublishedEventToTopicsMap
     /// </summary>
     public bool ThrowIfUnmappedEventTypes { get; set; } = false;

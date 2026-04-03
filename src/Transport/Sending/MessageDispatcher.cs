@@ -132,20 +132,20 @@ class MessageDispatcher(
             var destination = destinationAndOperations.Key;
             var (isTopic, operations) = destinationAndOperations.Value;
 
-            var messagesToSend = new Queue<(ServiceBusMessage Message, MultiplexingOptions? MultiplexingOptions)>(operations.Count);
+            var messagesToSend = new Queue<(ServiceBusMessage Message, PublishMultiplexingMode PublishMultiplexingMode)>(operations.Count);
             foreach (var operation in operations)
             {
                 ServiceBusMessage message = operation.ToAzureServiceBusMessage(
                     azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
-                var (_, enclosedMessageTypes, multiplexingOptions) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
-                if (multiplexingOptions?.Mode == PublishMultiplexingMode.MultiplexedUsingCorrelationFilter)
+                var (_, enclosedMessageTypes, publishMultiplexingMode) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
+                if (publishMultiplexingMode == PublishMultiplexingMode.MultiplexedUsingCorrelationFilter)
                 {
                     ApplyMultiplexingStamps(message, enclosedMessageTypes);
                 }
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
 
-                messagesToSend.Enqueue((message, multiplexingOptions));
+                messagesToSend.Enqueue((message, publishMultiplexingMode));
             }
             // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
             // doing the access as late as possible but still on the synchronous path. Initializing the transaction
@@ -174,7 +174,7 @@ class MessageDispatcher(
     }
 
     async Task DispatchBatchOrFallbackToIndividualSendsForDestination(string destination, bool isMulticast, ServiceBusClient? client, Transaction? transaction,
-        Queue<(ServiceBusMessage Message, MultiplexingOptions? MultiplexingOptions)> messagesToSend,
+        Queue<(ServiceBusMessage Message, PublishMultiplexingMode PublishMultiplexingMode)> messagesToSend,
         CancellationToken cancellationToken)
     {
         int batchCount = 0;

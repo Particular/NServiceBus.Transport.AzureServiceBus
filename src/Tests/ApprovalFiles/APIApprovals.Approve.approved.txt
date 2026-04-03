@@ -198,9 +198,10 @@ namespace NServiceBus.Transport.AzureServiceBus
     }
     public enum PublishMultiplexingMode
     {
-        NotMultiplexed = 0,
-        MultiplexedUsingCorrelationFilter = 1,
-        MultiplexedUsingSqlFilter = 2,
+        Default = 0,
+        NotMultiplexed = 1,
+        MultiplexedUsingCorrelationFilter = 2,
+        MultiplexedUsingSqlFilter = 3,
     }
     public static class QueueAddressQualifier
     {
@@ -224,16 +225,17 @@ namespace NServiceBus.Transport.AzureServiceBus
     [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscriptionEntryConverter))]
     public readonly struct SubscriptionEntry : System.IEquatable<NServiceBus.Transport.AzureServiceBus.SubscriptionEntry>
     {
-        public SubscriptionEntry(string Topic, NServiceBus.Transport.AzureServiceBus.SubscriptionFilterMode FilterMode = 2) { }
+        public SubscriptionEntry(string Topic, NServiceBus.Transport.AzureServiceBus.SubscriptionFilterMode FilterMode = 0) { }
         public NServiceBus.Transport.AzureServiceBus.SubscriptionFilterMode FilterMode { get; init; }
         public string Topic { get; init; }
         public static NServiceBus.Transport.AzureServiceBus.SubscriptionEntry op_Implicit(string topic) { }
     }
     public enum SubscriptionFilterMode
     {
-        CorrelationFilter = 0,
-        SqlFilter = 1,
-        CatchAll = 2,
+        Default = 0,
+        CorrelationFilter = 1,
+        SqlFilter = 2,
+        CatchAll = 3,
     }
     public sealed class SubscriptionOptions
     {
@@ -261,6 +263,8 @@ namespace NServiceBus.Transport.AzureServiceBus
     public class TopologyOptions
     {
         public TopologyOptions() { }
+        public NServiceBus.Transport.AzureServiceBus.PublishMultiplexingMode DefaultPublishMultiplexingMode { get; set; }
+        public NServiceBus.Transport.AzureServiceBus.SubscriptionFilterMode DefaultSubscriptionFilterMode { get; set; }
         public System.Collections.Generic.Dictionary<string, NServiceBus.Transport.AzureServiceBus.MultiplexingOptions> MultiplexingPublishOptionsMap { get; init; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         public System.Collections.Generic.Dictionary<string, string> PublishedEventToTopicsMap { get; init; }
@@ -296,6 +300,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.PublishMultiplexingMode> PublishMultiplexingMode { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<string> String { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.SubscriptionEntry> SubscriptionEntry { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.SubscriptionFilterMode> SubscriptionFilterMode { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.TopologyOptions> TopologyOptions { get; }
         public static NServiceBus.Transport.AzureServiceBus.TopologyOptionsSerializationContext Default { get; }
         public override System.Text.Json.Serialization.Metadata.JsonTypeInfo? GetTypeInfo(System.Type type) { }
