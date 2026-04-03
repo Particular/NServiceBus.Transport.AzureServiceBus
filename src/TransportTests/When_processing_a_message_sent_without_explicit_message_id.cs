@@ -8,7 +8,7 @@ using NServiceBus.TransportTests;
 using NUnit.Framework;
 
 [TestFixture]
-public class When_sending_a_native_message_without_message_id : NServiceBusTransportTest
+public class When_processing_a_message_sent_without_explicit_message_id : NServiceBusTransportTest
 {
     [Test]
     public async Task Should_use_auto_assigned_broker_message_id()
@@ -28,7 +28,8 @@ public class When_sending_a_native_message_without_message_id : NServiceBusTrans
 
         const string nsbMessageId = "nsb-generated-id";
 
-        string testId = (string)typeof(NServiceBusTransportTest)
+        // until we can make the field protected in the core NServiceBusTransportTest base class
+        var testId = (string)typeof(NServiceBusTransportTest)
             .GetField("testId", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(this)!;
 
@@ -40,7 +41,6 @@ public class When_sending_a_native_message_without_message_id : NServiceBusTrans
                 { "TransportTest.TestId", testId }
             }
         };
-
 
         await sender.SendMessageAsync(message, TestTimeoutCancellationToken);
 
