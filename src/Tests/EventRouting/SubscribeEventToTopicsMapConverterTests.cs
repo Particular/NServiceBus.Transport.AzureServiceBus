@@ -91,7 +91,7 @@ public class SubscribeEventToTopicsMapConverterTests
         {
             Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
             Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
-                Is.EquivalentTo(["SomeTopic"]));
+                Is.EquivalentTo([new SubscriptionEntry("SomeTopic", SubscriptionFilterMode.CatchAll)]));
         });
     }
 
@@ -114,7 +114,7 @@ public class SubscribeEventToTopicsMapConverterTests
         {
             Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
             Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
-                Is.EquivalentTo(["SomeTopic"]));
+                Is.EquivalentTo([new SubscriptionEntry("SomeTopic", SubscriptionFilterMode.CatchAll)]));
         });
     }
 
@@ -137,7 +137,9 @@ public class SubscribeEventToTopicsMapConverterTests
         {
             Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
             Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
-                Is.EquivalentTo(["SomeTopic", "AnotherTopic"]));
+                Is.EquivalentTo([
+                    new SubscriptionEntry("SomeTopic", SubscriptionFilterMode.CatchAll),
+                    new SubscriptionEntry("AnotherTopic", SubscriptionFilterMode.CatchAll)]));
         });
     }
 
@@ -161,9 +163,11 @@ public class SubscribeEventToTopicsMapConverterTests
         {
             Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(2));
             Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent1"],
-                Is.EquivalentTo(["SomeTopic", "AnotherTopic"]));
+                Is.EquivalentTo([
+                    new SubscriptionEntry("SomeTopic", SubscriptionFilterMode.CatchAll),
+                    new SubscriptionEntry("AnotherTopic", SubscriptionFilterMode.CatchAll)]));
             Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent2"],
-                Is.EquivalentTo(["SomeTopic"]));
+                Is.EquivalentTo([new SubscriptionEntry("SomeTopic", SubscriptionFilterMode.CatchAll)]));
         });
     }
 }

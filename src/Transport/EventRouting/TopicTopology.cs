@@ -112,6 +112,11 @@ namespace NServiceBus
             return GetPublishDestinationCore(eventTypeFullName);
         }
 
+        internal MultiplexingOptions? GetMultiplexingOptions(string eventTypeFullName)
+        {
+            return Options.MultiplexingPublishOptionsMap.TryGetValue(eventTypeFullName, out var options) ? options : null;
+        }
+
         // By having this internal abstract method it is not possible to extend the topology with a custom topology outside
         // of this assembly. That is a deliberate design decision.
         internal abstract SubscriptionManager CreateSubscriptionManager(SubscriptionManagerCreationOptions creationOptions, HostSettings hostSettings);
