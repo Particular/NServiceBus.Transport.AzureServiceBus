@@ -1,4 +1,4 @@
-namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
+﻿namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
 {
     using System;
     using System.Collections.Generic;
@@ -50,6 +50,17 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
             var messageId = message.GetMessageId();
 
             Assert.That(messageId, Is.EqualTo("NServiceBusId"));
+        }
+
+        [Test]
+        public void Should_use_nservicebus_message_id_header_as_string_when_broker_message_id_is_missing()
+        {
+            var newGuid = Guid.NewGuid();
+            var message = ServiceBusModelFactory.ServiceBusReceivedMessage(properties: new Dictionary<string, object> { [Headers.MessageId] = newGuid });
+
+            var messageId = message.GetMessageId();
+
+            Assert.That(messageId, Is.EqualTo(newGuid.ToString()));
         }
 
         [Test]

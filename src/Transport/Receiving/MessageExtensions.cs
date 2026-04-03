@@ -45,9 +45,9 @@ static class MessageExtensions
             return message.MessageId;
         }
 
-        if (message.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId) && messageId is not null)
+        if (message.ApplicationProperties.TryGetValue(Headers.MessageId, out var id) && id?.ToString() is { } messageId && !string.IsNullOrWhiteSpace(messageId))
         {
-            return messageId.ToString()!;
+            return messageId;
         }
 
         return GuidHelper.CreateVersion8(message.EnqueuedTime, message.SequenceNumber).ToString();
