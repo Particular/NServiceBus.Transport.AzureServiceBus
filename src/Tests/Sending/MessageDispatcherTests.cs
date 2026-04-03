@@ -1187,6 +1187,37 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
+        public async Task Should_apply_topology_default_correlation_multiplexing_when_event_has_no_explicit_publish_mode()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    DefaultPublishMultiplexingMode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter,
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sometopic"];
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            var message = batchContent.ElementAt(0);
+
+            Assert.That(message.ApplicationProperties, Contains.Key(typeof(SomeEvent).FullName));
+        }
+
+        [Test]
         public async Task Should_normalize_assembly_qualified_enclosed_message_types_for_correlation_stamps()
         {
             var client = new FakeServiceBusClient();

@@ -305,6 +305,31 @@ public class TopicPerEventSubscriptionManagerTests
     }
 
     [Test]
+    public async Task Should_use_topology_default_subscription_filter_mode_for_unconfigured_subscription()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            DefaultSubscriptionFilterMode = SubscriptionFilterMode.CorrelationFilter,
+            SubscribedEventToTopicsMap = { { typeof(MyEvent1).FullName, ["MyTopic"] } }
+        };
+
+        var builder = new StringBuilder();
+        var client = new RecordingServiceBusClient(builder);
+        var administrationClient = new RecordingServiceBusAdministrationClient(builder);
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = client,
+            AdministrationClient = administrationClient
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        Assert.That(builder.ToString(), Does.Contain("CreateRuleOptions(topicName: 'MyTopic', subscriptionName: 'SubscribingQueue')"));
+    }
+
+    [Test]
     public async Task Should_create_filtered_subscription_for_acceptance_style_hierarchy_configuration()
     {
         const string endpointName = "NServiceBus.AcceptanceTests.NativePubSub.When_using_topic_per_event_topology_with_hierarchy_and_correlation_filter_multiplexing+Subscriber";

@@ -6,6 +6,11 @@ namespace NServiceBus.Transport.AzureServiceBus;
 public enum SubscriptionFilterMode
 {
     /// <summary>
+    /// Inherits the topology-wide default subscription filter mode.
+    /// </summary>
+    Default,
+
+    /// <summary>
     /// Uses CorrelationFilter for exact-match filtering on application properties.
     /// </summary>
     CorrelationFilter,

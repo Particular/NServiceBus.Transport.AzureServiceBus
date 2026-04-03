@@ -72,16 +72,17 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             foreach (var entry in entries)
             {
                 var topicName = destinationManager.GetDestination(entry.Topic, eventTypeFullName);
+                var effectiveFilterMode = ResolveSubscriptionFilterMode(entry.FilterMode);
                 if (topicFilterModes.TryGetValue(topicName, out var existingMode))
                 {
-                    if (existingMode != entry.FilterMode)
+                    if (existingMode != effectiveFilterMode)
                     {
-                        return $"Incompatible subscription filter modes detected for topic '{topicName}' on subscription '{subscriptionName}'. Event '{eventTypeFullName}' uses '{entry.FilterMode}' but other events use '{existingMode}'. All events subscribed to the same topic must use the same filter mode on the same endpoint subscription.";
+                        return $"Incompatible subscription filter modes detected for topic '{topicName}' on subscription '{subscriptionName}'. Event '{eventTypeFullName}' uses '{effectiveFilterMode}' but other events use '{existingMode}'. All events subscribed to the same topic must use the same filter mode on the same endpoint subscription.";
                     }
                 }
                 else
                 {
-                    topicFilterModes[topicName] = entry.FilterMode;
+                    topicFilterModes[topicName] = effectiveFilterMode;
                 }
             }
         }
@@ -115,8 +116,11 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     HashSet<SubscriptionEntry> MapEventToSubscriptionEntries(string eventTypeFullName)
     {
         var entries = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName]);
-        return [.. entries.Select(entry => entry with { Topic = destinationManager.GetDestination(entry.Topic, eventTypeFullName) })];
+        return [.. entries.Select(entry => entry with { Topic = destinationManager.GetDestination(entry.Topic, eventTypeFullName), FilterMode = ResolveSubscriptionFilterMode(entry.FilterMode) })];
     }
+
+    SubscriptionFilterMode ResolveSubscriptionFilterMode(SubscriptionFilterMode filterMode) =>
+        filterMode == SubscriptionFilterMode.Default ? topologyOptions.DefaultSubscriptionFilterMode : filterMode;
 
     public override Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
     {
@@ -176,6 +180,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             case SubscriptionFilterMode.SqlFilter:
                 await CreateFilteredSubscription(topicName, subscriptionName, eventTypeFullName, entry.FilterMode, creationOptions, cancellationToken).ConfigureAwait(false);
                 break;
+            case SubscriptionFilterMode.Default:
             default:
                 throw new ArgumentOutOfRangeException(nameof(entry.FilterMode), entry.FilterMode, "Unknown filter mode");
         }
@@ -294,6 +299,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             SubscriptionFilterMode.CatchAll => Task.CompletedTask,
             SubscriptionFilterMode.CorrelationFilter or SubscriptionFilterMode.SqlFilter =>
                 DeleteRuleForFilteredSubscription(entry.Topic, eventTypeFullName, subscriptionName, creationOptions, cancellationToken),
+            SubscriptionFilterMode.Default => Task.CompletedTask,
             _ => Task.CompletedTask
         };
     }

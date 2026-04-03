@@ -98,12 +98,16 @@ namespace NServiceBus
         {
             ValidateOptionsResult validationResult = OptionsValidator.Validate(null, Options);
 
-            if (validationResult.Succeeded)
+            if (!validationResult.Succeeded)
             {
-                return;
+                throw new ValidationException(validationResult.FailureMessage);
             }
 
-            throw new ValidationException(validationResult.FailureMessage);
+            var compatibilityFailure = ValidateMultiplexingCompatibility();
+            if (compatibilityFailure != null)
+            {
+                throw new ValidationException(compatibilityFailure);
+            }
         }
 
         internal string GetPublishDestination(Type eventType)
@@ -112,10 +116,58 @@ namespace NServiceBus
             return GetPublishDestinationCore(eventTypeFullName);
         }
 
-        internal MultiplexingOptions? GetMultiplexingOptions(string eventTypeFullName)
+        internal PublishMultiplexingMode GetPublishMultiplexingMode(string eventTypeFullName)
         {
-            return Options.MultiplexingPublishOptionsMap.TryGetValue(eventTypeFullName, out var options) ? options : null;
+            if (Options.MultiplexingPublishOptionsMap.TryGetValue(eventTypeFullName, out var options) && options.Mode != PublishMultiplexingMode.Default)
+            {
+                return options.Mode;
+            }
+
+            return Options.DefaultPublishMultiplexingMode;
         }
+
+        internal SubscriptionFilterMode GetSubscriptionFilterMode(SubscriptionEntry entry)
+        {
+            return entry.FilterMode == SubscriptionFilterMode.Default ? Options.DefaultSubscriptionFilterMode : entry.FilterMode;
+        }
+
+        string? ValidateMultiplexingCompatibility()
+        {
+            if (!AreCompatible(Options.DefaultPublishMultiplexingMode, Options.DefaultSubscriptionFilterMode))
+            {
+                return $"Default publish multiplexing mode '{Options.DefaultPublishMultiplexingMode}' is incompatible with default subscription filter mode '{Options.DefaultSubscriptionFilterMode}'.";
+            }
+
+            foreach (var (eventTypeFullName, topicName) in Options.PublishedEventToTopicsMap)
+            {
+                if (!Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var subscriptionEntries))
+                {
+                    continue;
+                }
+
+                var effectivePublishMode = GetPublishMultiplexingMode(eventTypeFullName);
+                foreach (var entry in subscriptionEntries)
+                {
+                    var effectiveSubscriptionMode = GetSubscriptionFilterMode(entry);
+                    if (!AreCompatible(effectivePublishMode, effectiveSubscriptionMode))
+                    {
+                        return $"Event '{eventTypeFullName}' on topic '{topicName}' has effective publish mode '{effectivePublishMode}' which is incompatible with effective subscription filter mode '{effectiveSubscriptionMode}'.";
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        static bool AreCompatible(PublishMultiplexingMode publishMode, SubscriptionFilterMode subscriptionMode) =>
+            publishMode switch
+            {
+                PublishMultiplexingMode.NotMultiplexed => subscriptionMode == SubscriptionFilterMode.CatchAll,
+                PublishMultiplexingMode.MultiplexedUsingCorrelationFilter => subscriptionMode is SubscriptionFilterMode.CorrelationFilter or SubscriptionFilterMode.CatchAll,
+                PublishMultiplexingMode.MultiplexedUsingSqlFilter => subscriptionMode is SubscriptionFilterMode.SqlFilter or SubscriptionFilterMode.CatchAll,
+                PublishMultiplexingMode.Default => false,
+                _ => false
+            };
 
         // By having this internal abstract method it is not possible to extend the topology with a custom topology outside
         // of this assembly. That is a deliberate design decision.
