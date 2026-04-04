@@ -138,7 +138,9 @@ sealed class MessagePump(
         }
         catch (Exception ex)
         {
-            await arg.SafeDeadLetterMessage(message, TransactionMode, ex, CancellationToken.None).ConfigureAwait(false);
+            Logger.Warn($"Poison message detected. Message will be moved to the poison queue. Exception: {ex.Message}", ex);
+
+            await arg.SafeDeadLetterMessage(message, nativeMessageId, TransactionMode, new DeadLetterRequest(ex), CancellationToken.None).ConfigureAwait(false);
 
             return;
         }
@@ -285,6 +287,8 @@ sealed class MessagePump(
 
                     if (azureServiceBusTransaction.TransportTransaction.TryGet<DeadLetterRequest>(out var deadLetterRequest))
                     {
+                        Logger.Warn($"User requested message with id '{nativeMessageId}' to be moved to the dead-letter queue due to '{deadLetterRequest.DeadLetterReason}': {deadLetterRequest.DeadLetterErrorDescription}");
+
                         await processMessageEventArgs.SafeDeadLetterMessage(message,
                                 nativeMessageId,
                                 TransactionMode,
