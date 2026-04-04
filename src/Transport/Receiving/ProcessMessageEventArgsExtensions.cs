@@ -70,42 +70,10 @@ static class ProcessMessageEventArgsExtensions
     }
 
     public static async Task SafeDeadLetterMessage(this ProcessMessageEventArgs args, ServiceBusReceivedMessage message,
-        TransportTransactionMode transportTransactionMode, Exception exception, CancellationToken cancellationToken = default)
-    {
-        if (transportTransactionMode != TransportTransactionMode.None)
-        {
-            Logger.Warn($"Poison message detected. Message will be moved to the poison queue. Exception: {exception.Message}", exception);
-
-            try
-            {
-                await args.DeadLetterMessageAsync(message,
-                        deadLetterReason: "Poisoned message",
-                        deadLetterErrorDescription: exception.Message,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(cancellationToken))
-            {
-                if (Logger.IsDebugEnabled)
-                {
-                    // nothing we can do about it, message will be retried
-                    Logger.Debug("Error dead lettering poisoned message.", deadLetterEx);
-                }
-            }
-        }
-        else
-        {
-            Logger.Warn($"Poison message detected. Message will be discarded, transaction mode is set to None. Exception: {exception.Message}", exception);
-        }
-    }
-
-    public static async Task SafeDeadLetterMessage(this ProcessMessageEventArgs args, ServiceBusReceivedMessage message,
         string nativeMessageId, TransportTransactionMode transportTransactionMode, DeadLetterRequest request, CancellationToken cancellationToken = default)
     {
         if (transportTransactionMode != TransportTransactionMode.None)
         {
-            Logger.Warn($"User requested message with id '{nativeMessageId}' to be moved to the dead-letter queue due to '{request.DeadLetterReason}': {request.DeadLetterErrorDescription}");
-
             try
             {
                 await args.DeadLetterMessageAsync(message,
