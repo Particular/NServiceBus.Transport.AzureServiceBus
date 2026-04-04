@@ -283,6 +283,17 @@ sealed class MessagePump(
 
                     result = await onError!(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
+                    if (azureServiceBusTransaction.TransportTransaction.TryGet<DeadLetterRequest>(out var deadLetterRequest))
+                    {
+                        await processMessageEventArgs.SafeDeadLetterMessage(message,
+                                nativeMessageId,
+                                TransactionMode,
+                                deadLetterRequest,
+                                cancellationToken: messageProcessingCancellationToken)
+                            .ConfigureAwait(false);
+                        return;
+                    }
+
                     if (result == ErrorHandleResult.Handled)
                     {
                         await processMessageEventArgs.SafeCompleteMessage(message,
