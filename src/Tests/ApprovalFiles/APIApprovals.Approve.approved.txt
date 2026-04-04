@@ -116,6 +116,11 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         public static System.Transactions.TransactionScope ToTransactionScope(this NServiceBus.Transport.AzureServiceBus.AzureServiceBusTransportTransaction azureServiceBusTransaction) { }
     }
+    public sealed class DeadLetterMessage : NServiceBus.RecoverabilityAction
+    {
+        public override NServiceBus.Transport.ErrorHandleResult ErrorHandleResult { get; }
+        public override System.Collections.Generic.IReadOnlyCollection<NServiceBus.Pipeline.IRoutingContext> GetRoutingContexts(NServiceBus.Pipeline.IRecoverabilityActionContext context) { }
+    }
     public sealed class HierarchyNamespaceOptions
     {
         public HierarchyNamespaceOptions() { }
@@ -176,6 +181,14 @@ namespace NServiceBus.Transport.AzureServiceBus
     public static class QueueAddressQualifier
     {
         public const string DeadLetterQueue = "$DeadLetterQueue";
+    }
+    public static class RecoverabilityActionExtensions
+    {
+        extension(NServiceBus.RecoverabilityAction _)
+        {
+            public static NServiceBus.Transport.AzureServiceBus.DeadLetterMessage DeadLetter(string deadLetterReason, string deadLetterErrorDescription, System.Collections.Generic.Dictionary<string, object>? propertiesToModify = null) { }
+            public static NServiceBus.Transport.AzureServiceBus.DeadLetterMessage DeadLetter(System.Exception exception) { }
+        }
     }
     public sealed class TopicPerEventTopology : NServiceBus.TopicTopology
     {
