@@ -10,15 +10,15 @@ using Logging;
 static class ProcessMessageEventArgsExtensions
 {
     public static async ValueTask<bool> TrySafeCompleteMessage(this ProcessMessageEventArgs args,
-        ServiceBusReceivedMessage message, TransportTransactionMode transportTransactionMode,
+        ServiceBusReceivedMessage message, string nativeMessageId, TransportTransactionMode transportTransactionMode,
         ICache<string, bool> messagesToBeCompleted,
         CancellationToken cancellationToken = default)
     {
-        if (transportTransactionMode == TransportTransactionMode.ReceiveOnly && messagesToBeCompleted.TryGet(message.GetMessageId(), out _))
+        if (transportTransactionMode == TransportTransactionMode.ReceiveOnly && messagesToBeCompleted.TryGet(nativeMessageId, out _))
         {
             if (Logger.IsDebugEnabled)
             {
-                Logger.DebugFormat("Received message with id '{0}' was marked as successfully completed. Trying to immediately acknowledge the message without invoking the pipeline.", message.GetMessageId());
+                Logger.DebugFormat("Received message with id '{0}' was marked as successfully completed. Trying to immediately acknowledge the message without invoking the pipeline.", nativeMessageId);
             }
 
             try
@@ -30,7 +30,7 @@ static class ProcessMessageEventArgsExtensions
             // Doing a more generous catch here to make sure we are not losing the ID and can mark it to be completed another time
             catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
             {
-                messagesToBeCompleted.AddOrUpdate(message.GetMessageId(), true);
+                messagesToBeCompleted.AddOrUpdate(nativeMessageId, true);
                 throw;
             }
         }
@@ -38,7 +38,7 @@ static class ProcessMessageEventArgsExtensions
     }
 
     public static async ValueTask<bool> TrySafeAbandonMessage(this ProcessMessageEventArgs args,
-        ServiceBusReceivedMessage message, TransportTransactionMode transportTransactionMode,
+        ServiceBusReceivedMessage message, string nativeMessageId, TransportTransactionMode transportTransactionMode,
         CancellationToken cancellationToken = default)
     {
         // TransportTransactionMode.None uses ReceiveAndDelete mode which means the message is already removed from the queue
@@ -46,14 +46,14 @@ static class ProcessMessageEventArgsExtensions
         if (transportTransactionMode != TransportTransactionMode.None && message.LockedUntil < DateTimeOffset.UtcNow)
         {
             Logger.Warn(
-                $"Skip handling the message with id '{message.GetMessageId()}' because the lock has expired at '{message.LockedUntil}'. " +
+                $"Skip handling the message with id '{nativeMessageId}' because the lock has expired at '{message.LockedUntil}'. " +
                 "This is usually an indication that the endpoint prefetches more messages than it is able to handle within the configured" +
                 " peek lock duration. Consider tweaking the prefetch configuration to values that are better aligned with the concurrency" +
                 " of the endpoint and the time it takes to handle the messages.");
 
             try
             {
-                await args.SafeAbandonMessage(message, transportTransactionMode, cancellationToken: cancellationToken)
+                await args.SafeAbandonMessage(message, nativeMessageId, transportTransactionMode, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 return true;
             }
@@ -62,7 +62,7 @@ static class ProcessMessageEventArgsExtensions
                 if (Logger.IsDebugEnabled)
                 {
                     // nothing we can do about it, message will be retried
-                    Logger.Debug($"Error abandoning the message with id '{message.GetMessageId()}' because the lock has expired at '{message.LockedUntil}.", e);
+                    Logger.Debug($"Error abandoning the message with id '{nativeMessageId}' because the lock has expired at '{message.LockedUntil}.", e);
                 }
             }
         }
@@ -100,7 +100,7 @@ static class ProcessMessageEventArgsExtensions
     }
 
     public static async Task SafeCompleteMessage(this ProcessMessageEventArgs args,
-        ServiceBusReceivedMessage message, TransportTransactionMode transportTransactionMode,
+        ServiceBusReceivedMessage message, string nativeMessageId, TransportTransactionMode transportTransactionMode,
         AzureServiceBusTransportTransaction azureServiceBusTransaction,
         ICache<string, bool> messagesToBeCompleted,
         CancellationToken cancellationToken = default)
@@ -119,12 +119,13 @@ static class ProcessMessageEventArgsExtensions
                 // To make sure we are not reprocessing it unnecessarily we are tracking the message ID and will complete it
                 // on the next receive. For SendsWithAtomicReceive it is necessary to throw which causes the rollback
                 // of the transaction and will trigger recoverability.
-                messagesToBeCompleted.AddOrUpdate(message.GetMessageId(), true);
+                messagesToBeCompleted.AddOrUpdate(nativeMessageId, true);
             }
         }
     }
 
     public static async Task SafeAbandonMessage(this ProcessMessageEventArgs args, ServiceBusReceivedMessage message,
+        string nativeMessageId,
         TransportTransactionMode transportTransactionMode, CancellationToken cancellationToken = default)
     {
         if (transportTransactionMode != TransportTransactionMode.None)
@@ -139,7 +140,7 @@ static class ProcessMessageEventArgsExtensions
                 {
                     // We tried to abandon the message because it needs to be retried, but the lock was lost.
                     // the message will reappear on the next receive anyway so we can just ignore this case.
-                    Logger.DebugFormat("Attempted to abandon the message with id '{0}' but the lock was lost.", message.GetMessageId());
+                    Logger.DebugFormat("Attempted to abandon the message with id '{0}' but the lock was lost.", nativeMessageId);
                 }
             }
         }
