@@ -1,6 +1,7 @@
 namespace NServiceBus.Transport.AzureServiceBus.TransportTests;
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,7 +24,7 @@ public class When_requesting_dead_letter_from_on_error : NServiceBusTransportTes
             (_, _) => throw new Exception("from onMessage"),
             (context, _) =>
             {
-                context.TransportTransaction.Set(new DeadLetterRequest("Requested by test", "Dead lettered from recoverability"));
+                context.TransportTransaction.Set(new DeadLetterRequest("Requested by test", "Dead lettered from recoverability", new Dictionary<string, object> { { "updated-property", "some-value" } }));
                 onErrorCalled.TrySetResult(true);
                 return Task.FromResult(ErrorHandleResult.Handled);
             },
@@ -41,6 +42,7 @@ public class When_requesting_dead_letter_from_on_error : NServiceBusTransportTes
             Assert.That(receivedMessage, Is.Not.Null);
             Assert.That(receivedMessage!.DeadLetterReason, Is.EqualTo("Requested by test"));
             Assert.That(receivedMessage.DeadLetterErrorDescription, Is.EqualTo("Dead lettered from recoverability"));
+            Assert.That(receivedMessage.ApplicationProperties.ContainsKey("updated-property"), Is.True);
         });
     }
 
