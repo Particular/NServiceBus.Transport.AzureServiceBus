@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.Tests.Administration;
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Particular.Approvals;
@@ -9,109 +10,23 @@ using Particular.Approvals;
 public class QueueCreatorTests
 {
     [Test]
-    public async Task Should_set_AutoDeleteOnIdle_when_configured()
+    public async Task Should_set_AutoDeleteOnIdle_on_instance_queue_when_configured()
     {
-        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
-        {
-            AutoDeleteOnIdle = TimeSpan.FromMinutes(10)
-        };
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default) { AutoDeleteOnIdle = TimeSpan.FromMinutes(10) };
 
-        var recordingClient = new RecordingServiceBusAdministrationClient();
-        var creator = new QueueCreator(transport);
-
-        await creator.Create(recordingClient, ["test-queue"], "test-queue");
-
-        var output = recordingClient.ToString();
+        var output = await CreateQueues(transport,
+            instanceSuffix: "instance-1");
 
         Approver.Verify(output);
     }
 
     [Test]
-    public async Task Should_not_set_AutoDeleteOnIdle_when_null()
+    public async Task Should_not_set_AutoDeleteOnIdle_on_instance_queue_when_null()
     {
-        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
-        {
-            AutoDeleteOnIdle = null
-        };
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default) { AutoDeleteOnIdle = null };
 
-        var recordingClient = new RecordingServiceBusAdministrationClient();
-        var creator = new QueueCreator(transport);
-
-        await creator.Create(recordingClient, ["test-queue"], "test-queue");
-
-        var output = recordingClient.ToString(); // AutoDeleteOnIdle should be default - TimeSpan.MaxValue
-
-        Approver.Verify(output);
-    }
-
-    [Test]
-    public async Task Should_only_set_AutoDeleteOnIdle_on_instance_specific_queue()
-    {
-        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
-        {
-            AutoDeleteOnIdle = TimeSpan.FromMinutes(10)
-        };
-
-        var recordingClient = new RecordingServiceBusAdministrationClient();
-        var creator = new QueueCreator(transport);
-
-        await creator.Create(recordingClient, ["instance-queue", "error"], "instance-queue");
-
-        // AutoDeleteOnIdle should be default for shared queues - TimeSpan.MaxValue
-        var output = recordingClient.ToString();
-
-        Approver.Verify(output);
-    }
-
-    [Test]
-    public async Task Should_not_set_AutoDeleteOnIdle_when_instance_name_is_null()
-    {
-        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
-        {
-            AutoDeleteOnIdle = TimeSpan.FromMinutes(10)
-        };
-
-        var recordingClient = new RecordingServiceBusAdministrationClient();
-        var creator = new QueueCreator(transport);
-
-        // Create queue without specifying an instance name
-        await creator.Create(recordingClient, ["some-queue"], null);
-
-        var output = recordingClient.ToString();
-
-        Approver.Verify(output);
-    }
-
-    [Test]
-    public async Task Should_not_set_AutoDeleteOnIdle_when_queue_name_does_not_match_instance_name()
-    {
-        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
-        {
-            AutoDeleteOnIdle = TimeSpan.FromMinutes(10)
-        };
-
-        var recordingClient = new RecordingServiceBusAdministrationClient();
-        var creator = new QueueCreator(transport);
-
-        // Create queue with different instance name
-        await creator.Create(recordingClient, ["some-queue"], "different-instance");
-
-        var output = recordingClient.ToString();
-
-        Approver.Verify(output);
-    }
-
-    [Test]
-    public async Task Should_set_MaxDeliveryCount_to_max_int_when_not_using_emulator()
-    {
-        var transport = new AzureServiceBusTransport("connection-string", TopicTopology.Default);
-
-        var recordingClient = new RecordingServiceBusAdministrationClient();
-        var creator = new QueueCreator(transport);
-
-        await creator.Create(recordingClient, ["test-queue"], null);
-
-        var output = recordingClient.ToString();
+        var output = await CreateQueues(transport,
+            instanceSuffix: "instance-1");
 
         Approver.Verify(output);
     }
@@ -120,14 +35,53 @@ public class QueueCreatorTests
     public async Task Should_set_MaxDeliveryCount_to_10_when_using_emulator()
     {
         var transport = new AzureServiceBusTransport("UseDevelopmentEmulator=true", TopicTopology.Default);
-
-        var recordingClient = new RecordingServiceBusAdministrationClient();
-        var creator = new QueueCreator(transport);
-
-        await creator.Create(recordingClient, ["test-queue"], null);
-
-        var output = recordingClient.ToString();
+        var output = await CreateQueues(transport);
 
         Approver.Verify(output);
+    }
+
+    [Test]
+    public async Task Should_auto_forward_dlq_messages_for_receive_queues_to_error_queue_when_enabled()
+    {
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default) { AutoForwardDeadLetteredMessagesToErrorQueue = true };
+        var output = await CreateQueues(transport,
+            instanceSuffix: "instance-1",
+            errorQueue: "my-error-queue");
+
+        Approver.Verify(output);
+    }
+
+    [Test]
+    public async Task Should_create_all_sending_queues()
+    {
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default);
+
+        var output = await CreateQueues(transport,
+            sendingAddresses: ["audit", "error", "some-destination-queue"]);
+
+        Approver.Verify(output);
+    }
+
+    async Task<string> CreateQueues(AzureServiceBusTransport transport,
+        string receiveAddress = "test-queue",
+        string instanceSuffix = null,
+        string errorQueue = "error",
+        string[] sendingAddresses = null)
+    {
+        sendingAddresses ??= [errorQueue];
+
+        var recordingClient = new RecordingServiceBusAdministrationClient();
+        var receiveSettings = new List<ReceiveSettings> { new("Main", new QueueAddress(receiveAddress), false, false, errorQueue) };
+
+        if (instanceSuffix != null)
+        {
+            receiveSettings.Add(new ReceiveSettings("InstanceSpecific", new QueueAddress($"{receiveAddress}-{instanceSuffix}"), false, false, errorQueue));
+        }
+
+        var creator = new QueueCreator();
+
+        await creator.Create(recordingClient, transport.BuildQueueCreationPlan(receiveSettings.ToArray(), sendingAddresses));
+
+        return recordingClient.ToString();
     }
 }
