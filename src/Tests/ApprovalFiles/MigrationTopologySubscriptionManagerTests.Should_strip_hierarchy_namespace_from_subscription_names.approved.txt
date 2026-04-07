@@ -1,4 +1,4 @@
-CreateRuleOptions(topicName: 'my-hierarchy/SubscribeTopic', subscriptionName: 'MySubscriptionName'): {
+CreateRuleOptions(topicName: 'my-hierarchy/SubscribeTopic', subscriptionName: 'SubscribingQueue'): {
   "Filter": {
     "filter-type": "sql",
     "SqlExpression": "[NServiceBus.EnclosedMessageTypes] LIKE \u0027%NServiceBus.Transport.AzureServiceBus.Tests.MigrationTopologySubscriptionManagerTests\u002BMyEvent1%\u0027",
@@ -15,7 +15,7 @@ CreateSubscriptionOptions: {
   "DeadLetteringOnMessageExpiration": false,
   "EnableDeadLetteringOnFilterEvaluationExceptions": false,
   "TopicName": "my-hierarchy/MyTopic1",
-  "SubscriptionName": "MySubscriptionName",
+  "SubscriptionName": "SubscribingQueue",
   "MaxDeliveryCount": 2147483647,
   "Status": {},
   "ForwardTo": "my-hierarchy/SubscribingQueue",
@@ -40,7 +40,7 @@ CreateSubscriptionOptions: {
   "DeadLetteringOnMessageExpiration": false,
   "EnableDeadLetteringOnFilterEvaluationExceptions": false,
   "TopicName": "my-hierarchy/MyTopic2",
-  "SubscriptionName": "MySubscriptionName",
+  "SubscriptionName": "SubscribingQueue",
   "MaxDeliveryCount": 2147483647,
   "Status": {},
   "ForwardTo": "my-hierarchy/SubscribingQueue",

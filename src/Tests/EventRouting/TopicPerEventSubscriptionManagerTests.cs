@@ -76,7 +76,7 @@ public class TopicPerEventSubscriptionManagerTests
             {
                 { typeof(MyEvent1).FullName, [ destinationManager.GetDestination("MyTopic1"), destinationManager.GetDestination("MyTopic2")] }
             },
-            QueueNameToSubscriptionNameMap = { { queueName, destinationManager.GetDestination("MySubscriptionName") } },
+            //QueueNameToSubscriptionNameMap = { { "SubscribingQueue", "MySubscriptionName" } },
             HierarchyNamespaceOptions = hierarchyOptions,
         };
 
@@ -92,6 +92,36 @@ public class TopicPerEventSubscriptionManagerTests
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
+
+        Approver.Verify(builder.ToString());
+    }
+
+    [Test]
+    public async Task Should_apply_subscription_name_override_for_non_namespaced_queue_when_hierarchy_enabled()
+    {
+        var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+        var topologyOptions = new TopologyOptions
+        {
+            HierarchyNamespaceOptions = hierarchyOptions,
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, ["MyTopic"] }
+            },
+            QueueNameToSubscriptionNameMap = { { "SubscribingQueue", "MySubscriptionName" } },
+        };
+
+        var builder = new StringBuilder();
+        var client = new RecordingServiceBusClient(builder);
+        var administrationClient = new RecordingServiceBusAdministrationClient(builder);
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "my-hierarchy/SubscribingQueue",
+            Client = client,
+            AdministrationClient = administrationClient
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
 
         Approver.Verify(builder.ToString());
     }
