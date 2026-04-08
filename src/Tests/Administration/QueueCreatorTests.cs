@@ -68,7 +68,7 @@ public class QueueCreatorTests
         string errorQueue = "error",
         string[] sendingAddresses = null)
     {
-        sendingAddresses ??= [errorQueue];
+        sendingAddresses ??= [errorQueue]; // core adds the error queue as a sending address automatically
 
         var recordingClient = new RecordingServiceBusAdministrationClient();
         var receiveSettings = new List<ReceiveSettings> { new("Main", new QueueAddress(receiveAddress), false, false, errorQueue) };
