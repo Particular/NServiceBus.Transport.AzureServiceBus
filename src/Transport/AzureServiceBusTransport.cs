@@ -183,7 +183,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
         foreach (var receiver in receivers)
         {
-            var receiveQueueName = receiver.ReceiveAddress.ToString();
+            var receiveQueueName = AzureServiceBusTransportInfrastructure.ToTransportAddress(receiver.ReceiveAddress, DestinationManager);
             var errorQueueName = receiver.ErrorQueue;
 
             var receiveQueue = BuildDefaultCreateQueueOptions(receiveQueueName);
