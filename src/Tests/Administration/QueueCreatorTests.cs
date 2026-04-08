@@ -62,6 +62,21 @@ public class QueueCreatorTests
         Approver.Verify(output);
     }
 
+    [Test]
+    public async Task Should_support_hierarchy_namespaces()
+    {
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
+        {
+            HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" },
+            AutoForwardDeadLetteredMessagesToErrorQueue = true
+        };
+
+        var output = await CreateQueues(transport,
+            sendingAddresses: ["audit", "error", "some-destination-queue"]);
+
+        Approver.Verify(output);
+    }
+
     async Task<string> CreateQueues(AzureServiceBusTransport transport,
         string receiveAddress = "test-queue",
         string instanceSuffix = null,
