@@ -2,10 +2,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 using System.Xml;
 using Azure.Messaging.ServiceBus;
 using Configuration;
+using Faults;
 
 static class MessageExtensions
 {
@@ -33,6 +35,41 @@ static class MessageExtensions
         if (!string.IsNullOrWhiteSpace(message.ContentType))
         {
             headers[Headers.ContentType] = message.ContentType;
+        }
+
+        if (!string.IsNullOrWhiteSpace(message.DeadLetterSource) && !headers.ContainsKey(FaultsHeaderKeys.FailedQ))
+        {
+            headers[FaultsHeaderKeys.FailedQ] = message.DeadLetterSource;
+        }
+
+        if (!string.IsNullOrWhiteSpace(message.DeadLetterReason))
+        {
+            var parts = message.DeadLetterReason.Split(DeadLetterRequest.Separator);
+
+            if (parts.Length > 1)
+            {
+                if (!headers.ContainsKey(FaultsHeaderKeys.ExceptionType))
+                {
+                    headers[FaultsHeaderKeys.ExceptionType] = parts[0];
+                }
+
+                if (!headers.ContainsKey(FaultsHeaderKeys.Message))
+                {
+                    headers[FaultsHeaderKeys.Message] = string.Join(DeadLetterRequest.Separator, parts.Skip(1));
+                }
+            }
+            else
+            {
+                if (!headers.ContainsKey(FaultsHeaderKeys.Message))
+                {
+                    headers[FaultsHeaderKeys.Message] = message.DeadLetterReason;
+                }
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(message.DeadLetterErrorDescription) && !headers.ContainsKey(FaultsHeaderKeys.StackTrace))
+        {
+            headers[FaultsHeaderKeys.StackTrace] = message.DeadLetterErrorDescription;
         }
 
         return headers;
