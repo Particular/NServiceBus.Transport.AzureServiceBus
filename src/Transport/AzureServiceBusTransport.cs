@@ -120,7 +120,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             await administrationClient.AssertNamespaceManageRightsAvailable(cancellationToken)
                 .ConfigureAwait(false);
 
-            var queuesToCreate = BuildQueueCreationPlan(receivers, sendingAddresses);
+            var queuesToCreate = DetermineQueuesToCreate(receivers, sendingAddresses);
 
             var queueCreator = new TopologyCreator(this);
             await queueCreator.Create(administrationClient, queuesToCreate, cancellationToken).ConfigureAwait(false);
@@ -163,7 +163,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         }
     }
 
-    internal IReadOnlyCollection<CreateQueueOptions> BuildQueueCreationPlan(ReceiveSettings[] receivers, string[] sendingAddresses)
+    internal IReadOnlyCollection<CreateQueueOptions> DetermineQueuesToCreate(ReceiveSettings[] receivers, string[] sendingAddresses)
     {
         var queues = new Dictionary<string, CreateQueueOptions>(StringComparer.OrdinalIgnoreCase);
 
