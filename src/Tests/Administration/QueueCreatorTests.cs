@@ -95,7 +95,7 @@ public class QueueCreatorTests
 
         var creator = new QueueCreator();
 
-        await creator.Create(recordingClient, transport.BuildQueueCreationPlan(receiveSettings.ToArray(), sendingAddresses));
+        await creator.Create(recordingClient, transport.DetermineQueuesToCreate(receiveSettings.ToArray(), sendingAddresses));
 
         return recordingClient.ToString();
     }
