@@ -20,6 +20,7 @@
         const string SubscriptionName = QueueName;
         const string HierarchySubscriptionName = $"forwardTo-{HierarchyTopicName}";
         const string HierarchyNamespace = "cli-hierarchy-namespace";
+        const string ErrorQueueName = "cli-error";
 
         [Test]
         public async Task Create_endpoint()
@@ -54,6 +55,34 @@
             });
 
             await VerifyQueue(queueName);
+        }
+
+        [Test]
+        public async Task Create_endpoint_with_dlq_forwarding()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteQueue(ErrorQueueName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --forward-dlq-to {ErrorQueueName}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(QueueName, forwardDeadLetteredMessagesTo: ErrorQueueName);
+            await VerifyQueue(ErrorQueueName);
+        }
+
+        [Test]
+        public async Task Create_endpoint_with_dlq_forwarding_validates_target_is_not_self()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --forward-dlq-to {EndpointName}");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The queue name and the --forward-dlq-to option cannot resolve to the same queue."));
         }
 
         [Test]
@@ -156,6 +185,57 @@
             await VerifyQueue(queueName);
             await VerifyTopic(topicName);
             await VerifySubscriptionContainsOnlyDefaultRejectAllRule(topicName, SubscriptionName);
+        }
+
+        [Test]
+        public async Task Create_migration_endpoint_with_dlq_forwarding()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteQueue(ErrorQueueName);
+            await DeleteTopic(TopicName);
+
+            var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --forward-dlq-to {ErrorQueueName}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(QueueName, forwardDeadLetteredMessagesTo: ErrorQueueName);
+            await VerifyQueue(ErrorQueueName);
+            await VerifyTopic(TopicName);
+            await VerifySubscriptionContainsOnlyDefaultRejectAllRule(TopicName, SubscriptionName);
+        }
+
+        [Test]
+        public async Task Create_hierarchy_namespace_migration_endpoint_with_hierarchy_and_dlq_forwarding()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var errorQueueName = ErrorQueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = TopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var hierarchyTopicName = HierarchyTopicName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await DeleteQueue(errorQueueName);
+            await DeleteTopic(topicName);
+            await DeleteTopic(hierarchyTopicName);
+
+            var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName} --hierarchy-namespace {HierarchyNamespace} --forward-dlq-to {ErrorQueueName}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(queueName, forwardDeadLetteredMessagesTo: errorQueueName);
+            await VerifyQueue(errorQueueName);
+            await VerifyTopic(topicName);
+            await VerifyTopic(hierarchyTopicName);
+            await VerifySubscriptionContainsOnlyDefaultMatchAllRule(topicName, HierarchySubscriptionName);
+            await VerifySubscriptionContainsOnlyDefaultRejectAllRule(hierarchyTopicName, SubscriptionName);
         }
 
         [Test]
@@ -573,6 +653,46 @@
         }
 
         [Test]
+        public async Task Create_queue_with_dlq_forwarding()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteQueue(ErrorQueueName);
+
+            var (output, error, exitCode) = await Execute($"queue create {QueueName} --forward-dlq-to {ErrorQueueName}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(QueueName, forwardDeadLetteredMessagesTo: ErrorQueueName);
+            await VerifyQueue(ErrorQueueName);
+        }
+
+        [Test]
+        public async Task Create_hierarchy_namespace_queue_with_dlq_forwarding()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var errorQueueName = ErrorQueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+            await DeleteQueue(errorQueueName);
+
+            var (output, error, exitCode) = await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace} --forward-dlq-to {ErrorQueueName}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exitCode, Is.EqualTo(0));
+                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(output, Does.Not.Contain("skipping"));
+            });
+
+            await VerifyQueue(queueName, forwardDeadLetteredMessagesTo: errorQueueName);
+            await VerifyQueue(errorQueueName);
+        }
+
+        [Test]
         public async Task Create_queue_validates_namespace_and_connection_string_cannot_be_used_together()
         {
             var (_, error, exitCode) = await Execute($"queue create {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
@@ -588,6 +708,15 @@
 
             Assert.That(exitCode, Is.EqualTo(1));
             Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+        }
+
+        [Test]
+        public async Task Create_queue_with_dlq_forwarding_validates_target_is_not_self()
+        {
+            var (_, error, exitCode) = await Execute($"queue create {QueueName} --forward-dlq-to {QueueName}");
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(error, Does.Contain("The queue name and the --forward-dlq-to option cannot resolve to the same queue."));
         }
 
         [Test]
@@ -684,7 +813,7 @@
         public void Setup()
             => client = new ServiceBusAdministrationClient(Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
 
-        async Task VerifyQueue(string queueName, bool enablePartitioning = false, int size = 5 * 1024)
+        async Task VerifyQueue(string queueName, bool enablePartitioning = false, int size = 5 * 1024, string forwardDeadLetteredMessagesTo = null)
         {
             var actual = (await client.GetQueueAsync(queueName)).Value;
 
@@ -695,7 +824,22 @@
                 Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
                 Assert.That(actual.EnablePartitioning, Is.EqualTo(enablePartitioning));
                 Assert.That(actual.MaxSizeInMegabytes, Is.EqualTo(size));
+                AssertDlqForwardingDestination(actual.ForwardDeadLetteredMessagesTo, forwardDeadLetteredMessagesTo);
             });
+        }
+
+        static void AssertDlqForwardingDestination(string actualForwardingDestination, string expectedForwardingDestination)
+        {
+            if (expectedForwardingDestination == null)
+            {
+                Assert.That(actualForwardingDestination, Is.Null);
+                return;
+            }
+
+            Assert.That(actualForwardingDestination == expectedForwardingDestination
+                        || (actualForwardingDestination?.EndsWith($"/{expectedForwardingDestination}", StringComparison.Ordinal) ?? false),
+                Is.True,
+                $"Expected forwarding destination '{expectedForwardingDestination}' but got '{actualForwardingDestination}'.");
         }
 
         async Task VerifyTopic(string topicName, bool enablePartitioning = false, int size = 5 * 1024)
