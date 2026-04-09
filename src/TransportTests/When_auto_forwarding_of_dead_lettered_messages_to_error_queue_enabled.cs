@@ -41,8 +41,11 @@ public class When_auto_forwarding_of_dead_lettered_messages_to_error_queue_enabl
 
         await StopPump();
 
-        Assert.That(forwardedMessage.DeadLetterReason.Contains("from onMessage"), Is.True);
-        Assert.That(errorContext.Exception.StackTrace!.StartsWith(forwardedMessage.DeadLetterErrorDescription), Is.True);
-        Assert.That(forwardedMessage.ApplicationProperties["some-property"], Is.EqualTo("some value"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(forwardedMessage.DeadLetterReason.Contains("from onMessage"), Is.True);
+            Assert.That(errorContext.Exception.StackTrace!.StartsWith(forwardedMessage.DeadLetterErrorDescription), Is.True);
+            Assert.That(forwardedMessage.ApplicationProperties["some-property"], Is.EqualTo("some value"));
+        });
     }
 }

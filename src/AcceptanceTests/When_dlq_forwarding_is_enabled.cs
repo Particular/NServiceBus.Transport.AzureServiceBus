@@ -1,10 +1,12 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AcceptanceTesting;
 using AcceptanceTesting.Customization;
 using Azure.Messaging.ServiceBus;
+using Faults;
 using NServiceBus.AcceptanceTests;
 using NServiceBus.AcceptanceTests.EndpointTemplates;
 using NUnit.Framework;
@@ -29,10 +31,18 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
             .Run();
 
         var sourceEndpoint = Conventions.EndpointNamingConvention(typeof(UserEndpoint)).ToLower();
+        var nativeMessage = context.ServiceBusReceivedMessage;
+        var failedMessageHeaders = context.FailedMessageHeaders;
         Assert.Multiple(() =>
         {
-            Assert.That(context.ServiceBusReceivedMessage, Is.Not.Null);
-            Assert.That(context.ServiceBusReceivedMessage.DeadLetterSource, Is.EqualTo(sourceEndpoint), "Message should have come via the dlq of the processing endpoint");
+            Assert.That(nativeMessage, Is.Not.Null);
+            Assert.That(nativeMessage.DeadLetterSource, Is.EqualTo(sourceEndpoint), "Message should have come via the dlq of the processing endpoint");
+
+            // these should have been in a unit test but there is currently no way to create a mock service bus message with dlq reason and description set
+            Assert.That(failedMessageHeaders[FaultsHeaderKeys.FailedQ], Is.EqualTo(nativeMessage.DeadLetterSource), $"{FaultsHeaderKeys.FailedQ} should be set to dlq source");
+            Assert.That(failedMessageHeaders[FaultsHeaderKeys.Message].Contains("some message"), Is.True, $"{FaultsHeaderKeys.Message} should be set from dlq reason");
+            Assert.That(failedMessageHeaders[FaultsHeaderKeys.ExceptionType], Is.EqualTo(typeof(SimulatedException).FullName), $"{FaultsHeaderKeys.ExceptionType} should be set if message was dead lettered via NServiceBus");
+            Assert.That(failedMessageHeaders[FaultsHeaderKeys.StackTrace], Is.EqualTo(nativeMessage.DeadLetterErrorDescription), $"{FaultsHeaderKeys.StackTrace} should be set to dlq description");
         });
     }
 
@@ -42,7 +52,7 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
 
         class Handler : IHandleMessages<FailingMessage>
         {
-            public Task Handle(FailingMessage message, IMessageHandlerContext context) => throw new SimulatedException();
+            public Task Handle(FailingMessage message, IMessageHandlerContext context) => throw new SimulatedException("some message");
         }
     }
 
@@ -56,6 +66,7 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
             public Task Handle(FailingMessage message, IMessageHandlerContext context)
             {
                 testContext.ServiceBusReceivedMessage = context.Extensions.Get<ServiceBusReceivedMessage>();
+                testContext.FailedMessageHeaders = context.MessageHeaders;
                 testContext.MarkAsCompleted();
                 return Task.CompletedTask;
             }
