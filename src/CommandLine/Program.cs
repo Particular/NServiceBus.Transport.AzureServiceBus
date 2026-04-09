@@ -105,10 +105,12 @@
                     createCommand.AddOption(partitioning);
                     createCommand.AddOption(hierarchyNamespace);
 
+                    var forwardDlqTo = CreateForwardDlqToOption(createCommand, name, hierarchyNamespace);
+
                     createCommand.OnExecuteAsync(async ct =>
                     {
                         await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
-                            client => TopicPerEventTopologyEndpoint.Create(client, name, size, partitioning, hierarchyNamespace));
+                            client => TopicPerEventTopologyEndpoint.Create(client, name, size, partitioning, hierarchyNamespace, forwardDlqTo));
 
                         Console.WriteLine($"Endpoint '{name.Value}' is ready.");
                     });
@@ -141,6 +143,7 @@
                         createCommand.AddOption(size);
                         createCommand.AddOption(partitioning);
                         createCommand.AddOption(hierarchyNamespace);
+                        var forwardDlqTo = CreateForwardDlqToOption(createCommand, name, hierarchyNamespace);
 
                         var topicName = createCommand.Option("-t|--topic",
                             "Topic name (defaults to 'bundle-1')", CommandOptionType.SingleValue);
@@ -173,7 +176,7 @@
                             await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
                                 client => MigrationTopologyEndpoint.Create(client, name, topicName,
                                     topicToPublishTo, topicToSubscribeOn,
-                                    subscriptionName, size, partitioning, hierarchyNamespace));
+                                    subscriptionName, size, partitioning, hierarchyNamespace, forwardDlqTo));
 
 
                             Console.WriteLine($"Endpoint '{name.Value}' is ready.");
@@ -269,12 +272,13 @@
                     createCommand.AddOption(size);
                     createCommand.AddOption(partitioning);
                     createCommand.AddOption(hierarchyNamespace);
+                    var forwardDlqTo = CreateForwardDlqToOption(createCommand, name, hierarchyNamespace);
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
                         try
                         {
-                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Create(client, name, size, partitioning, hierarchyNamespace));
+                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Create(client, name, size, partitioning, hierarchyNamespace, forwardDlqTo));
                             Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
                         }
                         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
@@ -320,6 +324,13 @@
             }
         }
 
+        static CommandOption CreateForwardDlqToOption(CommandLineApplication command, CommandArgument name, CommandOption hierarchyNamespace)
+        {
+            var option = command.Option("-f|--forward-dlq-to", "Name of the error queue to forward dead-lettered messages to. The queue will be created if missing.", CommandOptionType.SingleValue);
+            option.OnValidate(_ => ValidateForwardingDestination(name, option, hierarchyNamespace));
+            return option;
+        }
+
         static ValidationResult ValidateTopicInformationIsCorrect(CommandOption topicName, CommandOption topicToPublishTo, CommandOption topicToSubscribeOn)
         {
             if (topicName.HasValue() && topicToPublishTo.HasValue())
@@ -350,6 +361,24 @@
             {
                 return new ValidationResult(
                     "The connection string and the namespace option cannot be used together. Choose either the connection string or the namespace option to establish the connection");
+            }
+
+            return ValidationResult.Success;
+        }
+
+        static ValidationResult ValidateForwardingDestination(CommandArgument name, CommandOption forwardDlqTo, CommandOption hierarchyNamespace)
+        {
+            if (!forwardDlqTo.HasValue() || string.IsNullOrWhiteSpace(name.Value))
+            {
+                return ValidationResult.Success;
+            }
+
+            var queueName = name.Value.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
+            var forwardingDestination = forwardDlqTo.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
+
+            if (string.Equals(queueName, forwardingDestination, StringComparison.OrdinalIgnoreCase))
+            {
+                return new ValidationResult("The queue name and the --forward-dlq-to option cannot resolve to the same queue.");
             }
 
             return ValidationResult.Success;
