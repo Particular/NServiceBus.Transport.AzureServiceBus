@@ -14,6 +14,7 @@ class MessageDispatcher(
     ServiceBusClient defaultClient,
     MessageSenderRegistry messageSenderRegistry,
     TopicTopology topology,
+    bool sessionsEnabled,
     DestinationManager destinationManager,
     OutgoingNativeMessageCustomizationAction? customizerCallback = null)
     : IMessageDispatcher
@@ -30,7 +31,8 @@ class MessageDispatcher(
         ServiceBusClient defaultClient,
         MessageSenderRegistry messageSenderRegistry,
         TopicTopology topology,
-        OutgoingNativeMessageCustomizationAction? customizerCallback = null) : this(defaultClient, messageSenderRegistry, topology, new DestinationManager(HierarchyNamespaceOptions.None), customizerCallback)
+        bool sessionsEnabled,
+        OutgoingNativeMessageCustomizationAction? customizerCallback = null) : this(defaultClient, messageSenderRegistry, topology, sessionsEnabled, new DestinationManager(HierarchyNamespaceOptions.None), customizerCallback)
     {
     }
 
@@ -138,6 +140,7 @@ class MessageDispatcher(
                     azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
+                SetSessionIdIfNeeded(operation, message);
 
                 messagesToSend.Enqueue(message);
             }
@@ -305,11 +308,31 @@ class MessageDispatcher(
                     azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
+
+                SetSessionIdIfNeeded(operation, message);
+
                 dispatchTasks.Add(DispatchForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
             }
         }
 
         return Task.WhenAll(dispatchTasks);
+    }
+
+    void SetSessionIdIfNeeded(IOutgoingTransportOperation operation, ServiceBusMessage message)
+    {
+        var sessionId = ExtractSessionId(operation);
+        if (sessionsEnabled)
+        {
+            if (string.IsNullOrEmpty(sessionId))
+            {
+                throw new Exception("Session ID must be set on a session-enabled queue.");
+            }
+            message.SessionId = sessionId;
+        }
+        else if (!string.IsNullOrEmpty(sessionId))
+        {
+            throw new Exception("Session ID was set, but this queue is not a sessions-enabled queue. To enable sessions, set `EnableSessions` to true on the transport configuration.");
+        }
     }
 
     async Task DispatchForDestination(string destination, bool isMulticast, ServiceBusClient? client,
@@ -344,5 +367,16 @@ class MessageDispatcher(
 
             throw;
         }
+    }
+
+    string? ExtractSessionId(IOutgoingTransportOperation outgoingTransportOperation)
+    {
+        if (!sessionsEnabled)
+        {
+            return null;
+        }
+
+        outgoingTransportOperation.Properties.TryGetValue("SessionId", out var sessionId);
+        return sessionId;
     }
 }

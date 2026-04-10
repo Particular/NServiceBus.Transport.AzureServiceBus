@@ -65,7 +65,7 @@ sealed class SessionsEnabledMessagePump(
             Identifier = $"Processor-{Id}-{ReceiveAddress}-{Guid.NewGuid()}",
             MaxConcurrentSessions = limitations.MaxConcurrency,
             AutoCompleteMessages = false,
-            //SessionIdleTimeout = ?,
+            // TODO: SessionIdleTimeout = ?,
         };
         if (transportSettings.MaxAutoLockRenewalDuration.HasValue)
         {

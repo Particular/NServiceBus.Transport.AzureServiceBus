@@ -35,6 +35,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         }
 
         var transport = new AzureServiceBusTransport(connectionString, topology);
+        transport.EnableSessions = true;
 
         ApplyMappingsToSupportMultipleInheritance(endpointName, topology);
 

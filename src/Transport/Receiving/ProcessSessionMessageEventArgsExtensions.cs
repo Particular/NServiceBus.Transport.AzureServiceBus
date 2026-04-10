@@ -14,6 +14,7 @@ static class ProcessSessionMessageEventArgsExtensions
         ICache<string, bool> messagesToBeCompleted,  // TODO: do we need this to be ordered?
         CancellationToken cancellationToken = default)
     {
+        // TODO: Do we support ReceiveOnly for sessions? If so, does that work with session state?
         if (transportTransactionMode == TransportTransactionMode.ReceiveOnly && messagesToBeCompleted.TryGet(message.GetMessageId(), out _))
         {
             if (Logger.IsDebugEnabled)
