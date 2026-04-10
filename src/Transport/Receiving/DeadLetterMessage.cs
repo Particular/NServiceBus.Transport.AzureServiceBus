@@ -13,8 +13,8 @@ public sealed class DeadLetterMessage : RecoverabilityAction
     internal DeadLetterMessage(string deadLetterReason, string deadLetterErrorDescription, Dictionary<string, object>? propertiesToModify = null) =>
         deadLetterRequest = new DeadLetterRequest(deadLetterReason, deadLetterErrorDescription, propertiesToModify);
 
-    internal DeadLetterMessage(Exception exception) =>
-        deadLetterRequest = new DeadLetterRequest(exception);
+    internal DeadLetterMessage(Exception exception, Dictionary<string, object>? propertiesToModify = null) =>
+        deadLetterRequest = new DeadLetterRequest(exception, propertiesToModify);
 
     /// <summary>
     /// Stores the dead-letter request on the transport transaction.

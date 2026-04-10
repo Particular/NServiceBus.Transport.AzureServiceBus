@@ -19,6 +19,6 @@ public static class RecoverabilityActionExtensions
         /// <summary>
         /// Creates a recoverability action that moves the message to the dead-letter queue using exception details.
         /// </summary>
-        public static DeadLetterMessage DeadLetter(Exception exception, Dictionary<string, object>? propertiesToModify = null) => new(exception);
+        public static DeadLetterMessage DeadLetter(Exception exception, Dictionary<string, object>? propertiesToModify = null) => new(exception, propertiesToModify);
     }
 }
