@@ -29,6 +29,8 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
             .WithEndpoint<ErrorSpy>()
             .Run();
 
+        // We need to lower case here since even if we provide a name with upper case letters the queue will be created all lower case.
+        // This also happens when creating queues manually via the portal
         var sourceEndpoint = Conventions.EndpointNamingConvention(typeof(UserEndpoint)).ToLower();
         var nativeMessage = context.ServiceBusReceivedMessage;
         var failedMessageHeaders = context.FailedMessageHeaders;
