@@ -319,7 +319,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     public bool EnablePartitioning { get; set; }
 
     /// <summary>
-    /// Enabled auto-forwarding of dead-lettered messages to the configured error queue.
+    /// Enables auto-forwarding of dead-lettered messages to the configured error queue.
     /// </summary>
     /// <remarks>
     /// This option only affects queues created by the transport during infrastructure setup. It applies to transport-created endpoint queues,
