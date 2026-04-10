@@ -295,7 +295,7 @@ sealed class MessagePump(
                     {
                         if (TransactionMode == TransportTransactionMode.None)
                         {
-                            Logger.Error($"User requested message with id '{nativeMessageId}' to be moved to the dead-letter queue due to '{deadLetterRequest.DeadLetterReason}' but since transport transaction mode is 'None' dead lettering is not possible, message wll be discarded");
+                            Logger.Error($"User requested message with id '{nativeMessageId}' to be moved to the dead-letter queue due to '{deadLetterRequest.DeadLetterReason}' but since transport transaction mode is 'None' dead lettering is not possible, message will be discarded");
 
                             return;
                         }
