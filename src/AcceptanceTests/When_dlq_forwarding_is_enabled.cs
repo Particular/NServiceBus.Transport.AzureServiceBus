@@ -22,7 +22,7 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
                 {
                     c.ConfigureTransport<AzureServiceBusTransport>().AutoForwardDeadLetteredMessagesToErrorQueue = true;
                     c.SendFailedMessagesTo(errorSpyAddress);
-                    c.Recoverability().CustomPolicy((_, errorContext) => RecoverabilityAction.DeadLetter(errorContext.Exception));
+                    c.Recoverability().CustomPolicy((_, errorContext) => RecoverabilityAction.DeadLetter(errorContext.Exception, new Dictionary<string, object> { { "SomeProperty", "Some value" } }));
                 })
                 .When(session => session.SendLocal(new FailingMessage()))
                 .DoNotFailOnErrorMessages())
@@ -38,6 +38,7 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
         {
             Assert.That(nativeMessage, Is.Not.Null);
             Assert.That(nativeMessage.DeadLetterSource, Is.EqualTo(sourceEndpoint), "Message should have come via the dlq of the processing endpoint");
+            Assert.That(nativeMessage.ApplicationProperties["SomeProperty"], Is.EqualTo("Some value"), "Message properties should have been set");
 
             // these should have been in a unit test but there is currently no way to create a mock service bus message with dlq reason and description set
             Assert.That(failedMessageHeaders[FaultsHeaderKeys.FailedQ], Is.EqualTo(nativeMessage.DeadLetterSource), $"{FaultsHeaderKeys.FailedQ} should be set to dlq source");
