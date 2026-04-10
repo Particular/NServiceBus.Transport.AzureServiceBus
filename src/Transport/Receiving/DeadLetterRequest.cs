@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 
 /// <summary>
-/// Requests the transport to dlq the message being processed when added to the transport transacton exposed to onError.
+/// Requests the transport to dead-letter the message being processed when added to the transport transaction exposed to onError.
 /// </summary>
 public class DeadLetterRequest(string deadLetterReason, string deadLetterErrorDescription, Dictionary<string, object>? propertiesToModify = null)
 {
@@ -35,5 +35,5 @@ public class DeadLetterRequest(string deadLetterReason, string deadLetterErrorDe
 
     static string Truncate(string value, int maxLength) => value.Length <= maxLength ? value : value[..maxLength];
 
-    internal static string Separator = " - ";
+    internal const string Separator = " - ";
 }
