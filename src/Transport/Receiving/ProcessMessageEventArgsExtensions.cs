@@ -70,30 +70,23 @@ static class ProcessMessageEventArgsExtensions
     }
 
     public static async Task SafeDeadLetterMessage(this ProcessMessageEventArgs args, ServiceBusReceivedMessage message,
-        string nativeMessageId, TransportTransactionMode transportTransactionMode, DeadLetterRequest request, CancellationToken cancellationToken = default)
+        string nativeMessageId, DeadLetterRequest request, CancellationToken cancellationToken = default)
     {
-        if (transportTransactionMode != TransportTransactionMode.None)
+        try
         {
-            try
-            {
-                await args.DeadLetterMessageAsync(message,
-                        request.PropertiesToModify,
-                        request.DeadLetterReason,
-                        request.DeadLetterErrorDescription,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(cancellationToken))
-            {
-                if (Logger.IsDebugEnabled)
-                {
-                    Logger.Debug($"Error dead lettering message with id '{nativeMessageId}'.", deadLetterEx);
-                }
-            }
+            await args.DeadLetterMessageAsync(message,
+                    request.PropertiesToModify,
+                    request.DeadLetterReason,
+                    request.DeadLetterErrorDescription,
+                    cancellationToken)
+                .ConfigureAwait(false);
         }
-        else
+        catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(cancellationToken))
         {
-            Logger.Warn($"User requested message with id '{nativeMessageId}' to be moved to the dead-letter queue, but transaction mode is None so the message was already removed.");
+            if (Logger.IsDebugEnabled)
+            {
+                Logger.Debug($"Error dead lettering message with id '{nativeMessageId}'.", deadLetterEx);
+            }
         }
     }
 
