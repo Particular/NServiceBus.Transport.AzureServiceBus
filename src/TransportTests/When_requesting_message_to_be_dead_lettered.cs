@@ -49,7 +49,7 @@ public class When_requesting_message_to_be_dead_lettered : NServiceBusTransportT
     async Task<ServiceBusReceivedMessage> ReceiveDeadLetteredMessage(CancellationToken cancellationToken)
     {
         await using var client = new ServiceBusClient(ConfigureAzureServiceBusTransportInfrastructure.ConnectionString);
-        var dlqReceiver = client.CreateReceiver(InputQueueName, new ServiceBusReceiverOptions
+        await using var dlqReceiver = client.CreateReceiver(InputQueueName, new ServiceBusReceiverOptions
         {
             SubQueue = SubQueue.DeadLetter,
             ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete
