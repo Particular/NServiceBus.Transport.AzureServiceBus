@@ -138,9 +138,15 @@ sealed class MessagePump(
         }
         catch (Exception ex)
         {
-            Logger.Warn($"Poison message detected. Message will be moved to the poison queue. Exception: {ex.Message}", ex);
+            if (TransactionMode == TransportTransactionMode.None)
+            {
+                Logger.Error($"Poison message detected.", ex);
+                return;
+            }
 
-            await arg.SafeDeadLetterMessage(message, nativeMessageId, TransactionMode, new DeadLetterRequest(ex), CancellationToken.None).ConfigureAwait(false);
+            await arg.SafeDeadLetterMessage(message, nativeMessageId, new DeadLetterRequest(ex), CancellationToken.None).ConfigureAwait(false);
+
+            Logger.Error($"Poison message detected, message moved to the dead letter queue.", ex);
 
             return;
         }
@@ -287,14 +293,21 @@ sealed class MessagePump(
 
                     if (azureServiceBusTransaction.TransportTransaction.TryGet<DeadLetterRequest>(out var deadLetterRequest))
                     {
-                        Logger.Warn($"User requested message with id '{nativeMessageId}' to be moved to the dead-letter queue due to '{deadLetterRequest.DeadLetterReason}': {deadLetterRequest.DeadLetterErrorDescription}");
+                        if (TransactionMode == TransportTransactionMode.None)
+                        {
+                            Logger.Error($"User requested message with id '{nativeMessageId}' to be moved to the dead-letter queue due to '{deadLetterRequest.DeadLetterReason}' but since transport transaction mode is 'None' dead lettering is not possible, message wll be discarded");
+
+                            return;
+                        }
 
                         await processMessageEventArgs.SafeDeadLetterMessage(message,
                                 nativeMessageId,
-                                TransactionMode,
                                 deadLetterRequest,
                                 cancellationToken: messageProcessingCancellationToken)
                             .ConfigureAwait(false);
+
+                        Logger.Warn($"User requested message with id '{nativeMessageId}' to be moved to the dead-letter queue due to '{deadLetterRequest.DeadLetterReason}'");
+
                         return;
                     }
 
