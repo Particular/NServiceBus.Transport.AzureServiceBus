@@ -10,7 +10,7 @@ using NServiceBus.TransportTests;
 using NUnit.Framework;
 
 [TestFixture]
-public class When_requesting_dead_letter_from_on_error : NServiceBusTransportTest
+public class When_requesting_message_to_be_dead_lettered : NServiceBusTransportTest
 {
     const string TestIdHeaderName = "TransportTest.TestId";
 

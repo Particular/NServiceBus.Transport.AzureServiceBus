@@ -8,7 +8,7 @@ using NServiceBus.TransportTests;
 using NUnit.Framework;
 
 [TestFixture]
-public class When_auto_forwarding_of_dead_lettered_messages_to_error_queue_enabled : NServiceBusTransportTest
+public class When_auto_forwarding_dead_lettered_messages : NServiceBusTransportTest
 {
     [TestCase(TransportTransactionMode.ReceiveOnly)]
     [TestCase(TransportTransactionMode.SendsAtomicWithReceive)]
