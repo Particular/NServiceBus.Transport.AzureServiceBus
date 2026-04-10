@@ -42,8 +42,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             completedMessages.Add(message);
         }
 
-        public override Task DeadLetterMessageAsync(ServiceBusReceivedMessage message, IDictionary<string, object> propertiesToModify = null,
-            string deadLetterReason = null, string deadLetterErrorDescription = null, CancellationToken cancellationToken = default)
+        public override Task DeadLetterMessageAsync(ServiceBusReceivedMessage message, IDictionary<string, object> propertiesToModify,
+            string deadLetterReason, string deadLetterErrorDescription = null, CancellationToken cancellationToken = default)
         {
             deadLetteredMessages.Add((message, propertiesToModify ?? new Dictionary<string, object>(0), deadLetterReason, deadLetterErrorDescription));
             return Task.CompletedTask;
