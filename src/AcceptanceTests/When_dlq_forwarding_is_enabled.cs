@@ -1,6 +1,5 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AcceptanceTesting;
@@ -14,7 +13,7 @@ using NUnit.Framework;
 public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
 {
     [Test]
-    public async Task Should_be_able_to_read_dlq_messages_from_error_queue()
+    public async Task Should_forward_dlq_messages_to_error_queue()
     {
         var errorSpyAddress = Conventions.EndpointNamingConvention(typeof(ErrorSpy));
         var context = await Scenario.Define<Context>()

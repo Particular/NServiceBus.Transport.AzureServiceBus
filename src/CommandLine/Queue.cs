@@ -23,7 +23,7 @@
                 }
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
                 {
-                    Console.WriteLine($"Queue to forward DLQ messages to, '{name.Value}', already exists, skipping creation");
+                    Console.WriteLine($"Queue to forward DLQ messages to, '{queueDescription.Name}', already exists, skipping creation");
                 }
             }
 

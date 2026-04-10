@@ -266,7 +266,8 @@ public partial class AzureServiceBusTransport : TransportDefinition
         }
     } = HierarchyNamespaceOptions.None;
 
-    [field: AllowNull, MaybeNull] DestinationManager DestinationManager => field ??= new DestinationManager(HierarchyNamespaceOptions);
+    [field: AllowNull, MaybeNull]
+    DestinationManager DestinationManager => field ??= new DestinationManager(HierarchyNamespaceOptions);
 
     string HierarchyNamespaceClientIdentifier => HierarchyNamespaceOptions != HierarchyNamespaceOptions.None ? $"{HierarchyNamespaceOptions.HierarchyNamespace.Replace('/', '-')}-" : string.Empty;
 
@@ -327,7 +328,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     public bool EnablePartitioning { get; set; }
 
     /// <summary>
-    /// Configures transport-managed queue creation to auto-forward dead-lettered endpoint messages to the configured error queue.
+    /// Enabled auto-forwarding of dead-lettered messages to the configured error queue.
     /// </summary>
     /// <remarks>
     /// This option only affects queues created by the transport during infrastructure setup. It applies to transport-created endpoint queues,
