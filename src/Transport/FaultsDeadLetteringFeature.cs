@@ -13,14 +13,14 @@ class FaultsDeadLetteringFeature : Feature
     {
         var transport = context.Settings.Get<TransportDefinition>();
 
-        if (transport.TransportTransactionMode == TransportTransactionMode.None)
-        {
-            throw new ArgumentException("Dead letter failed messages is not valid for transport transaction mode None since failures leads to message being discarded.");
-        }
-
         if (transport is AzureServiceBusTransport { DeadLetterFailedMessages: false })
         {
             return;
+        }
+
+        if (transport.TransportTransactionMode == TransportTransactionMode.None)
+        {
+            throw new ArgumentException("Dead letter failed messages is not valid for transport transaction mode None since failures leads to message being discarded.");
         }
 
         context.Pipeline.Register(typeof(NativeDlqBehavior), "Requests native dead lettering of faults");
