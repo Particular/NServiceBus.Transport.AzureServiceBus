@@ -37,6 +37,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         Topology = topology;
 
         EnableEndpointFeature<NativeMessageCustomizationFeature>();
+        EnableEndpointFeature<FaultsDeadLetteringFeature>();
     }
 
     /// <summary>
@@ -60,6 +61,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         Topology = topology;
 
         EnableEndpointFeature<NativeMessageCustomizationFeature>();
+        EnableEndpointFeature<FaultsDeadLetteringFeature>();
     }
 
     /// <inheritdoc />
@@ -74,6 +76,11 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
         Topology.Validate();
         HierarchyNamespaceOptions.ValidateDestinations(receivers.Select(x => x.ReceiveAddress.ToString()));
+
+        if (DeadLetterFailedMessages && hostSettings.IsRawMode)
+        {
+            throw new ArgumentException("Dead letter failed messages is not supported in Raw mode.");
+        }
 
         var transportType = UseWebSockets ? ServiceBusTransportType.AmqpWebSockets : ServiceBusTransportType.AmqpTcp;
         bool enableCrossEntityTransactions = TransportTransactionMode == TransportTransactionMode.SendsAtomicWithReceive;
@@ -257,8 +264,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         }
     } = HierarchyNamespaceOptions.None;
 
-    [field: AllowNull, MaybeNull]
-    DestinationManager DestinationManager => field ??= new DestinationManager(HierarchyNamespaceOptions);
+    [field: AllowNull, MaybeNull] DestinationManager DestinationManager => field ??= new DestinationManager(HierarchyNamespaceOptions);
 
     string HierarchyNamespaceClientIdentifier => HierarchyNamespaceOptions != HierarchyNamespaceOptions.None ? $"{HierarchyNamespaceOptions.HierarchyNamespace.Replace('/', '-')}-" : string.Empty;
 
@@ -326,6 +332,14 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// including instance-specific queues, and excludes the error queue itself to avoid self-forwarding loops.
     /// </remarks>
     public bool AutoForwardDeadLetteredMessagesToErrorQueue { get; set; }
+
+    /// <summary>
+    /// Uses the native dead letter queues for failing messages.
+    /// </summary>
+    /// <remarks>
+    /// All NServiceBus fault details are preserved, when using this options it's recommended to also enable <see cref="AutoForwardDeadLetteredMessagesToErrorQueue"/>
+    /// </remarks>
+    public bool DeadLetterFailedMessages { get; set; }
 
     /// <summary>
     /// Specifies the multiplier to apply to the maximum concurrency value to calculate the prefetch count.
