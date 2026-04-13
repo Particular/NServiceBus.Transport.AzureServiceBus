@@ -30,7 +30,7 @@ class FaultsDeadLetteringFeature : Feature
     {
         public override Task Invoke(IRecoverabilityContext context, Func<Task> next)
         {
-            if (context.RecoverabilityAction.GetType() == typeof(MoveToError))
+            if (context.RecoverabilityAction is MoveToError)
             {
                 context.RecoverabilityAction = RecoverabilityAction.DeadLetter();
             }
