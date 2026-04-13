@@ -65,7 +65,7 @@ public class TopicPerEventSubscriptionManagerTests
     }
 
     [Test]
-    public async Task Should_strip_hierarchy_namespace_from_subscription_names()
+    public async Task Should_apply_subscription_name_unaffected_by_hierarchy_namespace()
     {
         var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
         var destinationManager = new DestinationManager(hierarchyOptions);
@@ -76,7 +76,6 @@ public class TopicPerEventSubscriptionManagerTests
             {
                 { typeof(MyEvent1).FullName, [ destinationManager.GetDestination("MyTopic1"), destinationManager.GetDestination("MyTopic2")] }
             },
-            //QueueNameToSubscriptionNameMap = { { "SubscribingQueue", "MySubscriptionName" } },
             HierarchyNamespaceOptions = hierarchyOptions,
         };
 

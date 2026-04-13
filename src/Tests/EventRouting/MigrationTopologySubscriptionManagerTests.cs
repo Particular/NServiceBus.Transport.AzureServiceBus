@@ -105,7 +105,7 @@ public class MigrationTopologySubscriptionManagerTests
     }
 
     [Test]
-    public async Task Should_strip_hierarchy_namespace_from_subscription_names()
+    public async Task Should_apply_subscription_name_unaffected_by_hierarchy_namespace()
     {
         var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
         var destinationManager = new DestinationManager(hierarchyOptions);
