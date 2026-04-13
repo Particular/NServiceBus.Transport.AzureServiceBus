@@ -28,8 +28,15 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         // The subscription name is limited to 50 characters and the hierarchy is respected by the topic name
         // so there is no need to add it to the subscription name.
         destinationManager = new DestinationManager(topologyOptions.HierarchyNamespaceOptions);
-        var nonNamespacedQueueName = destinationManager.StripHierarchyNamespace(CreationOptions.SubscribingQueueName);
-        subscriptionName = topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(nonNamespacedQueueName, nonNamespacedQueueName);
+        var subscribingQueueName = CreationOptions.SubscribingQueueName;
+        var strippedSubscribingQueueName = destinationManager.StripHierarchyNamespace(subscribingQueueName);
+
+        var subscriptionNameCandidate =
+            topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(subscribingQueueName)
+            ?? topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(strippedSubscribingQueueName)
+            ?? subscribingQueueName;
+
+        subscriptionName = destinationManager.StripHierarchyNamespace(subscriptionNameCandidate);
     }
 
     static readonly ILog Logger = LogManager.GetLogger<TopicPerEventTopologySubscriptionManager>();
