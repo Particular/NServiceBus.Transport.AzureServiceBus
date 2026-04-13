@@ -20,11 +20,11 @@ public class When_dlq_use_for_failures_enabled : NServiceBusAcceptanceTest
             .WithEndpoint<UserEndpoint>(b => b
                 .CustomConfig(c =>
                 {
-                    var transport = c.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.DeadLetterFailedMessages = true;
+                    c.Recoverability()
+                        .UseAzureServiceBusDeadLetterQueueForFailures();
 
-                    // so that they gets forwarded to the central error queue
-                    transport.AutoForwardDeadLetteredMessagesToErrorQueue = true;
+                    // so that they gets forwarded to the error spy
+                    c.ConfigureTransport<AzureServiceBusTransport>().AutoForwardDeadLetteredMessagesToErrorQueue = true;
                     c.SendFailedMessagesTo(errorSpyAddress);
                 })
                 .When(session => session.SendLocal(new FailingMessage()))

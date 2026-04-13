@@ -2,28 +2,21 @@ namespace NServiceBus;
 
 using System;
 using System.Threading.Tasks;
+using ConsistencyGuarantees;
 using Features;
 using Pipeline;
-using Transport;
 using Transport.AzureServiceBus;
 
 class FaultsDeadLetteringFeature : Feature
 {
     protected override void Setup(FeatureConfigurationContext context)
     {
-        var transport = context.Settings.Get<TransportDefinition>();
-
-        if (transport is AzureServiceBusTransport { DeadLetterFailedMessages: false })
+        if (context.Settings.GetRequiredTransactionModeForReceives() == TransportTransactionMode.None)
         {
-            return;
+            throw new ArgumentException("Dead lettering of failed messages is not valid for transport transaction mode None since any processing failure leads to the message being discarded.");
         }
 
-        if (transport.TransportTransactionMode == TransportTransactionMode.None)
-        {
-            throw new ArgumentException("Dead letter failed messages is not valid for transport transaction mode None since failures leads to message being discarded.");
-        }
-
-        context.Pipeline.Register(typeof(NativeDlqBehavior), "Requests native dead lettering of faults");
+        context.Pipeline.Register(typeof(NativeDlqBehavior), "Requests native service bus dead lettering of faults");
     }
 
     class NativeDlqBehavior : Behavior<IRecoverabilityContext>
