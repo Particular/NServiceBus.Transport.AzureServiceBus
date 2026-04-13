@@ -16,7 +16,7 @@ public static class RecoverabilityActionExtensions
             => new(deadLetterReason, deadLetterErrorDescription, propertiesToModify);
 
         /// <summary>
-        /// Creates a recoverability action that moves the message to the dead-letter.
+        /// Creates a recoverability action that moves the message to the dead-letter queue including all fault metadata.
         /// </summary>
         public static DeadLetterMessage DeadLetter() => new();
     }
