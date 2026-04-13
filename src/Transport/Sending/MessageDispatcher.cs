@@ -321,17 +321,9 @@ class MessageDispatcher(
     void SetSessionIdIfNeeded(IOutgoingTransportOperation operation, ServiceBusMessage message)
     {
         var sessionId = ExtractSessionId(operation);
-        if (sessionsEnabled)
+        if (sessionId is not null)
         {
-            if (string.IsNullOrEmpty(sessionId))
-            {
-                throw new Exception("Session ID must be set on a session-enabled queue.");
-            }
             message.SessionId = sessionId;
-        }
-        else if (!string.IsNullOrEmpty(sessionId))
-        {
-            throw new Exception("Session ID was set, but this queue is not a sessions-enabled queue. To enable sessions, set `EnableSessions` to true on the transport configuration.");
         }
     }
 

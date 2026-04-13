@@ -43,6 +43,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             defaultClient,
             messageSenderRegistry,
             transportSettings.Topology,
+            transportSettings.EnableSessions,
             destinationManager,
             transportSettings.OutgoingNativeMessageCustomization
         );
@@ -151,8 +152,10 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         {
             foreach (var messageReceiver in Receivers.Values)
             {
-                var receiver = (MessagePump)messageReceiver;
-                await receiver.DisposeAsync().ConfigureAwait(false);
+                if (messageReceiver is IAsyncDisposable disposableReceiver)
+                {
+                    await disposableReceiver.DisposeAsync().ConfigureAwait(false);
+                }
             }
 
             foreach (var (_, serviceBusClient) in receiveSettingsAndClientPairs)
