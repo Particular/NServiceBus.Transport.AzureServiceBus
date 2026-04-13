@@ -169,6 +169,38 @@ public class MigrationTopologySubscriptionManagerTests
         Approver.Verify(builder.ToString());
     }
 
+    [Test]
+    public async Task Should_apply_subscription_name_override_for_namespaced_queue_when_hierarchy_enabled()
+    {
+        var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+#pragma warning disable CS0618 // Type or member is obsolete
+        var topologyOptions = new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
+        {
+            TopicToPublishTo = "my-hierarchy/PublishTopic",
+            TopicToSubscribeOn = "my-hierarchy/SubscribeTopic",
+            EventsToMigrateMap = { typeof(MyEvent1).FullName },
+            QueueNameToSubscriptionNameMap = { { "my-hierarchy/SubscribingQueue", "MySubscriptionName" } },
+            SubscribedEventToRuleNameMap = { { typeof(MyEvent1).FullName, "MyRuleName" } },
+            HierarchyNamespaceOptions = hierarchyOptions
+        };
+
+        var builder = new StringBuilder();
+        var client = new RecordingServiceBusClient(builder);
+        var administrationClient = new RecordingServiceBusAdministrationClient(builder);
+
+        var subscriptionManager = new MigrationTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "my-hierarchy/SubscribingQueue",
+            Client = client,
+            AdministrationClient = administrationClient
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        Approver.Verify(builder.ToString());
+    }
+
     class MyEvent1;
     class MyEvent2;
 }
