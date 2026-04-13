@@ -15,7 +15,7 @@ public sealed class DeadLetterMessage : RecoverabilityAction
     internal DeadLetterMessage() { }
 
     /// <summary>
-    /// Stores the dead-letter request on the transport transaction.
+    /// Instructs the transport to dead-letter the failing message.
     /// </summary>
     public override IReadOnlyCollection<IRoutingContext> GetRoutingContexts(IRecoverabilityActionContext context)
     {
