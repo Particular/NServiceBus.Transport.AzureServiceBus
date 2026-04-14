@@ -22,29 +22,30 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
                 {
                     c.ConfigureTransport<AzureServiceBusTransport>().AutoForwardDeadLetteredMessagesToErrorQueue = true;
                     c.SendFailedMessagesTo(errorSpyAddress);
-                    c.Recoverability().CustomPolicy((_, errorContext) =>
-                        RecoverabilityAction.DeadLetter(errorContext.Exception.Message, errorContext.Exception.StackTrace!, new Dictionary<string, object> { { "SomeProperty", "Some value" } }));
+                    c.Recoverability().CustomPolicy((_, _) =>
+                        RecoverabilityAction.DeadLetter("Some reason", "Some description", new Dictionary<string, object> { { "SomeProperty", "Some value" } }));
                 })
                 .When(session => session.SendLocal(new FailingMessage()))
                 .DoNotFailOnErrorMessages())
             .WithEndpoint<ErrorSpy>()
             .Run();
 
-        // We need to lower case here since even if we provide a name with upper case letters the queue will be created all lower case.
-        // This also happens when creating queues manually via the portal
-        var sourceEndpoint = Conventions.EndpointNamingConvention(typeof(UserEndpoint)).ToLower();
+        var sourceEndpoint = Conventions.EndpointNamingConvention(typeof(UserEndpoint));
         var nativeMessage = context.ServiceBusReceivedMessage;
         var failedMessageHeaders = context.FailedMessageHeaders;
+
         Assert.Multiple(() =>
         {
             Assert.That(nativeMessage, Is.Not.Null);
-            Assert.That(nativeMessage.DeadLetterSource, Is.EqualTo(sourceEndpoint), "Message should have come via the dlq of the processing endpoint");
+
+            // We need to lower case here since even if we provide a name with upper case letters the queue will be created all lower case.
+            // This also happens when creating queues manually via the portal
+            Assert.That(nativeMessage.DeadLetterSource, Is.EqualTo(sourceEndpoint.ToLower()), "Message should have come via the dlq of the processing endpoint");
             Assert.That(nativeMessage.ApplicationProperties["SomeProperty"], Is.EqualTo("Some value"), "Message properties should have been set");
 
-            // these should have been in a unit test but there is currently no way to create a mock service bus message with dlq reason and description set
             Assert.That(failedMessageHeaders[FaultsHeaderKeys.FailedQ], Is.EqualTo(nativeMessage.DeadLetterSource), $"{FaultsHeaderKeys.FailedQ} should be set to dlq source");
-            Assert.That(failedMessageHeaders[FaultsHeaderKeys.Message].Contains("some message"), Is.True, $"{FaultsHeaderKeys.Message} should be set from dlq reason");
-            Assert.That(failedMessageHeaders[FaultsHeaderKeys.StackTrace], Is.EqualTo(nativeMessage.DeadLetterErrorDescription), $"{FaultsHeaderKeys.StackTrace} should be set to dlq description");
+            Assert.That(failedMessageHeaders[FaultsHeaderKeys.Message], Is.EqualTo("Some reason"), $"{FaultsHeaderKeys.Message} should be set from dlq reason");
+            Assert.That(failedMessageHeaders[FaultsHeaderKeys.StackTrace], Is.EqualTo("Some description"), $"{FaultsHeaderKeys.StackTrace} should be set to dlq description");
         });
     }
 
