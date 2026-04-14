@@ -13,6 +13,6 @@ public static class RecoverabilitySettingsExtensions
         /// <summary>
         /// Uses the endpoints native service bus dead letter queue for message failures.
         /// </summary>
-        public void UseAzureServiceBusDeadLetterQueueForFailures() => settings.GetSettings().EnableFeature<FaultsDeadLetteringFeature>();
+        public void MoveErrorsToAzureServiceBusDeadLetterQueue() => settings.GetSettings().EnableFeature<FaultsDeadLetteringFeature>();
     }
 }

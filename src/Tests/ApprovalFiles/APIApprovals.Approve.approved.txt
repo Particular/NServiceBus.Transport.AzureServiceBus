@@ -203,7 +203,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         extension(NServiceBus.RecoverabilitySettings settings)
         {
-            public void UseAzureServiceBusDeadLetterQueueForFailures() { }
+            public void MoveErrorsToAzureServiceBusDeadLetterQueue() { }
         }
     }
     public sealed class TopicPerEventTopology : NServiceBus.TopicTopology

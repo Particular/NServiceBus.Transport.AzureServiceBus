@@ -21,7 +21,7 @@ public class When_dlq_use_for_failures_enabled : NServiceBusAcceptanceTest
                 .CustomConfig(c =>
                 {
                     c.Recoverability()
-                        .UseAzureServiceBusDeadLetterQueueForFailures();
+                        .MoveErrorsToAzureServiceBusDeadLetterQueue();
 
                     // so that they gets forwarded to the error spy
                     c.ConfigureTransport<AzureServiceBusTransport>().AutoForwardDeadLetteredMessagesToErrorQueue = true;
