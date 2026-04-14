@@ -1,6 +1,5 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
-using System;
 using System.Collections.Generic;
 
 /// <summary>
@@ -17,8 +16,8 @@ public static class RecoverabilityActionExtensions
             => new(deadLetterReason, deadLetterErrorDescription, propertiesToModify);
 
         /// <summary>
-        /// Creates a recoverability action that moves the message to the dead-letter queue using exception details.
+        /// Creates a recoverability action that moves the message to the dead-letter queue including all fault metadata.
         /// </summary>
-        public static DeadLetterMessage DeadLetter(Exception exception, Dictionary<string, object>? propertiesToModify = null) => new(exception, propertiesToModify);
+        public static DeadLetterMessage DeadLetter() => new();
     }
 }

@@ -196,7 +196,14 @@ namespace NServiceBus.Transport.AzureServiceBus
         extension(NServiceBus.RecoverabilityAction _)
         {
             public static NServiceBus.Transport.AzureServiceBus.DeadLetterMessage DeadLetter(string deadLetterReason, string deadLetterErrorDescription, System.Collections.Generic.Dictionary<string, object>? propertiesToModify = null) { }
-            public static NServiceBus.Transport.AzureServiceBus.DeadLetterMessage DeadLetter(System.Exception exception, System.Collections.Generic.Dictionary<string, object>? propertiesToModify = null) { }
+            public static NServiceBus.Transport.AzureServiceBus.DeadLetterMessage DeadLetter() { }
+        }
+    }
+    public static class RecoverabilitySettingsExtensions
+    {
+        extension(NServiceBus.RecoverabilitySettings settings)
+        {
+            public void MoveErrorsToAzureServiceBusDeadLetterQueue() { }
         }
     }
     public sealed class TopicPerEventTopology : NServiceBus.TopicTopology

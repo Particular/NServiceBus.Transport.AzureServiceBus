@@ -1,6 +1,5 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
-using System;
 using System.Collections.Generic;
 using Pipeline;
 using Transport;
@@ -13,16 +12,27 @@ public sealed class DeadLetterMessage : RecoverabilityAction
     internal DeadLetterMessage(string deadLetterReason, string deadLetterErrorDescription, Dictionary<string, object>? propertiesToModify = null) =>
         deadLetterRequest = new DeadLetterRequest(deadLetterReason, deadLetterErrorDescription, propertiesToModify);
 
-    internal DeadLetterMessage(Exception exception, Dictionary<string, object>? propertiesToModify = null) =>
-        deadLetterRequest = new DeadLetterRequest(exception, propertiesToModify);
+    internal DeadLetterMessage() { }
 
     /// <summary>
-    /// Stores the dead-letter request on the transport transaction.
+    /// Instructs the transport to dead-letter the failing message.
     /// </summary>
     public override IReadOnlyCollection<IRoutingContext> GetRoutingContexts(IRecoverabilityActionContext context)
     {
-        context.Extensions.Get<TransportTransaction>().Set(deadLetterRequest);
+        context.Extensions.Get<TransportTransaction>().Set(deadLetterRequest ?? CreateFromRecoverabilityContext());
         return [];
+
+        DeadLetterRequest CreateFromRecoverabilityContext()
+        {
+            var propertiesToModify = new Dictionary<string, object>();
+
+            foreach (var metadata in context.Metadata)
+            {
+                propertiesToModify[metadata.Key] = metadata.Value;
+            }
+
+            return new DeadLetterRequest("NServiceBus", "See application properties", propertiesToModify);
+        }
     }
 
     /// <summary>
@@ -30,5 +40,5 @@ public sealed class DeadLetterMessage : RecoverabilityAction
     /// </summary>
     public override ErrorHandleResult ErrorHandleResult => ErrorHandleResult.Handled;
 
-    readonly DeadLetterRequest deadLetterRequest;
+    readonly DeadLetterRequest? deadLetterRequest;
 }
