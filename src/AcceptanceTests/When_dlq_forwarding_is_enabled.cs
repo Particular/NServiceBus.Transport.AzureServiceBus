@@ -42,7 +42,6 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
             // This also happens when creating queues manually via the portal
             Assert.That(nativeMessage.DeadLetterSource, Is.EqualTo(sourceEndpoint.ToLower()), "Message should have come via the dlq of the processing endpoint");
             Assert.That(nativeMessage.ApplicationProperties["SomeProperty"], Is.EqualTo("Some value"), "Message properties should have been set");
-
             Assert.That(failedMessageHeaders[FaultsHeaderKeys.FailedQ], Is.EqualTo(nativeMessage.DeadLetterSource), $"{FaultsHeaderKeys.FailedQ} should be set to dlq source");
             Assert.That(failedMessageHeaders[FaultsHeaderKeys.Message], Is.EqualTo("Some reason"), $"{FaultsHeaderKeys.Message} should be set from dlq reason");
             Assert.That(failedMessageHeaders[FaultsHeaderKeys.StackTrace], Is.EqualTo("Some description"), $"{FaultsHeaderKeys.StackTrace} should be set to dlq description");
@@ -61,8 +60,7 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
 
     public class ErrorSpy : EndpointConfigurationBuilder
     {
-        public ErrorSpy() =>
-            EndpointSetup<DefaultServer>();
+        public ErrorSpy() => EndpointSetup<DefaultServer>();
 
         class Handler(Context testContext) : IHandleMessages<FailingMessage>
         {
