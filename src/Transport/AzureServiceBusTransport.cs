@@ -157,7 +157,15 @@ public partial class AzureServiceBusTransport : TransportDefinition
         // Currently, we have to also override any port already specified to workaround limitations in the transport
         // since we are not exposing the admin client we assume to always run on the default port with the emulator.
         var properties = ServiceBusConnectionStringProperties.Parse(connectionString);
-        return connectionString.Replace(properties.Endpoint.Port != -1 ? $"Endpoint=sb://{properties.Endpoint.Host}:{properties.Endpoint.Port};" : $"Endpoint=sb://{properties.Endpoint.Host};", $"Endpoint=sb://{properties.Endpoint.Host}:5300;", StringComparison.OrdinalIgnoreCase);
+        var endpoint = properties.Endpoint.Port != -1
+            ? $"Endpoint=sb://{properties.Endpoint.Host}:{properties.Endpoint.Port}"
+            : $"Endpoint=sb://{properties.Endpoint.Host}";
+        var replacement = $"Endpoint=sb://{properties.Endpoint.Host}:5300";
+        // UriBuilder.ToString() appends a trailing slash (e.g. sb://host:port/), so try that format first
+        var result = connectionString.Replace($"{endpoint}/;", $"{replacement};", StringComparison.OrdinalIgnoreCase);
+        return result != connectionString
+            ? result
+            : connectionString.Replace($"{endpoint};", $"{replacement};", StringComparison.OrdinalIgnoreCase);
     }
 
     void ApplyRetryPolicyOptionsIfNeeded(ServiceBusClientOptions options)
