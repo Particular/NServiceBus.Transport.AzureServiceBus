@@ -11,26 +11,26 @@ class QueueCreator(AzureServiceBusTransport transportSettings)
 {
     static readonly ILog Logger = LogManager.GetLogger<QueueCreator>();
 
-    public async Task Create(ServiceBusAdministrationClient adminClient, string[] queues, string? instanceName = null,
+    public async Task Create(ServiceBusAdministrationClient adminClient, (string Queue, bool IsSessionEnabled)[] queues, string? instanceName = null,
         CancellationToken cancellationToken = default)
     {
         foreach (var address in queues)
         {
-            var queue = new CreateQueueOptions(address)
+            var queue = new CreateQueueOptions(address.Queue)
             {
                 EnableBatchedOperations = true,
                 LockDuration = TimeSpan.FromMinutes(5),
                 MaxDeliveryCount = transportSettings.MaxDeliveryCount,
                 MaxSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
                 EnablePartitioning = transportSettings.EnablePartitioning,
-                RequiresSession = transportSettings.EnableSessions,
+                RequiresSession = address.IsSessionEnabled,
                 // TODO: enabledeadletteringonmessagexpiry
             };
 
             // Only apply AutoDeleteOnIdle if an instance name is provided to avoid unintentional deletions
             // of shared queues, e.g. error.
             if (instanceName is not null
-               && string.Equals(instanceName, address, StringComparison.Ordinal)
+               && string.Equals(instanceName, address.Queue, StringComparison.Ordinal)
                && transportSettings.AutoDeleteOnIdle is not null)
             {
                 queue.AutoDeleteOnIdle = transportSettings.AutoDeleteOnIdle.Value;

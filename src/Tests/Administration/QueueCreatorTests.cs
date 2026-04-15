@@ -19,7 +19,7 @@ public class QueueCreatorTests
         var recordingClient = new RecordingServiceBusAdministrationClient();
         var creator = new QueueCreator(transport);
 
-        await creator.Create(recordingClient, ["test-queue"], "test-queue");
+        await creator.Create(recordingClient, [("test-queue", false)], "test-queue");
 
         var output = recordingClient.ToString();
 
@@ -37,7 +37,7 @@ public class QueueCreatorTests
         var recordingClient = new RecordingServiceBusAdministrationClient();
         var creator = new QueueCreator(transport);
 
-        await creator.Create(recordingClient, ["test-queue"], "test-queue");
+        await creator.Create(recordingClient, [("test-queue", false)], "test-queue");
 
         var output = recordingClient.ToString(); // AutoDeleteOnIdle should be default - TimeSpan.MaxValue
 
@@ -55,7 +55,7 @@ public class QueueCreatorTests
         var recordingClient = new RecordingServiceBusAdministrationClient();
         var creator = new QueueCreator(transport);
 
-        await creator.Create(recordingClient, ["instance-queue", "error"], "instance-queue");
+        await creator.Create(recordingClient, [("instance-queue", false), ("error", false)], "instance-queue");
 
         // AutoDeleteOnIdle should be default for shared queues - TimeSpan.MaxValue
         var output = recordingClient.ToString();
@@ -75,7 +75,7 @@ public class QueueCreatorTests
         var creator = new QueueCreator(transport);
 
         // Create queue without specifying an instance name
-        await creator.Create(recordingClient, ["some-queue"], null);
+        await creator.Create(recordingClient, [("some-queue", false)], null);
 
         var output = recordingClient.ToString();
 
@@ -94,7 +94,7 @@ public class QueueCreatorTests
         var creator = new QueueCreator(transport);
 
         // Create queue with different instance name
-        await creator.Create(recordingClient, ["some-queue"], "different-instance");
+        await creator.Create(recordingClient, [("some-queue", false)], "different-instance");
 
         var output = recordingClient.ToString();
 
@@ -109,7 +109,7 @@ public class QueueCreatorTests
         var recordingClient = new RecordingServiceBusAdministrationClient();
         var creator = new QueueCreator(transport);
 
-        await creator.Create(recordingClient, ["test-queue"], null);
+        await creator.Create(recordingClient, [("test-queue", false)], null);
 
         var output = recordingClient.ToString();
 
@@ -124,7 +124,7 @@ public class QueueCreatorTests
         var recordingClient = new RecordingServiceBusAdministrationClient();
         var creator = new QueueCreator(transport);
 
-        await creator.Create(recordingClient, ["test-queue"], null);
+        await creator.Create(recordingClient, [("test-queue", false)], null);
 
         var output = recordingClient.ToString();
 
@@ -135,12 +135,11 @@ public class QueueCreatorTests
     public async Task Should_set_RequiresSession_to_true_when_setting_enable_session()
     {
         var transport = new AzureServiceBusTransport("UseDevelopmentEmulator=true", TopicTopology.Default);
-        transport.EnableSessions = true;
 
         var recordingClient = new RecordingServiceBusAdministrationClient();
         var creator = new QueueCreator(transport);
 
-        await creator.Create(recordingClient, ["test-queue"], null);
+        await creator.Create(recordingClient, [("test-queue", true)], null);
 
         var output = recordingClient.ToString();
 

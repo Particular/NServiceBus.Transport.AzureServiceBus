@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Azure.Core;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using Microsoft.Azure.Amqp.Framing;
 using Transport;
 using Transport.AzureServiceBus;
 using Transport.AzureServiceBus.EventRouting;
@@ -121,8 +122,14 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 .ConfigureAwait(false);
 
             var allQueues = infrastructure.Receivers
-                .Select(r => r.Value.ReceiveAddress)
-                .Concat(sendingAddresses.Select(s => DestinationManager.GetDestination(s)))
+                .Select(r => (r.Value.ReceiveAddress, EnableSessions))
+                .Concat(sendingAddresses.Select(s =>
+                {
+                    var address = DestinationManager.GetDestination(s);
+                    var hasSessions = address.EndsWith("?session");
+                    var queueName = hasSessions ? address.Replace("?session", "") : address;
+                    return (queueName, hasSessions);
+                }))
                 .ToArray();
 
             var queueCreator = new TopologyCreator(this);
