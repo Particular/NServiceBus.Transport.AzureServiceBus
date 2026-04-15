@@ -105,11 +105,10 @@ public class MigrationTopologySubscriptionManagerTests
     }
 
     [Test]
-    public async Task Should_strip_hierarchy_namespace_from_subscription_names()
+    public async Task Should_apply_subscription_name_unaffected_by_hierarchy_namespace()
     {
         var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
         var destinationManager = new DestinationManager(hierarchyOptions);
-        var queueName = destinationManager.GetDestination("SubscribingQueue");
 #pragma warning disable CS0618 // Type or member is obsolete
         var topologyOptions = new MigrationTopologyOptions
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -117,7 +116,6 @@ public class MigrationTopologySubscriptionManagerTests
             TopicToPublishTo = destinationManager.GetDestination("PublishTopic"),
             TopicToSubscribeOn = destinationManager.GetDestination("SubscribeTopic"),
             EventsToMigrateMap = { typeof(MyEvent1).FullName },
-            QueueNameToSubscriptionNameMap = { { queueName, destinationManager.GetDestination("MySubscriptionName") } },
             SubscribedEventToRuleNameMap = { { typeof(MyEvent1).FullName, "MyRuleName" } },
             SubscribedEventToTopicsMap = { { typeof(MyEvent2).FullName, [destinationManager.GetDestination("MyTopic1"), destinationManager.GetDestination("MyTopic2")] } },
             HierarchyNamespaceOptions = hierarchyOptions
@@ -129,12 +127,76 @@ public class MigrationTopologySubscriptionManagerTests
 
         var subscriptionManager = new MigrationTopologySubscriptionManager(new SubscriptionManagerCreationOptions
         {
-            SubscribingQueueName = queueName,
+            SubscribingQueueName = destinationManager.GetDestination("SubscribingQueue"),
             Client = client,
             AdministrationClient = administrationClient
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
+
+        Approver.Verify(builder.ToString());
+    }
+
+    [Test]
+    public async Task Should_apply_subscription_name_override_for_non_namespaced_queue_when_hierarchy_enabled()
+    {
+        var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+#pragma warning disable CS0618 // Type or member is obsolete
+        var topologyOptions = new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
+        {
+            TopicToPublishTo = "my-hierarchy/PublishTopic",
+            TopicToSubscribeOn = "my-hierarchy/SubscribeTopic",
+            EventsToMigrateMap = { typeof(MyEvent1).FullName },
+            QueueNameToSubscriptionNameMap = { { "SubscribingQueue", "MySubscriptionName" } },
+            SubscribedEventToRuleNameMap = { { typeof(MyEvent1).FullName, "MyRuleName" } },
+            HierarchyNamespaceOptions = hierarchyOptions
+        };
+
+        var builder = new StringBuilder();
+        var client = new RecordingServiceBusClient(builder);
+        var administrationClient = new RecordingServiceBusAdministrationClient(builder);
+
+        var subscriptionManager = new MigrationTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "my-hierarchy/SubscribingQueue",
+            Client = client,
+            AdministrationClient = administrationClient
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        Approver.Verify(builder.ToString());
+    }
+
+    [Test]
+    public async Task Should_apply_subscription_name_override_for_namespaced_queue_when_hierarchy_enabled()
+    {
+        var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+#pragma warning disable CS0618 // Type or member is obsolete
+        var topologyOptions = new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
+        {
+            TopicToPublishTo = "my-hierarchy/PublishTopic",
+            TopicToSubscribeOn = "my-hierarchy/SubscribeTopic",
+            EventsToMigrateMap = { typeof(MyEvent1).FullName },
+            QueueNameToSubscriptionNameMap = { { "my-hierarchy/SubscribingQueue", "MySubscriptionName" } },
+            SubscribedEventToRuleNameMap = { { typeof(MyEvent1).FullName, "MyRuleName" } },
+            HierarchyNamespaceOptions = hierarchyOptions
+        };
+
+        var builder = new StringBuilder();
+        var client = new RecordingServiceBusClient(builder);
+        var administrationClient = new RecordingServiceBusAdministrationClient(builder);
+
+        var subscriptionManager = new MigrationTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "my-hierarchy/SubscribingQueue",
+            Client = client,
+            AdministrationClient = administrationClient
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
 
         Approver.Verify(builder.ToString());
     }
