@@ -13,7 +13,7 @@ class FaultsDeadLetteringFeature : Feature
     {
         if (context.Settings.GetRequiredTransactionModeForReceives() == TransportTransactionMode.None)
         {
-            throw new ArgumentException("Dead lettering of failed messages is not valid for transport transaction mode None since any processing failure leads to the message being discarded.");
+            throw new InvalidOperationException("Dead lettering of failed messages is not valid for transport transaction mode None since any processing failure leads to the message being discarded.");
         }
 
         context.Pipeline.Register(typeof(NativeDlqBehavior), "Requests native service bus dead lettering of faults");
