@@ -173,18 +173,24 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
     internal IReadOnlyCollection<CreateQueueOptions> DetermineQueuesToCreate(ReceiveSettings[] receivers, string[] sendingAddresses)
     {
-        var queues = new Dictionary<string, CreateQueueOptions>(StringComparer.OrdinalIgnoreCase);
+        var queuesToCreate = new Dictionary<string, CreateQueueOptions>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var sendingAddress in sendingAddresses)
         {
             var sendingQueueName = DestinationManager.GetDestination(sendingAddress);
-            queues[sendingQueueName] = BuildDefaultCreateQueueOptions(sendingQueueName);
+            queuesToCreate.Add(sendingQueueName, BuildDefaultCreateQueueOptions(sendingQueueName));
         }
 
         foreach (var receiver in receivers)
         {
-            var receiveQueueName = AzureServiceBusTransportInfrastructure.ToTransportAddress(receiver.ReceiveAddress, DestinationManager);
+            // When hosted by core this will always be the same value for all receivers but in raw mode this might differ
+            // and core might allow different error queues in the future so we will not make any assumptions here
             var errorQueueName = DestinationManager.GetDestination(receiver.ErrorQueue);
+
+            // Core always adds the error queue as a "sending address" so it's likely already added hence the TryAdd 
+            queuesToCreate.TryAdd(errorQueueName, BuildDefaultCreateQueueOptions(errorQueueName));
+
+            var receiveQueueName = AzureServiceBusTransportInfrastructure.ToTransportAddress(receiver.ReceiveAddress, DestinationManager);
 
             var receiveQueue = BuildDefaultCreateQueueOptions(receiveQueueName);
 
@@ -199,13 +205,11 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 receiveQueue.ForwardDeadLetteredMessagesTo = errorQueueName;
             }
 
-            queues[receiveQueueName] = receiveQueue;
-
-            queues[errorQueueName] = BuildDefaultCreateQueueOptions(errorQueueName);
+            queuesToCreate.Add(receiveQueueName, receiveQueue);
         }
 
-        // make sure that queues without forwarding are created first.
-        return [.. queues.Values.OrderBy(static queue => queue.ForwardDeadLetteredMessagesTo is null ? 0 : 1)];
+        // Make sure that queues without forwarding are created first since they might, like the error queue, be the target for dlq forwarding.
+        return [.. queuesToCreate.Values.OrderBy(static queue => queue.ForwardDeadLetteredMessagesTo is null ? 0 : 1)];
 
         CreateQueueOptions BuildDefaultCreateQueueOptions(string queueName) => new(queueName)
         {
