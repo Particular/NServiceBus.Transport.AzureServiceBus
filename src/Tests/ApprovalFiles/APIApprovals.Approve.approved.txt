@@ -124,11 +124,11 @@ namespace NServiceBus.Transport.AzureServiceBus
     }
     public class DeadLetterRequest
     {
-        public DeadLetterRequest(System.Exception exception, System.Collections.Generic.Dictionary<string, object>? propertiesToModify = null) { }
-        public DeadLetterRequest(string deadLetterReason, string deadLetterErrorDescription, System.Collections.Generic.Dictionary<string, object>? propertiesToModify = null) { }
+        public DeadLetterRequest(System.Exception exception, System.Collections.Generic.IDictionary<string, object>? propertiesToModify = null) { }
+        public DeadLetterRequest(string deadLetterReason, string deadLetterErrorDescription, System.Collections.Generic.IDictionary<string, object>? propertiesToModify = null) { }
         public string DeadLetterErrorDescription { get; }
         public string DeadLetterReason { get; }
-        public System.Collections.Generic.Dictionary<string, object> PropertiesToModify { get; }
+        public System.Collections.Generic.IDictionary<string, object>? PropertiesToModify { get; }
     }
     public sealed class HierarchyNamespaceOptions
     {
@@ -195,7 +195,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         extension(NServiceBus.RecoverabilityAction _)
         {
-            public static NServiceBus.Transport.AzureServiceBus.DeadLetterMessage DeadLetter(string deadLetterReason, string deadLetterErrorDescription, System.Collections.Generic.Dictionary<string, object>? propertiesToModify = null) { }
+            public static NServiceBus.Transport.AzureServiceBus.DeadLetterMessage DeadLetter(string deadLetterReason, string deadLetterErrorDescription, System.Collections.Generic.IDictionary<string, object>? propertiesToModify = null) { }
             public static NServiceBus.Transport.AzureServiceBus.DeadLetterMessage DeadLetter() { }
         }
     }

@@ -9,7 +9,7 @@ using Transport;
 /// </summary>
 public sealed class DeadLetterMessage : RecoverabilityAction
 {
-    internal DeadLetterMessage(string deadLetterReason, string deadLetterErrorDescription, Dictionary<string, object>? propertiesToModify = null) =>
+    internal DeadLetterMessage(string deadLetterReason, string deadLetterErrorDescription, IDictionary<string, object>? propertiesToModify = null) =>
         deadLetterRequest = new DeadLetterRequest(deadLetterReason, deadLetterErrorDescription, propertiesToModify);
 
     internal DeadLetterMessage() { }

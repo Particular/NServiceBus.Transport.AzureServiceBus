@@ -11,7 +11,7 @@ using System.Collections.Generic;
 /// 1. With Core recoverability: Use RecoverabilityAction.DeadLetter() (this will add DeadLetterRequest to the transport transaction automatically)
 /// 2. Raw transport: Create and set DeadLetterRequest directly in TransportTransaction via onError.
 /// </remarks>
-public class DeadLetterRequest(string deadLetterReason, string deadLetterErrorDescription, Dictionary<string, object>? propertiesToModify = null)
+public class DeadLetterRequest(string deadLetterReason, string deadLetterErrorDescription, IDictionary<string, object>? propertiesToModify = null)
 {
     /// <summary>
     /// Reason for the message being dead lettered, truncated to max 1024 characters.
@@ -26,12 +26,12 @@ public class DeadLetterRequest(string deadLetterReason, string deadLetterErrorDe
     /// <summary>
     /// Properties to update on the message to be dead lettered.
     /// </summary>
-    public Dictionary<string, object> PropertiesToModify { get; } = propertiesToModify ?? [];
+    public IDictionary<string, object>? PropertiesToModify { get; } = propertiesToModify;
 
     /// <summary>
     /// Dead letters the message being processed due to the provided exception.
     /// </summary>
-    public DeadLetterRequest(Exception exception, Dictionary<string, object>? propertiesToModify = null) : this(
+    public DeadLetterRequest(Exception exception, IDictionary<string, object>? propertiesToModify = null) : this(
         $"{exception.GetType().FullName}{Separator}{exception.Message}",
         exception.StackTrace ?? "No stack trace available",
         propertiesToModify)
