@@ -6,6 +6,11 @@ using System.Collections.Generic;
 /// <summary>
 /// Requests the transport to dead-letter the message being processed when added to the transport transaction exposed to onError.
 /// </summary>
+/// <remarks>
+/// This class has two usages:
+/// 1. With Core recoverability: Use RecoverabilityAction.DeadLetter() (this will add DeadLetterRequest to the transport transaction automatically)
+/// 2. Raw transport: Create and set DeadLetterRequest directly in TransportTransaction via onError.
+/// </remarks>
 public class DeadLetterRequest(string deadLetterReason, string deadLetterErrorDescription, Dictionary<string, object>? propertiesToModify = null)
 {
     /// <summary>
