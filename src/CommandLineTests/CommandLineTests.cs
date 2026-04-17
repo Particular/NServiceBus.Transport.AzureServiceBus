@@ -31,8 +31,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -49,8 +49,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -67,8 +67,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -113,8 +113,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -135,8 +135,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -155,8 +155,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -177,8 +177,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -198,8 +198,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -225,8 +225,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -249,8 +249,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -275,8 +275,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -626,8 +626,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -644,8 +644,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -662,8 +662,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -683,8 +683,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
             });
 
@@ -729,8 +729,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output.Contains("skipping"), Is.True);
             });
 
@@ -748,8 +748,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
                 Assert.That(output.Contains("skipping"), Is.True);
             });
 
@@ -766,8 +766,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
             });
 
             await VerifyQueueExists(false);
@@ -784,8 +784,8 @@
 
             Assert.Multiple(() =>
             {
-                Assert.That(exitCode, Is.EqualTo(0));
-                Assert.That(error, Is.EqualTo(string.Empty));
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
             });
 
             await VerifyQueueExists(false, queueName);
