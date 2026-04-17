@@ -1,6 +1,7 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
 using System.Collections.Generic;
+using Logging;
 using Pipeline;
 using Transport;
 
@@ -20,6 +21,9 @@ public sealed class DeadLetterMessage : RecoverabilityAction
     public override IReadOnlyCollection<IRoutingContext> GetRoutingContexts(IRecoverabilityActionContext context)
     {
         context.Extensions.Get<TransportTransaction>().Set(deadLetterRequest ?? CreateFromRecoverabilityContext());
+
+        Logger.Error($"Moving message '{context.FailedMessage.MessageId}' to the dead letter queue because processing failed due to an exception:", context.Exception);
+
         return [];
 
         DeadLetterRequest CreateFromRecoverabilityContext()
@@ -41,4 +45,6 @@ public sealed class DeadLetterMessage : RecoverabilityAction
     public override ErrorHandleResult ErrorHandleResult => ErrorHandleResult.Handled;
 
     readonly DeadLetterRequest? deadLetterRequest;
+
+    static readonly ILog Logger = LogManager.GetLogger<DeadLetterMessage>();
 }

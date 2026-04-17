@@ -138,15 +138,9 @@ sealed class MessagePump(
         }
         catch (Exception ex)
         {
-            if (TransactionMode == TransportTransactionMode.None)
-            {
-                Logger.Error($"Poison message detected.", ex);
-                return;
-            }
+            Logger.Error($"Moving message '{nativeMessageId}' to the dead letter queue", ex);
+            await arg.SafeDeadLetterMessage(message, nativeMessageId, TransactionMode, new DeadLetterRequest(ex), CancellationToken.None).ConfigureAwait(false);
 
-            await arg.SafeDeadLetterMessage(message, nativeMessageId, new DeadLetterRequest(ex), CancellationToken.None).ConfigureAwait(false);
-
-            Logger.Error($"Poison message detected, message moved to the dead letter queue.", ex);
 
             return;
         }
@@ -293,22 +287,23 @@ sealed class MessagePump(
 
                     if (azureServiceBusTransaction.TransportTransaction.TryGet<DeadLetterRequest>(out var deadLetterRequest))
                     {
-                        if (TransactionMode == TransportTransactionMode.None)
-                        {
-                            Logger.Error($"User requested message with id '{nativeMessageId}' to be moved to the dead-letter queue due to '{deadLetterRequest.DeadLetterReason}' but since transport transaction mode is 'None' dead lettering is not possible, message will be discarded");
-
-                            return;
-                        }
-
                         await processMessageEventArgs.SafeDeadLetterMessage(message,
                                 nativeMessageId,
+                                TransactionMode,
                                 deadLetterRequest,
                                 cancellationToken: messageProcessingCancellationToken)
                             .ConfigureAwait(false);
 
-                        Logger.Warn($"User requested message with id '{nativeMessageId}' to be moved to the dead-letter queue due to '{deadLetterRequest.DeadLetterReason}'");
-
                         return;
+                    }
+
+                    if (result == ErrorHandleResult.RetryRequired)
+                    {
+                        await processMessageEventArgs.SafeAbandonMessage(message,
+                                nativeMessageId,
+                                TransactionMode,
+                                cancellationToken: messageProcessingCancellationToken)
+                            .ConfigureAwait(false);
                     }
 
                     if (result == ErrorHandleResult.Handled)
@@ -320,18 +315,9 @@ sealed class MessagePump(
                                 messagesToBeCompleted,
                                 cancellationToken: messageProcessingCancellationToken)
                             .ConfigureAwait(false);
+
+                        azureServiceBusTransaction.Commit();
                     }
-
-                    azureServiceBusTransaction.Commit();
-                }
-
-                if (result == ErrorHandleResult.RetryRequired)
-                {
-                    await processMessageEventArgs.SafeAbandonMessage(message,
-                            nativeMessageId,
-                            TransactionMode,
-                            cancellationToken: messageProcessingCancellationToken)
-                        .ConfigureAwait(false);
                 }
             }
             catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
