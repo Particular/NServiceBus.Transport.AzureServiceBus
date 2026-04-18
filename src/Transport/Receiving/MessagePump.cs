@@ -119,7 +119,7 @@ sealed class MessagePump(
 
         try
         {
-            // Deliberately not using the cancellation token to make sure we abandon the message even when the
+            // Deliberately not using the cancellation token to make sure we complete the message even when the
             // cancellation token is already set.
             if (await arg.TrySafeCompleteMessage(message, nativeMessageId, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
             {
@@ -140,7 +140,6 @@ sealed class MessagePump(
         {
             Logger.Error($"Moving message '{nativeMessageId}' to the dead letter queue", ex);
             await arg.SafeDeadLetterMessage(message, nativeMessageId, TransactionMode, new DeadLetterRequest(ex), CancellationToken.None).ConfigureAwait(false);
-
 
             return;
         }
