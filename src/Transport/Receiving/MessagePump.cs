@@ -276,38 +276,35 @@ sealed class MessagePump(
         {
             try
             {
-                ErrorHandleResult result;
+                using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
 
-                using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
+                var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), nativeMessageId, body,
+                    azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
+
+                var result = await onError!(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
+
+                if (azureServiceBusTransaction.TransportTransaction.TryGet<DeadLetterRequest>(out var deadLetterRequest))
                 {
-                    var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), nativeMessageId, body,
-                        azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
+                    await processMessageEventArgs.SafeDeadLetterMessage(message,
+                            nativeMessageId,
+                            TransactionMode,
+                            deadLetterRequest,
+                            cancellationToken: messageProcessingCancellationToken)
+                        .ConfigureAwait(false);
 
-                    result = await onError!(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
+                    return;
+                }
 
-                    if (azureServiceBusTransaction.TransportTransaction.TryGet<DeadLetterRequest>(out var deadLetterRequest))
-                    {
-                        await processMessageEventArgs.SafeDeadLetterMessage(message,
-                                nativeMessageId,
-                                TransactionMode,
-                                deadLetterRequest,
-                                cancellationToken: messageProcessingCancellationToken)
-                            .ConfigureAwait(false);
-
-                        return;
-                    }
-
-                    if (result == ErrorHandleResult.RetryRequired)
-                    {
+                switch (result)
+                {
+                    case ErrorHandleResult.RetryRequired:
                         await processMessageEventArgs.SafeAbandonMessage(message,
                                 nativeMessageId,
                                 TransactionMode,
                                 cancellationToken: messageProcessingCancellationToken)
                             .ConfigureAwait(false);
-                    }
-
-                    if (result == ErrorHandleResult.Handled)
-                    {
+                        break;
+                    case ErrorHandleResult.Handled:
                         await processMessageEventArgs.SafeCompleteMessage(message,
                                 nativeMessageId,
                                 TransactionMode,
@@ -317,7 +314,9 @@ sealed class MessagePump(
                             .ConfigureAwait(false);
 
                         azureServiceBusTransaction.Commit();
-                    }
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(result), result, "Unhandled error handle result");
                 }
             }
             catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
