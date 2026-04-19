@@ -2,10 +2,12 @@ namespace NServiceBus.Transport.AzureServiceBus.TransportTests;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
+using Logging;
 using NServiceBus.TransportTests;
 using NUnit.Framework;
 
@@ -14,6 +16,7 @@ public class When_requesting_message_to_be_dead_lettered : NServiceBusTransportT
 {
     const string TestIdHeaderName = "TransportTest.TestId";
 
+    [TestCase(TransportTransactionMode.None)]
     [TestCase(TransportTransactionMode.ReceiveOnly)]
     [TestCase(TransportTransactionMode.SendsAtomicWithReceive)]
     public async Task Should_move_message_to_dead_letter_queue(TransportTransactionMode transactionMode)
@@ -34,6 +37,14 @@ public class When_requesting_message_to_be_dead_lettered : NServiceBusTransportT
         await SendMessage(InputQueueName, cancellationToken: TestTimeoutCancellationToken);
         await onErrorCalled.Task;
         await StopPump(TestTimeoutCancellationToken);
+
+        if (transactionMode == TransportTransactionMode.None)
+        {
+            Assert.That(LogFactory.LogItems.Any(l => l.Level == LogLevel.Info &&
+                                                     l.Message.Contains("Dead lettering message") &&
+                                                     l.Message.Contains("is not possible")), Is.True);
+            return;
+        }
 
         var receivedMessage = await ReceiveDeadLetteredMessage(TestTimeoutCancellationToken);
 
