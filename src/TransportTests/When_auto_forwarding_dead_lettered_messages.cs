@@ -16,15 +16,15 @@ public class When_auto_forwarding_dead_lettered_messages : NServiceBusTransportT
     {
         CustomizeTransportDefinition = transport => ((AzureServiceBusTransport)transport).AutoForwardDeadLetteredMessagesToErrorQueue = true;
 
-        var onErrorCalled = CreateTaskCompletionSource<ErrorContext>();
+        var onErrorCalled = CreateTaskCompletionSource();
 
         await StartPump(
             (_, _) => throw new Exception("from onMessage"),
             (context, _) =>
             {
-                context.TransportTransaction.Set(new DeadLetterRequest(context.Exception, new Dictionary<string, object> { { "some-property", "some value" } }));
+                context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description", new Dictionary<string, object> { { "some-property", "some value" } }));
 
-                onErrorCalled.SetResult(context);
+                onErrorCalled.SetResult();
                 return Task.FromResult(ErrorHandleResult.Handled);
             },
             transactionMode);
@@ -33,7 +33,7 @@ public class When_auto_forwarding_dead_lettered_messages : NServiceBusTransportT
 
         await SendMessage(InputQueueName);
 
-        var errorContext = await onErrorCalled.Task;
+        await onErrorCalled.Task;
 
         await using var errorReceiver = client.CreateReceiver(ErrorQueueName, new ServiceBusReceiverOptions { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete });
 
@@ -43,8 +43,8 @@ public class When_auto_forwarding_dead_lettered_messages : NServiceBusTransportT
 
         Assert.Multiple(() =>
         {
-            Assert.That(forwardedMessage.DeadLetterReason.Contains("from onMessage"), Is.True);
-            Assert.That(errorContext.Exception.StackTrace!.StartsWith(forwardedMessage.DeadLetterErrorDescription), Is.True);
+            Assert.That(forwardedMessage.DeadLetterReason, Is.EqualTo("Some reason"));
+            Assert.That(forwardedMessage.DeadLetterErrorDescription, Is.EqualTo("Some description"));
             Assert.That(forwardedMessage.ApplicationProperties["some-property"], Is.EqualTo("some value"));
         });
     }

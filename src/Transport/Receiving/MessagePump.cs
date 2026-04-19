@@ -282,18 +282,6 @@ sealed class MessagePump(
 
                 var result = await onError!(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
-                if (azureServiceBusTransaction.TransportTransaction.TryGet<DeadLetterRequest>(out var deadLetterRequest))
-                {
-                    await processMessageEventArgs.SafeDeadLetterMessage(message,
-                            nativeMessageId,
-                            TransactionMode,
-                            deadLetterRequest,
-                            cancellationToken: messageProcessingCancellationToken)
-                        .ConfigureAwait(false);
-
-                    return;
-                }
-
                 switch (result)
                 {
                     case ErrorHandleResult.RetryRequired:
@@ -304,23 +292,36 @@ sealed class MessagePump(
                             .ConfigureAwait(false);
                         break;
                     case ErrorHandleResult.Handled:
-                        await processMessageEventArgs.SafeCompleteMessage(message,
-                                nativeMessageId,
-                                TransactionMode,
-                                azureServiceBusTransaction,
-                                messagesToBeCompleted,
-                                cancellationToken: messageProcessingCancellationToken)
-                            .ConfigureAwait(false);
+                        if (azureServiceBusTransaction.TransportTransaction.TryGet<DeadLetterRequest>(out var deadLetterRequest))
+                        {
+                            await processMessageEventArgs.SafeDeadLetterMessage(message,
+                                    nativeMessageId,
+                                    TransactionMode,
+                                    deadLetterRequest,
+                                    cancellationToken: messageProcessingCancellationToken)
+                                .ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await processMessageEventArgs.SafeCompleteMessage(message,
+                                    nativeMessageId,
+                                    TransactionMode,
+                                    azureServiceBusTransaction,
+                                    messagesToBeCompleted,
+                                    cancellationToken: messageProcessingCancellationToken)
+                                .ConfigureAwait(false);
 
-                        azureServiceBusTransaction.Commit();
+                            azureServiceBusTransaction.Commit();
+                        }
+
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(result), result, "Unhandled error handle result");
+                        throw new ArgumentOutOfRangeException(nameof(result), result, "Unknown error handle result");
                 }
             }
             catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
             {
-                Logger.Debug("Failed to execute recoverability.", onErrorEx);
+                Logger.Debug($"Failed to execute recoverability policy for message with native ID: `{nativeMessageId}` due to transient service bus exception", onErrorEx);
 
                 await processMessageEventArgs.SafeAbandonMessage(message,
                         nativeMessageId,
