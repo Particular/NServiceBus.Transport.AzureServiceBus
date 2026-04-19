@@ -53,7 +53,7 @@ public class DeadLetterRequestTests
         var longDescription = new string('B', 3000);
         var request = new DeadLetterRequest(longReason, longDescription);
 
-        Assert.AreEqual(new string('A', 1024), request.DeadLetterReason, "DeadLetterReason should match the first 1024 characters of the input");
-        Assert.AreEqual(new string('B', 1024), request.DeadLetterErrorDescription, "DeadLetterErrorDescription should match the first 1024 characters of the input");
+        Assert.AreEqual(new string('A', 1021) + "...", request.DeadLetterReason, "DeadLetterReason should match the first 1024 characters of the input");
+        Assert.AreEqual(new string('B', 1021) + "...", request.DeadLetterErrorDescription, "DeadLetterErrorDescription should match the first 1024 characters of the input");
     }
 }

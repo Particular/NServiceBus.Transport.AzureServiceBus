@@ -32,13 +32,11 @@ public class DeadLetterRequest(string deadLetterReason, string deadLetterErrorDe
     /// Dead letters the message being processed due to the provided exception.
     /// </summary>
     public DeadLetterRequest(Exception exception, IDictionary<string, object>? propertiesToModify = null) : this(
-        $"{exception.GetType().FullName}{Separator}{exception.Message}",
+        $"{exception.GetType().FullName} - {exception.Message}",
         exception.StackTrace ?? "No stack trace available",
         propertiesToModify)
     {
     }
 
-    static string Truncate(string value, int maxLength) => value.Length <= maxLength ? value : value[..maxLength];
-
-    internal const string Separator = " - ";
+    static string Truncate(string value, int maxLength) => value.Length <= maxLength ? value : value[..(maxLength - 3)] + "...";
 }
