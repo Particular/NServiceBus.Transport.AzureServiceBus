@@ -36,17 +36,17 @@ static class MessageExtensions
             headers[Headers.ContentType] = message.ContentType;
         }
 
-        if (!string.IsNullOrWhiteSpace(message.DeadLetterSource) && !headers.ContainsKey(FaultsHeaderKeys.FailedQ))
+        if (!headers.ContainsKey(FaultsHeaderKeys.FailedQ) && !string.IsNullOrWhiteSpace(message.DeadLetterSource))
         {
             headers[FaultsHeaderKeys.FailedQ] = message.DeadLetterSource;
         }
 
-        if (!string.IsNullOrWhiteSpace(message.DeadLetterReason) && !headers.ContainsKey(FaultsHeaderKeys.Message))
+        if (!headers.ContainsKey(FaultsHeaderKeys.Message) && !string.IsNullOrWhiteSpace(message.DeadLetterReason))
         {
             headers[FaultsHeaderKeys.Message] = message.DeadLetterReason;
         }
 
-        if (!string.IsNullOrWhiteSpace(message.DeadLetterErrorDescription) && !headers.ContainsKey(FaultsHeaderKeys.StackTrace))
+        if (!headers.ContainsKey(FaultsHeaderKeys.StackTrace) && !string.IsNullOrWhiteSpace(message.DeadLetterErrorDescription))
         {
             headers[FaultsHeaderKeys.StackTrace] = message.DeadLetterErrorDescription;
         }
