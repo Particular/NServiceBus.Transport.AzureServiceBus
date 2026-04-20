@@ -253,5 +253,71 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
                 Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
             });
         }
+
+        [Test]
+        public async Task Should_deadletter_message_upon_failure_when_requested_by_recoverability()
+        {
+            var fakeClient = new FakeServiceBusClient();
+            var fakeReceiver = new FakeReceiver();
+
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+
+            var propertiesToModify = new Dictionary<string, object> { ["MyProperty"] = "MyValue" };
+
+            await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
+                (context, _) =>
+                {
+                    context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description", propertiesToModify));
+                    return Task.FromResult(ErrorHandleResult.Handled);
+                }, CancellationToken.None);
+            await pump.StartReceive();
+
+            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+
+            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(fakeReceiver.DeadLetteredMessages, Has.Count.EqualTo(1));
+                Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
+                Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+
+                var deadLetteredMessage = fakeReceiver.DeadLetteredMessages.Single();
+                Assert.That(deadLetteredMessage.Message, Is.EqualTo(receivedMessage));
+                Assert.That(deadLetteredMessage.DeadLetterReason, Is.EqualTo("Some reason"));
+                Assert.That(deadLetteredMessage.DeadLetterErrorDescription, Is.EqualTo("Some description"));
+                Assert.That(deadLetteredMessage.PropertiesToModify["MyProperty"], Is.EqualTo("MyValue"));
+            });
+        }
+
+        [Test]
+        public async Task Should_not_complete_or_abandon_message_in_none_mode_when_deadletter_requested_by_recoverability()
+        {
+            var fakeClient = new FakeServiceBusClient();
+            var fakeReceiver = new FakeReceiver();
+
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.None }, "receiveAddress",
+                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+
+            await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
+                (context, _) =>
+                {
+                    context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description"));
+                    return Task.FromResult(ErrorHandleResult.Handled);
+                }, CancellationToken.None);
+            await pump.StartReceive();
+
+            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId");
+
+            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(fakeReceiver.DeadLetteredMessages, Is.Empty);
+                Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
+                Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+            });
+        }
     }
 }

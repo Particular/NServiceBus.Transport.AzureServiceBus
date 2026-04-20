@@ -119,7 +119,7 @@ sealed class MessagePump(
 
         try
         {
-            // Deliberately not using the cancellation token to make sure we abandon the message even when the
+            // Deliberately not using the cancellation token to make sure we complete the message even when the
             // cancellation token is already set.
             if (await arg.TrySafeCompleteMessage(message, nativeMessageId, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
             {
@@ -138,7 +138,8 @@ sealed class MessagePump(
         }
         catch (Exception ex)
         {
-            await arg.SafeDeadLetterMessage(message, TransactionMode, ex, CancellationToken.None).ConfigureAwait(false);
+            Logger.Error($"Moving message '{nativeMessageId}' to the dead letter queue", ex);
+            await arg.SafeDeadLetterMessage(message, nativeMessageId, TransactionMode, new DeadLetterRequest(ex), CancellationToken.None).ConfigureAwait(false);
 
             return;
         }
@@ -274,41 +275,53 @@ sealed class MessagePump(
         {
             try
             {
-                ErrorHandleResult result;
+                using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
 
-                using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
+                var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), nativeMessageId, body,
+                    azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
+
+                var result = await onError!(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
+
+                switch (result)
                 {
-                    var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), nativeMessageId, body,
-                        azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
-
-                    result = await onError!(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
-
-                    if (result == ErrorHandleResult.Handled)
-                    {
-                        await processMessageEventArgs.SafeCompleteMessage(message,
+                    case ErrorHandleResult.RetryRequired:
+                        await processMessageEventArgs.SafeAbandonMessage(message,
                                 nativeMessageId,
                                 TransactionMode,
-                                azureServiceBusTransaction,
-                                messagesToBeCompleted,
                                 cancellationToken: messageProcessingCancellationToken)
                             .ConfigureAwait(false);
-                    }
+                        break;
+                    case ErrorHandleResult.Handled:
+                        if (azureServiceBusTransaction.TransportTransaction.TryGet<DeadLetterRequest>(out var deadLetterRequest))
+                        {
+                            await processMessageEventArgs.SafeDeadLetterMessage(message,
+                                    nativeMessageId,
+                                    TransactionMode,
+                                    deadLetterRequest,
+                                    cancellationToken: messageProcessingCancellationToken)
+                                .ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await processMessageEventArgs.SafeCompleteMessage(message,
+                                    nativeMessageId,
+                                    TransactionMode,
+                                    azureServiceBusTransaction,
+                                    messagesToBeCompleted,
+                                    cancellationToken: messageProcessingCancellationToken)
+                                .ConfigureAwait(false);
 
-                    azureServiceBusTransaction.Commit();
-                }
+                            azureServiceBusTransaction.Commit();
+                        }
 
-                if (result == ErrorHandleResult.RetryRequired)
-                {
-                    await processMessageEventArgs.SafeAbandonMessage(message,
-                            nativeMessageId,
-                            TransactionMode,
-                            cancellationToken: messageProcessingCancellationToken)
-                        .ConfigureAwait(false);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(result), result, "Unknown error handle result");
                 }
             }
             catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
             {
-                Logger.Debug("Failed to execute recoverability.", onErrorEx);
+                Logger.Debug($"Failed to execute recoverability policy for message with native ID: `{nativeMessageId}` due to transient service bus exception", onErrorEx);
 
                 await processMessageEventArgs.SafeAbandonMessage(message,
                         nativeMessageId,

@@ -120,21 +120,10 @@ public partial class AzureServiceBusTransport : TransportDefinition
             await administrationClient.AssertNamespaceManageRightsAvailable(cancellationToken)
                 .ConfigureAwait(false);
 
-            var allQueues = infrastructure.Receivers
-                .Select(r => r.Value.ReceiveAddress)
-                .Concat(sendingAddresses.Select(s => DestinationManager.GetDestination(s)))
-                .ToArray();
+            var queuesToCreate = DetermineQueuesToCreate(receivers, sendingAddresses);
 
             var queueCreator = new TopologyCreator(this);
-
-            // Pass in the instance specific queue address (if it exists) so that the queue creator can set the 
-            // AutoDeleteOnIdle (if set) only on that queue and not on shared queues like error.
-            string? instanceReceiverAddress = null;
-            if (infrastructure.Receivers.TryGetValue("InstanceSpecific", out var instanceReceiver))
-            {
-                instanceReceiverAddress = instanceReceiver.ReceiveAddress;
-            }
-            await queueCreator.Create(administrationClient, allQueues, instanceReceiverAddress, cancellationToken).ConfigureAwait(false);
+            await queueCreator.Create(administrationClient, queuesToCreate, cancellationToken).ConfigureAwait(false);
 
             foreach (IMessageReceiver messageReceiver in infrastructure.Receivers.Values)
             {
@@ -144,8 +133,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
                         .ConfigureAwait(false);
                 }
             }
-
-            return infrastructure;
         }
 
         return infrastructure;
@@ -182,6 +169,56 @@ public partial class AzureServiceBusTransport : TransportDefinition
         {
             options.WebProxy = WebProxy;
         }
+    }
+
+    internal IReadOnlyCollection<CreateQueueOptions> DetermineQueuesToCreate(ReceiveSettings[] receivers, string[] sendingAddresses)
+    {
+        var queuesToCreate = new Dictionary<string, CreateQueueOptions>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var sendingAddress in sendingAddresses)
+        {
+            var sendingQueueName = DestinationManager.GetDestination(sendingAddress);
+            queuesToCreate.Add(sendingQueueName, BuildDefaultCreateQueueOptions(sendingQueueName));
+        }
+
+        foreach (var receiver in receivers)
+        {
+            // When hosted by core this will always be the same value for all receivers but in raw mode this might differ
+            // and core might allow different error queues in the future so we will not make any assumptions here
+            var errorQueueName = DestinationManager.GetDestination(receiver.ErrorQueue);
+
+            // Core always adds the error queue as a "sending address" so it's likely already added hence the TryAdd 
+            queuesToCreate.TryAdd(errorQueueName, BuildDefaultCreateQueueOptions(errorQueueName));
+
+            var receiveQueueName = AzureServiceBusTransportInfrastructure.ToTransportAddress(receiver.ReceiveAddress, DestinationManager);
+
+            var receiveQueue = BuildDefaultCreateQueueOptions(receiveQueueName);
+
+            // Only apply AutoDeleteOnIdle to instance-specific queues
+            if (receiver.Id == "InstanceSpecific" && AutoDeleteOnIdle.HasValue)
+            {
+                receiveQueue.AutoDeleteOnIdle = AutoDeleteOnIdle.Value;
+            }
+
+            if (AutoForwardDeadLetteredMessagesToErrorQueue)
+            {
+                receiveQueue.ForwardDeadLetteredMessagesTo = errorQueueName;
+            }
+
+            queuesToCreate.Add(receiveQueueName, receiveQueue);
+        }
+
+        // Make sure that queues without forwarding are created first since they might, like the error queue, be the target for dlq forwarding.
+        return [.. queuesToCreate.Values.OrderBy(static queue => queue.ForwardDeadLetteredMessagesTo is null ? 0 : 1)];
+
+        CreateQueueOptions BuildDefaultCreateQueueOptions(string queueName) => new(queueName)
+        {
+            EnableBatchedOperations = true,
+            LockDuration = TimeSpan.FromMinutes(5),
+            MaxDeliveryCount = MaxDeliveryCount,
+            MaxSizeInMegabytes = EntityMaximumSizeInMegabytes,
+            EnablePartitioning = EnablePartitioning
+        };
     }
 
     /// <inheritdoc />
@@ -284,6 +321,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             {
                 ArgumentOutOfRangeException.ThrowIfLessThan(value.Value, TimeSpan.FromMinutes(5), nameof(AutoDeleteOnIdle));
             }
+
             field = value;
         }
     }
@@ -292,6 +330,15 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// Enables entity partitioning when creating queues and topics.
     /// </summary>
     public bool EnablePartitioning { get; set; }
+
+    /// <summary>
+    /// Enables auto-forwarding of dead-lettered messages to the configured error queue.
+    /// </summary>
+    /// <remarks>
+    /// This option only affects queues created by the transport during infrastructure setup. It applies to transport-created endpoint queues,
+    /// including instance-specific queues, and excludes the error queue itself to avoid self-forwarding loops.
+    /// </remarks>
+    public bool AutoForwardDeadLetteredMessagesToErrorQueue { get; set; }
 
     /// <summary>
     /// Specifies the multiplier to apply to the maximum concurrency value to calculate the prefetch count.
@@ -321,7 +368,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
             field = value;
         }
-
     }
 
     /// <summary>

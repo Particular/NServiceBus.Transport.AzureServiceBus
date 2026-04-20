@@ -14,27 +14,34 @@ static class ProcessMessageEventArgsExtensions
         ICache<string, bool> messagesToBeCompleted,
         CancellationToken cancellationToken = default)
     {
-        if (transportTransactionMode == TransportTransactionMode.ReceiveOnly && messagesToBeCompleted.TryGet(nativeMessageId, out _))
+        // TransportTransactionMode.None uses ReceiveAndDelete mode which means the message is already removed from the queue
+        if (transportTransactionMode == TransportTransactionMode.None)
         {
-            if (Logger.IsDebugEnabled)
-            {
-                Logger.DebugFormat("Received message with id '{0}' was marked as successfully completed. Trying to immediately acknowledge the message without invoking the pipeline.", nativeMessageId);
-            }
-
-            try
-            {
-                await args.CompleteMessageAsync(message, cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-                return true;
-            }
-            // Doing a more generous catch here to make sure we are not losing the ID and can mark it to be completed another time
-            catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
-            {
-                messagesToBeCompleted.AddOrUpdate(nativeMessageId, true);
-                throw;
-            }
+            return false;
         }
-        return false;
+
+        if (!messagesToBeCompleted.TryGet(nativeMessageId, out _))
+        {
+            return false;
+        }
+
+        if (Logger.IsDebugEnabled)
+        {
+            Logger.DebugFormat("Received message with id '{0}' was marked as successfully completed. Trying to immediately acknowledge the message without invoking the pipeline.", nativeMessageId);
+        }
+
+        try
+        {
+            await args.CompleteMessageAsync(message, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            return true;
+        }
+        // Doing a more generous catch here to make sure we are not losing the ID and can mark it to be completed another time
+        catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
+        {
+            messagesToBeCompleted.AddOrUpdate(nativeMessageId, true);
+            throw;
+        }
     }
 
     public static async ValueTask<bool> TrySafeAbandonMessage(this ProcessMessageEventArgs args,
@@ -42,60 +49,65 @@ static class ProcessMessageEventArgsExtensions
         CancellationToken cancellationToken = default)
     {
         // TransportTransactionMode.None uses ReceiveAndDelete mode which means the message is already removed from the queue
-        // once we get it. Therefore, we don't need to abandon it.
-        if (transportTransactionMode != TransportTransactionMode.None && message.LockedUntil < DateTimeOffset.UtcNow)
+        if (transportTransactionMode == TransportTransactionMode.None)
         {
-            Logger.Warn(
-                $"Skip handling the message with id '{nativeMessageId}' because the lock has expired at '{message.LockedUntil}'. " +
-                "This is usually an indication that the endpoint prefetches more messages than it is able to handle within the configured" +
-                " peek lock duration. Consider tweaking the prefetch configuration to values that are better aligned with the concurrency" +
-                " of the endpoint and the time it takes to handle the messages.");
+            return false;
+        }
 
-            try
+        if (message.LockedUntil >= DateTimeOffset.UtcNow)
+        {
+            return false;
+        }
+
+        Logger.Warn(
+            $"Skip handling the message with id '{nativeMessageId}' because the lock has expired at '{message.LockedUntil}'. " +
+            "This is usually an indication that the endpoint prefetches more messages than it is able to handle within the configured" +
+            " peek lock duration. Consider tweaking the prefetch configuration to values that are better aligned with the concurrency" +
+            " of the endpoint and the time it takes to handle the messages.");
+
+        try
+        {
+            await args.SafeAbandonMessage(message, nativeMessageId, transportTransactionMode, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception e) when (!e.IsCausedBy(cancellationToken))
+        {
+            if (Logger.IsDebugEnabled)
             {
-                await args.SafeAbandonMessage(message, nativeMessageId, transportTransactionMode, cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-                return true;
-            }
-            catch (Exception e) when (!e.IsCausedBy(cancellationToken))
-            {
-                if (Logger.IsDebugEnabled)
-                {
-                    // nothing we can do about it, message will be retried
-                    Logger.Debug($"Error abandoning the message with id '{nativeMessageId}' because the lock has expired at '{message.LockedUntil}.", e);
-                }
+                // nothing we can do about it, message will be retried
+                Logger.Debug($"Error abandoning the message with id '{nativeMessageId}' because the lock has expired at '{message.LockedUntil}.", e);
             }
         }
+
         return false;
     }
 
     public static async Task SafeDeadLetterMessage(this ProcessMessageEventArgs args, ServiceBusReceivedMessage message,
-        TransportTransactionMode transportTransactionMode, Exception exception, CancellationToken cancellationToken = default)
+        string nativeMessageId, TransportTransactionMode transportTransactionMode, DeadLetterRequest request, CancellationToken cancellationToken = default)
     {
-        if (transportTransactionMode != TransportTransactionMode.None)
+        // TransportTransactionMode.None uses ReceiveAndDelete mode which means the message is already removed from the queue
+        if (transportTransactionMode == TransportTransactionMode.None)
         {
-            Logger.Warn($"Poison message detected. Message will be moved to the poison queue. Exception: {exception.Message}", exception);
-
-            try
-            {
-                await args.DeadLetterMessageAsync(message,
-                        deadLetterReason: "Poisoned message",
-                        deadLetterErrorDescription: exception.Message,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(cancellationToken))
-            {
-                if (Logger.IsDebugEnabled)
-                {
-                    // nothing we can do about it, message will be retried
-                    Logger.Debug("Error dead lettering poisoned message.", deadLetterEx);
-                }
-            }
+            Logger.Info($"Dead lettering message '{nativeMessageId}' is not possible since TransportTransactionMode.None is being used");
+            return;
         }
-        else
+
+        try
         {
-            Logger.Warn($"Poison message detected. Message will be discarded, transaction mode is set to None. Exception: {exception.Message}", exception);
+            await args.DeadLetterMessageAsync(message,
+                    request.PropertiesToModify,
+                    request.DeadLetterReason,
+                    request.DeadLetterErrorDescription,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(cancellationToken))
+        {
+            if (Logger.IsDebugEnabled)
+            {
+                Logger.Debug($"Error dead lettering message with id '{nativeMessageId}'.", deadLetterEx);
+            }
         }
     }
 
@@ -105,22 +117,26 @@ static class ProcessMessageEventArgsExtensions
         ICache<string, bool> messagesToBeCompleted,
         CancellationToken cancellationToken = default)
     {
-        if (transportTransactionMode != TransportTransactionMode.None)
+        // TransportTransactionMode.None uses ReceiveAndDelete mode which means the message is already removed from the queue
+        if (transportTransactionMode == TransportTransactionMode.None)
         {
-            try
-            {
-                using var scope = azureServiceBusTransaction.ToTransactionScope();
-                await args.CompleteMessageAsync(message, cancellationToken).ConfigureAwait(false);
-                scope.Complete();
-            }
-            catch (ServiceBusException e) when (transportTransactionMode == TransportTransactionMode.ReceiveOnly && e.Reason == ServiceBusFailureReason.MessageLockLost)
-            {
-                // We tried to complete the message because it was successfully either by the pipeline or recoverability, but the lock was lost.
-                // To make sure we are not reprocessing it unnecessarily we are tracking the message ID and will complete it
-                // on the next receive. For SendsWithAtomicReceive it is necessary to throw which causes the rollback
-                // of the transaction and will trigger recoverability.
-                messagesToBeCompleted.AddOrUpdate(nativeMessageId, true);
-            }
+            // not logging here on purpose since not being able to complete the message doesn't change anything
+            return;
+        }
+
+        try
+        {
+            using var scope = azureServiceBusTransaction.ToTransactionScope();
+            await args.CompleteMessageAsync(message, cancellationToken).ConfigureAwait(false);
+            scope.Complete();
+        }
+        catch (ServiceBusException e) when (transportTransactionMode == TransportTransactionMode.ReceiveOnly && e.Reason == ServiceBusFailureReason.MessageLockLost)
+        {
+            // We tried to complete the message because it was successfully either by the pipeline or recoverability, but the lock was lost.
+            // To make sure we are not reprocessing it unnecessarily we are tracking the message ID and will complete it
+            // on the next receive. For SendsWithAtomicReceive it is necessary to throw which causes the rollback
+            // of the transaction and will trigger recoverability.
+            messagesToBeCompleted.AddOrUpdate(nativeMessageId, true);
         }
     }
 
@@ -128,20 +144,24 @@ static class ProcessMessageEventArgsExtensions
         string nativeMessageId,
         TransportTransactionMode transportTransactionMode, CancellationToken cancellationToken = default)
     {
-        if (transportTransactionMode != TransportTransactionMode.None)
+        // TransportTransactionMode.None uses ReceiveAndDelete mode which means the message is already removed from the queue
+        if (transportTransactionMode == TransportTransactionMode.None)
         {
-            try
+            Logger.Info($"Abandoning message '{nativeMessageId}' is not possible since TransportTransactionMode.None is being used");
+            return;
+        }
+
+        try
+        {
+            await args.AbandonMessageAsync(message, cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+        catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.MessageLockLost)
+        {
+            if (Logger.IsDebugEnabled)
             {
-                await args.AbandonMessageAsync(message, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-            catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.MessageLockLost)
-            {
-                if (Logger.IsDebugEnabled)
-                {
-                    // We tried to abandon the message because it needs to be retried, but the lock was lost.
-                    // the message will reappear on the next receive anyway so we can just ignore this case.
-                    Logger.DebugFormat("Attempted to abandon the message with id '{0}' but the lock was lost.", nativeMessageId);
-                }
+                // We tried to abandon the message because it needs to be retried, but the lock was lost.
+                // the message will reappear on the next receive anyway so we can just ignore this case.
+                Logger.DebugFormat("Attempted to abandon the message with id '{0}' but the lock was lost.", nativeMessageId);
             }
         }
     }

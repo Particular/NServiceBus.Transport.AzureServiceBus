@@ -6,6 +6,7 @@ using System.Runtime.Serialization;
 using System.Xml;
 using Azure.Messaging.ServiceBus;
 using Configuration;
+using Faults;
 
 static class MessageExtensions
 {
@@ -33,6 +34,21 @@ static class MessageExtensions
         if (!string.IsNullOrWhiteSpace(message.ContentType))
         {
             headers[Headers.ContentType] = message.ContentType;
+        }
+
+        if (!headers.ContainsKey(FaultsHeaderKeys.FailedQ) && !string.IsNullOrWhiteSpace(message.DeadLetterSource))
+        {
+            headers[FaultsHeaderKeys.FailedQ] = message.DeadLetterSource;
+        }
+
+        if (!headers.ContainsKey(FaultsHeaderKeys.Message) && !string.IsNullOrWhiteSpace(message.DeadLetterReason))
+        {
+            headers[FaultsHeaderKeys.Message] = message.DeadLetterReason;
+        }
+
+        if (!headers.ContainsKey(FaultsHeaderKeys.StackTrace) && !string.IsNullOrWhiteSpace(message.DeadLetterErrorDescription))
+        {
+            headers[FaultsHeaderKeys.StackTrace] = message.DeadLetterErrorDescription;
         }
 
         return headers;

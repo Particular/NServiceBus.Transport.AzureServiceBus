@@ -73,6 +73,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             CustomTokenProvider = transportSettings.TokenCredential?.ToString() ?? "default",
             CustomRetryPolicy = transportSettings.RetryPolicyOptions?.ToString() ?? "default",
             AutoDeleteOnIdle = transportSettings.AutoDeleteOnIdle?.ToString() ?? "default",
+            AutoForwardDeadLetteredMessagesToErrorQueue = transportSettings.AutoForwardDeadLetteredMessagesToErrorQueue.ToString(),
         });
 
     void WriteManifest(StartupDiagnosticEntries startupDiagnostic)
@@ -142,7 +143,9 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         }
     }
 
-    public override string ToTransportAddress(QueueAddress address)
+    public override string ToTransportAddress(QueueAddress address) => ToTransportAddress(address, destinationManager);
+
+    public static string ToTransportAddress(QueueAddress address, DestinationManager destinationManager)
     {
         var baseAddress = destinationManager.GetDestination(address.BaseAddress);
 

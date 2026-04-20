@@ -8,7 +8,7 @@ CreateQueueOptions: {
   "AutoDeleteOnIdle": "10675199.02:48:05.4775807",
   "DeadLetteringOnMessageExpiration": false,
   "DuplicateDetectionHistoryTimeWindow": "00:01:00",
-  "MaxDeliveryCount": 10,
+  "MaxDeliveryCount": 2147483647,
   "EnableBatchedOperations": true,
   "AuthorizationRules": [],
   "Status": {},
@@ -19,7 +19,7 @@ CreateQueueOptions: {
   "MaxMessageSizeInKilobytes": null
 }
 CreateQueueOptions: {
-  "Name": "test-queue",
+  "Name": "endpoint",
   "LockDuration": "00:05:00",
   "MaxSizeInMegabytes": 5120,
   "RequiresDuplicateDetection": false,
@@ -28,12 +28,32 @@ CreateQueueOptions: {
   "AutoDeleteOnIdle": "10675199.02:48:05.4775807",
   "DeadLetteringOnMessageExpiration": false,
   "DuplicateDetectionHistoryTimeWindow": "00:01:00",
-  "MaxDeliveryCount": 10,
+  "MaxDeliveryCount": 2147483647,
   "EnableBatchedOperations": true,
   "AuthorizationRules": [],
   "Status": {},
   "ForwardTo": null,
-  "ForwardDeadLetteredMessagesTo": null,
+  "ForwardDeadLetteredMessagesTo": "error",
+  "EnablePartitioning": false,
+  "UserMetadata": null,
+  "MaxMessageSizeInKilobytes": null
+}
+CreateQueueOptions: {
+  "Name": "endpoint-instance",
+  "LockDuration": "00:05:00",
+  "MaxSizeInMegabytes": 5120,
+  "RequiresDuplicateDetection": false,
+  "RequiresSession": false,
+  "DefaultMessageTimeToLive": "10675199.02:48:05.4775807",
+  "AutoDeleteOnIdle": "00:10:00",
+  "DeadLetteringOnMessageExpiration": false,
+  "DuplicateDetectionHistoryTimeWindow": "00:01:00",
+  "MaxDeliveryCount": 2147483647,
+  "EnableBatchedOperations": true,
+  "AuthorizationRules": [],
+  "Status": {},
+  "ForwardTo": null,
+  "ForwardDeadLetteredMessagesTo": "error",
   "EnablePartitioning": false,
   "UserMetadata": null,
   "MaxMessageSizeInKilobytes": null
