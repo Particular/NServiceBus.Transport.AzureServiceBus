@@ -44,6 +44,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             messageSenderRegistry,
             transportSettings.Topology,
             destinationManager,
+            transportSettings.ThrowOnMissingTopicWhenPublishing,
             transportSettings.OutgoingNativeMessageCustomization
         );
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>

@@ -148,6 +148,43 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction()), Throws.Nothing);
         }
 
+        // With pub sub the cases of the topic not being available are similar to having a topic without any subscribers
+        [Test]
+        public void Should_throw_when_multicast_dispatch_destination_not_available_and_throw_on_missing_topic_enabled()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()
+            {
+                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
+            }), throwOnMissingTopic: true);
+
+            var sender = new FakeSender
+            {
+                SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound),
+                SendMessageBatchAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
+            };
+            client.Senders["sometopic"] = sender;
+
+            var operation1 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            var operation2 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction()), Throws.InvalidOperationException);
+        }
+
         [Test]
         public async Task Should_dispatch_unicast_isolated_dispatches_individually_per_destination()
         {
@@ -744,7 +781,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var client = new FakeServiceBusClient();
             var destinationManager = GetDestinationManager("SomeHierarchyNamespace");
 
-            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), destinationManager);
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), destinationManager, throwOnMissingTopic: false);
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -802,7 +839,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
                 }),
-                destinationManager);
+                destinationManager, throwOnMissingTopic: false);
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -857,7 +894,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 options.ExcludeMessageType<ISomeCommandInterface>();
             });
 
-            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), destinationManager);
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), destinationManager, throwOnMissingTopic: false);
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -922,7 +959,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" }, { typeof(SomeOtherEvent).FullName, "sometopic" }, { typeof(SomeImplementedEvent).FullName, "sometopic" } }
                 }),
-                destinationManager);
+                destinationManager, throwOnMissingTopic: false);
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",

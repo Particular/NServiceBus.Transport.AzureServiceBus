@@ -450,6 +450,11 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// </remarks>
     public OutgoingNativeMessageCustomizationAction? OutgoingNativeMessageCustomization { get; set; }
 
+    /// <summary>
+    /// Specifies whether to throw an exception when publishing to a non-existent topic
+    /// </summary>
+    public bool ThrowOnMissingTopicWhenPublishing { get; init; }
+
     internal string? ConnectionString { get; set; }
 
     internal bool IsUsingDevelopmentEmulator =>
