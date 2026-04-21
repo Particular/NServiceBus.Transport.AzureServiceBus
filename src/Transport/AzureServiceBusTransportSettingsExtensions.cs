@@ -1,4 +1,4 @@
-﻿namespace NServiceBus;
+namespace NServiceBus;
 
 using System;
 using System.Net;
@@ -135,6 +135,18 @@ public static partial class AzureServiceBusTransportSettingsExtensions
         {
             transportExtensions.Transport.WebProxy = webProxy;
         }
+        return transportExtensions;
+    }
+
+    /// <summary>
+    /// Enables auto-forwarding of dead-lettered messages to the configured error queue.
+    /// </summary>
+    [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+        Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+        ReplacementTypeOrMember = "AzureServiceBusTransport.AutoForwardDeadLetteredMessagesToErrorQueue")]
+    public static TransportExtensions<AzureServiceBusTransport> AutoForwardDeadLetteredMessagesToErrorQueue(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
+    {
+        transportExtensions.Transport.AutoForwardDeadLetteredMessagesToErrorQueue = true;
         return transportExtensions;
     }
 
