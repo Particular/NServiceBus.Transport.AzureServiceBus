@@ -453,7 +453,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// <summary>
     /// Specifies whether to throw an exception when publishing to a non-existent topic
     /// </summary>
-    public bool ThrowOnMissingTopicWhenPublishing { get; init; }
+    public bool ThrowOnMissingTopicWhenPublishing { get; set; }
 
     internal string? ConnectionString { get; set; }
 

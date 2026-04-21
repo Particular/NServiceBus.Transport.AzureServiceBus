@@ -20,7 +20,7 @@ namespace NServiceBus
         [System.Obsolete("The transport no longer supports sending the transport encoding header. Will be r" +
             "emoved in version 7.0.0.", true)]
         public bool SendTransportEncodingHeader { get; set; }
-        public bool ThrowOnMissingTopicWhenPublishing { get; init; }
+        public bool ThrowOnMissingTopicWhenPublishing { get; set; }
         public System.TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker { get; set; }
         [System.Diagnostics.CodeAnalysis.MemberNotNull("topology")]
         [get: System.Diagnostics.CodeAnalysis.MemberNotNull("topology")]
@@ -42,6 +42,7 @@ namespace NServiceBus
         [System.Obsolete("The transport no longer supports sending the transport encoding header. Will be r" +
             "emoved in version 7.0.0.", true)]
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> SendTransportEncodingHeader(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> ThrowOnMissingTopicWhenPublishing(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> TimeToWaitBeforeTriggeringCircuitBreaker(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan timeToWait) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> UseTransport<TTransport>(this NServiceBus.EndpointConfiguration endpointConfiguration, string connectionString, NServiceBus.TopicTopology topology)
             where TTransport : NServiceBus.AzureServiceBusTransport { }
