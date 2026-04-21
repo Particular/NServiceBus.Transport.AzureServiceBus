@@ -68,11 +68,11 @@ public partial class TransportSettingsConventionTests
     [GeneratedRegex(@"ReplacementTypeOrMember\s*=\s*""([^""]*)""", RegexOptions.Compiled)]
     private static partial Regex PreObsoleteReplacementPattern();
 
-    static string ResolveTransportExtensionSourcePath([CallerFilePath] string callerFilePath = "")
+    static string ResolveTransportExtensionSourcePath()
     {
-        var callerDir = new FileInfo(callerFilePath).Directory!;
+        var testDirectory = new FileInfo(TestContext.CurrentContext.TestDirectory).Directory!;
         var fileName = $"{nameof(AzureServiceBusTransportSettingsExtensions)}.cs";
-        var candidate = Path.Combine(callerDir.FullName, "..", "..", "Transport", fileName);
+        var candidate = Path.Combine(testDirectory.FullName, "..", "..", "..", "Transport", fileName);
         var fullPath = Path.GetFullPath(candidate);
 
         return File.Exists(fullPath)
