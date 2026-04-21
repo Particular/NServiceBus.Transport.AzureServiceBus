@@ -1,0 +1,16 @@
+Mapped properties:
+  - AutoForwardDeadLetteredMessagesToErrorQueue
+  - EnablePartitioning
+  - EntityMaximumSize
+  - MaxAutoLockRenewalDuration
+  - PrefetchCount
+  - PrefetchMultiplier
+  - RetryPolicyOptions
+  - TimeToWaitBeforeTriggeringCircuitBreaker
+  - UseWebSockets
+
+Unmapped properties:
+  - AutoDeleteOnIdle
+  - HierarchyNamespaceOptions
+  - OutgoingNativeMessageCustomization
+  - WebProxy
