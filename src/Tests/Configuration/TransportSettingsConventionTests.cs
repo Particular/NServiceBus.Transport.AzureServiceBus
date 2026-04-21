@@ -24,6 +24,7 @@ public partial class TransportSettingsConventionTests
             .Where(p => p.SetMethod is not null && p.SetMethod.IsPublic)
             .ToList();
 
+        // We are reading the source file instead of using reflection because PreObsolete metadata is conditionally compiled away
         var extensionSource = File.ReadAllText(ResolveTransportExtensionSourcePath());
 
         var replacements = PreObsoleteReplacementPattern()
