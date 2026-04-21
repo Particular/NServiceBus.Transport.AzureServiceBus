@@ -234,12 +234,12 @@ class MessageDispatcher(
             {
                 if (Log.IsWarnEnabled)
                 {
-                    Log.Warn($"Skipping sending messages to topic {destination} because the destination does not exist.");
+                    Log.Warn($"Skipping publishing messages to topic {destination} because the destination does not exist.");
                 }
 
                 if (throwOnMissingTopic)
                 {
-                    throw new InvalidOperationException($"Sending messages to topic {destination} failed because the destination does not exist.", e);
+                    throw new InvalidOperationException($"Publishing messages to topic {destination} failed because the destination does not exist.", e);
                 }
 
                 return;
@@ -333,9 +333,14 @@ class MessageDispatcher(
         }
         catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {
-            if (Log.IsDebugEnabled)
+            if (Log.IsWarnEnabled)
             {
-                Log.Debug($"Sending message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
+                Log.Warn($"Publishing message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
+            }
+
+            if (throwOnMissingTopic)
+            {
+                throw new InvalidOperationException($"Publishing message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.", e);
             }
         }
         catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.ServiceCommunicationProblem)

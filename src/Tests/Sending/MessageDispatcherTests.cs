@@ -698,6 +698,78 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
+        public async Task Should_swallow_when_multicast_dispatch_sent_as_single_messages_destination_not_available()
+        {
+            var defaultClient = new FakeServiceBusClient();
+            var defaultSender = new FakeSender
+            {
+                SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound),
+                SendMessageBatchAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
+            };
+            defaultClient.Senders[typeof(SomeEvent).FullName] = defaultSender;
+
+            defaultSender.TryAdd = msg => false;
+
+            var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+
+            var operations = new List<TransportOperation>(5);
+            for (int i = 0; i < 5; i++)
+            {
+                operations.Add(new TransportOperation(new OutgoingMessage($"SomeId{i}",
+                        new Dictionary<string, string> { { "Number", i.ToString() } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default));
+            }
+
+            var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(async () => await dispatcher.Dispatch(new TransportOperations([.. operations]), azureServiceBusTransaction.TransportTransaction), Throws.Nothing);
+                Assert.That(defaultSender.BatchSentMessages, Has.Count.Zero);
+                Assert.That(defaultSender.IndividuallySentMessages, Has.Count.EqualTo(0));
+            });
+        }
+
+        [Test]
+        public async Task Should_throw_when_multicast_dispatch_sent_as_single_messages_destination_not_available_and_throw_on_exception_set()
+        {
+            var defaultClient = new FakeServiceBusClient();
+            var defaultSender = new FakeSender
+            {
+                SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound),
+                SendMessageBatchAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
+            };
+            defaultClient.Senders[typeof(SomeEvent).FullName] = defaultSender;
+
+            defaultSender.TryAdd = msg => false;
+
+            var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), throwOnMissingTopic: true);
+
+            var operations = new List<TransportOperation>(5);
+            for (int i = 0; i < 5; i++)
+            {
+                operations.Add(new TransportOperation(new OutgoingMessage($"SomeId{i}",
+                        new Dictionary<string, string> { { "Number", i.ToString() } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default));
+            }
+
+            var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(async () => await dispatcher.Dispatch(new TransportOperations([.. operations]), azureServiceBusTransaction.TransportTransaction), Throws.InvalidOperationException);
+                Assert.That(defaultSender.BatchSentMessages, Has.Count.Zero);
+                Assert.That(defaultSender.IndividuallySentMessages, Has.Count.EqualTo(0));
+            });
+        }
+
+        [Test]
         public async Task
             Should_fallback_to_individual_send_when_a_message_cannot_be_added_to_a_batch_but_batch_all_others()
         {
