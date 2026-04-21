@@ -101,6 +101,20 @@ public static partial class AzureServiceBusTransportSettingsExtensions
     }
 
     /// <summary>
+    /// Allows customization of the native <see cref="ServiceBusMessage"/> before it is dispatched to the Azure Service Bus SDK client.
+    /// </summary>
+    /// <param name="transportExtensions"></param>
+    /// <param name="customization">The customization action to apply to outgoing native messages.</param>
+    [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+        Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+        ReplacementTypeOrMember = "AzureServiceBusTransport.OutgoingNativeMessageCustomization")]
+    public static TransportExtensions<AzureServiceBusTransport> CustomizeOutgoingNativeMessage(this TransportExtensions<AzureServiceBusTransport> transportExtensions, OutgoingNativeMessageCustomizationAction customization)
+    {
+        transportExtensions.Transport.OutgoingNativeMessageCustomization = customization;
+        return transportExtensions;
+    }
+
+    /// <summary>
     /// Enables entity partitioning when creating queues and topics.
     /// </summary>
     [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",

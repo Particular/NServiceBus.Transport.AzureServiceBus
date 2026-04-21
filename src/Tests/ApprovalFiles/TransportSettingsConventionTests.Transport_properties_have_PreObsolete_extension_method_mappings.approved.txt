@@ -5,6 +5,7 @@ Mapped properties:
   - EntityMaximumSize
   - HierarchyNamespaceOptions
   - MaxAutoLockRenewalDuration
+  - OutgoingNativeMessageCustomization
   - PrefetchCount
   - PrefetchMultiplier
   - RetryPolicyOptions
@@ -12,5 +13,4 @@ Mapped properties:
   - UseWebSockets
 
 Unmapped properties:
-  - OutgoingNativeMessageCustomization
   - WebProxy
