@@ -3,6 +3,7 @@ Mapped properties:
   - AutoForwardDeadLetteredMessagesToErrorQueue
   - EnablePartitioning
   - EntityMaximumSize
+  - HierarchyNamespaceOptions
   - MaxAutoLockRenewalDuration
   - PrefetchCount
   - PrefetchMultiplier
@@ -11,6 +12,5 @@ Mapped properties:
   - UseWebSockets
 
 Unmapped properties:
-  - HierarchyNamespaceOptions
   - OutgoingNativeMessageCustomization
   - WebProxy

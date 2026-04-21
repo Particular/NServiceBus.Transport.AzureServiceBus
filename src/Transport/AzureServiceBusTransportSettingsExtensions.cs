@@ -5,6 +5,7 @@ using System.Net;
 using Azure.Core;
 using Azure.Messaging.ServiceBus;
 using Particular.Obsoletes;
+using Transport.AzureServiceBus;
 
 /// <summary>
 /// Adds access to the Azure Service Bus transport config to the global Transport object.
@@ -82,6 +83,20 @@ public static partial class AzureServiceBusTransportSettingsExtensions
     public static TransportExtensions<AzureServiceBusTransport> EntityMaximumSize(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int maximumSizeInGB)
     {
         transportExtensions.Transport.EntityMaximumSize = maximumSizeInGB;
+        return transportExtensions;
+    }
+
+    /// <summary>
+    /// Configures hierarchy namespace support.
+    /// </summary>
+    /// <param name="transportExtensions"></param>
+    /// <param name="hierarchyNamespaceOptions">The hierarchy namespace options to use.</param>
+    [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+        Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+        ReplacementTypeOrMember = "AzureServiceBusTransport.HierarchyNamespaceOptions")]
+    public static TransportExtensions<AzureServiceBusTransport> HierarchyNamespaceOptions(this TransportExtensions<AzureServiceBusTransport> transportExtensions, HierarchyNamespaceOptions hierarchyNamespaceOptions)
+    {
+        transportExtensions.Transport.HierarchyNamespaceOptions = hierarchyNamespaceOptions;
         return transportExtensions;
     }
 
