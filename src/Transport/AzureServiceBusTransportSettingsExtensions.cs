@@ -53,6 +53,25 @@ public static partial class AzureServiceBusTransportSettingsExtensions
     }
 
     /// <summary>
+    /// Gets or sets the maximum time period that a queue can remain idle before Azure Service Bus automatically deletes it.
+    /// </summary>
+    /// <param name="transportExtensions"></param>
+    /// <param name="autoDeleteOnIdle">The idle timeout after which unused entities are automatically deleted. The minimum allowed value is 5 minutes.</param>
+    /// <remarks>
+    /// This setting only applies to queues, not to topics or subscriptions. Topics and subscriptions are considered
+    /// shared infrastructure and are not affected by this property. Only instance-specific input queues (such when using 'MakeInstanceUniquelyAddressable') 
+    /// will have AutoDeleteOnIdle applied, while shared queues (such as error and audit queues) remain unaffected to prevent unintended deletion of critical infrastructure.
+    /// </remarks>
+    [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+        Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+        ReplacementTypeOrMember = "AzureServiceBusTransport.AutoDeleteOnIdle")]
+    public static TransportExtensions<AzureServiceBusTransport> AutoDeleteOnIdle(this TransportExtensions<AzureServiceBusTransport> transportExtensions, TimeSpan? autoDeleteOnIdle)
+    {
+        transportExtensions.Transport.AutoDeleteOnIdle = autoDeleteOnIdle;
+        return transportExtensions;
+    }
+
+    /// <summary>
     /// Overrides the default maximum size used when creating queues and topics.
     /// </summary>
     /// <param name="transportExtensions"></param>
