@@ -45,23 +45,18 @@ public class TopologyOptions
     } = [];
 
     /// <summary>
-    /// Maps event type full names to multiplexing options for publishing.
+    /// Maps event type full names to routing options.
     /// </summary>
-    public Dictionary<string, MultiplexingOptions> MultiplexingPublishOptionsMap
+    public Dictionary<string, RoutingOptions> RoutingOptionsMap
     {
         get;
         init => field = value ?? [];
     } = [];
 
     /// <summary>
-    /// The topology-wide default publish multiplexing mode.
+    /// Shared fallback topic configuration for unmapped events.
     /// </summary>
-    public PublishMultiplexingMode DefaultPublishMultiplexingMode { get; set; } = PublishMultiplexingMode.NotMultiplexed;
-
-    /// <summary>
-    /// The topology-wide default subscription filter mode.
-    /// </summary>
-    public SubscriptionFilterMode DefaultSubscriptionFilterMode { get; set; } = SubscriptionFilterMode.CatchAll;
+    public FallbackTopicOptions? FallbackTopic { get; set; }
 
     /// <summary>
     /// Determines if an exception should be thrown when attempting to publish an event not mapped in PublishedEventToTopicsMap
