@@ -132,20 +132,20 @@ class MessageDispatcher(
             var destination = destinationAndOperations.Key;
             var (isTopic, operations) = destinationAndOperations.Value;
 
-            var messagesToSend = new Queue<(ServiceBusMessage Message, PublishMultiplexingMode PublishMultiplexingMode)>(operations.Count);
+            var messagesToSend = new Queue<(ServiceBusMessage Message, TopicRoutingMode RoutingMode)>(operations.Count);
             foreach (var operation in operations)
             {
                 ServiceBusMessage message = operation.ToAzureServiceBusMessage(
                     azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
-                var (_, enclosedMessageTypes, publishMultiplexingMode) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
-                if (publishMultiplexingMode == PublishMultiplexingMode.MultiplexedUsingCorrelationFilter)
+                var (_, enclosedMessageTypes, routingMode) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
+                if (routingMode == TopicRoutingMode.CorrelationFilter)
                 {
                     ApplyMultiplexingStamps(message, enclosedMessageTypes);
                 }
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
 
-                messagesToSend.Enqueue((message, publishMultiplexingMode));
+                messagesToSend.Enqueue((message, routingMode));
             }
             // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
             // doing the access as late as possible but still on the synchronous path. Initializing the transaction
@@ -174,7 +174,7 @@ class MessageDispatcher(
     }
 
     async Task DispatchBatchOrFallbackToIndividualSendsForDestination(string destination, bool isMulticast, ServiceBusClient? client, Transaction? transaction,
-        Queue<(ServiceBusMessage Message, PublishMultiplexingMode PublishMultiplexingMode)> messagesToSend,
+        Queue<(ServiceBusMessage Message, TopicRoutingMode RoutingMode)> messagesToSend,
         CancellationToken cancellationToken)
     {
         int batchCount = 0;
@@ -326,6 +326,11 @@ class MessageDispatcher(
             {
                 ServiceBusMessage message = operation.ToAzureServiceBusMessage(
                     azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                var (_, enclosedMessageTypes, routingMode) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
+                if (routingMode == TopicRoutingMode.CorrelationFilter)
+                {
+                    ApplyMultiplexingStamps(message, enclosedMessageTypes);
+                }
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
                 dispatchTasks.Add(DispatchForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));

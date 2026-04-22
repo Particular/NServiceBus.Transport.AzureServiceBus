@@ -3,13 +3,13 @@ namespace NServiceBus.Transport.AzureServiceBus;
 using System.Text.Json.Serialization;
 
 /// <summary>
-/// Represents a subscription entry with topic and filter mode information.
+/// Represents a subscription entry with topic and routing mode information.
 /// </summary>
 [JsonConverter(typeof(SubscriptionEntryConverter))]
-public readonly record struct SubscriptionEntry(string Topic, SubscriptionFilterMode FilterMode = SubscriptionFilterMode.Default)
+public readonly record struct SubscriptionEntry(string Topic, TopicRoutingMode RoutingMode = TopicRoutingMode.Default)
 {
     /// <summary>
-    /// Implicitly converts a string to a SubscriptionEntry with Default filter mode.
+    /// Implicitly converts a string to a SubscriptionEntry with Default routing mode.
     /// </summary>
-    public static implicit operator SubscriptionEntry(string topic) => new(topic, SubscriptionFilterMode.Default);
+    public static implicit operator SubscriptionEntry(string topic) => new(topic, TopicRoutingMode.Default);
 }

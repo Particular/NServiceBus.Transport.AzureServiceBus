@@ -87,11 +87,11 @@ public class When_using_topic_per_event_topology_with_sql_filter_multiplexing : 
                 var topology = TopicTopology.Default;
                 topology.PublishTo<MyEvent1>(SharedTopicName, opts =>
                 {
-                    opts.Mode = PublishMultiplexingMode.MultiplexedUsingSqlFilter;
+                    opts.Mode = TopicRoutingMode.SqlFilter;
                 });
                 topology.PublishTo<MyEvent2>(SharedTopicName, opts =>
                 {
-                    opts.Mode = PublishMultiplexingMode.MultiplexedUsingSqlFilter;
+                    opts.Mode = TopicRoutingMode.SqlFilter;
                 });
                 transport.Topology = topology;
             }, metadata =>
@@ -112,7 +112,7 @@ public class When_using_topic_per_event_topology_with_sql_filter_multiplexing : 
 
                 topology.SubscribeTo<IMyEvent>(SharedTopicName, opts =>
                 {
-                    opts.FilterMode = SubscriptionFilterMode.SqlFilter;
+                    opts.Mode = TopicRoutingMode.SqlFilter;
                 });
 
                 c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;

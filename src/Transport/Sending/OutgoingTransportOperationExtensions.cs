@@ -28,14 +28,14 @@ static class OutgoingTransportOperationExtensions
         action(message);
     }
 
-    public static (string Destination, string? EnclosedMessageTypes, PublishMultiplexingMode PublishMultiplexingMode) ExtractDestinationAndMultiplexingOptions(
+    public static (string Destination, string? EnclosedMessageTypes, TopicRoutingMode RoutingMode) ExtractDestinationAndMultiplexingOptions(
         this IOutgoingTransportOperation outgoingTransportOperation,
         TopicTopology topology,
         DestinationManager destinationManager)
     {
         string destination;
         string? enclosedMessageTypes;
-        PublishMultiplexingMode publishMultiplexingMode;
+        TopicRoutingMode routingMode;
 
         switch (outgoingTransportOperation)
         {
@@ -44,7 +44,7 @@ static class OutgoingTransportOperationExtensions
                 var eventTypeFullName = multicastTransportOperation.MessageType.FullName;
                 _ = multicastTransportOperation.Message.Headers.TryGetValue(Headers.EnclosedMessageTypes, out enclosedMessageTypes);
                 enclosedMessageTypes ??= eventTypeFullName;
-                publishMultiplexingMode = eventTypeFullName != null ? topology.GetPublishMultiplexingMode(eventTypeFullName) : PublishMultiplexingMode.NotMultiplexed;
+                routingMode = eventTypeFullName != null ? topology.GetTopicRoutingMode(eventTypeFullName) : TopicRoutingMode.NotMultiplexed;
                 break;
 
             case UnicastTransportOperation unicastTransportOperation:
@@ -58,7 +58,7 @@ static class OutgoingTransportOperationExtensions
                     destination = destination[..index];
                 }
 
-                publishMultiplexingMode = PublishMultiplexingMode.NotMultiplexed;
+                routingMode = TopicRoutingMode.NotMultiplexed;
                 break;
 
             default:
@@ -66,7 +66,7 @@ static class OutgoingTransportOperationExtensions
         }
 
         var resolvedDestination = destinationManager.GetDestination(destination, enclosedMessageTypes);
-        return (resolvedDestination, enclosedMessageTypes, publishMultiplexingMode);
+        return (resolvedDestination, enclosedMessageTypes, routingMode);
     }
 
     public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation,

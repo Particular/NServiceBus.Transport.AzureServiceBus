@@ -16,109 +16,103 @@ public class SubscriptionEntryTests
         Assert.Multiple(() =>
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
-            Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
+            Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.Default));
         });
     }
 
     [Test]
-    public void Can_create_with_explicit_filter_mode()
+    public void Can_create_with_explicit_routing_mode()
     {
-        var entry = new SubscriptionEntry("MyTopic", SubscriptionFilterMode.CorrelationFilter);
+        var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.CorrelationFilter);
 
         Assert.Multiple(() =>
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
-            Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.CorrelationFilter));
+            Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
         });
     }
 
     [Test]
-    public void Default_filter_mode_is_default()
+    public void Default_routing_mode_is_default()
     {
         var entry = new SubscriptionEntry("MyTopic");
 
-        Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
+        Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.Default));
     }
 
     [Test]
-    public void Can_use_all_filter_modes()
+    public void Can_use_all_routing_modes()
     {
-        var correlationEntry = new SubscriptionEntry("Topic1", SubscriptionFilterMode.CorrelationFilter);
-        var sqlEntry = new SubscriptionEntry("Topic2", SubscriptionFilterMode.SqlFilter);
-        var catchAllEntry = new SubscriptionEntry("Topic3", SubscriptionFilterMode.CatchAll);
-        var defaultEntry = new SubscriptionEntry("Topic4", SubscriptionFilterMode.Default);
+        var notMultiplexedEntry = new SubscriptionEntry("Topic1", TopicRoutingMode.NotMultiplexed);
+        var correlationEntry = new SubscriptionEntry("Topic2", TopicRoutingMode.CorrelationFilter);
+        var sqlEntry = new SubscriptionEntry("Topic3", TopicRoutingMode.SqlFilter);
+        var catchAllEntry = new SubscriptionEntry("Topic4", TopicRoutingMode.CatchAll);
+        var defaultEntry = new SubscriptionEntry("Topic5", TopicRoutingMode.Default);
 
         Assert.Multiple(() =>
         {
-            Assert.That(correlationEntry.FilterMode, Is.EqualTo(SubscriptionFilterMode.CorrelationFilter));
-            Assert.That(sqlEntry.FilterMode, Is.EqualTo(SubscriptionFilterMode.SqlFilter));
-            Assert.That(catchAllEntry.FilterMode, Is.EqualTo(SubscriptionFilterMode.CatchAll));
-            Assert.That(defaultEntry.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
+            Assert.That(notMultiplexedEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.NotMultiplexed));
+            Assert.That(correlationEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
+            Assert.That(sqlEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.SqlFilter));
+            Assert.That(catchAllEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.CatchAll));
+            Assert.That(defaultEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.Default));
         });
     }
 }
 
 [TestFixture]
-public class MultiplexingOptionsTests
+public class RoutingOptionsTests
 {
     [Test]
     public void Default_values_are_correct()
     {
-        var options = new MultiplexingOptions();
+        var options = new RoutingOptions();
 
-        Assert.That(options.Mode, Is.EqualTo(PublishMultiplexingMode.Default));
+        Assert.That(options.Mode, Is.EqualTo(TopicRoutingMode.Default));
     }
 
     [Test]
-    public void Can_set_correlation_multiplexing_mode()
+    public void Can_set_correlation_routing_mode()
     {
-        var options = new MultiplexingOptions { Mode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter };
+        var options = new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter };
 
-        Assert.That(options.Mode, Is.EqualTo(PublishMultiplexingMode.MultiplexedUsingCorrelationFilter));
+        Assert.That(options.Mode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
     }
 
     [Test]
-    public void Can_set_sql_multiplexing_mode()
+    public void Can_set_sql_routing_mode()
     {
-        var options = new MultiplexingOptions { Mode = PublishMultiplexingMode.MultiplexedUsingSqlFilter };
+        var options = new RoutingOptions { Mode = TopicRoutingMode.SqlFilter };
 
-        Assert.That(options.Mode, Is.EqualTo(PublishMultiplexingMode.MultiplexedUsingSqlFilter));
+        Assert.That(options.Mode, Is.EqualTo(TopicRoutingMode.SqlFilter));
     }
 }
 
 [TestFixture]
-public class SubscriptionOptionsTests
+public class FallbackTopicOptionsTests
 {
     [Test]
-    public void Default_filter_mode_is_catch_all()
+    public void Default_values_are_correct()
     {
-        var options = new SubscriptionOptions();
+        var options = new FallbackTopicOptions();
 
-        Assert.That(options.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
+        Assert.Multiple(() =>
+        {
+            Assert.That(options.TopicName, Is.Null);
+            Assert.That(options.Mode, Is.EqualTo(TopicRoutingMode.Default));
+        });
     }
 
     [Test]
-    public void Can_set_default_filter_mode()
+    public void Can_set_topic_name_and_mode()
     {
-        var options = new SubscriptionOptions { FilterMode = SubscriptionFilterMode.Default };
+        var options = new FallbackTopicOptions { TopicName = "SharedTopic", Mode = TopicRoutingMode.CorrelationFilter };
 
-        Assert.That(options.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
-    }
-
-    [Test]
-    public void Can_set_correlation_filter_mode()
-    {
-        var options = new SubscriptionOptions { FilterMode = SubscriptionFilterMode.CorrelationFilter };
-
-        Assert.That(options.FilterMode, Is.EqualTo(SubscriptionFilterMode.CorrelationFilter));
-    }
-
-    [Test]
-    public void Can_set_sql_filter_mode()
-    {
-        var options = new SubscriptionOptions { FilterMode = SubscriptionFilterMode.SqlFilter };
-
-        Assert.That(options.FilterMode, Is.EqualTo(SubscriptionFilterMode.SqlFilter));
+        Assert.Multiple(() =>
+        {
+            Assert.That(options.TopicName, Is.EqualTo("SharedTopic"));
+            Assert.That(options.Mode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
+        });
     }
 }
 
@@ -135,14 +129,14 @@ public class SubscriptionEntryJsonConverterTests
         Assert.Multiple(() =>
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
-            Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
+            Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.Default));
         });
     }
 
     [Test]
     public void Default_serializes_to_string()
     {
-        var entry = new SubscriptionEntry("MyTopic", SubscriptionFilterMode.Default);
+        var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.Default);
 
         var json = JsonSerializer.Serialize(entry);
 
@@ -150,74 +144,110 @@ public class SubscriptionEntryJsonConverterTests
     }
 
     [Test]
+    public void Topic_only_string_form_round_trips_without_changing_shape()
+    {
+        const string json = "\"MyTopic\"";
+
+        var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
+        var serialized = JsonSerializer.Serialize(entry);
+
+        Assert.That(serialized, Is.EqualTo(json));
+    }
+
+    [Test]
     public void Catch_all_serializes_to_object()
     {
-        var entry = new SubscriptionEntry("MyTopic", SubscriptionFilterMode.CatchAll);
+        var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.CatchAll);
 
         var json = JsonSerializer.Serialize(entry);
 
-        Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"FilterMode\":\"CatchAll\"}"));
+        Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"RoutingMode\":\"CatchAll\"}"));
+    }
+
+    [Test]
+    public void Not_multiplexed_serializes_to_object()
+    {
+        var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.NotMultiplexed);
+
+        var json = JsonSerializer.Serialize(entry);
+
+        Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"RoutingMode\":\"NotMultiplexed\"}"));
     }
 
     [Test]
     public void Correlation_filter_serializes_to_object()
     {
-        var entry = new SubscriptionEntry("MyTopic", SubscriptionFilterMode.CorrelationFilter);
+        var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.CorrelationFilter);
 
         var json = JsonSerializer.Serialize(entry);
 
-        Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"FilterMode\":\"CorrelationFilter\"}"));
+        Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"RoutingMode\":\"CorrelationFilter\"}"));
     }
 
     [Test]
     public void Sql_filter_serializes_to_object()
     {
-        var entry = new SubscriptionEntry("MyTopic", SubscriptionFilterMode.SqlFilter);
+        var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.SqlFilter);
 
         var json = JsonSerializer.Serialize(entry);
 
-        Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"FilterMode\":\"SqlFilter\"}"));
+        Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"RoutingMode\":\"SqlFilter\"}"));
     }
 
     [Test]
     public void Deserializes_correlation_filter_object()
     {
-        const string json = "{\"Topic\":\"MyTopic\",\"FilterMode\":\"CorrelationFilter\"}";
+        const string json = "{\"Topic\":\"MyTopic\",\"RoutingMode\":\"CorrelationFilter\"}";
 
         var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
 
         Assert.Multiple(() =>
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
-            Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.CorrelationFilter));
+            Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
+        });
+    }
+
+    [Test]
+    public void Deserializes_not_multiplexed_object()
+    {
+        const string json = "{\"Topic\":\"MyTopic\",\"RoutingMode\":\"NotMultiplexed\"}";
+
+        var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
+            Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.NotMultiplexed));
         });
     }
 
     [Test]
     public void Deserializes_sql_filter_object()
     {
-        const string json = "{\"Topic\":\"MyTopic\",\"FilterMode\":\"SqlFilter\"}";
+        const string json = "{\"Topic\":\"MyTopic\",\"RoutingMode\":\"SqlFilter\"}";
 
         var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
 
         Assert.Multiple(() =>
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
-            Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.SqlFilter));
+            Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.SqlFilter));
         });
     }
 
     [Test]
-    public void Deserializes_default_filter_object()
+    public void Deserializes_default_routing_object()
     {
-        const string json = "{\"Topic\":\"MyTopic\",\"FilterMode\":\"Default\"}";
+        const string json = "{\"Topic\":\"MyTopic\",\"RoutingMode\":\"Default\"}";
 
         var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
 
         Assert.Multiple(() =>
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
-            Assert.That(entry.FilterMode, Is.EqualTo(SubscriptionFilterMode.Default));
+            Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.Default));
         });
     }
+
 }

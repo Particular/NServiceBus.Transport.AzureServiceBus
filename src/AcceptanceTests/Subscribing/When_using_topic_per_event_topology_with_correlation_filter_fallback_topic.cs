@@ -6,14 +6,13 @@ using AcceptanceTesting;
 using AcceptanceTesting.Customization;
 using Azure.Messaging.ServiceBus.Administration;
 using NServiceBus.AcceptanceTests.EndpointTemplates;
-using NServiceBus.Configuration.AdvancedExtensibility;
 using NUnit.Framework;
 using Transport.AzureServiceBus;
 using Transport.AzureServiceBus.AcceptanceTests;
 
-public class When_using_topic_per_event_topology_with_correlation_filter_multiplexing : NServiceBusAcceptanceTest
+public class When_using_topic_per_event_topology_with_correlation_filter_fallback_topic : NServiceBusAcceptanceTest
 {
-    static readonly string SharedTopicName = "CorrelationFilterMultiplexing";
+    static readonly string SharedTopicName = "CorrelationFilterFallbackTopic";
 
     [SetUp]
     public async Task Setup()
@@ -44,7 +43,7 @@ public class When_using_topic_per_event_topology_with_correlation_filter_multipl
     }
 
     [Test]
-    public async Task Should_deliver_events_to_subscriptions_with_correlation_filter()
+    public async Task Should_deliver_unmapped_events_via_fallback_topic_with_correlation_filter()
     {
         Requires.NativePubSubSupport();
 
@@ -83,18 +82,14 @@ public class When_using_topic_per_event_topology_with_correlation_filter_multipl
         public Publisher() =>
             EndpointSetup<DefaultServer>(c =>
             {
-                var transport = c.ConfigureTransport<AzureServiceBusTransport>();
-
-                var topology = TopicTopology.Default;
-                topology.PublishTo<MyEvent1>(SharedTopicName, opts =>
+                c.ConfigureTransport<AzureServiceBusTransport>().Topology = TopicTopology.FromOptions(new TopologyOptions
                 {
-                    opts.Mode = TopicRoutingMode.CorrelationFilter;
+                    FallbackTopic = new FallbackTopicOptions
+                    {
+                        TopicName = SharedTopicName,
+                        Mode = TopicRoutingMode.CorrelationFilter
+                    }
                 });
-                topology.PublishTo<MyEvent2>(SharedTopicName, opts =>
-                {
-                    opts.Mode = TopicRoutingMode.CorrelationFilter;
-                });
-                transport.Topology = topology;
             }, metadata =>
             {
                 metadata.RegisterSelfAsPublisherFor<MyEvent1>(this);
@@ -107,14 +102,16 @@ public class When_using_topic_per_event_topology_with_correlation_filter_multipl
         public Subscriber() =>
             EndpointSetup<DefaultServer>(c =>
             {
-                var topology = TopicTopology.Default;
                 var endpointName = Conventions.EndpointNamingConvention(typeof(Subscriber));
-                topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
-
-                topology.SubscribeTo<IMyEvent>(SharedTopicName, opts =>
+                var topology = (TopicPerEventTopology)TopicTopology.FromOptions(new TopologyOptions
                 {
-                    opts.Mode = TopicRoutingMode.CorrelationFilter;
+                    FallbackTopic = new FallbackTopicOptions
+                    {
+                        TopicName = SharedTopicName,
+                        Mode = TopicRoutingMode.CorrelationFilter
+                    }
                 });
+                topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
 
                 c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
             }, metadata =>
@@ -140,6 +137,7 @@ public class When_using_topic_per_event_topology_with_correlation_filter_multipl
                     default:
                         break;
                 }
+
                 testContext.MaybeMarkAsCompleted();
                 return Task.CompletedTask;
             }

@@ -103,10 +103,10 @@ namespace NServiceBus
                 throw new ValidationException(validationResult.FailureMessage);
             }
 
-            var compatibilityFailure = ValidateMultiplexingCompatibility();
-            if (compatibilityFailure != null)
+            var fallbackTopicValidationFailure = ValidateFallbackTopic();
+            if (fallbackTopicValidationFailure != null)
             {
-                throw new ValidationException(compatibilityFailure);
+                throw new ValidationException(fallbackTopicValidationFailure);
             }
         }
 
@@ -116,58 +116,41 @@ namespace NServiceBus
             return GetPublishDestinationCore(eventTypeFullName);
         }
 
-        internal PublishMultiplexingMode GetPublishMultiplexingMode(string eventTypeFullName)
+        internal TopicRoutingMode GetTopicRoutingMode(string eventTypeFullName)
         {
-            if (Options.MultiplexingPublishOptionsMap.TryGetValue(eventTypeFullName, out var options) && options.Mode != PublishMultiplexingMode.Default)
+            if (Options.RoutingOptionsMap.TryGetValue(eventTypeFullName, out var options) && options.Mode != TopicRoutingMode.Default)
             {
                 return options.Mode;
             }
 
-            return Options.DefaultPublishMultiplexingMode;
-        }
-
-        internal SubscriptionFilterMode GetSubscriptionFilterMode(SubscriptionEntry entry)
-        {
-            return entry.FilterMode == SubscriptionFilterMode.Default ? Options.DefaultSubscriptionFilterMode : entry.FilterMode;
-        }
-
-        string? ValidateMultiplexingCompatibility()
-        {
-            if (!AreCompatible(Options.DefaultPublishMultiplexingMode, Options.DefaultSubscriptionFilterMode))
+            if (!Options.PublishedEventToTopicsMap.ContainsKey(eventTypeFullName) && Options.FallbackTopic is { Mode: not TopicRoutingMode.Default } fallbackTopic)
             {
-                return $"Default publish multiplexing mode '{Options.DefaultPublishMultiplexingMode}' is incompatible with default subscription filter mode '{Options.DefaultSubscriptionFilterMode}'.";
+                return fallbackTopic.Mode;
             }
 
-            foreach (var (eventTypeFullName, topicName) in Options.PublishedEventToTopicsMap)
-            {
-                if (!Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var subscriptionEntries))
-                {
-                    continue;
-                }
-
-                var effectivePublishMode = GetPublishMultiplexingMode(eventTypeFullName);
-                foreach (var entry in subscriptionEntries)
-                {
-                    var effectiveSubscriptionMode = GetSubscriptionFilterMode(entry);
-                    if (!AreCompatible(effectivePublishMode, effectiveSubscriptionMode))
-                    {
-                        return $"Event '{eventTypeFullName}' on topic '{topicName}' has effective publish mode '{effectivePublishMode}' which is incompatible with effective subscription filter mode '{effectiveSubscriptionMode}'.";
-                    }
-                }
-            }
-
-            return null;
+            return TopicRoutingMode.NotMultiplexed;
         }
 
-        static bool AreCompatible(PublishMultiplexingMode publishMode, SubscriptionFilterMode subscriptionMode) =>
-            publishMode switch
+        string? ValidateFallbackTopic()
+        {
+            if (Options.FallbackTopic is null)
             {
-                PublishMultiplexingMode.NotMultiplexed => subscriptionMode == SubscriptionFilterMode.CatchAll,
-                PublishMultiplexingMode.MultiplexedUsingCorrelationFilter => subscriptionMode is SubscriptionFilterMode.CorrelationFilter or SubscriptionFilterMode.CatchAll,
-                PublishMultiplexingMode.MultiplexedUsingSqlFilter => subscriptionMode is SubscriptionFilterMode.SqlFilter or SubscriptionFilterMode.CatchAll,
-                PublishMultiplexingMode.Default => false,
-                _ => false
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(Options.FallbackTopic.TopicName))
+            {
+                return $"'{nameof(TopologyOptions.FallbackTopic)}.{nameof(FallbackTopicOptions.TopicName)}' cannot be null or whitespace when a fallback topic is configured.";
+            }
+
+            return Options.FallbackTopic.Mode switch
+            {
+                TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlFilter => null,
+                TopicRoutingMode.Default or TopicRoutingMode.NotMultiplexed or TopicRoutingMode.CatchAll =>
+                    $"'{nameof(TopologyOptions.FallbackTopic)}.{nameof(FallbackTopicOptions.Mode)}' must be either '{TopicRoutingMode.CorrelationFilter}' or '{TopicRoutingMode.SqlFilter}'.",
+                _ => throw new ArgumentOutOfRangeException()
             };
+        }
 
         // By having this internal abstract method it is not possible to extend the topology with a custom topology outside
         // of this assembly. That is a deliberate design decision.

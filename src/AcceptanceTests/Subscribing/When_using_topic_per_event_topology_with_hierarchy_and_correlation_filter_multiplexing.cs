@@ -88,11 +88,11 @@ public class When_using_topic_per_event_topology_with_hierarchy_and_correlation_
                 var topology = TopicTopology.Default;
                 topology.PublishTo<MyEvent1>(SharedTopicName, opts =>
                 {
-                    opts.Mode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter;
+                    opts.Mode = TopicRoutingMode.CorrelationFilter;
                 });
                 topology.PublishTo<MyEvent2>(SharedTopicName, opts =>
                 {
-                    opts.Mode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter;
+                    opts.Mode = TopicRoutingMode.CorrelationFilter;
                 });
                 transport.Topology = topology;
             }, metadata =>
@@ -116,7 +116,7 @@ public class When_using_topic_per_event_topology_with_hierarchy_and_correlation_
 
                 topology.SubscribeTo<IMyEvent>(SharedTopicName, opts =>
                 {
-                    opts.FilterMode = SubscriptionFilterMode.CorrelationFilter;
+                    opts.Mode = TopicRoutingMode.CorrelationFilter;
                 });
 
                 c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;

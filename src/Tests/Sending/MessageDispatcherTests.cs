@@ -1001,7 +1001,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         interface ISomeCommandInterface;
 
         [Test]
-        public async Task Should_apply_correlation_property_stamps_for_multiplexed_events()
+        public async Task Should_apply_correlation_property_stamps_for_correlation_routed_events()
         {
             var client = new FakeServiceBusClient();
 
@@ -1011,7 +1011,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 TopicTopology.FromOptions(new TopologyOptions
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                    MultiplexingPublishOptionsMap = { { typeof(SomeEvent).FullName, new MultiplexingOptions { Mode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter } } }
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
                 }));
 
             var operation =
@@ -1041,7 +1041,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
-        public async Task Should_not_apply_correlation_stamps_when_multiplexing_disabled()
+        public async Task Should_not_apply_correlation_stamps_when_routing_is_not_multiplexed()
         {
             var client = new FakeServiceBusClient();
 
@@ -1051,7 +1051,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 TopicTopology.FromOptions(new TopologyOptions
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                    MultiplexingPublishOptionsMap = { { typeof(SomeEvent).FullName, new MultiplexingOptions { Mode = PublishMultiplexingMode.NotMultiplexed } } }
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.NotMultiplexed } } }
                 }));
 
             var operation =
@@ -1089,7 +1089,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 TopicTopology.FromOptions(new TopologyOptions
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                    MultiplexingPublishOptionsMap = { { typeof(SomeEvent).FullName, new MultiplexingOptions { Mode = PublishMultiplexingMode.MultiplexedUsingSqlFilter } } }
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.SqlFilter } } }
                 }));
 
             var operation =
@@ -1127,7 +1127,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 TopicTopology.FromOptions(new TopologyOptions
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                    MultiplexingPublishOptionsMap = { { typeof(SomeEvent).FullName, new MultiplexingOptions { Mode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter } } }
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
                 }));
 
             var operation =
@@ -1162,7 +1162,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 TopicTopology.FromOptions(new TopologyOptions
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                    MultiplexingPublishOptionsMap = { { typeof(SomeEvent).FullName, new MultiplexingOptions { Mode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter } } }
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
                 }));
 
             var operation =
@@ -1187,7 +1187,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
-        public async Task Should_apply_topology_default_correlation_multiplexing_when_event_has_no_explicit_publish_mode()
+        public async Task Should_apply_fallback_topic_correlation_routing_for_unmapped_events()
         {
             var client = new FakeServiceBusClient();
 
@@ -1196,8 +1196,38 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 new MessageSenderRegistry(),
                 TopicTopology.FromOptions(new TopologyOptions
                 {
-                    DefaultPublishMultiplexingMode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter,
-                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
+                    FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.CorrelationFilter }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sharedtopic"];
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            var message = batchContent.ElementAt(0);
+
+            Assert.That(message.ApplicationProperties, Contains.Key(typeof(SomeEvent).FullName));
+        }
+
+        [Test]
+        public async Task Should_not_apply_fallback_topic_correlation_routing_to_explicitly_mapped_events_without_routing_override()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
+                    FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.CorrelationFilter }
                 }));
 
             var operation =
@@ -1214,7 +1244,41 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
             var message = batchContent.ElementAt(0);
 
-            Assert.That(message.ApplicationProperties, Contains.Key(typeof(SomeEvent).FullName));
+            Assert.That(message.ApplicationProperties.ContainsKey(typeof(SomeEvent).FullName), Is.False);
+        }
+
+        [Test]
+        public async Task Should_apply_correlation_property_stamps_for_isolated_multicast_dispatches()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sometopic"];
+            var message = sender.IndividuallySentMessages.Single();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(message.ApplicationProperties, Contains.Key(typeof(SomeEvent).FullName));
+                Assert.That(message.ApplicationProperties[typeof(SomeEvent).FullName], Is.EqualTo(true));
+            });
         }
 
         [Test]
@@ -1228,7 +1292,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 TopicTopology.FromOptions(new TopologyOptions
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                    MultiplexingPublishOptionsMap = { { typeof(SomeEvent).FullName, new MultiplexingOptions { Mode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter } } }
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
                 }));
 
             var operation =
@@ -1263,7 +1327,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 TopicTopology.FromOptions(new TopologyOptions
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeImplementedEvent).FullName, "sometopic" } },
-                    MultiplexingPublishOptionsMap = { { typeof(SomeImplementedEvent).FullName, new MultiplexingOptions { Mode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter } } }
+                    RoutingOptionsMap = { { typeof(SomeImplementedEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
                 }));
 
             var proxyType = $"{typeof(SomeImplementedEvent).FullName}__impl";

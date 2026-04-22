@@ -74,54 +74,59 @@ public class TopicPerEventTopologyTests
     }
 
     [Test]
-    public void Should_use_topology_defaults_when_publish_and_subscribe_modes_are_not_explicitly_configured()
+    public void Should_route_unmapped_events_to_fallback_topic()
     {
         var topologyOptions = new TopologyOptions
         {
-            DefaultPublishMultiplexingMode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter,
-            DefaultSubscriptionFilterMode = SubscriptionFilterMode.CorrelationFilter,
-            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName, "MyTopic" } },
-            SubscribedEventToTopicsMap = { { typeof(MyEvent).FullName, [new SubscriptionEntry("MyTopic", SubscriptionFilterMode.Default)] } },
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            }
         };
 
         var topology = TopicTopology.FromOptions(topologyOptions);
 
-        Assert.DoesNotThrow(() => topology.Validate());
+        var result = topology.GetPublishDestination(typeof(MyEvent));
+
+        Assert.That(result, Is.EqualTo("SharedTopic"));
     }
 
     [Test]
-    public void Should_fail_validation_when_global_defaults_are_incompatible()
+    public void Should_not_throw_for_unmapped_event_when_fallback_topic_is_configured_and_throw_if_unmapped_enabled()
     {
         var topologyOptions = new TopologyOptions
         {
-            DefaultPublishMultiplexingMode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter,
-            DefaultSubscriptionFilterMode = SubscriptionFilterMode.SqlFilter
+            ThrowIfUnmappedEventTypes = true,
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.SqlFilter
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.That(topology.GetPublishDestination(typeof(MyEvent)), Is.EqualTo("SharedTopic"));
+    }
+
+    [Test]
+    public void Should_fail_validation_when_fallback_topic_mode_is_not_supported()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CatchAll
+            }
         };
 
         var topology = TopicTopology.FromOptions(topologyOptions);
 
         var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
 
-        Assert.That(validationException!.Message, Does.Contain("Default publish multiplexing mode 'MultiplexedUsingCorrelationFilter' is incompatible with default subscription filter mode 'SqlFilter'"));
-    }
-
-    [Test]
-    public void Should_fail_validation_when_effective_publish_and_subscription_modes_are_incompatible()
-    {
-        var topologyOptions = new TopologyOptions
-        {
-            DefaultPublishMultiplexingMode = PublishMultiplexingMode.MultiplexedUsingCorrelationFilter,
-            DefaultSubscriptionFilterMode = SubscriptionFilterMode.CatchAll,
-            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName, "MyTopic" } },
-            MultiplexingPublishOptionsMap = { { typeof(MyEvent).FullName, new MultiplexingOptions { Mode = PublishMultiplexingMode.Default } } },
-            SubscribedEventToTopicsMap = { { typeof(MyEvent).FullName, [new SubscriptionEntry("MyTopic", SubscriptionFilterMode.SqlFilter)] } },
-        };
-
-        var topology = TopicTopology.FromOptions(topologyOptions);
-
-        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
-
-        Assert.That(validationException!.Message, Does.Contain("has effective publish mode 'MultiplexedUsingCorrelationFilter' which is incompatible with effective subscription filter mode 'SqlFilter'"));
+        Assert.That(validationException!.Message, Does.Contain("FallbackTopic.Mode"));
     }
 
     // With the generic host validation can already be done at startup and this allows disabling further validation
