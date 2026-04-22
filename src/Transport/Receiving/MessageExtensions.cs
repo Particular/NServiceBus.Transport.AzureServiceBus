@@ -1,4 +1,4 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus;
+﻿namespace NServiceBus.Transport.AzureServiceBus.AdvancedExtensibility;
 
 using System;
 using System.Collections.Generic;
@@ -8,8 +8,14 @@ using Azure.Messaging.ServiceBus;
 using Configuration;
 using Faults;
 
-static class MessageExtensions
+/// <summary>
+/// Helpers to get ID, headers and body for the message being processed. Intentionally public to enable reuse in the functions package.
+/// </summary>
+public static class MessageExtensions
 {
+    /// <summary>
+    /// Extracts NServiceBus headers from the <see cref="ServiceBusReceivedMessage"/>
+    /// </summary>
     public static Dictionary<string, string?> GetNServiceBusHeaders(this ServiceBusReceivedMessage message)
     {
         var headers = new Dictionary<string, string?>(message.ApplicationProperties.Count);
@@ -43,17 +49,20 @@ static class MessageExtensions
 
         if (!headers.ContainsKey(FaultsHeaderKeys.Message) && !string.IsNullOrWhiteSpace(message.DeadLetterReason))
         {
-            headers[FaultsHeaderKeys.Message] = message.DeadLetterReason;
+            headers[FaultsHeaderKeys.ExceptionType] = message.DeadLetterReason;
         }
 
         if (!headers.ContainsKey(FaultsHeaderKeys.StackTrace) && !string.IsNullOrWhiteSpace(message.DeadLetterErrorDescription))
         {
-            headers[FaultsHeaderKeys.StackTrace] = message.DeadLetterErrorDescription;
+            headers[FaultsHeaderKeys.Message] = message.DeadLetterErrorDescription;
         }
 
         return headers;
     }
 
+    /// <summary>
+    /// Returns the message ID for the <see cref="ServiceBusReceivedMessage"/>.
+    /// </summary>
     public static string GetMessageId(this ServiceBusReceivedMessage message)
     {
         if (!string.IsNullOrWhiteSpace(message.MessageId))
@@ -69,6 +78,9 @@ static class MessageExtensions
         return GuidHelper.CreateVersion8(message.EnqueuedTime, message.SequenceNumber).ToString();
     }
 
+    /// <summary>
+    /// Returns the message body of the <see cref="ServiceBusReceivedMessage"/>.
+    /// </summary>
     public static BinaryData GetBody(this ServiceBusReceivedMessage message)
     {
         var body = message.Body ?? new BinaryData([]);

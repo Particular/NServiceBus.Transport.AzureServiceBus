@@ -81,6 +81,15 @@ namespace NServiceBus.Testing
         public static System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage>? GetNativeMessageCustomization(this NServiceBus.Extensibility.ExtendableOptions options) { }
     }
 }
+namespace NServiceBus.Transport.AzureServiceBus.AdvancedExtensibility
+{
+    public static class MessageExtensions
+    {
+        public static System.BinaryData GetBody(this Azure.Messaging.ServiceBus.ServiceBusReceivedMessage message) { }
+        public static string GetMessageId(this Azure.Messaging.ServiceBus.ServiceBusReceivedMessage message) { }
+        public static System.Collections.Generic.Dictionary<string, string?> GetNServiceBusHeaders(this Azure.Messaging.ServiceBus.ServiceBusReceivedMessage message) { }
+    }
+}
 namespace NServiceBus.Transport.AzureServiceBus
 {
     [System.AttributeUsage(System.AttributeTargets.Property)]

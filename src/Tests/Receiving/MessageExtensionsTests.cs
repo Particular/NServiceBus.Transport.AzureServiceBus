@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using AdvancedExtensibility;
     using Azure.Messaging.ServiceBus;
     using NServiceBus.Transport.AzureServiceBus.Configuration;
     using NUnit.Framework;
