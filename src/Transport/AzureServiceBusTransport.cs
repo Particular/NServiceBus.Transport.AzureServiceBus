@@ -107,7 +107,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
             : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
-        var administrationConnectionString = IsUsingDevelopmentEmulator
+        var administrationConnectionString = IsUsingDevelopmentEmulator(ConnectionString)
             ? InjectEmulatorAdminPort(ConnectionString!)
             : ConnectionString!;
         var administrationClient = TokenCredential != null
@@ -187,7 +187,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             // and core might allow different error queues in the future so we will not make any assumptions here
             var errorQueueName = DestinationManager.GetDestination(receiver.ErrorQueue);
 
-            // Core always adds the error queue as a "sending address" so it's likely already added hence the TryAdd 
+            // Core always adds the error queue as a "sending address" so it's likely already added hence the TryAdd
             queuesToCreate.TryAdd(errorQueueName, BuildDefaultCreateQueueOptions(errorQueueName));
 
             var receiveQueueName = AzureServiceBusTransportInfrastructure.ToTransportAddress(receiver.ReceiveAddress, DestinationManager);
@@ -293,7 +293,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// <summary>
     /// Gets or sets the maximum time period that a queue can remain idle before Azure Service Bus automatically deletes it.
     /// </summary>
-    /// <value>The idle timeout after which unused entities are automatically deleted. The minimum allowed value is 5 minutes.</value>    
+    /// <value>The idle timeout after which unused entities are automatically deleted. The minimum allowed value is 5 minutes.</value>
     /// <remarks>
     /// <para>
     /// This property controls the AutoDeleteOnIdle setting for queues created by the transport.
@@ -303,7 +303,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// </para>
     /// <para>
     /// This setting only applies to queues, not to topics or subscriptions. Topics and subscriptions are considered
-    /// shared infrastructure and are not affected by this property. Only instance-specific input queues (such when using 'MakeInstanceUniquelyAddressable') 
+    /// shared infrastructure and are not affected by this property. Only instance-specific input queues (such when using 'MakeInstanceUniquelyAddressable')
     /// will have AutoDeleteOnIdle applied, while shared queues (such as error and audit queues) remain unaffected to prevent unintended deletion of critical infrastructure.
     /// </para>
     /// <para>
@@ -436,6 +436,28 @@ public partial class AzureServiceBusTransport : TransportDefinition
     }
 
     /// <summary>
+    /// Set the maximum delivery count that is applied to queues that are created when the infrastructure is setup
+    /// </summary>
+    /// <remarks>This MaxDeliveryCount is set to <value>int.Max</value> by default, to stay backward compatible will change in the
+    /// next major version to a lower default value. When the emulator is used the value defaults to <value>10</value>
+    /// unless explicitly set to another value.</remarks>
+    public int MaxDeliveryCount
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(MaxDeliveryCount));
+
+            field = value;
+        }
+    } = int.MaxValue;
+
+    /// <summary>
+    /// Specifies whether to throw an exception when publishing to a non-existent topic
+    /// </summary>
+    public bool ThrowOnMissingTopicWhenPublishing { get; set; }
+
+    /// <summary>
     /// Gets or sets the action that allows customization of the native <see cref="ServiceBusMessage"/>
     /// just before it is dispatched to the Azure Service Bus SDK client.
     /// </summary>
@@ -450,17 +472,21 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// </remarks>
     public OutgoingNativeMessageCustomizationAction? OutgoingNativeMessageCustomization { get; set; }
 
-    /// <summary>
-    /// Specifies whether to throw an exception when publishing to a non-existent topic
-    /// </summary>
-    public bool ThrowOnMissingTopicWhenPublishing { get; set; }
+    internal string? ConnectionString
+    {
+        get;
+        set
+        {
+            if (IsUsingDevelopmentEmulator(value))
+            {
+                MaxDeliveryCount = 10;
+            }
 
-    internal string? ConnectionString { get; set; }
+            field = value;
+        }
+    }
 
-    internal bool IsUsingDevelopmentEmulator =>
-        ConnectionString?.Contains("UseDevelopmentEmulator=true", StringComparison.OrdinalIgnoreCase) ?? false;
-
-    internal int MaxDeliveryCount => IsUsingDevelopmentEmulator ? 10 : int.MaxValue;
+    static bool IsUsingDevelopmentEmulator(string? connectionString) => connectionString?.Contains("UseDevelopmentEmulator=true", StringComparison.OrdinalIgnoreCase) ?? false;
 
     internal string? FullyQualifiedNamespace { get; set; }
     internal TokenCredential? TokenCredential { get; set; }

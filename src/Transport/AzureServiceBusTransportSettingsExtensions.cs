@@ -155,6 +155,20 @@ public static partial class AzureServiceBusTransportSettingsExtensions
     }
 
     /// <summary>
+    /// Overrides the maximum delivery count with the specified value.
+    /// </summary>
+    /// <param name="transportExtensions"></param>
+    /// <param name="maxDeliveryCount">The maximum delivery count to use.</param>
+    [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+        Note = "Should not be converted to an ObsoleteEx until API mismatch described in the issue is resolved.",
+        ReplacementTypeOrMember = "AzureServiceBusTransport.MaxDeliveryCount")]
+    public static TransportExtensions<AzureServiceBusTransport> MaxDeliveryCount(this TransportExtensions<AzureServiceBusTransport> transportExtensions, int maxDeliveryCount)
+    {
+        transportExtensions.Transport.MaxDeliveryCount = maxDeliveryCount;
+        return transportExtensions;
+    }
+
+    /// <summary>
     /// Overrides the default time to wait before triggering a circuit breaker that initiates the endpoint shutdown procedure when the message pump cannot successfully receive a message.
     /// </summary>
     /// <param name="transportExtensions"></param>

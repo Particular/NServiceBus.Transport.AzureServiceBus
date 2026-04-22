@@ -13,6 +13,7 @@ namespace NServiceBus
         public int EntityMaximumSize { get; set; }
         public NServiceBus.Transport.AzureServiceBus.HierarchyNamespaceOptions HierarchyNamespaceOptions { get; set; }
         public System.TimeSpan? MaxAutoLockRenewalDuration { get; set; }
+        public int MaxDeliveryCount { get; set; }
         public System.Action<NServiceBus.Transport.IOutgoingTransportOperation, Azure.Messaging.ServiceBus.ServiceBusMessage>? OutgoingNativeMessageCustomization { get; set; }
         public int? PrefetchCount { get; set; }
         public int PrefetchMultiplier { get; set; }
@@ -41,6 +42,7 @@ namespace NServiceBus
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EntityMaximumSize(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int maximumSizeInGB) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> HierarchyNamespaceOptions(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, NServiceBus.Transport.AzureServiceBus.HierarchyNamespaceOptions hierarchyNamespaceOptions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> MaxAutoLockRenewalDuration(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan maximumAutoLockRenewalDuration) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> MaxDeliveryCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int maxDeliveryCount) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchMultiplier(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchMultiplier) { }
         [System.Obsolete("The transport no longer supports sending the transport encoding header. Will be r" +
