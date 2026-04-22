@@ -143,7 +143,17 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     }
 
     static TopicRoutingMode NormalizeSubscriptionRoutingMode(TopicRoutingMode routingMode) =>
-        routingMode == TopicRoutingMode.NotMultiplexed ? TopicRoutingMode.CatchAll : routingMode;
+        routingMode switch
+        {
+            // A catch-all subscription already receives every message on the topic.
+            // Combining it with a correlation-filtered rule is redundant, but Azure Service Bus
+            // evaluates the rules using OR semantics, so the combination is harmless and should
+            // not be rejected during startup validation.
+            TopicRoutingMode.NotMultiplexed or TopicRoutingMode.CatchAll or TopicRoutingMode.CorrelationFilter => TopicRoutingMode.CatchAll,
+            TopicRoutingMode.Default => TopicRoutingMode.Default,
+            TopicRoutingMode.SqlFilter => TopicRoutingMode.SqlFilter,
+            _ => throw new ArgumentOutOfRangeException(nameof(routingMode), routingMode, null)
+        };
 
     public override Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
     {

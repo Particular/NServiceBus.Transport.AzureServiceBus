@@ -128,7 +128,7 @@ public class TopicPerEventSubscriptionManagerTests
     }
 
     [Test]
-    public void Should_throw_when_default_and_correlation_filter_routing_modes_target_same_topic()
+    public void Should_allow_default_and_correlation_filter_routing_modes_on_same_topic()
     {
         var topologyOptions = new TopologyOptions
         {
@@ -146,10 +146,8 @@ public class TopicPerEventSubscriptionManagerTests
             AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
         }, topologyOptions, new StartupDiagnosticEntries());
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        Assert.DoesNotThrowAsync(async () =>
             await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
-
-        Assert.That(exception!.Message, Does.Contain("Incompatible subscription routing modes"));
     }
 
     [Test]
@@ -178,7 +176,7 @@ public class TopicPerEventSubscriptionManagerTests
     }
 
     [Test]
-    public void Should_throw_when_not_multiplexed_and_correlation_filter_routing_modes_target_same_topic()
+    public void Should_allow_not_multiplexed_and_correlation_filter_routing_modes_on_same_topic()
     {
         var topologyOptions = new TopologyOptions
         {
@@ -196,14 +194,12 @@ public class TopicPerEventSubscriptionManagerTests
             AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
         }, topologyOptions, new StartupDiagnosticEntries());
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        Assert.DoesNotThrowAsync(async () =>
             await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
-
-        Assert.That(exception!.Message, Does.Contain("Incompatible subscription routing modes"));
     }
 
     [Test]
-    public void Should_throw_when_mapped_and_unmapped_events_target_same_topic_with_incompatible_fallback_routing()
+    public void Should_allow_mapped_and_unmapped_events_to_share_topic_with_correlation_filter_fallback_routing()
     {
         var topologyOptions = new TopologyOptions
         {
@@ -225,10 +221,8 @@ public class TopicPerEventSubscriptionManagerTests
             AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
         }, topologyOptions, new StartupDiagnosticEntries());
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        Assert.DoesNotThrowAsync(async () =>
             await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
-
-        Assert.That(exception!.Message, Does.Contain("Incompatible subscription routing modes"));
     }
 
     [Test]
