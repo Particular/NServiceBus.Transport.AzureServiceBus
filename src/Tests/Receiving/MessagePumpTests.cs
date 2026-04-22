@@ -14,8 +14,6 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
     [TestFixture]
     public class MessagePumpTests
     {
-        static readonly TestingLoggerFactory LoggerFactory = LogManager.Use<TestingLoggerFactory>();
-
         [Test]
         public async Task Should_complete_message_upon_success()
         {
@@ -329,7 +327,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
         public async Task Should_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_not_set()
         {
             var logOutput = new StringWriter();
-            using var logScope = LoggerFactory.BeginScope(logOutput, LogLevel.Warn);
+            using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
 
             var fakeClient = new FakeServiceBusClient();
             var fakeReceiver = new FakeReceiver();
@@ -356,7 +354,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
         public async Task Should_not_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_false()
         {
             var logOutput = new StringWriter();
-            using var logScope = LoggerFactory.BeginScope(logOutput, LogLevel.Warn);
+            using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
 
             var fakeClient = new FakeServiceBusClient();
             var fakeReceiver = new FakeReceiver();
@@ -383,7 +381,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
         public async Task Should_not_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_true()
         {
             var logOutput = new StringWriter();
-            using var logScope = LoggerFactory.BeginScope(logOutput, LogLevel.Warn);
+            using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
 
             var fakeClient = new FakeServiceBusClient();
             var fakeReceiver = new FakeReceiver();

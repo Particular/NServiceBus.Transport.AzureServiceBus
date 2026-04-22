@@ -31,7 +31,7 @@ sealed class MessagePump(
     CancellationTokenSource? messageProcessingCancellationTokenSource;
     ServiceBusProcessor? processor;
 
-    static readonly ILog Logger = LogManager.GetLogger<MessagePump>();
+    readonly ILog Logger = LogManager.GetLogger<MessagePump>();
 
     PushRuntimeSettings? limitations;
 
@@ -358,7 +358,7 @@ sealed class MessagePump(
     {
         if (transportSettings.AutoForwardDeadLetteredMessagesToErrorQueue == null)
         {
-            LogManager.GetLogger<MessagePump>().Warn($"Message '{nativeMessageId}' (delivery count: {deliveryCount}) is being moved to the dead-letter queue. " +
+            Logger.Warn($"Message '{nativeMessageId}' (delivery count: {deliveryCount}) is being moved to the dead-letter queue. " +
                 "Dead-lettered messages will not automatically appear in the error queue. " +
                 "Consider setting 'AutoForwardDeadLetteredMessagesToErrorQueue = true' on the transport to automatically forward dead-lettered messages to the error queue, " +
                 "making them visible for monitoring and reprocessing. " +
