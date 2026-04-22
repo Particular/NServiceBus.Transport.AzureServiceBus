@@ -32,9 +32,13 @@ namespace NServiceBus
     }
     public static class AzureServiceBusTransportSettingsExtensions
     {
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> AutoDeleteOnIdle(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan? autoDeleteOnIdle) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> AutoForwardDeadLetteredMessagesToErrorQueue(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomRetryPolicy(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, Azure.Messaging.ServiceBus.ServiceBusRetryOptions retryPolicy) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> CustomizeOutgoingNativeMessage(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.Action<NServiceBus.Transport.IOutgoingTransportOperation, Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EnablePartitioning(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> EntityMaximumSize(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int maximumSizeInGB) { }
+        public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> HierarchyNamespaceOptions(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, NServiceBus.Transport.AzureServiceBus.HierarchyNamespaceOptions hierarchyNamespaceOptions) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> MaxAutoLockRenewalDuration(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, System.TimeSpan maximumAutoLockRenewalDuration) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchCount(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchCount) { }
         public static NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> PrefetchMultiplier(this NServiceBus.TransportExtensions<NServiceBus.AzureServiceBusTransport> transportExtensions, int prefetchMultiplier) { }
