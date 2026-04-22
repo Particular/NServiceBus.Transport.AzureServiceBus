@@ -77,6 +77,23 @@
         }
 
         [Test]
+        public async Task Create_endpoint_with_delivery_count()
+        {
+            await DeleteQueue(QueueName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --delivery-count {15}");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
+                Assert.That(output, Does.Not.Contain("skipping"));
+            }
+
+            await VerifyQueue(QueueName, maxDeliveryCount: 15);
+        }
+
+        [Test]
         public async Task Create_endpoint_with_dlq_forwarding_validates_target_is_not_self()
         {
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --forward-dlq-to {EndpointName}");
@@ -216,6 +233,24 @@
             await VerifyQueue(ErrorQueueName);
             await VerifyTopic(TopicName);
             await VerifySubscriptionContainsOnlyDefaultRejectAllRule(TopicName, SubscriptionName);
+        }
+
+        [Test]
+        public async Task Create_migration_with_delivery_count()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --delivery-count {15}");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
+                Assert.That(output, Does.Not.Contain("skipping"));
+            }
+
+            await VerifyQueue(QueueName, maxDeliveryCount: 15);
         }
 
         [Test]
@@ -672,6 +707,23 @@
             }
 
             await VerifyQueue(QueueName);
+        }
+
+        [Test]
+        public async Task Create_queue_with_delivery_count()
+        {
+            await DeleteQueue(QueueName);
+
+            var (output, error, exitCode) = await Execute($"queue create {QueueName} --delivery-count {15}");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
+                Assert.That(output, Does.Not.Contain("skipping"));
+            }
+
+            await VerifyQueue(QueueName, maxDeliveryCount: 15);
         }
 
         [Test]
