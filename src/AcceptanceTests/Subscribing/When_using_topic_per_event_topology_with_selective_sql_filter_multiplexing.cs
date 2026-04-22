@@ -105,21 +105,14 @@ public class When_using_topic_per_event_topology_with_selective_sql_filter_multi
             }, metadata =>
             {
                 metadata.RegisterPublisherFor<MyEvent1>(typeof(Publisher));
-                metadata.RegisterPublisherFor<MyEvent2>(typeof(Publisher));
             });
 
-        public class Handler(Context context) : IHandleMessages<MyEvent1>, IHandleMessages<MyEvent2>
+        public class Handler(Context context) : IHandleMessages<MyEvent1>
         {
             public Task Handle(MyEvent1 message, IMessageHandlerContext handlerContext)
             {
                 context.Subscriber1GotMyEvent1 = true;
                 context.MaybeMarkAsCompleted();
-                return Task.CompletedTask;
-            }
-
-            public Task Handle(MyEvent2 message, IMessageHandlerContext handlerContext)
-            {
-                context.Subscriber1GotMyEvent2 = true;
                 return Task.CompletedTask;
             }
         }
@@ -137,18 +130,11 @@ public class When_using_topic_per_event_topology_with_selective_sql_filter_multi
                 c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
             }, metadata =>
             {
-                metadata.RegisterPublisherFor<MyEvent1>(typeof(Publisher));
                 metadata.RegisterPublisherFor<MyEvent2>(typeof(Publisher));
             });
 
-        public class Handler(Context context) : IHandleMessages<MyEvent1>, IHandleMessages<MyEvent2>
+        public class Handler(Context context) : IHandleMessages<MyEvent2>
         {
-            public Task Handle(MyEvent1 message, IMessageHandlerContext handlerContext)
-            {
-                context.Subscriber2GotMyEvent1 = true;
-                return Task.CompletedTask;
-            }
-
             public Task Handle(MyEvent2 message, IMessageHandlerContext handlerContext)
             {
                 context.Subscriber2GotMyEvent2 = true;
