@@ -59,7 +59,8 @@ public class TopologyOptions
     public FallbackTopicOptions? FallbackTopic { get; set; }
 
     /// <summary>
-    /// Determines if an exception should be thrown when attempting to publish an event not mapped in PublishedEventToTopicsMap
+    /// Determines if an exception should be thrown when attempting to publish an event not mapped in <see cref="PublishedEventToTopicsMap"/>.
+    /// If <see cref="FallbackTopic"/> is configured, otherwise-unmapped events are routed to that fallback topic instead and no exception is thrown.
     /// </summary>
     public bool ThrowIfUnmappedEventTypes { get; set; } = false;
 
