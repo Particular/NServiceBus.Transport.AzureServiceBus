@@ -159,7 +159,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     {
         var eventTypeFullName = eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null");
         var entries = MapEventToSubscriptionEntries(eventTypeFullName);
-        return DeleteRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken);
+        return DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken);
     }
 
     public static Task CreateSubscriptionsForEntries(HashSet<SubscriptionEntry> entries, string eventTypeFullName,
@@ -315,28 +315,45 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         return $"Rule-{hashString}";
     }
 
-    public static Task DeleteRulesForEntries(HashSet<SubscriptionEntry> entries, string eventTypeFullName,
+    public static Task DeleteSubscriptionsOrRulesForEntries(HashSet<SubscriptionEntry> entries, string eventTypeFullName,
         string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken = default)
     {
-        return Task.WhenAll([.. entries.Select(entry => DeleteRuleForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken))]);
+        return Task.WhenAll([.. entries.Select(entry => DeleteSubscriptionOrRuleForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken))]);
     }
 
-    static Task DeleteRuleForEntry(SubscriptionEntry entry, string eventTypeFullName,
+    static Task DeleteSubscriptionOrRuleForEntry(SubscriptionEntry entry, string eventTypeFullName,
         string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken)
     {
         return entry.RoutingMode switch
         {
-            TopicRoutingMode.NotMultiplexed => Task.CompletedTask,
-            TopicRoutingMode.CatchAll => Task.CompletedTask,
+            TopicRoutingMode.NotMultiplexed => DeleteSubscription(entry.Topic, subscriptionName, creationOptions.AdministrationClient, cancellationToken),
+            TopicRoutingMode.CatchAll => DeleteSubscription(entry.Topic, subscriptionName, creationOptions.AdministrationClient, cancellationToken),
             TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlFilter =>
                 DeleteRuleForFilteredSubscription(entry.Topic, eventTypeFullName, subscriptionName, creationOptions, cancellationToken),
-            TopicRoutingMode.Default => Task.CompletedTask,
+            TopicRoutingMode.Default => DeleteSubscription(entry.Topic, subscriptionName, creationOptions.AdministrationClient, cancellationToken),
             _ => Task.CompletedTask
         };
+    }
+
+    static async Task DeleteSubscription(string topicName, string subscriptionName,
+        ServiceBusAdministrationClient administrationClient,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await administrationClient.DeleteSubscriptionAsync(topicName, subscriptionName, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+        {
+        }
+        catch (UnauthorizedAccessException unauthorizedAccessException)
+        {
+            Logger.InfoFormat("Subscription {0} could not be deleted. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
+        }
     }
 
     static async Task DeleteRuleForFilteredSubscription(string topicName, string eventTypeFullName,
@@ -371,22 +388,5 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         CancellationToken cancellationToken = default)
     {
         return Task.WhenAll([.. topics.Select(topicName => DeleteSubscription(topicName, subscriptionName, administrationClient, cancellationToken))]);
-
-        async Task DeleteSubscription(string topicName, string subName,
-            ServiceBusAdministrationClient adminClient,
-            CancellationToken token)
-        {
-            try
-            {
-                await adminClient.DeleteSubscriptionAsync(topicName, subName, token).ConfigureAwait(false);
-            }
-            catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
-            {
-            }
-            catch (UnauthorizedAccessException unauthorizedAccessException)
-            {
-                Logger.InfoFormat("Subscription {0} could not be deleted. Reason: {1}", subName, unauthorizedAccessException.Message);
-            }
-        }
     }
 }
