@@ -200,7 +200,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 receiveQueue.AutoDeleteOnIdle = AutoDeleteOnIdle.Value;
             }
 
-            if (AutoForwardDeadLetteredMessagesToErrorQueue)
+            if (AutoForwardDeadLetteredMessagesToErrorQueue == true)
             {
                 receiveQueue.ForwardDeadLetteredMessagesTo = errorQueueName;
             }
@@ -332,13 +332,27 @@ public partial class AzureServiceBusTransport : TransportDefinition
     public bool EnablePartitioning { get; set; }
 
     /// <summary>
-    /// Enables auto-forwarding of dead-lettered messages to the configured error queue.
+    /// Controls whether dead-lettered messages are automatically forwarded to the configured error queue.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// When set to <see langword="true"/>, the transport configures the queue's <c>ForwardDeadLetteredMessagesTo</c> property so that
+    /// Azure Service Bus automatically forwards any dead-lettered message to the error queue.
+    /// </para>
+    /// <para>
+    /// When set to <see langword="null"/> (the default), the transport logs a warning whenever a message is dead-lettered,
+    /// recommending that this setting be enabled to ensure dead-lettered messages are visible in the error queue.
+    /// </para>
+    /// <para>
+    /// When set to <see langword="false"/>, dead-lettered messages remain in the Azure Service Bus dead-letter queue and no warning is logged.
+    /// Use this value to explicitly opt out of both forwarding and the associated warning.
+    /// </para>
+    /// <para>
     /// This option only affects queues created by the transport during infrastructure setup. It applies to transport-created endpoint queues,
     /// including instance-specific queues, and excludes the error queue itself to avoid self-forwarding loops.
+    /// </para>
     /// </remarks>
-    public bool AutoForwardDeadLetteredMessagesToErrorQueue { get; set; }
+    public bool? AutoForwardDeadLetteredMessagesToErrorQueue { get; set; }
 
     /// <summary>
     /// Specifies the multiplier to apply to the maximum concurrency value to calculate the prefetch count.

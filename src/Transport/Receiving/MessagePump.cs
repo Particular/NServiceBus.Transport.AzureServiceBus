@@ -32,7 +32,9 @@ sealed class MessagePump(
     CancellationTokenSource? messageProcessingCancellationTokenSource;
     ServiceBusProcessor? processor;
 
-    static readonly ILog Logger = LogManager.GetLogger<MessagePump>();
+    readonly ILog Logger = LogManager.GetLogger<MessagePump>();
+
+    bool autoForwardWarningLogged;
 
     PushRuntimeSettings? limitations;
 
@@ -140,6 +142,7 @@ sealed class MessagePump(
         catch (Exception ex)
         {
             Logger.Error($"Moving message '{nativeMessageId}' to the dead letter queue", ex);
+            WarnIfDeadLetteringWithoutForwarding(nativeMessageId, message.DeliveryCount);
             await arg.SafeDeadLetterMessage(message, nativeMessageId, TransactionMode, new DeadLetterRequest(ex), CancellationToken.None).ConfigureAwait(false);
 
             return;
@@ -295,6 +298,7 @@ sealed class MessagePump(
                     case ErrorHandleResult.Handled:
                         if (azureServiceBusTransaction.TransportTransaction.TryGet<DeadLetterRequest>(out var deadLetterRequest))
                         {
+                            WarnIfDeadLetteringWithoutForwarding(nativeMessageId, message.DeliveryCount);
                             await processMessageEventArgs.SafeDeadLetterMessage(message,
                                     nativeMessageId,
                                     TransactionMode,
@@ -352,6 +356,19 @@ sealed class MessagePump(
                     Timeout = TransactionManager.DefaultTimeout
                 })
             : new AzureServiceBusTransportTransaction();
+
+    void WarnIfDeadLetteringWithoutForwarding(string nativeMessageId, int deliveryCount)
+    {
+        if (!autoForwardWarningLogged && transportSettings.AutoForwardDeadLetteredMessagesToErrorQueue == null)
+        {
+            autoForwardWarningLogged = true;
+            Logger.Warn($"Message '{nativeMessageId}' (delivery count: {deliveryCount}) is being moved to the dead-letter queue. " +
+                "Dead-lettered messages will not automatically appear in the error queue. " +
+                "Consider setting 'AutoForwardDeadLetteredMessagesToErrorQueue = true' on the transport to automatically forward dead-lettered messages to the error queue, " +
+                "making them visible for monitoring and reprocessing. " +
+                "To suppress this warning, explicitly set 'AutoForwardDeadLetteredMessagesToErrorQueue = false'.");
+        }
+    }
 
     public ISubscriptionManager? Subscriptions { get; } = subscriptionManager;
 
