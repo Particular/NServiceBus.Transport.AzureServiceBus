@@ -33,6 +33,8 @@ sealed class MessagePump(
 
     readonly ILog Logger = LogManager.GetLogger<MessagePump>();
 
+    bool autoForwardWarningLogged;
+
     PushRuntimeSettings? limitations;
 
     [MemberNotNull(nameof(limitations), nameof(onMessage), nameof(onError))]
@@ -356,8 +358,9 @@ sealed class MessagePump(
 
     void WarnIfDeadLetteringWithoutForwarding(string nativeMessageId, int deliveryCount)
     {
-        if (transportSettings.AutoForwardDeadLetteredMessagesToErrorQueue == null)
+        if (!autoForwardWarningLogged && transportSettings.AutoForwardDeadLetteredMessagesToErrorQueue == null)
         {
+            autoForwardWarningLogged = true;
             Logger.Warn($"Message '{nativeMessageId}' (delivery count: {deliveryCount}) is being moved to the dead-letter queue. " +
                 "Dead-lettered messages will not automatically appear in the error queue. " +
                 "Consider setting 'AutoForwardDeadLetteredMessagesToErrorQueue = true' on the transport to automatically forward dead-lettered messages to the error queue, " +
