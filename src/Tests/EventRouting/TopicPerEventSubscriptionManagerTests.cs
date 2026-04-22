@@ -512,7 +512,7 @@ public class TopicPerEventSubscriptionManagerTests
     }
 
     [Test]
-    public async Task Should_not_delete_rules_when_unsubscribing_not_multiplexed_mapping()
+    public async Task Should_delete_subscription_when_unsubscribing_not_multiplexed_mapping()
     {
         var topologyOptions = new TopologyOptions();
         var topology = (TopicPerEventTopology)TopicTopology.FromOptions(topologyOptions);
@@ -528,11 +528,11 @@ public class TopicPerEventSubscriptionManagerTests
 
         await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
 
-        Assert.That(builder.ToString(), Does.Not.Contain("DeleteRule("));
+        Assert.That(builder.ToString(), Does.Contain("DeleteSubscription(topicName: 'MyTopic', subscriptionName: 'SubscribingQueue')"));
     }
 
     [Test]
-    public async Task Should_not_delete_rules_when_unsubscribing_explicit_catch_all_mapping()
+    public async Task Should_delete_subscription_when_unsubscribing_explicit_catch_all_mapping()
     {
         var topologyOptions = new TopologyOptions();
         var topology = (TopicPerEventTopology)TopicTopology.FromOptions(topologyOptions);
@@ -548,7 +548,27 @@ public class TopicPerEventSubscriptionManagerTests
 
         await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
 
-        Assert.That(builder.ToString(), Does.Not.Contain("DeleteRule("));
+        Assert.That(builder.ToString(), Does.Contain("DeleteSubscription(topicName: 'MyTopic', subscriptionName: 'SubscribingQueue')"));
+    }
+
+    [Test]
+    public async Task Should_delete_subscription_when_unsubscribing_default_mapping()
+    {
+        var topologyOptions = new TopologyOptions();
+        var topology = (TopicPerEventTopology)TopicTopology.FromOptions(topologyOptions);
+        topology.SubscribeTo<MyEvent1>("MyTopic");
+
+        var builder = new StringBuilder();
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(builder),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
+
+        Assert.That(builder.ToString(), Does.Contain("DeleteSubscription(topicName: 'MyTopic', subscriptionName: 'SubscribingQueue')"));
     }
 
     [Test]
