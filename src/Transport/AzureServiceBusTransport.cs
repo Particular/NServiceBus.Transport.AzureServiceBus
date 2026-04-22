@@ -1,4 +1,4 @@
-﻿namespace NServiceBus;
+namespace NServiceBus;
 
 using System;
 using System.Collections.Generic;
@@ -440,7 +440,14 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// </summary>
     /// <remarks>This MaxDeliveryCount is set to <value>int.Max</value> by default, to stay backward compatible will change in the
     /// next major version to a lower default value. When the emulator is used the value defaults to <value>10</value>
-    /// unless explicitly set to another value.</remarks>
+    /// unless explicitly set to another value.
+    /// <para>
+    /// NServiceBus recoverability controls retry decisions via the recoverability policy, so this value should be high enough
+    /// to allow the recoverability policy to eventually move the message to the error queue. It should also not be set so high
+    /// that it effectively becomes infinite retries. To use the native dead letter queue instead of the error queue,
+    /// enable <see cref="AutoForwardDeadLetteredMessagesToErrorQueue"/>.
+    /// </para>
+    /// </remarks>
     public int MaxDeliveryCount
     {
         get;
