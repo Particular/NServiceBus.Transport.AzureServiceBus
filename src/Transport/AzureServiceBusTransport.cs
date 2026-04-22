@@ -446,10 +446,15 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// unless explicitly set to another value.
     /// </para>
     /// <para>
-    /// NServiceBus recoverability controls retry decisions via the recoverability policy, so this value should be high enough
-    /// to allow the recoverability policy to eventually move the message to the error queue. It should also not be set so high
-    /// that it effectively becomes infinite retries. To use the native dead letter queue instead of the error queue,
-    /// enable <see cref="AutoForwardDeadLetteredMessagesToErrorQueue"/>.
+    /// NServiceBus recoverability controls retry decisions via the recoverability policy. This value should be high enough
+    /// to allow all configured retries to complete, so that the recoverability policy can eventually move the message to the error queue.
+    /// It should not be set so high that it effectively becomes infinite retries.
+    /// </para>
+    /// <para>
+    /// When lowering this value below the total number of recoverability retries allowed, the broker will dead-letter
+    /// the message before the recoverability policy can move it to the error queue. Enabling
+    /// <see cref="AutoForwardDeadLetteredMessagesToErrorQueue"/> ensures those messages are forwarded to the error queue,
+    /// making failures visible in ServiceControl.
     /// </para>
     /// </remarks>
     public int MaxDeliveryCount
