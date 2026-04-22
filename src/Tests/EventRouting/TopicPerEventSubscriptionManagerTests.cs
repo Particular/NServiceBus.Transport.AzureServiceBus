@@ -128,6 +128,110 @@ public class TopicPerEventSubscriptionManagerTests
     }
 
     [Test]
+    public void Should_throw_when_default_and_correlation_filter_routing_modes_target_same_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, ["SharedTopic"] },
+                { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.CorrelationFilter)] }
+            }
+        };
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(new StringBuilder()),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
+
+        Assert.That(exception!.Message, Does.Contain("Incompatible subscription routing modes"));
+    }
+
+    [Test]
+    public void Should_throw_when_catch_all_and_sql_filter_routing_modes_target_same_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.CatchAll)] },
+                { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.SqlFilter)] }
+            }
+        };
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(new StringBuilder()),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
+
+        Assert.That(exception!.Message, Does.Contain("Incompatible subscription routing modes"));
+    }
+
+    [Test]
+    public void Should_throw_when_not_multiplexed_and_correlation_filter_routing_modes_target_same_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.NotMultiplexed)] },
+                { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.CorrelationFilter)] }
+            }
+        };
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(new StringBuilder()),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
+
+        Assert.That(exception!.Message, Does.Contain("Incompatible subscription routing modes"));
+    }
+
+    [Test]
+    public void Should_throw_when_mapped_and_unmapped_events_target_same_topic_with_incompatible_fallback_routing()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            },
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, ["SharedTopic"] }
+            }
+        };
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(new StringBuilder()),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
+
+        Assert.That(exception!.Message, Does.Contain("Incompatible subscription routing modes"));
+    }
+
+    [Test]
     public async Task Should_create_subscription_with_correlation_filter_rule()
     {
         var topologyOptions = new TopologyOptions
@@ -181,6 +285,56 @@ public class TopicPerEventSubscriptionManagerTests
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
 
         Approver.Verify(builder.ToString());
+    }
+
+    [Test]
+    public async Task Should_create_catch_all_subscription_for_not_multiplexed_routing_mode()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, [new SubscriptionEntry("MyTopic", TopicRoutingMode.NotMultiplexed)] }
+            }
+        };
+
+        var builder = new StringBuilder();
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(builder),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        Assert.That(builder.ToString(), Does.Contain("\"TopicName\": \"MyTopic\""));
+        Assert.That(builder.ToString(), Does.Not.Contain("CreateRuleOptions(topicName: 'MyTopic', subscriptionName: 'SubscribingQueue')"));
+    }
+
+    [Test]
+    public async Task Should_create_catch_all_subscription_for_explicit_catch_all_routing_mode()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, [new SubscriptionEntry("MyTopic", TopicRoutingMode.CatchAll)] }
+            }
+        };
+
+        var builder = new StringBuilder();
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(builder),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        Assert.That(builder.ToString(), Does.Contain("\"TopicName\": \"MyTopic\""));
+        Assert.That(builder.ToString(), Does.Not.Contain("CreateRuleOptions(topicName: 'MyTopic', subscriptionName: 'SubscribingQueue')"));
     }
 
     [Test]
@@ -274,6 +428,136 @@ public class TopicPerEventSubscriptionManagerTests
     }
 
     [Test]
+    public async Task Should_unsubscribe_sql_filter_subscription_mapping()
+    {
+        var topologyOptions = new TopologyOptions();
+        var topology = (TopicPerEventTopology)TopicTopology.FromOptions(topologyOptions);
+        topology.SubscribeTo<MyEvent1>("MyTopic", options => options.Mode = TopicRoutingMode.SqlFilter);
+
+        var builder = new StringBuilder();
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(builder),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
+
+        Assert.That(builder.ToString(), Does.Contain("DeleteRule(topicName: 'MyTopic', subscriptionName: 'SubscribingQueue'"));
+    }
+
+    [Test]
+    public async Task Should_unsubscribe_unmapped_event_using_sql_filter_fallback_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.SqlFilter
+            }
+        };
+
+        var builder = new StringBuilder();
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(builder),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
+
+        Assert.That(builder.ToString(), Does.Contain("DeleteRule(topicName: 'SharedTopic', subscriptionName: 'SubscribingQueue'"));
+    }
+
+    [Test]
+    public async Task Should_unsubscribe_unmapped_event_using_correlation_filter_fallback_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            }
+        };
+
+        var builder = new StringBuilder();
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(builder),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
+
+        Assert.That(builder.ToString(), Does.Contain("DeleteRule(topicName: 'SharedTopic', subscriptionName: 'SubscribingQueue'"));
+    }
+
+    [Test]
+    public async Task Should_unsubscribe_using_hashed_rule_name_for_long_event_type_names()
+    {
+        var topologyOptions = new TopologyOptions();
+        var topology = (TopicPerEventTopology)TopicTopology.FromOptions(topologyOptions);
+        topology.SubscribeTo<VeryLongEventTypeNameThatShouldGenerateAHashedRuleNameForDeletionPath>("MyTopic", options => options.Mode = TopicRoutingMode.CorrelationFilter);
+
+        var builder = new StringBuilder();
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(builder),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(VeryLongEventTypeNameThatShouldGenerateAHashedRuleNameForDeletionPath)), new ContextBag());
+
+        Assert.That(builder.ToString(), Does.Contain("ruleName: 'Rule-"));
+    }
+
+    [Test]
+    public async Task Should_not_delete_rules_when_unsubscribing_not_multiplexed_mapping()
+    {
+        var topologyOptions = new TopologyOptions();
+        var topology = (TopicPerEventTopology)TopicTopology.FromOptions(topologyOptions);
+        topology.SubscribeTo<MyEvent1>("MyTopic", options => options.Mode = TopicRoutingMode.NotMultiplexed);
+
+        var builder = new StringBuilder();
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(builder),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
+
+        Assert.That(builder.ToString(), Does.Not.Contain("DeleteRule("));
+    }
+
+    [Test]
+    public async Task Should_not_delete_rules_when_unsubscribing_explicit_catch_all_mapping()
+    {
+        var topologyOptions = new TopologyOptions();
+        var topology = (TopicPerEventTopology)TopicTopology.FromOptions(topologyOptions);
+        topology.SubscribeTo<MyEvent1>("MyTopic", options => options.Mode = TopicRoutingMode.CatchAll);
+
+        var builder = new StringBuilder();
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(builder),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
+
+        Assert.That(builder.ToString(), Does.Not.Contain("DeleteRule("));
+    }
+
+    [Test]
     public async Task Should_apply_subscription_name_override_for_non_namespaced_queue_when_hierarchy_enabled()
     {
         var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
@@ -332,6 +616,35 @@ public class TopicPerEventSubscriptionManagerTests
     }
 
     [Test]
+    public async Task Should_use_sql_filter_fallback_topic_routing_mode_for_unconfigured_subscription()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.SqlFilter
+            }
+        };
+
+        var builder = new StringBuilder();
+        var client = new RecordingServiceBusClient(builder);
+        var administrationClient = new RecordingServiceBusAdministrationClient(builder);
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = client,
+            AdministrationClient = administrationClient
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        Assert.That(builder.ToString(), Does.Contain("CreateRuleOptions(topicName: 'SharedTopic', subscriptionName: 'SubscribingQueue')"));
+        Assert.That(builder.ToString(), Does.Contain("\"filter-type\": \"sql\""));
+    }
+
+    [Test]
     public async Task Should_not_apply_fallback_topic_routing_mode_to_mapped_subscription_with_default_routing_mode()
     {
         var topologyOptions = new TopologyOptions
@@ -382,6 +695,52 @@ public class TopicPerEventSubscriptionManagerTests
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
             AdministrationClient = administrationClient
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        Assert.DoesNotThrowAsync(async () =>
+            await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
+    }
+
+    [Test]
+    public void Should_allow_mixing_default_and_explicit_catch_all_subscription_entries_for_same_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, ["SharedTopic"] },
+                { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.CatchAll)] }
+            }
+        };
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(new StringBuilder()),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        Assert.DoesNotThrowAsync(async () =>
+            await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
+    }
+
+    [Test]
+    public void Should_allow_mixing_not_multiplexed_and_explicit_catch_all_subscription_entries_for_same_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.NotMultiplexed)] },
+                { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.CatchAll)] }
+            }
+        };
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(new StringBuilder()),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
         }, topologyOptions, new StartupDiagnosticEntries());
 
         Assert.DoesNotThrowAsync(async () =>
@@ -454,5 +813,6 @@ public class TopicPerEventSubscriptionManagerTests
 
     class MyEvent1;
     class MyEvent2;
+    class VeryLongEventTypeNameThatShouldGenerateAHashedRuleNameForDeletionPath;
     interface IMyEvent;
 }
