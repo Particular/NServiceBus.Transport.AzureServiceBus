@@ -73,7 +73,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             CustomTokenProvider = transportSettings.TokenCredential?.ToString() ?? "default",
             CustomRetryPolicy = transportSettings.RetryPolicyOptions?.ToString() ?? "default",
             AutoDeleteOnIdle = transportSettings.AutoDeleteOnIdle?.ToString() ?? "default",
-            AutoForwardDeadLetteredMessagesToErrorQueue = transportSettings.AutoForwardDeadLetteredMessagesToErrorQueue.ToString(),
+            AutoForwardDeadLetteredMessagesToErrorQueue = transportSettings.AutoForwardDeadLetteredMessagesToErrorQueue?.ToString() ?? "not set",
         });
 
     void WriteManifest(StartupDiagnosticEntries startupDiagnostic)

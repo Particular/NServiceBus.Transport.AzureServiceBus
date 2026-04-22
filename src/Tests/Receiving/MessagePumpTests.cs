@@ -2,15 +2,20 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
 {
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
+    using NServiceBus.Logging;
+    using NServiceBus.Testing;
     using NUnit.Framework;
 
     [TestFixture]
     public class MessagePumpTests
     {
+        static readonly TestingLoggerFactory LoggerFactory = LogManager.Use<TestingLoggerFactory>();
+
         [Test]
         public async Task Should_complete_message_upon_success()
         {
@@ -318,6 +323,87 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
                 Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
                 Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
             });
+        }
+
+        [Test]
+        public async Task Should_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_not_set()
+        {
+            var logOutput = new StringWriter();
+            using var logScope = LoggerFactory.BeginScope(logOutput, LogLevel.Warn);
+
+            var fakeClient = new FakeServiceBusClient();
+            var fakeReceiver = new FakeReceiver();
+
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+
+            await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
+                (context, _) =>
+                {
+                    context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description"));
+                    return Task.FromResult(ErrorHandleResult.Handled);
+                }, CancellationToken.None);
+            await pump.StartReceive();
+
+            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+
+            var logText = logOutput.ToString();
+            Assert.That(logText, Does.Contain("AutoForwardDeadLetteredMessagesToErrorQueue"));
+        }
+
+        [Test]
+        public async Task Should_not_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_false()
+        {
+            var logOutput = new StringWriter();
+            using var logScope = LoggerFactory.BeginScope(logOutput, LogLevel.Warn);
+
+            var fakeClient = new FakeServiceBusClient();
+            var fakeReceiver = new FakeReceiver();
+
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { AutoForwardDeadLetteredMessagesToErrorQueue = false }, "receiveAddress",
+                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+
+            await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
+                (context, _) =>
+                {
+                    context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description"));
+                    return Task.FromResult(ErrorHandleResult.Handled);
+                }, CancellationToken.None);
+            await pump.StartReceive();
+
+            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+
+            var logText = logOutput.ToString();
+            Assert.That(logText, Does.Not.Contain("AutoForwardDeadLetteredMessagesToErrorQueue"));
+        }
+
+        [Test]
+        public async Task Should_not_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_true()
+        {
+            var logOutput = new StringWriter();
+            using var logScope = LoggerFactory.BeginScope(logOutput, LogLevel.Warn);
+
+            var fakeClient = new FakeServiceBusClient();
+            var fakeReceiver = new FakeReceiver();
+
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { AutoForwardDeadLetteredMessagesToErrorQueue = true }, "receiveAddress",
+                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+
+            await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
+                (context, _) =>
+                {
+                    context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description"));
+                    return Task.FromResult(ErrorHandleResult.Handled);
+                }, CancellationToken.None);
+            await pump.StartReceive();
+
+            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+
+            var logText = logOutput.ToString();
+            Assert.That(logText, Does.Not.Contain("AutoForwardDeadLetteredMessagesToErrorQueue"));
         }
     }
 }
