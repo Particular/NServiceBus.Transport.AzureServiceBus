@@ -70,14 +70,11 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         foreach (var eventType in eventTypes)
         {
             var eventTypeFullName = eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null");
-            if (!topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entries))
-            {
-                continue;
-            }
+            var entries = MapEventToSubscriptionEntries(eventTypeFullName);
 
             foreach (var entry in entries)
             {
-                var topicName = destinationManager.GetDestination(entry.Topic, eventTypeFullName);
+                var topicName = entry.Topic;
                 var effectiveRoutingMode = NormalizeSubscriptionRoutingMode(ResolveTopicRoutingMode(entry.RoutingMode));
                 if (topicRoutingModes.TryGetValue(topicName, out var existingMode))
                 {
