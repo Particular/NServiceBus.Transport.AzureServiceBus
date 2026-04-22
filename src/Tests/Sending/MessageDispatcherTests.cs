@@ -1217,6 +1217,36 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
+        public async Task Should_route_unmapped_events_to_sql_filter_fallback_topic_without_correlation_stamps()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.SqlFilter }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sharedtopic"];
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            var message = batchContent.ElementAt(0);
+
+            Assert.That(message.ApplicationProperties.ContainsKey(typeof(SomeEvent).FullName), Is.False);
+        }
+
+        [Test]
         public async Task Should_not_apply_fallback_topic_correlation_routing_to_explicitly_mapped_events_without_routing_override()
         {
             var client = new FakeServiceBusClient();
