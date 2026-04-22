@@ -20,12 +20,12 @@ public sealed class TopicPerEventTopology : TopicTopology
     public void PublishTo<TEventType>(string topicName) => PublishTo(typeof(TEventType), topicName);
 
     /// <summary>
-    /// Instructs the topology to use provided topic to publish events of a given type with multiplexing configuration.
+    /// Instructs the topology to use provided topic to publish events of a given type with routing configuration.
     /// </summary>
     /// <param name="topicName">Name of the topic to publish to.</param>
-    /// <param name="configure">Configuration for shared-topic multiplexing.</param>
+    /// <param name="configure">Configuration for shared-topic routing.</param>
     /// <typeparam name="TEventType">Type of the event.</typeparam>
-    public void PublishTo<TEventType>(string topicName, Action<MultiplexingOptions> configure) =>
+    public void PublishTo<TEventType>(string topicName, Action<RoutingOptions> configure) =>
         PublishTo(typeof(TEventType), topicName, configure);
 
     /// <summary>
@@ -45,23 +45,23 @@ public sealed class TopicPerEventTopology : TopicTopology
     }
 
     /// <summary>
-    /// Instructs the topology to use provided topic to publish events of a given type with multiplexing configuration.
+    /// Instructs the topology to use provided topic to publish events of a given type with routing configuration.
     /// </summary>
     /// <param name="eventType">Type of the event.</param>
     /// <param name="topicName">Name of the topic to publish to.</param>
-    /// <param name="configure">Configuration for shared-topic multiplexing.</param>
+    /// <param name="configure">Configuration for shared-topic routing.</param>
     /// <exception cref="ArgumentException">The topic name is not set.</exception>
     /// <exception cref="ArgumentException">The event type is not set.</exception>
-    public void PublishTo(Type eventType, string topicName, Action<MultiplexingOptions> configure)
+    public void PublishTo(Type eventType, string topicName, Action<RoutingOptions> configure)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
         Options.PublishedEventToTopicsMap[eventType.FullName] = topicName;
 
-        var multiplexingOptions = new MultiplexingOptions();
-        configure(multiplexingOptions);
-        Options.MultiplexingPublishOptionsMap[eventType.FullName] = multiplexingOptions;
+        var routingOptions = new RoutingOptions();
+        configure(routingOptions);
+        Options.RoutingOptionsMap[eventType.FullName] = routingOptions;
     }
 
     /// <summary>
@@ -96,12 +96,12 @@ public sealed class TopicPerEventTopology : TopicTopology
     public void SubscribeTo<TEventType>(string topicName) => SubscribeTo(typeof(TEventType), topicName);
 
     /// <summary>
-    /// Instructs the topology to use provided topic to subscribe for events of a given type with subscription filtering configuration.
+    /// Instructs the topology to use provided topic to subscribe for events of a given type with routing configuration.
     /// </summary>
     /// <param name="topicName">Name of the topic to subscribe to.</param>
-    /// <param name="configure">Configuration for subscription filtering.</param>
+    /// <param name="configure">Configuration for shared-topic routing.</param>
     /// <typeparam name="TEventType">Type of the event.</typeparam>
-    public void SubscribeTo<TEventType>(string topicName, Action<SubscriptionOptions> configure) =>
+    public void SubscribeTo<TEventType>(string topicName, Action<RoutingOptions> configure) =>
         SubscribeTo(typeof(TEventType), topicName, configure);
 
     /// <summary>
@@ -119,32 +119,32 @@ public sealed class TopicPerEventTopology : TopicTopology
         var eventTypeFullName = eventType.FullName;
         if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entries))
         {
-            entries.Add(new SubscriptionEntry(topicName, SubscriptionFilterMode.Default));
+            entries.Add(new SubscriptionEntry(topicName, TopicRoutingMode.Default));
         }
         else
         {
-            Options.SubscribedEventToTopicsMap[eventTypeFullName] = [new SubscriptionEntry(topicName, SubscriptionFilterMode.Default)];
+            Options.SubscribedEventToTopicsMap[eventTypeFullName] = [new SubscriptionEntry(topicName, TopicRoutingMode.Default)];
         }
     }
 
     /// <summary>
-    /// Instructs the topology to use provided topic to subscribe for events of a given type with subscription filtering configuration.
+    /// Instructs the topology to use provided topic to subscribe for events of a given type with routing configuration.
     /// </summary>
     /// <param name="eventType">Name of the topic to subscribe to.</param>
     /// <param name="topicName">Type of the event.</param>
-    /// <param name="configure">Configuration for subscription filtering.</param>
+    /// <param name="configure">Configuration for shared-topic routing.</param>
     /// <exception cref="ArgumentException">The topic name is not set.</exception>
     /// <exception cref="ArgumentException">The event type is not set.</exception>
-    public void SubscribeTo(Type eventType, string topicName, Action<SubscriptionOptions> configure)
+    public void SubscribeTo(Type eventType, string topicName, Action<RoutingOptions> configure)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
-        var subscriptionOptions = new SubscriptionOptions();
-        configure(subscriptionOptions);
+        var routingOptions = new RoutingOptions();
+        configure(routingOptions);
 
         var eventTypeFullName = eventType.FullName;
-        var entry = new SubscriptionEntry(topicName, subscriptionOptions.FilterMode);
+        var entry = new SubscriptionEntry(topicName, routingOptions.Mode);
 
         if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entries))
         {
@@ -172,11 +172,22 @@ public sealed class TopicPerEventTopology : TopicTopology
     /// <inheritdoc />
     protected override string GetPublishDestinationCore(string eventTypeFullName)
     {
-        if (!Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out string? topic) && Options.ThrowIfUnmappedEventTypes)
+        if (Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out string? topic))
+        {
+            return topic;
+        }
+
+        if (Options.FallbackTopic?.TopicName is { Length: > 0 } fallbackTopicName)
+        {
+            return fallbackTopicName;
+        }
+
+        if (Options.ThrowIfUnmappedEventTypes)
         {
             throw new Exception($"Unmapped event type '{eventTypeFullName}'. All events must be mapped in `{nameof(TopologyOptions.PublishedEventToTopicsMap)}` when `{nameof(TopologyOptions.ThrowIfUnmappedEventTypes)}` is set");
         }
-        return topic ?? eventTypeFullName;
+
+        return eventTypeFullName;
     }
 
     internal override SubscriptionManager CreateSubscriptionManager(

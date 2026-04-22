@@ -11,7 +11,7 @@ sealed class SubscriptionEntryConverter : JsonConverter<SubscriptionEntry>
         if (reader.TokenType == JsonTokenType.String)
         {
             string topic = reader.GetString() ?? throw new JsonException("Topic cannot be null");
-            return new SubscriptionEntry(topic, SubscriptionFilterMode.Default);
+            return new SubscriptionEntry(topic, TopicRoutingMode.Default);
         }
 
         if (reader.TokenType != JsonTokenType.StartObject)
@@ -20,7 +20,7 @@ sealed class SubscriptionEntryConverter : JsonConverter<SubscriptionEntry>
         }
 
         string? topicName = null;
-        SubscriptionFilterMode filterMode = SubscriptionFilterMode.Default;
+        TopicRoutingMode routingMode = TopicRoutingMode.Default;
 
         while (reader.Read())
         {
@@ -42,8 +42,8 @@ sealed class SubscriptionEntryConverter : JsonConverter<SubscriptionEntry>
                 case "Topic":
                     topicName = reader.GetString() ?? throw new JsonException("Topic cannot be null");
                     break;
-                case "FilterMode":
-                    filterMode = Enum.Parse<SubscriptionFilterMode>(reader.GetString() ?? throw new JsonException("FilterMode cannot be null"));
+                case "RoutingMode":
+                    routingMode = Enum.Parse<TopicRoutingMode>(reader.GetString() ?? throw new JsonException("RoutingMode cannot be null"));
                     break;
                 default:
                     break;
@@ -55,12 +55,12 @@ sealed class SubscriptionEntryConverter : JsonConverter<SubscriptionEntry>
             throw new JsonException("Topic is required");
         }
 
-        return new SubscriptionEntry(topicName, filterMode);
+        return new SubscriptionEntry(topicName, routingMode);
     }
 
     public override void Write(Utf8JsonWriter writer, SubscriptionEntry value, JsonSerializerOptions options)
     {
-        if (value.FilterMode == SubscriptionFilterMode.Default)
+        if (value.RoutingMode == TopicRoutingMode.Default)
         {
             writer.WriteStringValue(value.Topic);
         }
@@ -69,8 +69,8 @@ sealed class SubscriptionEntryConverter : JsonConverter<SubscriptionEntry>
             writer.WriteStartObject();
             writer.WritePropertyName("Topic");
             writer.WriteStringValue(value.Topic);
-            writer.WritePropertyName("FilterMode");
-            writer.WriteStringValue(value.FilterMode.ToString());
+            writer.WritePropertyName("RoutingMode");
+            writer.WriteStringValue(value.RoutingMode.ToString());
             writer.WriteEndObject();
         }
     }

@@ -65,7 +65,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
     string? ValidateSubscriptionConfiguration(MessageMetadata[] eventTypes)
     {
-        var topicFilterModes = new Dictionary<string, SubscriptionFilterMode>(StringComparer.OrdinalIgnoreCase);
+        var topicRoutingModes = new Dictionary<string, TopicRoutingMode>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var eventType in eventTypes)
         {
@@ -78,17 +78,17 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             foreach (var entry in entries)
             {
                 var topicName = destinationManager.GetDestination(entry.Topic, eventTypeFullName);
-                var effectiveFilterMode = ResolveSubscriptionFilterMode(entry.FilterMode);
-                if (topicFilterModes.TryGetValue(topicName, out var existingMode))
+                var effectiveRoutingMode = NormalizeSubscriptionRoutingMode(ResolveTopicRoutingMode(entry.RoutingMode));
+                if (topicRoutingModes.TryGetValue(topicName, out var existingMode))
                 {
-                    if (existingMode != effectiveFilterMode)
+                    if (existingMode != effectiveRoutingMode)
                     {
-                        return $"Incompatible subscription filter modes detected for topic '{topicName}' on subscription '{subscriptionName}'. Event '{eventTypeFullName}' uses '{effectiveFilterMode}' but other events use '{existingMode}'. All events subscribed to the same topic must use the same filter mode on the same endpoint subscription.";
+                        return $"Incompatible subscription routing modes detected for topic '{topicName}' on subscription '{subscriptionName}'. Event '{eventTypeFullName}' uses '{effectiveRoutingMode}' but other events use '{existingMode}'. All events subscribed to the same topic must use the same routing mode on the same endpoint subscription.";
                     }
                 }
                 else
                 {
-                    topicFilterModes[topicName] = effectiveFilterMode;
+                    topicRoutingModes[topicName] = effectiveRoutingMode;
                 }
             }
         }
@@ -101,12 +101,12 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         var subscriptions = eventTypes
             .Select(eventType => eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null"))
             .SelectMany(eventTypeFullName => MapEventToSubscriptionEntries(eventTypeFullName)
-                .Select(entry => new { Topic = destinationManager.GetDestination(entry.Topic, eventTypeFullName).ToLower(), entry.FilterMode, MessageType = eventTypeFullName }))
-            .GroupBy(topicAndMessageType => (topicAndMessageType.Topic, topicAndMessageType.FilterMode))
+                .Select(entry => new { Topic = destinationManager.GetDestination(entry.Topic, eventTypeFullName).ToLower(), entry.RoutingMode, MessageType = eventTypeFullName }))
+            .GroupBy(topicAndMessageType => (topicAndMessageType.Topic, topicAndMessageType.RoutingMode))
             .Select(group => new
             {
                 TopicName = group.Key.Topic,
-                FilterMode = group.Key.FilterMode.ToString(),
+                RoutingMode = group.Key.RoutingMode.ToString(),
                 MessageTypes = group.Select(x => x.MessageType).ToArray()
             })
             .ToArray();
@@ -121,12 +121,32 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
     HashSet<SubscriptionEntry> MapEventToSubscriptionEntries(string eventTypeFullName)
     {
-        var entries = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName]);
-        return [.. entries.Select(entry => entry with { Topic = destinationManager.GetDestination(entry.Topic, eventTypeFullName), FilterMode = ResolveSubscriptionFilterMode(entry.FilterMode) })];
+        var entries = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, GetFallbackOrDefaultEntries(eventTypeFullName));
+        return [.. entries.Select(entry => entry with { Topic = destinationManager.GetDestination(entry.Topic, eventTypeFullName), RoutingMode = ResolveTopicRoutingMode(entry.RoutingMode) })];
     }
 
-    SubscriptionFilterMode ResolveSubscriptionFilterMode(SubscriptionFilterMode filterMode) =>
-        filterMode == SubscriptionFilterMode.Default ? topologyOptions.DefaultSubscriptionFilterMode : filterMode;
+    HashSet<SubscriptionEntry> GetFallbackOrDefaultEntries(string eventTypeFullName)
+    {
+        if (topologyOptions.FallbackTopic?.TopicName is { Length: > 0 } fallbackTopicName)
+        {
+            return [new SubscriptionEntry(fallbackTopicName, topologyOptions.FallbackTopic.Mode)];
+        }
+
+        return [new SubscriptionEntry(eventTypeFullName, TopicRoutingMode.Default)];
+    }
+
+    TopicRoutingMode ResolveTopicRoutingMode(TopicRoutingMode routingMode)
+    {
+        if (routingMode != TopicRoutingMode.Default)
+        {
+            return routingMode;
+        }
+
+        return TopicRoutingMode.CatchAll;
+    }
+
+    static TopicRoutingMode NormalizeSubscriptionRoutingMode(TopicRoutingMode routingMode) =>
+        routingMode == TopicRoutingMode.NotMultiplexed ? TopicRoutingMode.CatchAll : routingMode;
 
     public override Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
     {
@@ -177,18 +197,19 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             }
         }
 
-        switch (entry.FilterMode)
+        switch (entry.RoutingMode)
         {
-            case SubscriptionFilterMode.CatchAll:
+            case TopicRoutingMode.NotMultiplexed:
+            case TopicRoutingMode.CatchAll:
                 await CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
                 break;
-            case SubscriptionFilterMode.CorrelationFilter:
-            case SubscriptionFilterMode.SqlFilter:
-                await CreateFilteredSubscription(topicName, subscriptionName, eventTypeFullName, entry.FilterMode, creationOptions, cancellationToken).ConfigureAwait(false);
+            case TopicRoutingMode.CorrelationFilter:
+            case TopicRoutingMode.SqlFilter:
+                await CreateFilteredSubscription(topicName, subscriptionName, eventTypeFullName, entry.RoutingMode, creationOptions, cancellationToken).ConfigureAwait(false);
                 break;
-            case SubscriptionFilterMode.Default:
+            case TopicRoutingMode.Default:
             default:
-                throw new ArgumentOutOfRangeException(nameof(entry.FilterMode), entry.FilterMode, "Unknown filter mode");
+                throw new ArgumentOutOfRangeException(nameof(entry.RoutingMode), entry.RoutingMode, "Unknown routing mode");
         }
     }
 
@@ -225,7 +246,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     }
 
     static async Task CreateFilteredSubscription(string topicName, string subscriptionName, string eventTypeFullName,
-        SubscriptionFilterMode filterMode,
+        TopicRoutingMode routingMode,
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken)
     {
@@ -261,7 +282,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         await using (ruleManager.ConfigureAwait(false))
         {
             var ruleName = GetRuleName(eventTypeFullName);
-            RuleFilter ruleFilter = filterMode == SubscriptionFilterMode.CorrelationFilter
+            RuleFilter ruleFilter = routingMode == TopicRoutingMode.CorrelationFilter
                 ? new CorrelationRuleFilter { ApplicationProperties = { [eventTypeFullName] = true } }
                 : new SqlRuleFilter($"[{Headers.EnclosedMessageTypes}] LIKE '%{eventTypeFullName}%'");
 
@@ -300,12 +321,13 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken)
     {
-        return entry.FilterMode switch
+        return entry.RoutingMode switch
         {
-            SubscriptionFilterMode.CatchAll => Task.CompletedTask,
-            SubscriptionFilterMode.CorrelationFilter or SubscriptionFilterMode.SqlFilter =>
+            TopicRoutingMode.NotMultiplexed => Task.CompletedTask,
+            TopicRoutingMode.CatchAll => Task.CompletedTask,
+            TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlFilter =>
                 DeleteRuleForFilteredSubscription(entry.Topic, eventTypeFullName, subscriptionName, creationOptions, cancellationToken),
-            SubscriptionFilterMode.Default => Task.CompletedTask,
+            TopicRoutingMode.Default => Task.CompletedTask,
             _ => Task.CompletedTask
         };
     }

@@ -39,7 +39,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
             if (reader.TokenType == JsonTokenType.String)
             {
                 string value = reader.GetString() ?? throw new JsonException("Value cannot be null");
-                map[key] = [new SubscriptionEntry(value, SubscriptionFilterMode.Default)];
+                map[key] = [new SubscriptionEntry(value, TopicRoutingMode.Default)];
             }
             else if (reader.TokenType == JsonTokenType.StartArray)
             {
@@ -49,7 +49,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
                     if (reader.TokenType == JsonTokenType.String)
                     {
                         string value = reader.GetString() ?? throw new JsonException("Value cannot be null");
-                        _ = set.Add(new SubscriptionEntry(value, SubscriptionFilterMode.Default));
+                        _ = set.Add(new SubscriptionEntry(value, TopicRoutingMode.Default));
                     }
                     else if (reader.TokenType == JsonTokenType.StartObject)
                     {
@@ -81,7 +81,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
     SubscriptionEntry ReadSubscriptionEntry(ref Utf8JsonReader reader)
     {
         string? topicName = null;
-        SubscriptionFilterMode filterMode = SubscriptionFilterMode.Default;
+        TopicRoutingMode routingMode = TopicRoutingMode.Default;
 
         while (reader.Read())
         {
@@ -103,8 +103,8 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
                 case "Topic":
                     topicName = reader.GetString() ?? throw new JsonException("Topic cannot be null");
                     break;
-                case "FilterMode":
-                    filterMode = Enum.Parse<SubscriptionFilterMode>(reader.GetString() ?? throw new JsonException("FilterMode cannot be null"));
+                case "RoutingMode":
+                    routingMode = Enum.Parse<TopicRoutingMode>(reader.GetString() ?? throw new JsonException("RoutingMode cannot be null"));
                     break;
                 default:
                     break;
@@ -116,7 +116,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
             throw new JsonException("Topic is required");
         }
 
-        return new SubscriptionEntry(topicName, filterMode);
+        return new SubscriptionEntry(topicName, routingMode);
     }
 
     public override void Write(Utf8JsonWriter writer, Dictionary<string, HashSet<SubscriptionEntry>> value,
@@ -161,7 +161,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
 
     void WriteSubscriptionEntry(Utf8JsonWriter writer, SubscriptionEntry entry)
     {
-        if (entry.FilterMode == SubscriptionFilterMode.Default)
+        if (entry.RoutingMode == TopicRoutingMode.Default)
         {
             writer.WriteStringValue(entry.Topic);
         }
@@ -170,8 +170,8 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
             writer.WriteStartObject();
             writer.WritePropertyName("Topic");
             writer.WriteStringValue(entry.Topic);
-            writer.WritePropertyName("FilterMode");
-            writer.WriteStringValue(entry.FilterMode.ToString());
+            writer.WritePropertyName("RoutingMode");
+            writer.WriteStringValue(entry.RoutingMode.ToString());
             writer.WriteEndObject();
         }
     }
