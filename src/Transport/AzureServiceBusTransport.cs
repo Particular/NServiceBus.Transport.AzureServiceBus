@@ -436,11 +436,15 @@ public partial class AzureServiceBusTransport : TransportDefinition
     }
 
     /// <summary>
-    /// Set the maximum delivery count that is applied to queues that are created when the infrastructure is setup
+    /// Set the maximum delivery count that is applied to queues that are created when the infrastructure is setup.
     /// </summary>
-    /// <remarks>This MaxDeliveryCount is set to <value>int.Max</value> by default, to stay backward compatible will change in the
-    /// next major version to a lower default value. When the emulator is used the value defaults to <value>10</value>
+    /// <remarks>
+    /// <para>
+    /// This MaxDeliveryCount is set to <value>int.MaxValue</value> by default, to stay backward compatible. the
+    /// This value will change to a lower default value in the next major version. 
+    /// When the emulator is used the value defaults to <value>10</value>
     /// unless explicitly set to another value.
+    /// </para>
     /// <para>
     /// NServiceBus recoverability controls retry decisions via the recoverability policy, so this value should be high enough
     /// to allow the recoverability policy to eventually move the message to the error queue. It should also not be set so high
