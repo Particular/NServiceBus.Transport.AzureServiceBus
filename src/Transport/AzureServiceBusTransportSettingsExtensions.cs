@@ -228,4 +228,18 @@ public static partial class AzureServiceBusTransportSettingsExtensions
         transportExtensions.Transport.MaxAutoLockRenewalDuration = maximumAutoLockRenewalDuration;
         return transportExtensions;
     }
+
+    /// <summary>
+    /// Overrides the default transport behavior on message publishing and throws an <c>InvalidOperationException</c> if the destination topic doesn't exist
+    /// </summary>
+    /// <param name="transportExtensions"></param>
+    /// <exception cref="InvalidOperationException">When the destination topic doesn't exist</exception>
+    [PreObsolete("https://github.com/Particular/NServiceBus/issues/6811",
+        Note = "Should not be converted to an ObsoleteEx until API mismatch described in issue is resolved.",
+        ReplacementTypeOrMember = "AzureServiceBusTransport.ThrowOnMissingTopicWhenPublishing")]
+    public static TransportExtensions<AzureServiceBusTransport> ThrowOnMissingTopicWhenPublishing(this TransportExtensions<AzureServiceBusTransport> transportExtensions)
+    {
+        transportExtensions.Transport.ThrowOnMissingTopicWhenPublishing = true;
+        return transportExtensions;
+    }
 }

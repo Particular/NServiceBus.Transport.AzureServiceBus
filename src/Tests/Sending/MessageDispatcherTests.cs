@@ -148,6 +148,43 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction()), Throws.Nothing);
         }
 
+        // With pub sub the cases of the topic not being available are similar to having a topic without any subscribers
+        [Test]
+        public void Should_throw_when_multicast_dispatch_destination_not_available_and_throw_on_missing_topic_enabled()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()
+            {
+                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
+            }), throwOnMissingTopic: true);
+
+            var sender = new FakeSender
+            {
+                SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound),
+                SendMessageBatchAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
+            };
+            client.Senders["sometopic"] = sender;
+
+            var operation1 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            var operation2 =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction()), Throws.InvalidOperationException);
+        }
+
         [Test]
         public async Task Should_dispatch_unicast_isolated_dispatches_individually_per_destination()
         {
@@ -661,6 +698,78 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         }
 
         [Test]
+        public async Task Should_swallow_when_multicast_dispatch_sent_as_single_messages_destination_not_available()
+        {
+            var defaultClient = new FakeServiceBusClient();
+            var defaultSender = new FakeSender
+            {
+                SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound),
+                SendMessageBatchAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
+            };
+            defaultClient.Senders[typeof(SomeEvent).FullName] = defaultSender;
+
+            defaultSender.TryAdd = msg => false;
+
+            var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+
+            var operations = new List<TransportOperation>(5);
+            for (int i = 0; i < 5; i++)
+            {
+                operations.Add(new TransportOperation(new OutgoingMessage($"SomeId{i}",
+                        new Dictionary<string, string> { { "Number", i.ToString() } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default));
+            }
+
+            var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(async () => await dispatcher.Dispatch(new TransportOperations([.. operations]), azureServiceBusTransaction.TransportTransaction), Throws.Nothing);
+                Assert.That(defaultSender.BatchSentMessages, Has.Count.Zero);
+                Assert.That(defaultSender.IndividuallySentMessages, Has.Count.EqualTo(0));
+            });
+        }
+
+        [Test]
+        public async Task Should_throw_when_multicast_dispatch_sent_as_single_messages_destination_not_available_and_throw_on_exception_set()
+        {
+            var defaultClient = new FakeServiceBusClient();
+            var defaultSender = new FakeSender
+            {
+                SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound),
+                SendMessageBatchAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
+            };
+            defaultClient.Senders[typeof(SomeEvent).FullName] = defaultSender;
+
+            defaultSender.TryAdd = msg => false;
+
+            var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), throwOnMissingTopic: true);
+
+            var operations = new List<TransportOperation>(5);
+            for (int i = 0; i < 5; i++)
+            {
+                operations.Add(new TransportOperation(new OutgoingMessage($"SomeId{i}",
+                        new Dictionary<string, string> { { "Number", i.ToString() } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default));
+            }
+
+            var azureServiceBusTransaction = new AzureServiceBusTransportTransaction();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(async () => await dispatcher.Dispatch(new TransportOperations([.. operations]), azureServiceBusTransaction.TransportTransaction), Throws.InvalidOperationException);
+                Assert.That(defaultSender.BatchSentMessages, Has.Count.Zero);
+                Assert.That(defaultSender.IndividuallySentMessages, Has.Count.EqualTo(0));
+            });
+        }
+
+        [Test]
         public async Task
             Should_fallback_to_individual_send_when_a_message_cannot_be_added_to_a_batch_but_batch_all_others()
         {
@@ -744,7 +853,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
             var client = new FakeServiceBusClient();
             var destinationManager = GetDestinationManager("SomeHierarchyNamespace");
 
-            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), destinationManager);
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), destinationManager, throwOnMissingTopic: false);
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -802,7 +911,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
                 }),
-                destinationManager);
+                destinationManager, throwOnMissingTopic: false);
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -857,7 +966,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 options.ExcludeMessageType<ISomeCommandInterface>();
             });
 
-            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), destinationManager);
+            var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), destinationManager, throwOnMissingTopic: false);
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",
@@ -922,7 +1031,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                 {
                     PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" }, { typeof(SomeOtherEvent).FullName, "sometopic" }, { typeof(SomeImplementedEvent).FullName, "sometopic" } }
                 }),
-                destinationManager);
+                destinationManager, throwOnMissingTopic: false);
 
             var operation1 =
                 new TransportOperation(new OutgoingMessage("SomeId",

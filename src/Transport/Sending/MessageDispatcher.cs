@@ -15,6 +15,7 @@ class MessageDispatcher(
     MessageSenderRegistry messageSenderRegistry,
     TopicTopology topology,
     DestinationManager destinationManager,
+    bool throwOnMissingTopic,
     OutgoingNativeMessageCustomizationAction? customizerCallback = null)
     : IMessageDispatcher
 {
@@ -30,7 +31,8 @@ class MessageDispatcher(
         ServiceBusClient defaultClient,
         MessageSenderRegistry messageSenderRegistry,
         TopicTopology topology,
-        OutgoingNativeMessageCustomizationAction? customizerCallback = null) : this(defaultClient, messageSenderRegistry, topology, new DestinationManager(HierarchyNamespaceOptions.None), customizerCallback)
+        bool throwOnMissingTopic = false,
+        OutgoingNativeMessageCustomizationAction? customizerCallback = null) : this(defaultClient, messageSenderRegistry, topology, new DestinationManager(HierarchyNamespaceOptions.None), throwOnMissingTopic, customizerCallback)
     {
     }
 
@@ -230,9 +232,14 @@ class MessageDispatcher(
             // when it tries to establish a link to a non-existing entity.
             catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
-                if (Log.IsDebugEnabled)
+                if (Log.IsWarnEnabled)
                 {
-                    Log.Debug($"Skipping sending messages to topic {destination} because the destination does not exist.");
+                    Log.Warn($"Skipping publishing messages to topic {destination} because the destination does not exist.");
+                }
+
+                if (throwOnMissingTopic)
+                {
+                    throw new InvalidOperationException($"Publishing messages to topic {destination} failed because the destination does not exist.", e);
                 }
 
                 return;
@@ -326,9 +333,14 @@ class MessageDispatcher(
         }
         catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {
-            if (Log.IsDebugEnabled)
+            if (Log.IsWarnEnabled)
             {
-                Log.Debug($"Sending message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
+                Log.Warn($"Publishing message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
+            }
+
+            if (throwOnMissingTopic)
+            {
+                throw new InvalidOperationException($"Publishing message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.", e);
             }
         }
         catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.ServiceCommunicationProblem)
