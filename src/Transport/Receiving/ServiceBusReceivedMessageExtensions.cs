@@ -108,10 +108,14 @@ public static class ServiceBusReceivedMessageExtensions
             }
 
             using var reader = XmlDictionaryReader.CreateBinaryReader(body.ToStream(), XmlDictionaryReaderQuotas.Max);
-            var bodyBytes = (byte[])Deserializer.ReadObject(reader)!;
+            var bodyBytes = (byte[])Serialization.Deserializer.ReadObject(reader)!;
             return new BinaryData(bodyBytes);
         }
     }
 
-    static readonly DataContractSerializer Deserializer = new(typeof(byte[]));
+    // To workaround a bug in extension blocks that would otherwise classify the field as not used.
+    static class Serialization
+    {
+        public static readonly DataContractSerializer Deserializer = new(typeof(byte[]));
+    }
 }
