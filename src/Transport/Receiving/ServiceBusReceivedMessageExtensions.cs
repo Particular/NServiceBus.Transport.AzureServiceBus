@@ -11,7 +11,7 @@ using Faults;
 /// <summary>
 /// Helpers to get ID, headers and body for the message being processed. Intentionally public to enable reuse in the functions package.
 /// </summary>
-public static class MessageExtensions
+public static class ServiceBusReceivedMessageExtensions
 {
     extension(ServiceBusReceivedMessage message)
     {

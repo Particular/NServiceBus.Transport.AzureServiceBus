@@ -8,7 +8,7 @@
     using NUnit.Framework;
 
     [TestFixture]
-    public class MessageExtensionsTests
+    public class ServiceBusReceivedMessageExtensionsTests
     {
         [Test]
         public void Should_extract_headers()

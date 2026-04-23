@@ -83,7 +83,7 @@ namespace NServiceBus.Testing
 }
 namespace NServiceBus.Transport.AzureServiceBus.AdvancedExtensibility
 {
-    public static class MessageExtensions
+    public static class ServiceBusReceivedMessageExtensions
     {
         extension(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage message)
         {
