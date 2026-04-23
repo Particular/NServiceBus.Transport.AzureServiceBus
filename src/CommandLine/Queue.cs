@@ -8,7 +8,7 @@
 
     static class Queue
     {
-        public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption<int> size, CommandOption partitioning, CommandOption hierarchyNamespace, CommandOption forwardDeadLetteredMessagesTo)
+        public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption<int> size, CommandOption<int> deliverCount, CommandOption partitioning, CommandOption hierarchyNamespace, CommandOption forwardDeadLetteredMessagesTo)
         {
             var queueDescription = BuildDefaultCreateQueueOptions(name.ToHierarchyNamespaceAwareDestination(hierarchyNamespace));
 
@@ -33,7 +33,7 @@
             {
                 EnableBatchedOperations = true,
                 LockDuration = TimeSpan.FromMinutes(5),
-                MaxDeliveryCount = int.MaxValue,
+                MaxDeliveryCount = deliverCount.HasValue() ? deliverCount.ParsedValue : int.MaxValue,
                 MaxSizeInMegabytes = (size.HasValue() ? size.ParsedValue : 5) * 1024,
                 EnablePartitioning = partitioning.HasValue()
             };

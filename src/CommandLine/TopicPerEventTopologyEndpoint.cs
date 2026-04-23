@@ -8,11 +8,11 @@ using McMaster.Extensions.CommandLineUtils;
 
 static class TopicPerEventTopologyEndpoint
 {
-    public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption<int> size, CommandOption partitioning, CommandOption hierarchyNamespace, CommandOption forwardDlqTo)
+    public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption<int> size, CommandOption<int> deliveryCount, CommandOption partitioning, CommandOption hierarchyNamespace, CommandOption forwardDlqTo)
     {
         try
         {
-            await Queue.Create(client, name, size, partitioning, hierarchyNamespace, forwardDlqTo);
+            await Queue.Create(client, name, size, deliveryCount, partitioning, hierarchyNamespace, forwardDlqTo);
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {

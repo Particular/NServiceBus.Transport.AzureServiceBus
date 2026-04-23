@@ -29,12 +29,12 @@
 
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(QueueName);
         }
@@ -47,12 +47,12 @@
 
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(queueName);
         }
@@ -65,15 +65,32 @@
 
             var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --forward-dlq-to {ErrorQueueName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(QueueName, forwardDeadLetteredMessagesTo: ErrorQueueName);
             await VerifyQueue(ErrorQueueName);
+        }
+
+        [Test]
+        public async Task Create_endpoint_with_delivery_count()
+        {
+            await DeleteQueue(QueueName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --delivery-count {15}");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
+                Assert.That(output, Does.Not.Contain("skipping"));
+            }
+
+            await VerifyQueue(QueueName, maxDeliveryCount: 15);
         }
 
         [Test]
@@ -81,8 +98,11 @@
         {
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --forward-dlq-to {EndpointName}");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The queue name and the --forward-dlq-to option cannot resolve to the same queue."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The queue name and the --forward-dlq-to option cannot resolve to the same queue."));
+            }
         }
 
         [Test]
@@ -90,8 +110,11 @@
         {
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace}/");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+            }
         }
 
         [Test]
@@ -99,8 +122,11 @@
         {
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --topic-to-publish-to {TopicName}");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("Unrecognized option '--topic-to-publish-to'"));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("Unrecognized option '--topic-to-publish-to'"));
+            }
         }
 
         [Test]
@@ -111,12 +137,12 @@
 
             var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(QueueName);
             await VerifyTopic(DefaultTopicName);
@@ -133,12 +159,12 @@
 
             var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(queueName);
             await VerifyTopic(topicName);
@@ -153,12 +179,12 @@
 
             var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
@@ -175,12 +201,12 @@
 
             var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --hierarchy-namespace {HierarchyNamespace}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(queueName);
             await VerifyTopic(topicName);
@@ -196,17 +222,35 @@
 
             var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --forward-dlq-to {ErrorQueueName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(QueueName, forwardDeadLetteredMessagesTo: ErrorQueueName);
             await VerifyQueue(ErrorQueueName);
             await VerifyTopic(TopicName);
             await VerifySubscriptionContainsOnlyDefaultRejectAllRule(TopicName, SubscriptionName);
+        }
+
+        [Test]
+        public async Task Create_migration_with_delivery_count()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --delivery-count {15}");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
+                Assert.That(output, Does.Not.Contain("skipping"));
+            }
+
+            await VerifyQueue(QueueName, maxDeliveryCount: 15);
         }
 
         [Test]
@@ -223,12 +267,12 @@
 
             var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName} --hierarchy-namespace {HierarchyNamespace} --forward-dlq-to {ErrorQueueName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(queueName, forwardDeadLetteredMessagesTo: errorQueueName);
             await VerifyQueue(errorQueueName);
@@ -247,12 +291,12 @@
 
             var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(QueueName);
             await VerifyTopic(TopicName);
@@ -273,12 +317,12 @@
 
             var (output, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic-to-publish-to {TopicName} --topic-to-subscribe-on {HierarchyTopicName} --hierarchy-namespace {HierarchyNamespace}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(queueName);
             await VerifyTopic(topicName);
@@ -292,8 +336,11 @@
         {
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            }
         }
 
         [Test]
@@ -301,8 +348,11 @@
         {
             var (_, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            }
         }
 
         [Test]
@@ -311,13 +361,17 @@
             var (_, publishError, publishExitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --topic-to-publish-to {HierarchyTopicName}");
             var (_, subscribeError, subscribeExitCode) = await Execute($"migration endpoint create {EndpointName} --topic {TopicName} --topic-to-subscribe-on {HierarchyTopicName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(publishExitCode, Is.EqualTo(1));
                 Assert.That(subscribeExitCode, Is.EqualTo(1));
-            });
-            Assert.That(publishError, Does.Contain("The --topic option and the --topic-to-publish-to option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option."));
-            Assert.That(subscribeError, Does.Contain("The --topic option and the--topic-to-subscribe-on option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option."));
+            }
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(publishError, Does.Contain("The --topic option and the --topic-to-publish-to option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option."));
+                Assert.That(subscribeError, Does.Contain("The --topic option and the--topic-to-subscribe-on option cannot be combined. Choose either a single topic name by specifying the --topic option or a hierarchy by specifying both the --topic-to-publish-to option, and --topic-to-subscribe-on option."));
+            }
         }
 
         [Test]
@@ -325,8 +379,11 @@
         {
             var (_, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --topic-to-subscribe-on {HierarchyTopicName} --topic-to-publish-to {HierarchyTopicName}");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("A valid topic hierarchy requires the topic-to-publish-to option and the topic-to-subscribe-on option to be different."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("A valid topic hierarchy requires the topic-to-publish-to option and the topic-to-subscribe-on option to be different."));
+            }
         }
 
         [Test]
@@ -449,8 +506,11 @@
         {
             var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            }
         }
 
         [Test]
@@ -458,8 +518,11 @@
         {
             var (_, error, exitCode) = await Execute($"migration endpoint subscribe {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            }
         }
 
         [Test]
@@ -467,8 +530,11 @@
         {
             var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace}/");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+            }
         }
 
         [Test]
@@ -595,8 +661,11 @@
         {
             var (_, error, exitCode) = await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            }
         }
 
         [Test]
@@ -604,8 +673,11 @@
         {
             var (_, error, exitCode) = await Execute($"migration endpoint unsubscribe {EndpointName} MyMessage1 --topic {TopicName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            }
         }
 
         [Test]
@@ -613,8 +685,11 @@
         {
             var (_, error, exitCode) = await Execute($"endpoint unsubscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace}/");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+            }
         }
 
         [Test]
@@ -624,14 +699,31 @@
 
             var (output, error, exitCode) = await Execute($"queue create {QueueName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(QueueName);
+        }
+
+        [Test]
+        public async Task Create_queue_with_delivery_count()
+        {
+            await DeleteQueue(QueueName);
+
+            var (output, error, exitCode) = await Execute($"queue create {QueueName} --delivery-count {15}");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
+                Assert.That(output, Does.Not.Contain("skipping"));
+            }
+
+            await VerifyQueue(QueueName, maxDeliveryCount: 15);
         }
 
         [Test]
@@ -642,12 +734,12 @@
 
             var (output, error, exitCode) = await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(queueName);
         }
@@ -660,12 +752,12 @@
 
             var (output, error, exitCode) = await Execute($"queue create {QueueName} --forward-dlq-to {ErrorQueueName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(QueueName, forwardDeadLetteredMessagesTo: ErrorQueueName);
             await VerifyQueue(ErrorQueueName);
@@ -681,12 +773,12 @@
 
             var (output, error, exitCode) = await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace} --forward-dlq-to {ErrorQueueName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output, Does.Not.Contain("skipping"));
-            });
+            }
 
             await VerifyQueue(queueName, forwardDeadLetteredMessagesTo: errorQueueName);
             await VerifyQueue(errorQueueName);
@@ -697,8 +789,11 @@
         {
             var (_, error, exitCode) = await Execute($"queue create {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            }
         }
 
         [Test]
@@ -706,8 +801,11 @@
         {
             var (_, error, exitCode) = await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}/");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+            }
         }
 
         [Test]
@@ -715,8 +813,11 @@
         {
             var (_, error, exitCode) = await Execute($"queue create {QueueName} --forward-dlq-to {QueueName}");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The queue name and the --forward-dlq-to option cannot resolve to the same queue."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The queue name and the --forward-dlq-to option cannot resolve to the same queue."));
+            }
         }
 
         [Test]
@@ -727,12 +828,12 @@
 
             var (output, error, exitCode) = await Execute($"queue create {QueueName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output.Contains("skipping"), Is.True);
-            });
+            }
 
             await VerifyQueue(QueueName);
         }
@@ -746,12 +847,12 @@
 
             var (output, error, exitCode) = await Execute($"queue create {QueueName} --hierarchy-namespace {HierarchyNamespace}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
                 Assert.That(output.Contains("skipping"), Is.True);
-            });
+            }
 
             await VerifyQueue(queueName);
         }
@@ -764,11 +865,11 @@
 
             var (_, error, exitCode) = await Execute($"queue delete {QueueName}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
-            });
+            }
 
             await VerifyQueueExists(false);
         }
@@ -782,11 +883,11 @@
 
             var (_, error, exitCode) = await Execute($"queue delete {QueueName} --hierarchy-namespace {HierarchyNamespace}");
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(exitCode, Is.Zero);
                 Assert.That(error, Is.Empty);
-            });
+            }
 
             await VerifyQueueExists(false, queueName);
         }
@@ -796,8 +897,11 @@
         {
             var (_, error, exitCode) = await Execute($"queue delete {QueueName} --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The connection string and the namespace option cannot be used together."));
+            }
         }
 
         [Test]
@@ -805,27 +909,30 @@
         {
             var (_, error, exitCode) = await Execute($"queue delete {QueueName} --hierarchy-namespace {HierarchyNamespace}/");
 
-            Assert.That(exitCode, Is.EqualTo(1));
-            Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The hierarchy namespace cannot end with a '/' character."));
+            }
         }
 
         [SetUp]
         public void Setup()
             => client = new ServiceBusAdministrationClient(Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
 
-        async Task VerifyQueue(string queueName, bool enablePartitioning = false, int size = 5 * 1024, string forwardDeadLetteredMessagesTo = null)
+        async Task VerifyQueue(string queueName, bool enablePartitioning = false, int size = 5 * 1024, int maxDeliveryCount = int.MaxValue, string forwardDeadLetteredMessagesTo = null)
         {
             var actual = (await client.GetQueueAsync(queueName)).Value;
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
-                Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
+                Assert.That(actual.MaxDeliveryCount, Is.EqualTo(maxDeliveryCount));
                 Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
-                Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
+                Assert.That(actual.EnableBatchedOperations, Is.True);
                 Assert.That(actual.EnablePartitioning, Is.EqualTo(enablePartitioning));
                 Assert.That(actual.MaxSizeInMegabytes, Is.EqualTo(size));
                 AssertDlqForwardingDestination(actual.ForwardDeadLetteredMessagesTo, forwardDeadLetteredMessagesTo);
-            });
+            }
         }
 
         static void AssertDlqForwardingDestination(string actualForwardingDestination, string expectedForwardingDestination)
@@ -846,19 +953,19 @@
         {
             var actual = (await client.GetTopicAsync(topicName)).Value;
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
                 Assert.That(actual.EnablePartitioning, Is.EqualTo(enablePartitioning));
                 Assert.That(actual.MaxSizeInMegabytes, Is.EqualTo(size));
-            });
+            }
         }
 
         async Task VerifyTopicPerEventTypeSubscription(string topicName, string subscriptionName, string queueName)
         {
             var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
                 Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
@@ -866,7 +973,7 @@
                 Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
                 Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
                 Assert.That(actual.UserMetadata, Is.EqualTo(queueName));
-            });
+            }
         }
 
         async Task VerifySubscriptionDoesNotExist(string topicName, string subscriptionName)
@@ -879,7 +986,7 @@
         {
             var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
 
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
                 Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
@@ -887,7 +994,7 @@
                 Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
                 Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
                 Assert.That(actual.UserMetadata, Is.EqualTo(queueName));
-            });
+            }
 
             // rules
             var rules = new List<RuleProperties>();
@@ -900,32 +1007,32 @@
             Assert.That(rules, Has.Count.EqualTo(4));
 
             var defaultRule = rules[0];
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(defaultRule.Name, Is.EqualTo("$default"));
                 Assert.That(((FalseRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new FalseRuleFilter().SqlExpression));
-            });
+            }
 
             var customRuleNameRule = rules[1];
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(customRuleNameRule.Name, Is.EqualTo("CustomRuleName"));
                 Assert.That(((SqlRuleFilter)customRuleNameRule.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage3%'").SqlExpression));
-            });
+            }
 
             var myMessage1Rule = rules[2];
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(myMessage1Rule.Name, Is.EqualTo("MyMessage1"));
                 Assert.That(((SqlRuleFilter)myMessage1Rule.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyMessage1%'").SqlExpression));
-            });
+            }
 
             var myMessage2WithNamespace = rules[3];
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(myMessage2WithNamespace.Name, Is.EqualTo("MyNamespace1.MyMessage2"));
                 Assert.That(((SqlRuleFilter)myMessage2WithNamespace.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter("[NServiceBus.EnclosedMessageTypes] LIKE '%MyNamespace1.MyMessage2%'").SqlExpression));
-            });
+            }
         }
 
         async Task VerifySubscriptionContainsOnlyDefaultRejectAllRule(string topicName, string subscriptionName)
@@ -940,11 +1047,11 @@
             Assert.That(rules, Has.Count.EqualTo(1));
 
             var defaultRule = rules[0];
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(defaultRule.Name, Is.EqualTo("$default"));
                 Assert.That(((FalseRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new FalseRuleFilter().SqlExpression));
-            });
+            }
         }
 
         async Task VerifySubscriptionContainsOnlyDefaultMatchAllRule(string topicName, string subscriptionName)
@@ -959,11 +1066,11 @@
             Assert.That(rules, Has.Count.EqualTo(1));
 
             var defaultRule = rules[0];
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(defaultRule.Name, Is.EqualTo("$default"));
                 Assert.That(((TrueRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new TrueRuleFilter().SqlExpression));
-            });
+            }
         }
 
         async Task VerifyQueueExists(bool queueShouldExist, string queueName = QueueName)

@@ -5,6 +5,7 @@ Mapped properties:
   - EntityMaximumSize
   - HierarchyNamespaceOptions
   - MaxAutoLockRenewalDuration
+  - MaxDeliveryCount
   - OutgoingNativeMessageCustomization
   - PrefetchCount
   - PrefetchMultiplier

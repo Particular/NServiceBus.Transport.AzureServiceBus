@@ -38,6 +38,11 @@
                 Description = "Queue size in GB (defaults to 5)"
             };
 
+            var deliveryCount = new CommandOption<int>(app.ValueParsers.GetParser<int>(), "-d|--delivery-count", CommandOptionType.SingleValue)
+            {
+                Description = "Maximum Delivery Count (defaults to int.MaxValue)"
+            };
+
             var partitioning = new CommandOption("-p|--partitioned", CommandOptionType.NoValue)
             {
                 Description = "Enable partitioning"
@@ -102,6 +107,7 @@
                     createCommand.AddOption(connectionString);
                     createCommand.AddOption(fullyQualifiedNamespace);
                     createCommand.AddOption(size);
+                    createCommand.AddOption(deliveryCount);
                     createCommand.AddOption(partitioning);
                     createCommand.AddOption(hierarchyNamespace);
 
@@ -110,7 +116,7 @@
                     createCommand.OnExecuteAsync(async ct =>
                     {
                         await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
-                            client => TopicPerEventTopologyEndpoint.Create(client, name, size, partitioning, hierarchyNamespace, forwardDlqTo));
+                            client => TopicPerEventTopologyEndpoint.Create(client, name, size, deliveryCount, partitioning, hierarchyNamespace, forwardDlqTo));
 
                         Console.WriteLine($"Endpoint '{name.Value}' is ready.");
                     });
@@ -141,6 +147,7 @@
                         createCommand.AddOption(connectionString);
                         createCommand.AddOption(fullyQualifiedNamespace);
                         createCommand.AddOption(size);
+                        createCommand.AddOption(deliveryCount);
                         createCommand.AddOption(partitioning);
                         createCommand.AddOption(hierarchyNamespace);
                         var forwardDlqTo = CreateForwardDlqToOption(createCommand, name, hierarchyNamespace);
@@ -176,7 +183,7 @@
                             await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
                                 client => MigrationTopologyEndpoint.Create(client, name, topicName,
                                     topicToPublishTo, topicToSubscribeOn,
-                                    subscriptionName, size, partitioning, hierarchyNamespace, forwardDlqTo));
+                                    subscriptionName, size, deliveryCount, partitioning, hierarchyNamespace, forwardDlqTo));
 
 
                             Console.WriteLine($"Endpoint '{name.Value}' is ready.");
@@ -270,6 +277,7 @@
                     createCommand.AddOption(connectionString);
                     createCommand.AddOption(fullyQualifiedNamespace);
                     createCommand.AddOption(size);
+                    createCommand.AddOption(deliveryCount);
                     createCommand.AddOption(partitioning);
                     createCommand.AddOption(hierarchyNamespace);
                     var forwardDlqTo = CreateForwardDlqToOption(createCommand, name, hierarchyNamespace);
@@ -278,7 +286,7 @@
                     {
                         try
                         {
-                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Create(client, name, size, partitioning, hierarchyNamespace, forwardDlqTo));
+                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Create(client, name, size, deliveryCount, partitioning, hierarchyNamespace, forwardDlqTo));
                             Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
                         }
                         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
