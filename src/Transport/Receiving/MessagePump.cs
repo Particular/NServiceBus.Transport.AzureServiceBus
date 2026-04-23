@@ -359,7 +359,7 @@ sealed class MessagePump(
 
     void WarnIfDeadLetteringWithoutForwarding(string nativeMessageId, int deliveryCount)
     {
-        if (Interlocked.CompareExchange(ref autoForwardWarningLogged, 1, 0) != 0 || transportSettings.AutoForwardDeadLetteredMessagesToErrorQueue != null)
+        if (transportSettings.AutoForwardDeadLetteredMessagesToErrorQueue != null || Interlocked.CompareExchange(ref autoForwardWarningLogged, 1, 0) != 0)
         {
             return;
         }
