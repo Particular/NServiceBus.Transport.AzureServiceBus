@@ -9,6 +9,7 @@ Mapped properties:
   - PrefetchCount
   - PrefetchMultiplier
   - RetryPolicyOptions
+  - ThrowOnMissingTopicWhenPublishing
   - TimeToWaitBeforeTriggeringCircuitBreaker
   - UseWebSockets
 

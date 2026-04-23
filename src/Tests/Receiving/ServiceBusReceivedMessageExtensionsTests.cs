@@ -2,12 +2,13 @@
 {
     using System;
     using System.Collections.Generic;
+    using AdvancedExtensibility;
     using Azure.Messaging.ServiceBus;
     using NServiceBus.Transport.AzureServiceBus.Configuration;
     using NUnit.Framework;
 
     [TestFixture]
-    public class MessageExtensionsTests
+    public class ServiceBusReceivedMessageExtensionsTests
     {
         [Test]
         public void Should_extract_headers()
