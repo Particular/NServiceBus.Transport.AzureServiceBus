@@ -85,9 +85,12 @@ namespace NServiceBus.Transport.AzureServiceBus.AdvancedExtensibility
 {
     public static class MessageExtensions
     {
-        public static System.BinaryData GetBody(this Azure.Messaging.ServiceBus.ServiceBusReceivedMessage message) { }
-        public static string GetMessageId(this Azure.Messaging.ServiceBus.ServiceBusReceivedMessage message) { }
-        public static System.Collections.Generic.Dictionary<string, string?> GetNServiceBusHeaders(this Azure.Messaging.ServiceBus.ServiceBusReceivedMessage message) { }
+        extension(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage message)
+        {
+            public System.Collections.Generic.Dictionary<string, string?> GetNServiceBusHeaders() { }
+            public string GetMessageId() { }
+            public System.BinaryData GetBody() { }
+        }
     }
 }
 namespace NServiceBus.Transport.AzureServiceBus
