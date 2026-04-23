@@ -34,7 +34,7 @@ sealed class MessagePump(
 
     readonly ILog Logger = LogManager.GetLogger<MessagePump>();
 
-    bool autoForwardWarningLogged;
+    int autoForwardWarningLogged;
 
     PushRuntimeSettings? limitations;
 
@@ -359,15 +359,16 @@ sealed class MessagePump(
 
     void WarnIfDeadLetteringWithoutForwarding(string nativeMessageId, int deliveryCount)
     {
-        if (!autoForwardWarningLogged && transportSettings.AutoForwardDeadLetteredMessagesToErrorQueue == null)
+        if (Interlocked.CompareExchange(ref autoForwardWarningLogged, 1, 0) != 0 || transportSettings.AutoForwardDeadLetteredMessagesToErrorQueue != null)
         {
-            autoForwardWarningLogged = true;
-            Logger.Warn($"Message '{nativeMessageId}' (delivery count: {deliveryCount}) is being moved to the dead-letter queue. " +
-                "Dead-lettered messages will not automatically appear in the error queue. " +
-                "Consider setting 'AutoForwardDeadLetteredMessagesToErrorQueue = true' on the transport to automatically forward dead-lettered messages to the error queue, " +
-                "making them visible for monitoring and reprocessing. " +
-                "To suppress this warning, explicitly set 'AutoForwardDeadLetteredMessagesToErrorQueue = false'.");
+            return;
         }
+
+        Logger.Warn($"Message '{nativeMessageId}' (delivery count: {deliveryCount}) is being moved to the dead-letter queue. " +
+                    "Dead-lettered messages will not automatically appear in the error queue. " +
+                    "Consider setting 'AutoForwardDeadLetteredMessagesToErrorQueue = true' on the transport to automatically forward dead-lettered messages to the error queue, " +
+                    "making them visible for monitoring and reprocessing. Other messages moved to the dead-letter queue will not be logged to avoid flooding the logs." +
+                    "To suppress this warning, explicitly set 'AutoForwardDeadLetteredMessagesToErrorQueue = false'.");
     }
 
     public ISubscriptionManager? Subscriptions { get; } = subscriptionManager;
