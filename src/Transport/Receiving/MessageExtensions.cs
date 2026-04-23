@@ -16,6 +16,10 @@ public static class MessageExtensions
     /// <summary>
     /// Extracts NServiceBus headers from the <see cref="ServiceBusReceivedMessage"/>
     /// </summary>
+    /// <remarks>
+    /// In addition to converting all application properties to headers native message properties like ReplyTo, ContentType are also exposed as properties.
+    /// For dead lettered messages source, reason and description is mapped to relevant NServiceBus fault headers for better integration with the platform.
+    /// </remarks>
     public static Dictionary<string, string?> GetNServiceBusHeaders(this ServiceBusReceivedMessage message)
     {
         var headers = new Dictionary<string, string?>(message.ApplicationProperties.Count);
@@ -63,6 +67,10 @@ public static class MessageExtensions
     /// <summary>
     /// Returns the message ID for the <see cref="ServiceBusReceivedMessage"/>.
     /// </summary>
+    /// <remarks>
+    /// If no native message ID is present (testing indicates that the service always assigns one) the NServiceBus message ID will be used.
+    /// If none of these are present a deterministic GUID based in the EnqueuedTime and SequenceNumber is used to ensure an ID is always returned.
+    /// </remarks>
     public static string GetMessageId(this ServiceBusReceivedMessage message)
     {
         if (!string.IsNullOrWhiteSpace(message.MessageId))
@@ -81,6 +89,10 @@ public static class MessageExtensions
     /// <summary>
     /// Returns the message body of the <see cref="ServiceBusReceivedMessage"/>.
     /// </summary>
+    /// <remarks>
+    /// If the NServiceBus.Transport.Encoding application property indicates that the message originates from a legacy endpoint, (wcf/byte-array),
+    /// the body is deserialized using a XmlDictionaryReader for backwards compatibility.
+    /// </remarks>
     public static BinaryData GetBody(this ServiceBusReceivedMessage message)
     {
         var body = message.Body ?? new BinaryData([]);
