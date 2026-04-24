@@ -125,10 +125,9 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 .Select(r => (r.Value.ReceiveAddress, EnableSessions))
                 .Concat(sendingAddresses.Select(s =>
                 {
-                    var address = DestinationManager.GetDestination(s);
-                    var hasSessions = address.EndsWith("?session");
-                    var queueName = hasSessions ? address.Replace("?session", "") : address;
-                    return (queueName, hasSessions);
+                    var queueName = DestinationManager.GetDestination(s);
+                    //HINT: The queues passed in sendingAddresses are assumed to be non session-enabled.
+                    return (queueName, false);
                 }))
                 .ToArray();
 
