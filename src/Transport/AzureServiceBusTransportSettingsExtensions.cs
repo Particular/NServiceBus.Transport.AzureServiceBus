@@ -257,7 +257,7 @@ public static partial class AzureServiceBusTransportSettingsExtensions
     }
 
     /// <summary>
-    /// Overrides the default transport behavior on message publishing and throws an <c>InvalidOperationException</c> if the destination topic doesn't exist
+    /// Overrides the default transport behavior on message publishing and rethrows the underlying <see cref="ServiceBusException"/> if the destination topic doesn't exist
     /// </summary>
     /// <param name="transportExtensions"></param>
     /// <exception cref="InvalidOperationException">When the destination topic doesn't exist</exception>

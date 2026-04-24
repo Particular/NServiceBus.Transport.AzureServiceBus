@@ -340,7 +340,7 @@ class MessageDispatcher(
 
             if (throwOnMissingTopic)
             {
-                throw new InvalidOperationException($"Publishing message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.", e);
+                throw;
             }
         }
         catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.ServiceCommunicationProblem)
