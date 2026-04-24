@@ -483,7 +483,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     } = int.MaxValue;
 
     /// <summary>
-    /// Specifies whether to throw an exception when publishing to a non-existent topic
+    /// Overrides the default transport behavior on message publishing and rethrows the underlying <see cref="ServiceBusException"/> if the destination topic doesn't exist
     /// </summary>
     public bool ThrowOnMissingTopicWhenPublishing { get; set; }
 

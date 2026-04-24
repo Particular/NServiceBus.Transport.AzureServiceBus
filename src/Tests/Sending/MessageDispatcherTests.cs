@@ -182,7 +182,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
                     [],
                     DispatchConsistency.Default);
 
-            Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction()), Throws.InvalidOperationException);
+            Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction()), Throws.Exception.InstanceOf<ServiceBusException>());
         }
 
         [Test]
@@ -763,7 +763,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
 
             Assert.Multiple(() =>
             {
-                Assert.That(async () => await dispatcher.Dispatch(new TransportOperations([.. operations]), azureServiceBusTransaction.TransportTransaction), Throws.InvalidOperationException);
+                Assert.That(async () => await dispatcher.Dispatch(new TransportOperations([.. operations]), azureServiceBusTransaction.TransportTransaction), Throws.Exception.InstanceOf<ServiceBusException>());
                 Assert.That(defaultSender.BatchSentMessages, Has.Count.Zero);
                 Assert.That(defaultSender.IndividuallySentMessages, Has.Count.EqualTo(0));
             });
