@@ -31,6 +31,8 @@ sealed class MessagePump(
     // Start
     CancellationTokenSource? messageProcessingCancellationTokenSource;
     ServiceBusProcessor? processor;
+    SemaphoreSlim? concurrencySemaphore;
+    int activeConcurrencyLimit;
 
     readonly ILog Logger = LogManager.GetLogger<MessagePump>();
 
@@ -83,6 +85,9 @@ sealed class MessagePump(
 
         messageProcessingCancellationTokenSource = new CancellationTokenSource();
 
+        activeConcurrencyLimit = limitations!.MaxConcurrency;
+        concurrencySemaphore = new SemaphoreSlim(activeConcurrencyLimit);
+
         circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'",
             transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex =>
             {
@@ -115,50 +120,67 @@ sealed class MessagePump(
     {
         var message = arg.Message;
         var nativeMessageId = message.GetMessageId();
-        Dictionary<string, string?> headers;
-        BinaryData body;
 
         circuitBreaker!.Success();
 
         try
         {
-            // Deliberately not using the cancellation token to make sure we complete the message even when the
-            // cancellation token is already set.
-            if (await arg.TrySafeCompleteMessage(message, nativeMessageId, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
-            {
-                return;
-            }
-
-            // Deliberately not using the cancellation token to make sure we abandon the message even when the
-            // cancellation token is already set.
-            if (await arg.TrySafeAbandonMessage(message, nativeMessageId, TransactionMode, CancellationToken.None).ConfigureAwait(false))
-            {
-                return;
-            }
-
-            headers = message.GetNServiceBusHeaders();
-            body = message.GetBody();
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Moving message '{nativeMessageId}' to the dead letter queue", ex);
-            WarnIfDeadLetteringWithoutForwarding(nativeMessageId, message.DeliveryCount);
-            await arg.SafeDeadLetterMessage(message, nativeMessageId, TransactionMode, new DeadLetterRequest(ex), CancellationToken.None).ConfigureAwait(false);
-
-            return;
-        }
-
-        // need to catch OCE here because we are switching token
-        try
-        {
-            await ProcessMessage(message, arg, nativeMessageId, headers, body, messageProcessingCancellationTokenSource!.Token).ConfigureAwait(false);
+            await concurrencySemaphore!.WaitAsync(messageProcessingCancellationTokenSource!.Token).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource!.Token))
         {
-            if (Logger.IsDebugEnabled)
+            return;
+        }
+
+        Dictionary<string, string?> headers;
+        BinaryData body;
+
+        try
+        {
+            try
             {
-                Logger.Debug("Message processing canceled.", ex);
+                // Deliberately not using the cancellation token to make sure we complete the message even when the
+                // cancellation token is already set.
+                if (await arg.TrySafeCompleteMessage(message, nativeMessageId, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
+                {
+                    return;
+                }
+
+                // Deliberately not using the cancellation token to make sure we abandon the message even when the
+                // cancellation token is already set.
+                if (await arg.TrySafeAbandonMessage(message, nativeMessageId, TransactionMode, CancellationToken.None).ConfigureAwait(false))
+                {
+                    return;
+                }
+
+                headers = message.GetNServiceBusHeaders();
+                body = message.GetBody();
             }
+            catch (Exception ex)
+            {
+                Logger.Error($"Moving message '{nativeMessageId}' to the dead letter queue", ex);
+                WarnIfDeadLetteringWithoutForwarding(nativeMessageId, message.DeliveryCount);
+                await arg.SafeDeadLetterMessage(message, nativeMessageId, TransactionMode, new DeadLetterRequest(ex), CancellationToken.None).ConfigureAwait(false);
+
+                return;
+            }
+
+            // need to catch OCE here because we are switching token
+            try
+            {
+                await ProcessMessage(message, arg, nativeMessageId, headers, body, messageProcessingCancellationTokenSource!.Token).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource!.Token))
+            {
+                if (Logger.IsDebugEnabled)
+                {
+                    Logger.Debug("Message processing canceled.", ex);
+                }
+            }
+        }
+        finally
+        {
+            concurrencySemaphore!.Release();
         }
     }
 
@@ -179,19 +201,40 @@ sealed class MessagePump(
             .ConfigureAwait(false);
     }
 
-    public Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
+    public async Task ChangeConcurrency(PushRuntimeSettings newLimitations, CancellationToken cancellationToken = default)
     {
         limitations = newLimitations;
 
-        UpdateProcessingCapacity(limitations.MaxConcurrency);
+        var newMax = newLimitations.MaxConcurrency;
+        var oldMax = Interlocked.Exchange(ref activeConcurrencyLimit, newMax);
+        await AdjustSemaphore(oldMax, newMax, cancellationToken).ConfigureAwait(false);
 
-        return Task.CompletedTask;
+        processor!.UpdateConcurrency(newMax);
+        processor!.UpdatePrefetchCount(CalculatePrefetchCount(newMax));
     }
 
     void UpdateProcessingCapacity(int maxConcurrency)
     {
+        var oldMax = Interlocked.Exchange(ref activeConcurrencyLimit, maxConcurrency);
+        _ = AdjustSemaphore(oldMax, maxConcurrency, messageProcessingCancellationTokenSource!.Token);
         processor!.UpdateConcurrency(maxConcurrency);
         processor!.UpdatePrefetchCount(CalculatePrefetchCount(maxConcurrency));
+    }
+
+    async Task AdjustSemaphore(int oldMax, int newMax, CancellationToken cancellationToken)
+    {
+        var delta = newMax - oldMax;
+        if (delta > 0)
+        {
+            concurrencySemaphore!.Release(delta);
+        }
+        else if (delta < 0)
+        {
+            for (var i = 0; i < -delta; i++)
+            {
+                await concurrencySemaphore!.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     public async Task StopReceive(CancellationToken cancellationToken = default)
@@ -242,6 +285,9 @@ sealed class MessagePump(
 
         messageProcessingCancellationTokenSource?.Dispose();
         messageProcessingCancellationTokenSource = null;
+
+        concurrencySemaphore?.Dispose();
+        concurrencySemaphore = null;
 
         circuitBreaker?.Dispose();
         circuitBreaker = null;
