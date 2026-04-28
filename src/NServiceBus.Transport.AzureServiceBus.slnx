@@ -9,6 +9,7 @@
     <Project Path="CommandLineTests/NServiceBus.Transport.AzureServiceBus.CommandLine.Tests.csproj" />
     <Project Path="Emulator.AcceptanceTests/NServiceBus.Transport.AzureServiceBus.Emulator.AcceptanceTests.csproj" />
     <Project Path="MigrationAcceptanceTests/NServiceBus.Transport.AzureServiceBus.Migration.AcceptanceTests.csproj" />
+    <Project Path="NServiceBus.Transport.AzureServiceBus.TransportTests.SessionEnabled/NServiceBus.Transport.AzureServiceBus.TransportTests.SessionEnabled.csproj" />
     <Project Path="Tests/NServiceBus.Transport.AzureServiceBus.Tests.csproj" />
     <Project Path="TransportTests/NServiceBus.Transport.AzureServiceBus.TransportTests.csproj" />
   </Folder>
