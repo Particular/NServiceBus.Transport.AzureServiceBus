@@ -72,7 +72,7 @@ public class When_using_dlq_qualifier
     {
         string fullyQualifiedNamespace = ConfigureAzureServiceBusTransportInfrastructure.ConnectionString;
         await using ServiceBusClient client = new(fullyQualifiedNamespace);
-        var receiver = client.CreateReceiver(inputQueueName, new ServiceBusReceiverOptions { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete });
+        var receiver = await client.AcceptSessionAsync(inputQueueName, TestId, new ServiceBusSessionReceiverOptions{ ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete }, cancellationToken);
         try
         {
             await foreach (var receivedMessage in receiver.ReceiveMessagesAsync(cancellationToken: cancellationToken))

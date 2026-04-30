@@ -363,11 +363,6 @@ class MessageDispatcher(
 
     string? ExtractSessionId(IOutgoingTransportOperation outgoingTransportOperation)
     {
-        if (!sessionsEnabled)
-        {
-            return null;
-        }
-
         outgoingTransportOperation.Properties.TryGetValue("SessionId", out var sessionId);
         return sessionId;
     }
