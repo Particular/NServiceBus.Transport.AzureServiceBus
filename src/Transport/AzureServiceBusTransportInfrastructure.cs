@@ -94,9 +94,12 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
         string receiveAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
         SubQueue subQueue = ToSubQueue(receiveSettings.ReceiveAddress);
-
         if (transportSettings.EnableSessions)
         {
+            if (subQueue != SubQueue.None)
+            {
+                throw new Exception("Cannot use a session-enabled receiver to receive from a dead-letter queue");
+            }
             return new SessionsEnabledMessagePump(receiveClient,
                 transportSettings,
                 receiveAddress,
@@ -113,8 +116,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                         SetupInfrastructure = hostSettings.SetupInfrastructure,
                         SubscribingQueueName = receiveAddress
                     }, hostSettings)
-                    : null,
-                subQueue);
+                    : null);
         }
 
         return new MessagePump(

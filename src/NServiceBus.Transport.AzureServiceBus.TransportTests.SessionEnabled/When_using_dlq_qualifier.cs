@@ -41,9 +41,7 @@ public class When_using_dlq_qualifier
     }
 
     [TestCase(TransportTransactionMode.SendsAtomicWithReceive)]
-    [TestCase(TransportTransactionMode.ReceiveOnly)]
-    [TestCase(TransportTransactionMode.None)]
-    public async Task Should_work_with_transactionmode(TransportTransactionMode mode)
+    public async Task Should_roll_back_send_if_DLQ_receive_is_rolled_back(TransportTransactionMode mode)
     {
         // Arrange
         await SendViaTransportSeam(StopToken);
@@ -52,27 +50,22 @@ public class When_using_dlq_qualifier
         await SeamReceiveFromDlqAndSendTestMessage(mode, StopToken);
         var received = await NativeBlockUntilReceiveMessage(StopToken);
         // Assert
-        switch (mode)
-        {
-            case TransportTransactionMode.SendsAtomicWithReceive:
-            case TransportTransactionMode.TransactionScope:
-                if (received)
-                {
-                    Assert.Fail($"Incorrectly received test message");
-                }
+        Assert.That(received, Is.False, "Should have not received test message");
+    }
 
-                break;
-            case TransportTransactionMode.None:
-            case TransportTransactionMode.ReceiveOnly:
-                if (!received)
-                {
-                    Assert.Fail("Should have received test message");
-                }
+    [TestCase(TransportTransactionMode.ReceiveOnly)]
+    [TestCase(TransportTransactionMode.None)]
+    public async Task Should_not_roll_back_send_if_DLQ_receive_is_rolled_back(TransportTransactionMode mode)
+    {
+        // Arrange
+        await SendViaTransportSeam(StopToken);
+        await ReceiveAndDeadLetterViaSdk(StopToken);
+        // Act
+        await SeamReceiveFromDlqAndSendTestMessage(mode, StopToken);
+        var received = await NativeBlockUntilReceiveMessage(StopToken);
 
-                break;
-            default:
-                break;
-        }
+        // Assert
+        Assert.That(received, Is.True, "Should have received test message");
     }
 
     async Task<bool> NativeBlockUntilReceiveMessage(CancellationToken cancellationToken)
@@ -105,6 +98,7 @@ public class When_using_dlq_qualifier
         var c = new ConfigureAzureServiceBusTransportInfrastructure();
         var transportDefinition = (AzureServiceBusTransport)c.CreateTransportDefinition();
         transportDefinition.TransportTransactionMode = mode;
+        transportDefinition.EnableSessions = false;
 
         var hostSettings = new HostSettings(
             inputQueueName,
@@ -137,6 +131,7 @@ public class When_using_dlq_qualifier
                     Console.WriteLine("Send new message");
                     var message = new OutgoingMessage(TestId, new Dictionary<string, string> { [TestIdHeaderKey] = TestId }, null);
                     var operation = new TransportOperation(message, new UnicastAddressTag(inputQueueName));
+                    operation.Properties["SessionId"] = TestId;
                     var operations = new TransportOperations(operation);
                     await transportInfrastructure.Dispatcher.Dispatch(operations, context.TransportTransaction, cancellationToken);
                     Console.WriteLine("Signal received");
@@ -208,6 +203,8 @@ public class When_using_dlq_qualifier
     {
         var c = new ConfigureAzureServiceBusTransportInfrastructure();
         var transportDefinition = (AzureServiceBusTransport)c.CreateTransportDefinition();
+        //HINT: The DLQ for a session-enabled queue is not session-enabled
+        transportDefinition.EnableSessions = false;
 
         var hostSettings = new HostSettings(
             inputQueueName,

@@ -17,8 +17,7 @@ sealed class SessionsEnabledMessagePump(
     string receiveAddress,
     ReceiveSettings receiveSettings,
     Action<string, Exception, CancellationToken> criticalErrorAction,
-    ISubscriptionManager? subscriptionManager,
-    SubQueue subQueue = SubQueue.None)
+    ISubscriptionManager? subscriptionManager)
     : IMessageReceiver, IAsyncDisposable
 {
     readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
