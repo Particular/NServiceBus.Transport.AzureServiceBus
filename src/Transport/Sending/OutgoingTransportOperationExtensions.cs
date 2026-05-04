@@ -28,25 +28,29 @@ static class OutgoingTransportOperationExtensions
         action(message);
     }
 
-    public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation,
+    public static (string Destination, string? EnclosedMessageTypes, TopicRoutingMode RoutingMode) ExtractDestinationAndMultiplexingOptions(
+        this IOutgoingTransportOperation outgoingTransportOperation,
         TopicTopology topology,
         DestinationManager destinationManager)
     {
         string destination;
         string? enclosedMessageTypes;
+        TopicRoutingMode routingMode;
 
         switch (outgoingTransportOperation)
         {
             case MulticastTransportOperation multicastTransportOperation:
                 destination = topology.GetPublishDestination(multicastTransportOperation.MessageType);
+                var eventTypeFullName = multicastTransportOperation.MessageType.FullName;
                 _ = multicastTransportOperation.Message.Headers.TryGetValue(Headers.EnclosedMessageTypes, out enclosedMessageTypes);
+                enclosedMessageTypes ??= eventTypeFullName;
+                routingMode = eventTypeFullName != null ? topology.GetTopicRoutingMode(eventTypeFullName) : TopicRoutingMode.NotMultiplexed;
                 break;
 
             case UnicastTransportOperation unicastTransportOperation:
                 destination = unicastTransportOperation.Destination;
                 _ = unicastTransportOperation.Message.Headers.TryGetValue(Headers.EnclosedMessageTypes, out enclosedMessageTypes);
 
-                // Workaround for reply-to address set by ASB transport
                 var index = unicastTransportOperation.Destination.IndexOf('@');
 
                 if (index > 0)
@@ -54,12 +58,22 @@ static class OutgoingTransportOperationExtensions
                     destination = destination[..index];
                 }
 
+                routingMode = TopicRoutingMode.NotMultiplexed;
                 break;
 
             default:
                 throw new ArgumentOutOfRangeException(nameof(outgoingTransportOperation));
         }
 
-        return destinationManager.GetDestination(destination, enclosedMessageTypes);
+        var resolvedDestination = destinationManager.GetDestination(destination, enclosedMessageTypes);
+        return (resolvedDestination, enclosedMessageTypes, routingMode);
+    }
+
+    public static string ExtractDestination(this IOutgoingTransportOperation outgoingTransportOperation,
+        TopicTopology topology,
+        DestinationManager destinationManager)
+    {
+        var (destination, _, _) = outgoingTransportOperation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
+        return destination;
     }
 }

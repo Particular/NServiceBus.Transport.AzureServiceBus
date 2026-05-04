@@ -7,6 +7,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
     using System.Transactions;
     using Azure.Messaging.ServiceBus;
     using EventRouting;
+    using NServiceBus.Transport.AzureServiceBus.EventRouting;
     using NUnit.Framework;
     using Routing;
 
@@ -1107,5 +1108,391 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending
         class SomeImplementedCommand : ISomeCommandInterface;
 
         interface ISomeCommandInterface;
+
+        [Test]
+        public async Task Should_apply_correlation_property_stamps_for_correlation_routed_events()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, typeof(SomeEvent).FullName } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sometopic"];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            Assert.That(batchContent, Has.Count.EqualTo(1));
+            var message = batchContent.ElementAt(0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(message.ApplicationProperties, Contains.Key(typeof(SomeEvent).FullName));
+                Assert.That(message.ApplicationProperties[typeof(SomeEvent).FullName], Is.EqualTo(true));
+            });
+        }
+
+        [Test]
+        public async Task Should_not_apply_correlation_stamps_when_routing_is_not_multiplexed()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.NotMultiplexed } } }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, typeof(SomeEvent).FullName } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sometopic"];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            var message = batchContent.ElementAt(0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(message.ApplicationProperties.ContainsKey(typeof(SomeEvent).FullName), Is.False);
+            });
+        }
+
+        [Test]
+        public async Task Should_not_apply_correlation_stamps_for_sql_filter_mode()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.SqlFilter } } }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, typeof(SomeEvent).FullName } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sometopic"];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            });
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            var message = batchContent.ElementAt(0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(message.ApplicationProperties.ContainsKey(typeof(SomeEvent).FullName), Is.False);
+            });
+        }
+
+        [Test]
+        public async Task Should_handle_multiple_message_types_in_enclosed_header()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, $"{typeof(SomeEvent).FullName};{typeof(SomeOtherEvent).FullName}" } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sometopic"];
+
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            var message = batchContent.ElementAt(0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(message.ApplicationProperties, Contains.Key(typeof(SomeEvent).FullName));
+                Assert.That(message.ApplicationProperties, Contains.Key(typeof(SomeOtherEvent).FullName));
+            });
+        }
+
+        [Test]
+        public async Task Should_fallback_to_concrete_event_type_when_enclosed_message_types_header_is_missing()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sometopic"];
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            var message = batchContent.ElementAt(0);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(message.ApplicationProperties, Contains.Key(typeof(SomeEvent).FullName));
+                Assert.That(message.ApplicationProperties[typeof(SomeEvent).FullName], Is.EqualTo(true));
+            });
+        }
+
+        [Test]
+        public async Task Should_apply_fallback_topic_correlation_routing_for_unmapped_events()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.CorrelationFilter }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sharedtopic"];
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            var message = batchContent.ElementAt(0);
+
+            Assert.That(message.ApplicationProperties, Contains.Key(typeof(SomeEvent).FullName));
+        }
+
+        [Test]
+        public async Task Should_route_unmapped_events_to_sql_filter_fallback_topic_without_correlation_stamps()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.SqlFilter }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sharedtopic"];
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            var message = batchContent.ElementAt(0);
+
+            Assert.That(message.ApplicationProperties.ContainsKey(typeof(SomeEvent).FullName), Is.False);
+        }
+
+        [Test]
+        public async Task Should_not_apply_fallback_topic_correlation_routing_to_explicitly_mapped_events_without_routing_override()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
+                    FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.CorrelationFilter }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sometopic"];
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            var message = batchContent.ElementAt(0);
+
+            Assert.That(message.ApplicationProperties.ContainsKey(typeof(SomeEvent).FullName), Is.False);
+        }
+
+        [Test]
+        public async Task Should_apply_correlation_property_stamps_for_isolated_multicast_dispatches()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        [],
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Isolated);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sometopic"];
+            var message = sender.IndividuallySentMessages.Single();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(message.ApplicationProperties, Contains.Key(typeof(SomeEvent).FullName));
+                Assert.That(message.ApplicationProperties[typeof(SomeEvent).FullName], Is.EqualTo(true));
+            });
+        }
+
+        [Test]
+        public async Task Should_normalize_assembly_qualified_enclosed_message_types_for_correlation_stamps()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
+                    RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                }));
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, typeof(SomeEvent).AssemblyQualifiedName } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sometopic"];
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            var message = batchContent.ElementAt(0);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(message.ApplicationProperties, Contains.Key(typeof(SomeEvent).FullName));
+                Assert.That(message.ApplicationProperties.ContainsKey(typeof(SomeEvent).AssemblyQualifiedName), Is.False);
+            });
+        }
+
+        [Test]
+        public async Task Should_normalize_proxy_style_enclosed_message_types_for_correlation_stamps()
+        {
+            var client = new FakeServiceBusClient();
+
+            var dispatcher = new MessageDispatcher(
+                client,
+                new MessageSenderRegistry(),
+                TopicTopology.FromOptions(new TopologyOptions
+                {
+                    PublishedEventToTopicsMap = { { typeof(SomeImplementedEvent).FullName, "sometopic" } },
+                    RoutingOptionsMap = { { typeof(SomeImplementedEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                }));
+
+            var proxyType = $"{typeof(SomeImplementedEvent).FullName}__impl";
+            var assemblyName = typeof(SomeImplementedEvent).Assembly.GetName().Name;
+            var enclosedMessageTypes = $"{proxyType}, {assemblyName};{typeof(ISomeEventInterface).AssemblyQualifiedName}";
+
+            var operation =
+                new TransportOperation(new OutgoingMessage("SomeId",
+                        new Dictionary<string, string> { { Headers.EnclosedMessageTypes, enclosedMessageTypes } },
+                        ReadOnlyMemory<byte>.Empty),
+                    new MulticastAddressTag(typeof(SomeImplementedEvent)),
+                    [],
+                    DispatchConsistency.Default);
+
+            await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
+
+            var sender = client.Senders["sometopic"];
+            var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+            var message = batchContent.ElementAt(0);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(message.ApplicationProperties, Contains.Key(typeof(ISomeEventInterface).FullName));
+                Assert.That(message.ApplicationProperties.ContainsKey(proxyType), Is.False);
+                Assert.That(message.ApplicationProperties.ContainsKey(typeof(ISomeEventInterface).AssemblyQualifiedName), Is.False);
+            });
+        }
     }
 }

@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Threading.Tasks;
 using EventRouting;
+using NServiceBus.Transport.AzureServiceBus.EventRouting;
 using NUnit.Framework;
 using Particular.Approvals;
 using Unicast.Messages;
@@ -70,6 +71,62 @@ public class TopicPerEventTopologyTests
         var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
 
         Approver.Verify(validationException.Message);
+    }
+
+    [Test]
+    public void Should_route_unmapped_events_to_fallback_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var result = topology.GetPublishDestination(typeof(MyEvent));
+
+        Assert.That(result, Is.EqualTo("SharedTopic"));
+    }
+
+    [Test]
+    public void Should_not_throw_for_unmapped_event_when_fallback_topic_is_configured_and_throw_if_unmapped_enabled()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            ThrowIfUnmappedEventTypes = true,
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.SqlFilter
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.That(topology.GetPublishDestination(typeof(MyEvent)), Is.EqualTo("SharedTopic"));
+    }
+
+    [Test]
+    public void Should_fail_validation_when_fallback_topic_mode_is_not_supported()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CatchAll
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        Assert.That(validationException!.Message, Does.Contain("FallbackTopic.Mode"));
     }
 
     // With the generic host validation can already be done at startup and this allows disabling further validation
@@ -148,6 +205,21 @@ public class TopicPerEventTopologyTests
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent))], new Extensibility.ContextBag());
 
         Approver.Verify(builder.ToString());
+    }
+
+    [Test]
+    public void Should_preserve_hierarchy_options_when_topology_is_assigned_after_transport_hierarchy_configuration()
+    {
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
+        {
+            HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" }
+        };
+
+        var topology = TopicTopology.Default;
+
+        transport.Topology = topology;
+
+        Assert.That(topology.Options.HierarchyNamespaceOptions.HierarchyNamespace, Is.EqualTo("my-hierarchy"));
     }
 
     class MyEvent;

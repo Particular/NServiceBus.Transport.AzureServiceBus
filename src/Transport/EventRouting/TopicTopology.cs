@@ -98,18 +98,58 @@ namespace NServiceBus
         {
             ValidateOptionsResult validationResult = OptionsValidator.Validate(null, Options);
 
-            if (validationResult.Succeeded)
+            if (!validationResult.Succeeded)
             {
-                return;
+                throw new ValidationException(validationResult.FailureMessage);
             }
 
-            throw new ValidationException(validationResult.FailureMessage);
+            var fallbackTopicValidationFailure = ValidateFallbackTopic();
+            if (fallbackTopicValidationFailure != null)
+            {
+                throw new ValidationException(fallbackTopicValidationFailure);
+            }
         }
 
         internal string GetPublishDestination(Type eventType)
         {
             var eventTypeFullName = eventType.FullName ?? throw new InvalidOperationException("Message type full name is null");
             return GetPublishDestinationCore(eventTypeFullName);
+        }
+
+        internal TopicRoutingMode GetTopicRoutingMode(string eventTypeFullName)
+        {
+            if (Options.RoutingOptionsMap.TryGetValue(eventTypeFullName, out var options) && options.Mode != TopicRoutingMode.Default)
+            {
+                return options.Mode;
+            }
+
+            if (!Options.PublishedEventToTopicsMap.ContainsKey(eventTypeFullName) && Options.FallbackTopic is { Mode: not TopicRoutingMode.Default } fallbackTopic)
+            {
+                return fallbackTopic.Mode;
+            }
+
+            return TopicRoutingMode.NotMultiplexed;
+        }
+
+        string? ValidateFallbackTopic()
+        {
+            if (Options.FallbackTopic is null)
+            {
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(Options.FallbackTopic.TopicName))
+            {
+                return $"'{nameof(TopologyOptions.FallbackTopic)}.{nameof(FallbackTopicOptions.TopicName)}' cannot be null or whitespace when a fallback topic is configured.";
+            }
+
+            return Options.FallbackTopic.Mode switch
+            {
+                TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlFilter => null,
+                TopicRoutingMode.Default or TopicRoutingMode.NotMultiplexed or TopicRoutingMode.CatchAll =>
+                    $"'{nameof(TopologyOptions.FallbackTopic)}.{nameof(FallbackTopicOptions.Mode)}' must be either '{TopicRoutingMode.CorrelationFilter}' or '{TopicRoutingMode.SqlFilter}'.",
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
 
         // By having this internal abstract method it is not possible to extend the topology with a custom topology outside
