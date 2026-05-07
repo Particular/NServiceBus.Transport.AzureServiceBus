@@ -22,7 +22,7 @@ public sealed class DeadLetterMessage : RecoverabilityAction
     {
         context.Extensions.Get<TransportTransaction>().Set(deadLetterRequest ?? CreateFromRecoverabilityContext());
 
-        Logger.Error($"Moving message '{context.FailedMessage.MessageId}' to the dead letter queue because processing failed due to an exception:", context.Exception);
+        Logger.Error($"Moving message '{context.MessageId}' to the dead letter queue because processing failed due to an exception:", context.Exception);
 
         return [];
 
