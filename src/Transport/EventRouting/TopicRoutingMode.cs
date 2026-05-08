@@ -28,12 +28,5 @@ public enum TopicRoutingMode
     /// On subscribe, provisions a <see cref="Azure.Messaging.ServiceBus.Administration.SqlRuleFilter"/> that matches the subscribed type against that header.
     /// On unsubscribe, deletes the matching subscription rule.
     /// </summary>
-    SqlFilter,
-
-    /// <summary>
-    /// Provisions a plain topic subscription with no filter rule so all messages on the topic are forwarded.
-    /// This mode does not add any extra publish-side message data beyond the normal outgoing message headers.
-    /// On unsubscribe, deletes that subscription.
-    /// </summary>
-    CatchAll
+    SqlFilter
 }

@@ -44,14 +44,12 @@ public class SubscriptionEntryTests
         var notMultiplexedEntry = new SubscriptionEntry("Topic1", TopicRoutingMode.NotMultiplexed);
         var correlationEntry = new SubscriptionEntry("Topic2", TopicRoutingMode.CorrelationFilter);
         var sqlEntry = new SubscriptionEntry("Topic3", TopicRoutingMode.SqlFilter);
-        var catchAllEntry = new SubscriptionEntry("Topic4", TopicRoutingMode.CatchAll);
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(notMultiplexedEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.NotMultiplexed));
             Assert.That(correlationEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
             Assert.That(sqlEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.SqlFilter));
-            Assert.That(catchAllEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.CatchAll));
         }
     }
 }
@@ -148,16 +146,6 @@ public class SubscriptionEntryJsonConverterTests
         var serialized = JsonSerializer.Serialize(entry);
 
         Assert.That(serialized, Is.EqualTo(json));
-    }
-
-    [Test]
-    public void Catch_all_serializes_to_object()
-    {
-        var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.CatchAll);
-
-        var json = JsonSerializer.Serialize(entry);
-
-        Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"RoutingMode\":\"CatchAll\"}"));
     }
 
     [Test]

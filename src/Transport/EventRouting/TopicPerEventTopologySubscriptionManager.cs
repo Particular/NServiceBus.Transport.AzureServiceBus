@@ -132,16 +132,16 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         return [new SubscriptionEntry(eventTypeFullName)];
     }
 
-    TopicRoutingMode ResolveTopicRoutingMode(TopicRoutingMode? routingMode) => routingMode ?? TopicRoutingMode.CatchAll;
+    TopicRoutingMode ResolveTopicRoutingMode(TopicRoutingMode? routingMode) => routingMode ?? TopicRoutingMode.NotMultiplexed;
 
     static TopicRoutingMode NormalizeSubscriptionRoutingMode(TopicRoutingMode routingMode) =>
         routingMode switch
         {
-            // A catch-all subscription already receives every message on the topic.
+            // A subscription without filter rules already receives every message on the topic.
             // Combining it with a correlation-filtered rule is redundant, but Azure Service Bus
             // evaluates the rules using OR semantics, so the combination is harmless and should
             // not be rejected during startup validation.
-            TopicRoutingMode.NotMultiplexed or TopicRoutingMode.CatchAll or TopicRoutingMode.CorrelationFilter => TopicRoutingMode.CatchAll,
+            TopicRoutingMode.NotMultiplexed or TopicRoutingMode.CorrelationFilter => TopicRoutingMode.NotMultiplexed,
             TopicRoutingMode.SqlFilter => TopicRoutingMode.SqlFilter,
             _ => throw new ArgumentOutOfRangeException(nameof(routingMode), routingMode, null)
         };
@@ -196,7 +196,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         switch (entry.RoutingMode)
         {
             case TopicRoutingMode.NotMultiplexed:
-            case TopicRoutingMode.CatchAll:
                 await CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
                 break;
             case TopicRoutingMode.CorrelationFilter:
@@ -316,7 +315,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         entry.RoutingMode switch
         {
             TopicRoutingMode.NotMultiplexed => DeleteSubscription(entry.Topic, subscriptionName, creationOptions.AdministrationClient, cancellationToken),
-            TopicRoutingMode.CatchAll => DeleteSubscription(entry.Topic, subscriptionName, creationOptions.AdministrationClient, cancellationToken),
             TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlFilter =>
                 DeleteRuleForFilteredSubscription(entry.Topic, eventTypeFullName, subscriptionName, creationOptions, cancellationToken),
             _ => DeleteSubscription(entry.Topic, subscriptionName, creationOptions.AdministrationClient, cancellationToken)

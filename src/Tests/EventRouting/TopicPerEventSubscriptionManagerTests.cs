@@ -151,13 +151,13 @@ public class TopicPerEventSubscriptionManagerTests
     }
 
     [Test]
-    public void Should_throw_when_catch_all_and_sql_filter_routing_modes_target_same_topic()
+    public void Should_throw_when_not_multiplexed_and_sql_filter_routing_modes_target_same_topic()
     {
         var topologyOptions = new TopologyOptions
         {
             SubscribedEventToTopicsMap =
             {
-                { typeof(MyEvent1).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.CatchAll)] },
+                { typeof(MyEvent1).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.NotMultiplexed)] },
                 { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.SqlFilter)] }
             }
         };
@@ -282,38 +282,13 @@ public class TopicPerEventSubscriptionManagerTests
     }
 
     [Test]
-    public async Task Should_create_catch_all_subscription_for_not_multiplexed_routing_mode()
+    public async Task Should_create_catch_all_subscription_for_explicit_not_multiplexed_routing_mode()
     {
         var topologyOptions = new TopologyOptions
         {
             SubscribedEventToTopicsMap =
             {
                 { typeof(MyEvent1).FullName, [new SubscriptionEntry("MyTopic", TopicRoutingMode.NotMultiplexed)] }
-            }
-        };
-
-        var builder = new StringBuilder();
-        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
-        {
-            SubscribingQueueName = "SubscribingQueue",
-            Client = new RecordingServiceBusClient(builder),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
-        }, topologyOptions, new StartupDiagnosticEntries());
-
-        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
-
-        Assert.That(builder.ToString(), Does.Contain("\"TopicName\": \"MyTopic\""));
-        Assert.That(builder.ToString(), Does.Not.Contain("CreateRuleOptions(topicName: 'MyTopic', subscriptionName: 'SubscribingQueue')"));
-    }
-
-    [Test]
-    public async Task Should_create_catch_all_subscription_for_explicit_catch_all_routing_mode()
-    {
-        var topologyOptions = new TopologyOptions
-        {
-            SubscribedEventToTopicsMap =
-            {
-                { typeof(MyEvent1).FullName, [new SubscriptionEntry("MyTopic", TopicRoutingMode.CatchAll)] }
             }
         };
 
@@ -532,26 +507,6 @@ public class TopicPerEventSubscriptionManagerTests
     }
 
     [Test]
-    public async Task Should_delete_subscription_when_unsubscribing_explicit_catch_all_mapping()
-    {
-        var topologyOptions = new TopologyOptions();
-        var topology = (TopicPerEventTopology)TopicTopology.FromOptions(topologyOptions);
-        topology.SubscribeTo<MyEvent1>("MyTopic", options => options.Mode = TopicRoutingMode.CatchAll);
-
-        var builder = new StringBuilder();
-        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
-        {
-            SubscribingQueueName = "SubscribingQueue",
-            Client = new RecordingServiceBusClient(builder),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
-        }, topologyOptions, new StartupDiagnosticEntries());
-
-        await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
-
-        Assert.That(builder.ToString(), Does.Contain("DeleteSubscription(topicName: 'MyTopic', subscriptionName: 'SubscribingQueue')"));
-    }
-
-    [Test]
     public async Task Should_delete_subscription_when_unsubscribing_default_mapping()
     {
         var topologyOptions = new TopologyOptions();
@@ -716,37 +671,14 @@ public class TopicPerEventSubscriptionManagerTests
     }
 
     [Test]
-    public void Should_allow_mixing_default_and_explicit_catch_all_subscription_entries_for_same_topic()
+    public void Should_allow_mixing_default_and_not_multiplexed_subscription_entries_for_same_topic()
     {
         var topologyOptions = new TopologyOptions
         {
             SubscribedEventToTopicsMap =
             {
                 { typeof(MyEvent1).FullName, ["SharedTopic"] },
-                { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.CatchAll)] }
-            }
-        };
-
-        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
-        {
-            SubscribingQueueName = "SubscribingQueue",
-            Client = new RecordingServiceBusClient(new StringBuilder()),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
-        }, topologyOptions, new StartupDiagnosticEntries());
-
-        Assert.DoesNotThrowAsync(async () =>
-            await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
-    }
-
-    [Test]
-    public void Should_allow_mixing_not_multiplexed_and_explicit_catch_all_subscription_entries_for_same_topic()
-    {
-        var topologyOptions = new TopologyOptions
-        {
-            SubscribedEventToTopicsMap =
-            {
-                { typeof(MyEvent1).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.NotMultiplexed)] },
-                { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.CatchAll)] }
+                { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.NotMultiplexed)] }
             }
         };
 
