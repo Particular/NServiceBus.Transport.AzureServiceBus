@@ -39,7 +39,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
             if (reader.TokenType == JsonTokenType.String)
             {
                 string value = reader.GetString() ?? throw new JsonException("Value cannot be null");
-                map[key] = [new SubscriptionEntry(value, TopicRoutingMode.Default)];
+                map[key] = [new SubscriptionEntry(value)];
             }
             else if (reader.TokenType == JsonTokenType.StartArray)
             {
@@ -49,7 +49,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
                     if (reader.TokenType == JsonTokenType.String)
                     {
                         string value = reader.GetString() ?? throw new JsonException("Value cannot be null");
-                        _ = set.Add(new SubscriptionEntry(value, TopicRoutingMode.Default));
+                        _ = set.Add(new SubscriptionEntry(value));
                     }
                     else if (reader.TokenType == JsonTokenType.StartObject)
                     {
@@ -81,7 +81,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
     SubscriptionEntry ReadSubscriptionEntry(ref Utf8JsonReader reader)
     {
         string? topicName = null;
-        TopicRoutingMode routingMode = TopicRoutingMode.Default;
+        TopicRoutingMode? routingMode = null;
 
         while (reader.Read())
         {
@@ -111,12 +111,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
             }
         }
 
-        if (topicName is null)
-        {
-            throw new JsonException("Topic is required");
-        }
-
-        return new SubscriptionEntry(topicName, routingMode);
+        return topicName is null ? throw new JsonException("Topic is required") : new SubscriptionEntry(topicName, routingMode);
     }
 
     public override void Write(Utf8JsonWriter writer, Dictionary<string, HashSet<SubscriptionEntry>> value,
@@ -161,7 +156,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
 
     void WriteSubscriptionEntry(Utf8JsonWriter writer, SubscriptionEntry entry)
     {
-        if (entry.RoutingMode == TopicRoutingMode.Default)
+        if (entry.RoutingMode is null)
         {
             writer.WriteStringValue(entry.Topic);
         }
@@ -171,7 +166,7 @@ sealed class SubscribedEventToTopicsMapConverter : JsonConverter<Dictionary<stri
             writer.WritePropertyName("Topic");
             writer.WriteStringValue(entry.Topic);
             writer.WritePropertyName("RoutingMode");
-            writer.WriteStringValue(entry.RoutingMode.ToString());
+            writer.WriteStringValue(entry.RoutingMode.Value.ToString());
             writer.WriteEndObject();
         }
     }

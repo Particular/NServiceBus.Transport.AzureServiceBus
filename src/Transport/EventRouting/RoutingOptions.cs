@@ -8,5 +8,5 @@ public sealed class RoutingOptions
     /// <summary>
     /// Controls the routing behavior to use.
     /// </summary>
-    public TopicRoutingMode Mode { get; set; } = TopicRoutingMode.Default;
+    public TopicRoutingMode? Mode { get; set; }
 }
