@@ -153,7 +153,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     public sealed class FallbackTopicOptions
     {
         public FallbackTopicOptions() { }
-        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode Mode { get; set; }
+        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode { get; set; }
         public string? TopicName { get; set; }
     }
     public sealed class HierarchyNamespaceOptions
@@ -235,13 +235,13 @@ namespace NServiceBus.Transport.AzureServiceBus
     public sealed class RoutingOptions
     {
         public RoutingOptions() { }
-        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode Mode { get; set; }
+        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode { get; set; }
     }
     [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscriptionEntryConverter))]
     public readonly struct SubscriptionEntry : System.IEquatable<NServiceBus.Transport.AzureServiceBus.SubscriptionEntry>
     {
-        public SubscriptionEntry(string Topic, NServiceBus.Transport.AzureServiceBus.TopicRoutingMode RoutingMode = 0) { }
-        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode RoutingMode { get; init; }
+        public SubscriptionEntry(string Topic, NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? RoutingMode = default) { }
+        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? RoutingMode { get; init; }
         public string Topic { get; init; }
         public static NServiceBus.Transport.AzureServiceBus.SubscriptionEntry op_Implicit(string topic) { }
     }
@@ -263,11 +263,9 @@ namespace NServiceBus.Transport.AzureServiceBus
     }
     public enum TopicRoutingMode
     {
-        Default = 0,
-        NotMultiplexed = 1,
-        CorrelationFilter = 2,
-        SqlFilter = 3,
-        CatchAll = 4,
+        NotMultiplexed = 0,
+        CorrelationFilter = 1,
+        SqlFilter = 2,
     }
     [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions), "migration-topology-options")]
     [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.Transport.AzureServiceBus.TopologyOptions), "topology-options")]
@@ -307,6 +305,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.HashSet<string>> HashSetString { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.HashSet<NServiceBus.Transport.AzureServiceBus.SubscriptionEntry>> HashSetSubscriptionEntry { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions> MigrationTopologyOptions { get; }
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.TopicRoutingMode?> NullableTopicRoutingMode { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.RoutingOptions> RoutingOptions { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<string> String { get; }
         public System.Text.Json.Serialization.Metadata.JsonTypeInfo<NServiceBus.Transport.AzureServiceBus.SubscriptionEntry> SubscriptionEntry { get; }
