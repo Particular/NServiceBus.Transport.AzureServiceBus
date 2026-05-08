@@ -1,7 +1,7 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
 /// <summary>
-/// Controls how a shared topic is used for publishing and subscribing.
+/// Controls how the topic is used for publishing and subscribing.
 /// The selected mode determines what the transport writes to outgoing messages,
 /// how subscriber-side rules or subscriptions are provisioned, and how unsubscribe behaves.
 /// </summary>
