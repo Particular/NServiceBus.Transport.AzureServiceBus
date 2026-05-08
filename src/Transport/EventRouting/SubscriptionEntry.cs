@@ -6,10 +6,10 @@ using System.Text.Json.Serialization;
 /// Represents a subscription entry with topic and routing mode information.
 /// </summary>
 [JsonConverter(typeof(SubscriptionEntryConverter))]
-public readonly record struct SubscriptionEntry(string Topic, TopicRoutingMode RoutingMode = TopicRoutingMode.Default)
+public readonly record struct SubscriptionEntry(string Topic, TopicRoutingMode? RoutingMode = null)
 {
     /// <summary>
-    /// Implicitly converts a string to a SubscriptionEntry with Default routing mode.
+    /// Implicitly converts a string to a SubscriptionEntry with no routing mode specified.
     /// </summary>
-    public static implicit operator SubscriptionEntry(string topic) => new(topic, TopicRoutingMode.Default);
+    public static implicit operator SubscriptionEntry(string topic) => new(topic);
 }

@@ -1,8 +1,6 @@
 namespace NServiceBus.Transport.AzureServiceBus.Tests.EventRouting;
 
-using System;
 using System.Text.Json;
-using EventRouting;
 using NUnit.Framework;
 
 [TestFixture]
@@ -13,11 +11,11 @@ public class SubscriptionEntryTests
     {
         SubscriptionEntry entry = "MyTopic";
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
-            Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.Default));
-        });
+            Assert.That(entry.RoutingMode, Is.Null);
+        }
     }
 
     [Test]
@@ -25,19 +23,19 @@ public class SubscriptionEntryTests
     {
         var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.CorrelationFilter);
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
             Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
-        });
+        }
     }
 
     [Test]
-    public void Default_routing_mode_is_default()
+    public void Default_routing_mode_is_null()
     {
         var entry = new SubscriptionEntry("MyTopic");
 
-        Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.Default));
+        Assert.That(entry.RoutingMode, Is.Null);
     }
 
     [Test]
@@ -47,16 +45,14 @@ public class SubscriptionEntryTests
         var correlationEntry = new SubscriptionEntry("Topic2", TopicRoutingMode.CorrelationFilter);
         var sqlEntry = new SubscriptionEntry("Topic3", TopicRoutingMode.SqlFilter);
         var catchAllEntry = new SubscriptionEntry("Topic4", TopicRoutingMode.CatchAll);
-        var defaultEntry = new SubscriptionEntry("Topic5", TopicRoutingMode.Default);
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(notMultiplexedEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.NotMultiplexed));
             Assert.That(correlationEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
             Assert.That(sqlEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.SqlFilter));
             Assert.That(catchAllEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.CatchAll));
-            Assert.That(defaultEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.Default));
-        });
+        }
     }
 }
 
@@ -68,7 +64,7 @@ public class RoutingOptionsTests
     {
         var options = new RoutingOptions();
 
-        Assert.That(options.Mode, Is.EqualTo(TopicRoutingMode.Default));
+        Assert.That(options.Mode, Is.Null);
     }
 
     [Test]
@@ -96,11 +92,11 @@ public class FallbackTopicOptionsTests
     {
         var options = new FallbackTopicOptions();
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(options.TopicName, Is.Null);
-            Assert.That(options.Mode, Is.EqualTo(TopicRoutingMode.Default));
-        });
+            Assert.That(options.Mode, Is.Null);
+        }
     }
 
     [Test]
@@ -108,11 +104,11 @@ public class FallbackTopicOptionsTests
     {
         var options = new FallbackTopicOptions { TopicName = "SharedTopic", Mode = TopicRoutingMode.CorrelationFilter };
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(options.TopicName, Is.EqualTo("SharedTopic"));
             Assert.That(options.Mode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
-        });
+        }
     }
 }
 
@@ -120,23 +116,23 @@ public class FallbackTopicOptionsTests
 public class SubscriptionEntryJsonConverterTests
 {
     [Test]
-    public void String_deserializes_to_default_entry()
+    public void String_deserializes_to_null_routing_mode()
     {
         const string json = "\"MyTopic\"";
 
         var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
-            Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.Default));
-        });
+            Assert.That(entry.RoutingMode, Is.Null);
+        }
     }
 
     [Test]
-    public void Default_serializes_to_string()
+    public void Null_routing_mode_serializes_to_string()
     {
-        var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.Default);
+        var entry = new SubscriptionEntry("MyTopic");
 
         var json = JsonSerializer.Serialize(entry);
 
@@ -201,11 +197,11 @@ public class SubscriptionEntryJsonConverterTests
 
         var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
             Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
-        });
+        }
     }
 
     [Test]
@@ -215,11 +211,11 @@ public class SubscriptionEntryJsonConverterTests
 
         var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
             Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.NotMultiplexed));
-        });
+        }
     }
 
     [Test]
@@ -229,25 +225,10 @@ public class SubscriptionEntryJsonConverterTests
 
         var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
             Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.SqlFilter));
-        });
+        }
     }
-
-    [Test]
-    public void Deserializes_default_routing_object()
-    {
-        const string json = "{\"Topic\":\"MyTopic\",\"RoutingMode\":\"Default\"}";
-
-        var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
-            Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.Default));
-        });
-    }
-
 }

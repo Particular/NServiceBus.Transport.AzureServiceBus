@@ -129,18 +129,10 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             return [new SubscriptionEntry(fallbackTopicName, topologyOptions.FallbackTopic.Mode)];
         }
 
-        return [new SubscriptionEntry(eventTypeFullName, TopicRoutingMode.Default)];
+        return [new SubscriptionEntry(eventTypeFullName)];
     }
 
-    TopicRoutingMode ResolveTopicRoutingMode(TopicRoutingMode routingMode)
-    {
-        if (routingMode != TopicRoutingMode.Default)
-        {
-            return routingMode;
-        }
-
-        return TopicRoutingMode.CatchAll;
-    }
+    TopicRoutingMode ResolveTopicRoutingMode(TopicRoutingMode? routingMode) => routingMode ?? TopicRoutingMode.CatchAll;
 
     static TopicRoutingMode NormalizeSubscriptionRoutingMode(TopicRoutingMode routingMode) =>
         routingMode switch
@@ -150,7 +142,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             // evaluates the rules using OR semantics, so the combination is harmless and should
             // not be rejected during startup validation.
             TopicRoutingMode.NotMultiplexed or TopicRoutingMode.CatchAll or TopicRoutingMode.CorrelationFilter => TopicRoutingMode.CatchAll,
-            TopicRoutingMode.Default => TopicRoutingMode.Default,
             TopicRoutingMode.SqlFilter => TopicRoutingMode.SqlFilter,
             _ => throw new ArgumentOutOfRangeException(nameof(routingMode), routingMode, null)
         };
@@ -165,10 +156,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     public static Task CreateSubscriptionsForEntries(HashSet<SubscriptionEntry> entries, string eventTypeFullName,
         string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.WhenAll([.. entries.Select(entry => CreateSubscriptionForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken))]);
-    }
+        CancellationToken cancellationToken = default) =>
+        Task.WhenAll([.. entries.Select(entry => CreateSubscriptionForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken))]);
 
     static async Task CreateSubscriptionForEntry(SubscriptionEntry entry, string eventTypeFullName,
         string subscriptionName,
@@ -212,9 +201,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                 break;
             case TopicRoutingMode.CorrelationFilter:
             case TopicRoutingMode.SqlFilter:
-                await CreateFilteredSubscription(topicName, subscriptionName, eventTypeFullName, entry.RoutingMode, creationOptions, cancellationToken).ConfigureAwait(false);
+                await CreateFilteredSubscription(topicName, subscriptionName, eventTypeFullName, entry.RoutingMode.Value, creationOptions, cancellationToken).ConfigureAwait(false);
                 break;
-            case TopicRoutingMode.Default:
             default:
                 throw new ArgumentOutOfRangeException(nameof(entry.RoutingMode), entry.RoutingMode, "Unknown routing mode");
         }
@@ -318,26 +306,21 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     public static Task DeleteSubscriptionsOrRulesForEntries(HashSet<SubscriptionEntry> entries, string eventTypeFullName,
         string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.WhenAll([.. entries.Select(entry => DeleteSubscriptionOrRuleForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken))]);
-    }
+        CancellationToken cancellationToken = default) =>
+        Task.WhenAll([.. entries.Select(entry => DeleteSubscriptionOrRuleForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken))]);
 
     static Task DeleteSubscriptionOrRuleForEntry(SubscriptionEntry entry, string eventTypeFullName,
         string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
-        CancellationToken cancellationToken)
-    {
-        return entry.RoutingMode switch
+        CancellationToken cancellationToken) =>
+        entry.RoutingMode switch
         {
             TopicRoutingMode.NotMultiplexed => DeleteSubscription(entry.Topic, subscriptionName, creationOptions.AdministrationClient, cancellationToken),
             TopicRoutingMode.CatchAll => DeleteSubscription(entry.Topic, subscriptionName, creationOptions.AdministrationClient, cancellationToken),
             TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlFilter =>
                 DeleteRuleForFilteredSubscription(entry.Topic, eventTypeFullName, subscriptionName, creationOptions, cancellationToken),
-            TopicRoutingMode.Default => DeleteSubscription(entry.Topic, subscriptionName, creationOptions.AdministrationClient, cancellationToken),
-            _ => Task.CompletedTask
+            _ => DeleteSubscription(entry.Topic, subscriptionName, creationOptions.AdministrationClient, cancellationToken)
         };
-    }
 
     static async Task DeleteSubscription(string topicName, string subscriptionName,
         ServiceBusAdministrationClient administrationClient,
@@ -378,15 +361,11 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     public static Task CreateSubscriptionsForTopics(HashSet<string> topics,
         string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.WhenAll([.. topics.Select(topicName => CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken))]);
-    }
+        CancellationToken cancellationToken = default) =>
+        Task.WhenAll([.. topics.Select(topicName => CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken))]);
 
     public static Task DeleteSubscriptionsForTopics(HashSet<string> topics, string subscriptionName,
         ServiceBusAdministrationClient administrationClient,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.WhenAll([.. topics.Select(topicName => DeleteSubscription(topicName, subscriptionName, administrationClient, cancellationToken))]);
-    }
+        CancellationToken cancellationToken = default) =>
+        Task.WhenAll([.. topics.Select(topicName => DeleteSubscription(topicName, subscriptionName, administrationClient, cancellationToken))]);
 }

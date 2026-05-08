@@ -119,11 +119,11 @@ public sealed class TopicPerEventTopology : TopicTopology
         var eventTypeFullName = eventType.FullName;
         if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entries))
         {
-            entries.Add(new SubscriptionEntry(topicName, TopicRoutingMode.Default));
+            entries.Add(new SubscriptionEntry(topicName));
         }
         else
         {
-            Options.SubscribedEventToTopicsMap[eventTypeFullName] = [new SubscriptionEntry(topicName, TopicRoutingMode.Default)];
+            Options.SubscribedEventToTopicsMap[eventTypeFullName] = [new SubscriptionEntry(topicName)];
         }
     }
 
@@ -182,12 +182,7 @@ public sealed class TopicPerEventTopology : TopicTopology
             return fallbackTopicName;
         }
 
-        if (Options.ThrowIfUnmappedEventTypes)
-        {
-            throw new Exception($"Unmapped event type '{eventTypeFullName}'. All events must be mapped in `{nameof(TopologyOptions.PublishedEventToTopicsMap)}` when `{nameof(TopologyOptions.ThrowIfUnmappedEventTypes)}` is set");
-        }
-
-        return eventTypeFullName;
+        return Options.ThrowIfUnmappedEventTypes ? throw new Exception($"Unmapped event type '{eventTypeFullName}'. All events must be mapped in `{nameof(TopologyOptions.PublishedEventToTopicsMap)}` when `{nameof(TopologyOptions.ThrowIfUnmappedEventTypes)}` is set") : eventTypeFullName;
     }
 
     internal override SubscriptionManager CreateSubscriptionManager(

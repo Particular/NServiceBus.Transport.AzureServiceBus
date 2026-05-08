@@ -11,7 +11,7 @@ sealed class SubscriptionEntryConverter : JsonConverter<SubscriptionEntry>
         if (reader.TokenType == JsonTokenType.String)
         {
             string topic = reader.GetString() ?? throw new JsonException("Topic cannot be null");
-            return new SubscriptionEntry(topic, TopicRoutingMode.Default);
+            return new SubscriptionEntry(topic);
         }
 
         if (reader.TokenType != JsonTokenType.StartObject)
@@ -20,7 +20,7 @@ sealed class SubscriptionEntryConverter : JsonConverter<SubscriptionEntry>
         }
 
         string? topicName = null;
-        TopicRoutingMode routingMode = TopicRoutingMode.Default;
+        TopicRoutingMode? routingMode = null;
 
         while (reader.Read())
         {
@@ -50,17 +50,12 @@ sealed class SubscriptionEntryConverter : JsonConverter<SubscriptionEntry>
             }
         }
 
-        if (topicName is null)
-        {
-            throw new JsonException("Topic is required");
-        }
-
-        return new SubscriptionEntry(topicName, routingMode);
+        return topicName is null ? throw new JsonException("Topic is required") : new SubscriptionEntry(topicName, routingMode);
     }
 
     public override void Write(Utf8JsonWriter writer, SubscriptionEntry value, JsonSerializerOptions options)
     {
-        if (value.RoutingMode == TopicRoutingMode.Default)
+        if (value.RoutingMode is null)
         {
             writer.WriteStringValue(value.Topic);
         }
@@ -70,7 +65,7 @@ sealed class SubscriptionEntryConverter : JsonConverter<SubscriptionEntry>
             writer.WritePropertyName("Topic");
             writer.WriteStringValue(value.Topic);
             writer.WritePropertyName("RoutingMode");
-            writer.WriteStringValue(value.RoutingMode.ToString());
+            writer.WriteStringValue(value.RoutingMode.Value.ToString());
             writer.WriteEndObject();
         }
     }

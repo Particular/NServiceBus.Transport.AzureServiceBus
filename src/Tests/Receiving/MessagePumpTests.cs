@@ -1,413 +1,406 @@
-namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
+namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Azure.Messaging.ServiceBus;
+using NServiceBus.Logging;
+using NServiceBus.Testing;
+using NUnit.Framework;
+
+[TestFixture]
+public class MessagePumpTests
 {
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Azure.Messaging.ServiceBus;
-    using NServiceBus.Logging;
-    using NServiceBus.Testing;
-    using NUnit.Framework;
-
-    [TestFixture]
-    public class MessagePumpTests
+    [Test]
+    public async Task Should_complete_message_upon_success()
     {
-        [Test]
-        public async Task Should_complete_message_upon_success()
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
+
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
+
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.CompletedTask,
+            (_, _) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
+        await pump.StartReceive();
+
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+
+        await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+
+        using (Assert.EnterMultipleScope())
         {
-            var fakeClient = new FakeServiceBusClient();
-            var fakeReceiver = new FakeReceiver();
-
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
-                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
-
-            await pump.Initialize(new PushRuntimeSettings(1), (context, token) => Task.CompletedTask,
-                (context, token) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
-            await pump.StartReceive();
-
-            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
-
-            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(fakeReceiver.CompletedMessages, Has.Exactly(1)
-                            .Matches<ServiceBusReceivedMessage>(message => message.MessageId == "SomeId"));
-                Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
-            });
-        }
-
-        [Test]
-        public async Task Should_not_process_message_when_lock_expired()
-        {
-            var fakeClient = new FakeServiceBusClient();
-            var fakeReceiver = new FakeReceiver();
-
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
-                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
-
-            bool pumpWasCalled = false;
-
-            await pump.Initialize(new PushRuntimeSettings(1), (context, token) =>
-                {
-                    pumpWasCalled = true;
-                    return Task.CompletedTask;
-                },
-                (context, token) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
-            await pump.StartReceive();
-
-            var messageWithLostLock = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(-30));
-
-            await fakeClient.Processors["receiveAddress"].ProcessMessage(messageWithLostLock, fakeReceiver);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
-                Assert.That(fakeReceiver.AbandonedMessages, Has.Exactly(1)
-                    .Matches<(ServiceBusReceivedMessage Message, IDictionary<string, object> Props)>(abandoned => abandoned.Message.MessageId == "SomeId"));
-                Assert.That(pumpWasCalled, Is.False);
-            });
-        }
-
-        [Test]
-        public async Task Should_complete_message_on_next_receive_receiveonly_mode_when_pipeline_successful_but_completion_failed_due_to_expired_lease()
-        {
-            var fakeClient = new FakeServiceBusClient();
-            var fakeReceiver = new FakeReceiver();
-            var onMessageCalled = 0;
-            var onErrorCalled = 0;
-
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.ReceiveOnly }, "receiveAddress",
-                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
-
-            using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var pumpExecutingTaskCompletionSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            await using var _ = cancellationTokenSource.Token.Register(() => pumpExecutingTaskCompletionSource.TrySetCanceled());
-
-            await pump.Initialize(new PushRuntimeSettings(1), (_, _) =>
-                {
-                    onMessageCalled++;
-                    return Task.CompletedTask;
-                },
-                (_, _) =>
-                {
-                    onErrorCalled++;
-                    return Task.FromResult(ErrorHandleResult.Handled);
-                }, CancellationToken.None);
-            await pump.StartReceive();
-
-            var firstReceivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
-            var secondReceivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
-
-            fakeReceiver.CompleteMessageCallback = (message, _) => message == firstReceivedMessage ?
-                Task.FromException(new ServiceBusException("Lock Lost", reason: ServiceBusFailureReason.MessageLockLost)) :
-                Task.CompletedTask;
-
-            var fakeProcessor = fakeClient.Processors["receiveAddress"];
-            await fakeProcessor.ProcessMessage(firstReceivedMessage, fakeReceiver);
-            await fakeProcessor.ProcessMessage(secondReceivedMessage, fakeReceiver);
-
-            Assert.That(fakeReceiver.CompletedMessages, Does.Not.Contain(firstReceivedMessage));
-            Assert.That(fakeReceiver.CompletedMessages, Does.Contain(secondReceivedMessage));
+            Assert.That(fakeReceiver.CompletedMessages, Has.Exactly(1)
+                .Matches<ServiceBusReceivedMessage>(message => message.MessageId == "SomeId"));
             Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
-            Assert.That(onMessageCalled, Is.EqualTo(1));
-            Assert.That(onErrorCalled, Is.Zero);
         }
+    }
 
-        [Test]
-        public async Task Should_abandon_message_in_atomic_mode_when_pipeline_successful_but_completion_failed_due_to_expired_lease()
-        {
-            var fakeClient = new FakeServiceBusClient();
-            var fakeReceiver = new FakeReceiver();
-            var onMessageCalled = 0;
-            var onErrorCalled = 0;
+    [Test]
+    public async Task Should_not_process_message_when_lock_expired()
+    {
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.SendsAtomicWithReceive }, "receiveAddress",
-                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
 
-            using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var pumpExecutingTaskCompletionSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            await using var _ = cancellationTokenSource.Token.Register(() => pumpExecutingTaskCompletionSource.TrySetCanceled());
+        bool pumpWasCalled = false;
 
-            await pump.Initialize(new PushRuntimeSettings(1), (_, _) =>
-                {
-                    onMessageCalled++;
-                    return Task.CompletedTask;
-                },
-                (_, _) =>
-                {
-                    onErrorCalled++;
-                    return Task.FromResult(ErrorHandleResult.Handled);
-                }, CancellationToken.None);
-            await pump.StartReceive();
-
-            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
-
-            fakeReceiver.CompleteMessageCallback = (message, _) => message == receivedMessage ?
-                Task.FromException(new ServiceBusException("Lock Lost", reason: ServiceBusFailureReason.MessageLockLost)) :
-                Task.CompletedTask;
-
-            var fakeProcessor = fakeClient.Processors["receiveAddress"];
-            await fakeProcessor.ProcessMessage(receivedMessage, fakeReceiver);
-
-            Assert.Multiple(() =>
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) =>
             {
-                Assert.That(fakeReceiver.AbandonedMessages.Select((tuple, _) => { var (message, _) = tuple; return message; })
-                    .ToList(), Does.Contain(receivedMessage));
-                Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
-                Assert.That(onMessageCalled, Is.EqualTo(1));
-                Assert.That(onErrorCalled, Is.EqualTo(1));
-            });
-        }
+                pumpWasCalled = true;
+                return Task.CompletedTask;
+            },
+            (_, _) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
+        await pump.StartReceive();
 
-        [Test]
-        public async Task Should_complete_message_on_next_receive_receiveonly_mode_when_error_pipeline_successful_but_completion_failed_due_to_expired_lease()
+        var messageWithLostLock = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(-30));
+
+        await fakeClient.Processors["receiveAddress"].ProcessMessage(messageWithLostLock, fakeReceiver);
+
+        using (Assert.EnterMultipleScope())
         {
-            var fakeClient = new FakeServiceBusClient();
-            var fakeReceiver = new FakeReceiver();
-            var onMessageCalled = 0;
-            var onErrorCalled = 0;
+            Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
+            Assert.That(fakeReceiver.AbandonedMessages, Has.Exactly(1)
+                .Matches<(ServiceBusReceivedMessage Message, IDictionary<string, object> Props)>(abandoned => abandoned.Message.MessageId == "SomeId"));
+            Assert.That(pumpWasCalled, Is.False);
+        }
+    }
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.ReceiveOnly }, "receiveAddress",
-                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+    [Test]
+    public async Task Should_complete_message_on_next_receive_receiveonly_mode_when_pipeline_successful_but_completion_failed_due_to_expired_lease()
+    {
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
+        var onMessageCalled = 0;
+        var onErrorCalled = 0;
 
-            using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var pumpExecutingTaskCompletionSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            await using var _ = cancellationTokenSource.Token.Register(() => pumpExecutingTaskCompletionSource.TrySetCanceled());
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.ReceiveOnly }, "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
 
-            await pump.Initialize(new PushRuntimeSettings(1), (_, _) =>
-                {
-                    onMessageCalled++;
-                    return Task.FromException<InvalidOperationException>(new InvalidOperationException());
-                },
-                (_, _) =>
-                {
-                    onErrorCalled++;
-                    return Task.FromResult(ErrorHandleResult.Handled);
-                }, CancellationToken.None);
-            await pump.StartReceive();
+        using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var pumpExecutingTaskCompletionSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var _ = cancellationTokenSource.Token.Register(() => pumpExecutingTaskCompletionSource.TrySetCanceled());
 
-            var firstReceivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
-            var secondReceivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) =>
+            {
+                onMessageCalled++;
+                return Task.CompletedTask;
+            },
+            (_, _) =>
+            {
+                onErrorCalled++;
+                return Task.FromResult(ErrorHandleResult.Handled);
+            }, CancellationToken.None);
+        await pump.StartReceive(cancellationTokenSource.Token);
 
-            fakeReceiver.CompleteMessageCallback = (message, _) => message == firstReceivedMessage ?
-                Task.FromException(new ServiceBusException("Lock Lost", reason: ServiceBusFailureReason.MessageLockLost)) :
-                Task.CompletedTask;
+        var firstReceivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+        var secondReceivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
 
-            var fakeProcessor = fakeClient.Processors["receiveAddress"];
-            await fakeProcessor.ProcessMessage(firstReceivedMessage, fakeReceiver);
-            await fakeProcessor.ProcessMessage(secondReceivedMessage, fakeReceiver);
+        fakeReceiver.CompleteMessageCallback = (message, _) => message == firstReceivedMessage ?
+            Task.FromException(new ServiceBusException("Lock Lost", reason: ServiceBusFailureReason.MessageLockLost)) :
+            Task.CompletedTask;
 
-            Assert.That(fakeReceiver.CompletedMessages, Does.Not.Contain(firstReceivedMessage));
-            Assert.That(fakeReceiver.CompletedMessages, Does.Contain(secondReceivedMessage));
-            Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+        var fakeProcessor = fakeClient.Processors["receiveAddress"];
+        await fakeProcessor.ProcessMessage(firstReceivedMessage, fakeReceiver, cancellationTokenSource.Token);
+        await fakeProcessor.ProcessMessage(secondReceivedMessage, fakeReceiver, cancellationTokenSource.Token);
+
+        Assert.That(fakeReceiver.CompletedMessages, Does.Not.Contain(firstReceivedMessage));
+        Assert.That(fakeReceiver.CompletedMessages, Does.Contain(secondReceivedMessage));
+        Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+        Assert.That(onMessageCalled, Is.EqualTo(1));
+        Assert.That(onErrorCalled, Is.Zero);
+    }
+
+    [Test]
+    public async Task Should_abandon_message_in_atomic_mode_when_pipeline_successful_but_completion_failed_due_to_expired_lease()
+    {
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
+        var onMessageCalled = 0;
+        var onErrorCalled = 0;
+
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.SendsAtomicWithReceive }, "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
+
+        using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var pumpExecutingTaskCompletionSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var _ = cancellationTokenSource.Token.Register(() => pumpExecutingTaskCompletionSource.TrySetCanceled());
+
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) =>
+            {
+                onMessageCalled++;
+                return Task.CompletedTask;
+            },
+            (_, _) =>
+            {
+                onErrorCalled++;
+                return Task.FromResult(ErrorHandleResult.Handled);
+            }, CancellationToken.None);
+        await pump.StartReceive(cancellationTokenSource.Token);
+
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+
+        fakeReceiver.CompleteMessageCallback = (message, _) => message == receivedMessage ?
+            Task.FromException(new ServiceBusException("Lock Lost", reason: ServiceBusFailureReason.MessageLockLost)) :
+            Task.CompletedTask;
+
+        var fakeProcessor = fakeClient.Processors["receiveAddress"];
+        await fakeProcessor.ProcessMessage(receivedMessage, fakeReceiver, cancellationTokenSource.Token);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(fakeReceiver.AbandonedMessages.Select((tuple, _) => { var (message, _) = tuple; return message; })
+                .ToList(), Does.Contain(receivedMessage));
+            Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
             Assert.That(onMessageCalled, Is.EqualTo(1));
             Assert.That(onErrorCalled, Is.EqualTo(1));
         }
+    }
 
-        [Test]
-        public async Task Should_abandon_message_upon_failure_with_retry_required()
-        {
-            var fakeClient = new FakeServiceBusClient();
-            var fakeReceiver = new FakeReceiver();
+    [Test]
+    public async Task Should_complete_message_on_next_receive_receiveonly_mode_when_error_pipeline_successful_but_completion_failed_due_to_expired_lease()
+    {
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
+        var onMessageCalled = 0;
+        var onErrorCalled = 0;
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
-                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.ReceiveOnly }, "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
 
-            await pump.Initialize(new PushRuntimeSettings(1), (context, token) => Task.FromException<InvalidOperationException>(new InvalidOperationException()),
-                (context, token) => Task.FromResult(ErrorHandleResult.RetryRequired), CancellationToken.None);
-            await pump.StartReceive();
+        using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var pumpExecutingTaskCompletionSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var _ = cancellationTokenSource.Token.Register(() => pumpExecutingTaskCompletionSource.TrySetCanceled());
 
-            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
-
-            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
-
-            Assert.Multiple(() =>
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) =>
             {
-                Assert.That(fakeReceiver.AbandonedMessages, Has.Exactly(1)
-                            .Matches<(ServiceBusReceivedMessage Message, IDictionary<string, object> Props)>(abandoned => abandoned.Message.MessageId == "SomeId"));
-                Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
-            });
-        }
-
-        [Test]
-        public async Task Should_complete_message_upon_failure_with_handled()
-        {
-            var fakeClient = new FakeServiceBusClient();
-            var fakeReceiver = new FakeReceiver();
-
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
-                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
-
-            await pump.Initialize(new PushRuntimeSettings(1), (context, token) => Task.FromException<InvalidOperationException>(new InvalidOperationException()),
-                (context, token) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
-            await pump.StartReceive();
-
-            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
-
-            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
-
-            Assert.Multiple(() =>
+                onMessageCalled++;
+                return Task.FromException<InvalidOperationException>(new InvalidOperationException());
+            },
+            (_, _) =>
             {
-                Assert.That(fakeReceiver.CompletedMessages, Has.Exactly(1)
-                            .Matches<ServiceBusReceivedMessage>(message => message.MessageId == "SomeId"));
-                Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
-            });
-        }
+                onErrorCalled++;
+                return Task.FromResult(ErrorHandleResult.Handled);
+            }, CancellationToken.None);
+        await pump.StartReceive(cancellationTokenSource.Token);
 
-        [Test]
-        public async Task Should_deadletter_message_upon_failure_when_requested_by_recoverability()
+        var firstReceivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+        var secondReceivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+
+        fakeReceiver.CompleteMessageCallback = (message, _) => message == firstReceivedMessage ?
+            Task.FromException(new ServiceBusException("Lock Lost", reason: ServiceBusFailureReason.MessageLockLost)) :
+            Task.CompletedTask;
+
+        var fakeProcessor = fakeClient.Processors["receiveAddress"];
+        await fakeProcessor.ProcessMessage(firstReceivedMessage, fakeReceiver, cancellationTokenSource.Token);
+        await fakeProcessor.ProcessMessage(secondReceivedMessage, fakeReceiver, cancellationTokenSource.Token);
+
+        Assert.That(fakeReceiver.CompletedMessages, Does.Not.Contain(firstReceivedMessage));
+        Assert.That(fakeReceiver.CompletedMessages, Does.Contain(secondReceivedMessage));
+        Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+        Assert.That(onMessageCalled, Is.EqualTo(1));
+        Assert.That(onErrorCalled, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task Should_abandon_message_upon_failure_with_retry_required()
+    {
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
+
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
+
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException()),
+            (_, _) => Task.FromResult(ErrorHandleResult.RetryRequired), CancellationToken.None);
+        await pump.StartReceive();
+
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+
+        await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+
+        using (Assert.EnterMultipleScope())
         {
-            var fakeClient = new FakeServiceBusClient();
-            var fakeReceiver = new FakeReceiver();
+            Assert.That(fakeReceiver.AbandonedMessages, Has.Exactly(1)
+                .Matches<(ServiceBusReceivedMessage Message, IDictionary<string, object> Props)>(abandoned => abandoned.Message.MessageId == "SomeId"));
+            Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
+        }
+    }
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
-                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+    [Test]
+    public async Task Should_complete_message_upon_failure_with_handled()
+    {
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
 
-            var propertiesToModify = new Dictionary<string, object> { ["MyProperty"] = "MyValue" };
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
 
-            await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
-                (context, _) =>
-                {
-                    context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description", propertiesToModify));
-                    return Task.FromResult(ErrorHandleResult.Handled);
-                }, CancellationToken.None);
-            await pump.StartReceive();
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException()),
+            (_, _) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
+        await pump.StartReceive();
 
-            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
 
-            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+        await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
 
-            Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(fakeReceiver.CompletedMessages, Has.Exactly(1)
+                .Matches<ServiceBusReceivedMessage>(message => message.MessageId == "SomeId"));
+            Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+        }
+    }
+
+    [Test]
+    public async Task Should_deadletter_message_upon_failure_when_requested_by_recoverability()
+    {
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
+
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
+
+        var propertiesToModify = new Dictionary<string, object> { ["MyProperty"] = "MyValue" };
+
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
+            (context, _) =>
             {
-                Assert.That(fakeReceiver.DeadLetteredMessages, Has.Count.EqualTo(1));
-                Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
-                Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+                context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description", propertiesToModify));
+                return Task.FromResult(ErrorHandleResult.Handled);
+            }, CancellationToken.None);
+        await pump.StartReceive();
 
-                var deadLetteredMessage = fakeReceiver.DeadLetteredMessages.Single();
-                Assert.That(deadLetteredMessage.Message, Is.EqualTo(receivedMessage));
-                Assert.That(deadLetteredMessage.DeadLetterReason, Is.EqualTo("Some reason"));
-                Assert.That(deadLetteredMessage.DeadLetterErrorDescription, Is.EqualTo("Some description"));
-                Assert.That(deadLetteredMessage.PropertiesToModify["MyProperty"], Is.EqualTo("MyValue"));
-            });
-        }
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
 
-        [Test]
-        public async Task Should_not_complete_or_abandon_message_in_none_mode_when_deadletter_requested_by_recoverability()
+        await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+
+        using (Assert.EnterMultipleScope())
         {
-            var fakeClient = new FakeServiceBusClient();
-            var fakeReceiver = new FakeReceiver();
+            Assert.That(fakeReceiver.DeadLetteredMessages, Has.Count.EqualTo(1));
+            Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
+            Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.None }, "receiveAddress",
-                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+            var deadLetteredMessage = fakeReceiver.DeadLetteredMessages.Single();
+            Assert.That(deadLetteredMessage.Message, Is.EqualTo(receivedMessage));
+            Assert.That(deadLetteredMessage.DeadLetterReason, Is.EqualTo("Some reason"));
+            Assert.That(deadLetteredMessage.DeadLetterErrorDescription, Is.EqualTo("Some description"));
+            Assert.That(deadLetteredMessage.PropertiesToModify["MyProperty"], Is.EqualTo("MyValue"));
+        }
+    }
 
-            await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
-                (context, _) =>
-                {
-                    context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description"));
-                    return Task.FromResult(ErrorHandleResult.Handled);
-                }, CancellationToken.None);
-            await pump.StartReceive();
+    [Test]
+    public async Task Should_not_complete_or_abandon_message_in_none_mode_when_deadletter_requested_by_recoverability()
+    {
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
 
-            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId");
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.None }, "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
 
-            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
-
-            Assert.Multiple(() =>
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
+            (context, _) =>
             {
-                Assert.That(fakeReceiver.DeadLetteredMessages, Is.Empty);
-                Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
-                Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
-            });
-        }
+                context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description"));
+                return Task.FromResult(ErrorHandleResult.Handled);
+            }, CancellationToken.None);
+        await pump.StartReceive();
 
-        [Test]
-        public async Task Should_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_not_set()
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId");
+
+        await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+
+        using (Assert.EnterMultipleScope())
         {
-            var logOutput = new StringWriter();
-#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
-            using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
-#pragma warning restore CS0618 // Type or member is obsolete
-
-            var fakeClient = new FakeServiceBusClient();
-            var fakeReceiver = new FakeReceiver();
-
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
-                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
-
-            await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
-                (context, _) =>
-                {
-                    context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description"));
-                    return Task.FromResult(ErrorHandleResult.Handled);
-                }, CancellationToken.None);
-            await pump.StartReceive();
-
-            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
-            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
-
-            var logText = logOutput.ToString();
-            Assert.That(logText, Does.Contain("AutoForwardDeadLetteredMessagesToErrorQueue"));
+            Assert.That(fakeReceiver.DeadLetteredMessages, Is.Empty);
+            Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
+            Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
         }
+    }
 
-        [Test]
-        public async Task Should_not_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_false()
-        {
-            var logOutput = new StringWriter();
-#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
-            using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
-#pragma warning restore CS0618 // Type or member is obsolete
+    [Test]
+    public async Task Should_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_not_set()
+    {
+        var logOutput = new StringWriter();
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
 
-            var fakeClient = new FakeServiceBusClient();
-            var fakeReceiver = new FakeReceiver();
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { AutoForwardDeadLetteredMessagesToErrorQueue = false }, "receiveAddress",
-                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
 
-            await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
-                (context, _) =>
-                {
-                    context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description"));
-                    return Task.FromResult(ErrorHandleResult.Handled);
-                }, CancellationToken.None);
-            await pump.StartReceive();
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
+            (context, _) =>
+            {
+                context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description"));
+                return Task.FromResult(ErrorHandleResult.Handled);
+            }, CancellationToken.None);
+        await pump.StartReceive();
 
-            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
-            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+        await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
 
-            var logText = logOutput.ToString();
-            Assert.That(logText, Does.Not.Contain("AutoForwardDeadLetteredMessagesToErrorQueue"));
-        }
+        var logText = logOutput.ToString();
+        Assert.That(logText, Does.Contain("AutoForwardDeadLetteredMessagesToErrorQueue"));
+    }
 
-        [Test]
-        public async Task Should_not_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_true()
-        {
-            var logOutput = new StringWriter();
-#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
-            using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
-#pragma warning restore CS0618 // Type or member is obsolete
+    [Test]
+    public async Task Should_not_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_false()
+    {
+        var logOutput = new StringWriter();
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
 
-            var fakeClient = new FakeServiceBusClient();
-            var fakeReceiver = new FakeReceiver();
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
 
-            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { AutoForwardDeadLetteredMessagesToErrorQueue = true }, "receiveAddress",
-                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (s, exception, arg3) => { }, null);
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { AutoForwardDeadLetteredMessagesToErrorQueue = false }, "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
 
-            await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
-                (context, _) =>
-                {
-                    context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description"));
-                    return Task.FromResult(ErrorHandleResult.Handled);
-                }, CancellationToken.None);
-            await pump.StartReceive();
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
+            (context, _) =>
+            {
+                context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description"));
+                return Task.FromResult(ErrorHandleResult.Handled);
+            }, CancellationToken.None);
+        await pump.StartReceive();
 
-            var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
-            await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+        await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
 
-            var logText = logOutput.ToString();
-            Assert.That(logText, Does.Not.Contain("AutoForwardDeadLetteredMessagesToErrorQueue"));
-        }
+        var logText = logOutput.ToString();
+        Assert.That(logText, Does.Not.Contain("AutoForwardDeadLetteredMessagesToErrorQueue"));
+    }
+
+    [Test]
+    public async Task Should_not_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_true()
+    {
+        var logOutput = new StringWriter();
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
+
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
+
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default) { AutoForwardDeadLetteredMessagesToErrorQueue = true }, "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
+
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException("boom")),
+            (context, _) =>
+            {
+                context.TransportTransaction.Set(new DeadLetterRequest("Some reason", "Some description"));
+                return Task.FromResult(ErrorHandleResult.Handled);
+            }, CancellationToken.None);
+        await pump.StartReceive();
+
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+        await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+
+        var logText = logOutput.ToString();
+        Assert.That(logText, Does.Not.Contain("AutoForwardDeadLetteredMessagesToErrorQueue"));
     }
 }

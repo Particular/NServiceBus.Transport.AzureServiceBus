@@ -8,17 +8,6 @@ namespace NServiceBus.Transport.AzureServiceBus;
 public enum TopicRoutingMode
 {
     /// <summary>
-    /// Defers to the effective topology resolution rules.
-    /// For publishing, this resolves to per-event <see cref="RoutingOptions.Mode"/> when set,
-    /// otherwise to <see cref="FallbackTopicOptions.Mode"/> for unmapped events when a fallback topic is configured,
-    /// otherwise to <see cref="NotMultiplexed"/>.
-    /// For subscribing, this resolves to the explicitly configured <see cref="SubscriptionEntry.RoutingMode"/> when set,
-    /// otherwise to <see cref="FallbackTopicOptions.Mode"/> for unmapped subscriptions when a fallback topic is configured,
-    /// otherwise to <see cref="CatchAll"/>.
-    /// </summary>
-    Default,
-
-    /// <summary>
     /// Publishes to the shared topic without adding multiplexing-specific application properties.
     /// On subscribe, provisions a plain topic subscription with no filter rule so all messages on the topic are forwarded.
     /// On unsubscribe, deletes that subscription.
