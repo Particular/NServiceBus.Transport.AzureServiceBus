@@ -118,7 +118,7 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.CatchAll
+                Mode = TopicRoutingMode.NotMultiplexed
             }
         };
 

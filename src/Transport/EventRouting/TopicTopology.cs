@@ -146,7 +146,7 @@ public abstract partial class TopicTopology
         return Options.FallbackTopic.Mode switch
         {
             TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlFilter => null,
-            null or TopicRoutingMode.NotMultiplexed or TopicRoutingMode.CatchAll =>
+            null or TopicRoutingMode.NotMultiplexed =>
                 $"'{nameof(TopologyOptions.FallbackTopic)}.{nameof(FallbackTopicOptions.Mode)}' must be either '{TopicRoutingMode.CorrelationFilter}' or '{TopicRoutingMode.SqlFilter}'.",
             _ => throw new ArgumentOutOfRangeException()
         };
