@@ -53,12 +53,12 @@ public static class ServiceBusReceivedMessageExtensions
                 headers[FaultsHeaderKeys.FailedQ] = message.DeadLetterSource;
             }
 
-            if (!headers.ContainsKey(FaultsHeaderKeys.Message) && !string.IsNullOrWhiteSpace(message.DeadLetterReason))
+            if (!headers.ContainsKey(FaultsHeaderKeys.ExceptionType) && !string.IsNullOrWhiteSpace(message.DeadLetterReason))
             {
                 headers[FaultsHeaderKeys.ExceptionType] = message.DeadLetterReason;
             }
 
-            if (!headers.ContainsKey(FaultsHeaderKeys.StackTrace) && !string.IsNullOrWhiteSpace(message.DeadLetterErrorDescription))
+            if (!headers.ContainsKey(FaultsHeaderKeys.Message) && !string.IsNullOrWhiteSpace(message.DeadLetterErrorDescription))
             {
                 headers[FaultsHeaderKeys.Message] = message.DeadLetterErrorDescription;
             }
