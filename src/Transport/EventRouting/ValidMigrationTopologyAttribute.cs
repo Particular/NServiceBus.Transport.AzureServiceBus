@@ -48,7 +48,7 @@ public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
             }
         }
 
-        foreach ((string? eventTypeFullName, HashSet<string> topics) in options.SubscribedEventToTopicsMap)
+        foreach ((string? eventTypeFullName, HashSet<SubscriptionEntry> entries) in options.SubscribedEventToTopicsMap)
         {
             if (options.EventsToMigrateMap.Contains(eventTypeFullName))
             {
@@ -57,12 +57,12 @@ public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
                     [nameof(options.SubscribedEventToTopicsMap)]));
             }
 
-            foreach (string topic in topics)
+            foreach (SubscriptionEntry entry in entries)
             {
-                if (topic.Equals(options.TopicToSubscribeOn))
+                if (entry.Topic.Equals(options.TopicToSubscribeOn))
                 {
                     builder.AddResult(new ValidationResult(
-                        $"The topic to subscribe '{topic}' for '{eventTypeFullName}' cannot be the same as the topic to subscribe to '{options.TopicToSubscribeOn}' for the migration topology.",
+                        $"The topic to subscribe '{entry.Topic}' for '{eventTypeFullName}' cannot be the same as the topic to subscribe to '{options.TopicToSubscribeOn}' for the migration topology.",
                         [nameof(options.TopicToSubscribeOn), nameof(options.SubscribedEventToTopicsMap)]));
                 }
             }

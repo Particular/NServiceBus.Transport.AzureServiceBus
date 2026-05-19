@@ -1,6 +1,7 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -54,7 +55,7 @@ class MessageDispatcher(
 
         foreach (var operation in transportOperations)
         {
-            var destination = operation.ExtractDestination(topology, destinationManager);
+            var (destination, _, _) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
             switch (operation.RequiredDispatchConsistency)
             {
                 case DispatchConsistency.Default:
@@ -133,15 +134,20 @@ class MessageDispatcher(
             var destination = destinationAndOperations.Key;
             var (isTopic, operations) = destinationAndOperations.Value;
 
-            var messagesToSend = new Queue<ServiceBusMessage>(operations.Count);
+            var messagesToSend = new Queue<(ServiceBusMessage Message, TopicRoutingMode RoutingMode)>(operations.Count);
             foreach (var operation in operations)
             {
                 ServiceBusMessage message = operation.ToAzureServiceBusMessage(
                     azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                var (_, enclosedMessageTypes, routingMode) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
+                if (routingMode == TopicRoutingMode.CorrelationFilter)
+                {
+                    ApplyMultiplexingStamps(message, enclosedMessageTypes);
+                }
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
 
-                messagesToSend.Enqueue(message);
+                messagesToSend.Enqueue((message, routingMode));
             }
             // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
             // doing the access as late as possible but still on the synchronous path. Initializing the transaction
@@ -152,8 +158,25 @@ class MessageDispatcher(
         return Task.WhenAll(dispatchTasks);
     }
 
+    static readonly ConcurrentDictionary<string, string[]> NormalizedEnclosedMessageTypesCache = new(StringComparer.OrdinalIgnoreCase);
+
+    static void ApplyMultiplexingStamps(ServiceBusMessage message, string? enclosedMessageTypes)
+    {
+        if (string.IsNullOrEmpty(enclosedMessageTypes))
+        {
+            return;
+        }
+
+        var types = NormalizedEnclosedMessageTypesCache.GetOrAdd(enclosedMessageTypes, static key => EnclosedMessageTypesParser.Parse(key));
+
+        foreach (var type in types)
+        {
+            message.ApplicationProperties[type] = true;
+        }
+    }
+
     async Task DispatchBatchOrFallbackToIndividualSendsForDestination(string destination, bool isMulticast, ServiceBusClient? client, Transaction? transaction,
-        Queue<ServiceBusMessage> messagesToSend,
+        Queue<(ServiceBusMessage Message, TopicRoutingMode RoutingMode)> messagesToSend,
         CancellationToken cancellationToken)
     {
         int batchCount = 0;
@@ -177,23 +200,23 @@ class MessageDispatcher(
                 // In this case the batch is fresh and doesn't have any messages yet. If TryAdd returns false
                 // we know the message can never be added to any batch and therefore we collect it to be sent
                 // individually.
-                if (messageBatch.TryAddMessage(dequeueMessage))
+                if (messageBatch.TryAddMessage(dequeueMessage.Message))
                 {
                     if (Log.IsDebugEnabled)
                     {
-                        dequeueMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
-                        logBuilder!.Append($"{messageId ?? dequeueMessage.MessageId},");
+                        dequeueMessage.Message.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
+                        logBuilder!.Append($"{messageId ?? dequeueMessage.Message.MessageId},");
                     }
                 }
                 else
                 {
                     if (Log.IsDebugEnabled)
                     {
-                        dequeueMessage.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
-                        Log.Debug($"Message '{messageId ?? dequeueMessage.MessageId}' is too large for the batch '{batchCount}' and will be sent individually to destination {destination}.");
+                        dequeueMessage.Message.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
+                        Log.Debug($"Message '{messageId ?? dequeueMessage.Message.MessageId}' is too large for the batch '{batchCount}' and will be sent individually to destination {destination}.");
                     }
                     messagesTooLargeToBeBatched ??= [];
-                    messagesTooLargeToBeBatched.Add(dequeueMessage);
+                    messagesTooLargeToBeBatched.Add(dequeueMessage.Message);
                     continue;
                 }
 
@@ -201,13 +224,13 @@ class MessageDispatcher(
                 // or the message being too large. In the case when the message is too large for the batch the next iteration
                 // will try to add it to a fresh batch and if that fails too we will add it to the list of messages that couldn't be sent
                 // trying to attempt to send them individually.
-                while (messagesToSend.Count > 0 && messageBatch.TryAddMessage(messagesToSend.Peek()))
+                while (messagesToSend.Count > 0 && messageBatch.TryAddMessage(messagesToSend.Peek().Message))
                 {
                     var added = messagesToSend.Dequeue();
                     if (Log.IsDebugEnabled)
                     {
-                        added.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
-                        logBuilder!.Append($"{messageId ?? added.MessageId},");
+                        added.Message.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
+                        logBuilder!.Append($"{messageId ?? added.Message.MessageId},");
                     }
                 }
 
@@ -310,6 +333,11 @@ class MessageDispatcher(
             {
                 ServiceBusMessage message = operation.ToAzureServiceBusMessage(
                     azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                var (_, enclosedMessageTypes, routingMode) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
+                if (routingMode == TopicRoutingMode.CorrelationFilter)
+                {
+                    ApplyMultiplexingStamps(message, enclosedMessageTypes);
+                }
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
                 dispatchTasks.Add(DispatchForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));

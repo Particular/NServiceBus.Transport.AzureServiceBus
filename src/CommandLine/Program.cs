@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.CommandLine
 {
     using System;
+    using System.Collections.Generic;
     using System.ComponentModel.DataAnnotations;
     using Azure.Messaging.ServiceBus;
     using McMaster.Extensions.CommandLineUtils;
@@ -62,12 +63,25 @@
                 subscribeCommand.AddOption(partitioning);
                 subscribeCommand.AddOption(hierarchyNamespace);
                 var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
+                var routingMode = subscribeCommand.Option("--routing-mode", "Routing mode: 'correlation-filter' or 'sql-filter'", CommandOptionType.SingleValue);
+                var eventTypes = subscribeCommand.Option("--event-type", "Event type full name to add a filtered rule for (can be specified multiple times)", CommandOptionType.MultipleValue);
 
                 subscribeCommand.OnExecuteAsync(async ct =>
                 {
-                    await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, size, partitioning, hierarchyNamespace));
+                    if (routingMode.HasValue())
+                    {
+                        var useCorrelation = ParseRoutingMode(routingMode);
+                        var types = new List<string>(eventTypes.Values);
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.SubscribeWithFilter(client, name, topicName, subscriptionName, size, partitioning, hierarchyNamespace, types, useCorrelation));
 
-                    Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{topicName.Value}'.");
+                        Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{topicName.Value}' with routing mode '{(useCorrelation ? "correlation-filter" : "sql-filter")}'.");
+                    }
+                    else
+                    {
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, size, partitioning, hierarchyNamespace));
+
+                        Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{topicName.Value}'.");
+                    }
                 });
             }
 
@@ -81,12 +95,23 @@
                 unsubscribeCommand.AddOption(fullyQualifiedNamespace);
                 unsubscribeCommand.AddOption(hierarchyNamespace);
                 var subscriptionName = unsubscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
+                var eventTypes = unsubscribeCommand.Option("--event-type", "Event type full name to remove the filtered rule for (can be specified multiple times)", CommandOptionType.MultipleValue);
 
                 unsubscribeCommand.OnExecuteAsync(async ct =>
                 {
-                    await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Unsubscribe(client, name, topicName, subscriptionName, hierarchyNamespace));
+                    if (eventTypes.HasValue())
+                    {
+                        var types = new List<string>(eventTypes.Values);
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.UnsubscribeWithFilter(client, name, topicName, subscriptionName, hierarchyNamespace, types));
 
-                    Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{topicName.Value}'.");
+                        Console.WriteLine($"Endpoint '{name.Value}' unsubscribed event types from '{topicName.Value}'.");
+                    }
+                    else
+                    {
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Unsubscribe(client, name, topicName, subscriptionName, hierarchyNamespace));
+
+                        Console.WriteLine($"Endpoint '{name.Value}' unsubscribed from '{topicName.Value}'.");
+                    }
                 });
             }
 
@@ -401,6 +426,17 @@
             }
 
             return ValidationResult.Success;
+        }
+
+        static bool ParseRoutingMode(CommandOption routingMode)
+        {
+            var value = routingMode.Value();
+            return value switch
+            {
+                "correlation-filter" => true,
+                "sql-filter" => false,
+                _ => throw new ArgumentException($"Invalid routing mode '{value}'. Valid values are 'correlation-filter' or 'sql-filter'.")
+            };
         }
     }
 }

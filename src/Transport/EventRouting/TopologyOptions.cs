@@ -27,7 +27,7 @@ public class TopologyOptions
     /// </summary>
     [AzureServiceBusTopics]
     [JsonConverter(typeof(SubscribedEventToTopicsMapConverter))]
-    public Dictionary<string, HashSet<string>> SubscribedEventToTopicsMap
+    public Dictionary<string, HashSet<SubscriptionEntry>> SubscribedEventToTopicsMap
     {
         get;
         init => field = value ?? [];
@@ -45,7 +45,22 @@ public class TopologyOptions
     } = [];
 
     /// <summary>
-    /// Determines if an exception should be thrown when attempting to publish an event not mapped in PublishedEventToTopicsMap
+    /// Maps event type full names to routing options.
+    /// </summary>
+    public Dictionary<string, RoutingOptions> RoutingOptionsMap
+    {
+        get;
+        init => field = value ?? [];
+    } = [];
+
+    /// <summary>
+    /// Shared fallback topic configuration for unmapped events.
+    /// </summary>
+    public FallbackTopicOptions? FallbackTopic { get; set; }
+
+    /// <summary>
+    /// Determines if an exception should be thrown when attempting to publish an event not mapped in <see cref="PublishedEventToTopicsMap"/>.
+    /// If <see cref="FallbackTopic"/> is configured, otherwise-unmapped events are routed to that fallback topic instead and no exception is thrown.
     /// </summary>
     public bool ThrowIfUnmappedEventTypes { get; set; } = false;
 
