@@ -73,7 +73,7 @@ public abstract class NServiceBusTransportTest
 
         var testName = GetTestName();
 
-        InputQueueName = configurer.GetInputQueueName(testName, transactionMode);
+        InputQueueName = configurer.GetInputQueueName(testName, transactionMode, true);
         ErrorQueueName = configurer.GetErrorQueueName(testName, transactionMode);
 
         var hostSettings = new HostSettings(
