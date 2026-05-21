@@ -17,8 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NServiceBus.TransportTests.Sources" Version="10.1.4" GeneratePathProperty="true" />
-    <PackageReference Include="System.IO.Hashing" Version="10.0.8" />
+    <PackageReference Include="NServiceBus.TransportTests.Sources" Version="10.2.0" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(PkgNServiceBus_TransportTests_Sources)' != ''">
