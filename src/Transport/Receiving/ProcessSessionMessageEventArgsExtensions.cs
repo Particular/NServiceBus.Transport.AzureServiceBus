@@ -11,9 +11,10 @@ static class ProcessSessionMessageEventArgsExtensions
 {
     public static async ValueTask<bool> TrySafeCompleteMessage(this ProcessSessionMessageEventArgs args,
         ServiceBusReceivedMessage message, TransportTransactionMode transportTransactionMode,
-        ICache<string, bool> messagesToBeCompleted,  // TODO: do we need this to be ordered?
+        ICache<string, bool> messagesToBeCompleted, // TODO: do we need this to be ordered?
         CancellationToken cancellationToken = default)
     {
+        args.ReleaseSession();
         // TODO: Do we support ReceiveOnly for sessions? If so, does that work with session state?
         if (transportTransactionMode == TransportTransactionMode.ReceiveOnly && messagesToBeCompleted.TryGet(message.GetMessageId(), out _))
         {
@@ -35,6 +36,7 @@ static class ProcessSessionMessageEventArgsExtensions
                 throw;
             }
         }
+
         return false;
     }
 
@@ -42,6 +44,7 @@ static class ProcessSessionMessageEventArgsExtensions
         ServiceBusReceivedMessage message, TransportTransactionMode transportTransactionMode,
         CancellationToken cancellationToken = default)
     {
+        args.ReleaseSession();
         // TransportTransactionMode.None uses ReceiveAndDelete mode which means the message is already removed from the queue
         // once we get it. Therefore, we don't need to abandon it.
         if (transportTransactionMode != TransportTransactionMode.None && message.LockedUntil < DateTimeOffset.UtcNow)
@@ -54,7 +57,6 @@ static class ProcessSessionMessageEventArgsExtensions
 
             try
             {
-                args.ReleaseSession();
                 await args.SafeAbandonMessage(message, transportTransactionMode, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 return true;
@@ -68,19 +70,20 @@ static class ProcessSessionMessageEventArgsExtensions
                 }
             }
         }
+
         return false;
     }
 
     public static async Task SafeDeadLetterMessage(this ProcessSessionMessageEventArgs args, ServiceBusReceivedMessage message,
         TransportTransactionMode transportTransactionMode, Exception exception, CancellationToken cancellationToken = default)
     {
+        args.ReleaseSession();
         if (transportTransactionMode != TransportTransactionMode.None)
         {
             Logger.Warn($"Poison message detected. Message will be moved to the poison queue. Exception: {exception.Message}", exception);
 
             try
             {
-                args.ReleaseSession();
                 await args.DeadLetterMessageAsync(message,
                         deadLetterReason: "Poisoned message",
                         deadLetterErrorDescription: exception.Message,
@@ -108,12 +111,12 @@ static class ProcessSessionMessageEventArgsExtensions
         ICache<string, bool> messagesToBeCompleted,
         CancellationToken cancellationToken = default)
     {
+        args.ReleaseSession();
         if (transportTransactionMode != TransportTransactionMode.None)
         {
             try
             {
                 using var scope = azureServiceBusTransaction.ToTransactionScope();
-                args.ReleaseSession();
                 await args.CompleteMessageAsync(message, cancellationToken).ConfigureAwait(false);
                 scope.Complete();
             }
