@@ -10,10 +10,33 @@ using NServiceBus.AcceptanceTests.Routing.NativePublishSubscribe;
 using NServiceBus.AcceptanceTests.Sagas;
 using NServiceBus.AcceptanceTests.Versioning;
 using NServiceBus.MessageMutator;
+using NServiceBus.Pipeline;
+using NServiceBus.Transport;
 using NServiceBus.Transport.AzureServiceBus;
 using NServiceBus.Transport.AzureServiceBus.AcceptanceTests;
 using Conventions = NServiceBus.AcceptanceTesting.Customization.Conventions;
 
+public class GenerateRandomSessionIdForSends : Behavior<IOutgoingSendContext>
+{
+    public override Task Invoke(IOutgoingSendContext context, Func<Task> next)
+    {
+        var dispatchProperties = context.Extensions.Get<DispatchProperties>();
+        dispatchProperties["SessionId"] = Guid.NewGuid().ToString();
+
+        return next();
+    }
+}
+
+public class GenerateRandomSessionIdForReplies : Behavior<IOutgoingReplyContext>
+{
+    public override Task Invoke(IOutgoingReplyContext context, Func<Task> next)
+    {
+        var dispatchProperties = context.Extensions.Get<DispatchProperties>();
+        dispatchProperties["SessionId"] = Guid.NewGuid().ToString();
+
+        return next();
+    }
+}
 
 public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestExecution
 {
@@ -37,12 +60,29 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 
         var transport = new AzureServiceBusTransport(connectionString, topology);
 
+        if (endpointName.Contains("AuditSpy")
+            || endpointName.Contains("audit_with_code_target")
+            || endpointName.Contains("EndpointThatHandlesAuditMessages")
+            || endpointName.Contains("message_forward_receiver")
+            || endpointName.Contains("EndpointThatHandlesErrorMessages")
+            || endpointName.Contains("ErrorSpy")
+            || endpointName.Contains("error_with_code_source")
+            || endpointName.Contains("RetryAckSpy"))
+        {
+        }
+        else
+        {
+            transport.EnableSessions = true;
+        }
+
         ApplyMappingsToSupportMultipleInheritance(endpointName, topology);
 
         configuration.UseTransport(transport);
 
         configuration.RegisterComponents(c => c.AddSingleton<IMutateOutgoingTransportMessages, TestIndependenceMutator>());
         configuration.Pipeline.Register("TestIndependenceBehavior", typeof(TestIndependenceSkipBehavior), "Skips messages not created during the current test.");
+        configuration.Pipeline.Register("GenerateRandomSessionIdForReplies", typeof(GenerateRandomSessionIdForReplies), "Sets random session ID to all outgoing replies");
+        configuration.Pipeline.Register("GenerateRandomSessionIdForSends", typeof(GenerateRandomSessionIdForSends), "Sets random session ID to all outgoing sends");
 
         configuration.EnforcePublisherMetadataRegistration(endpointName, publisherMetadata);
 
