@@ -30,4 +30,29 @@
     <Compile Include="..\AcceptanceTests\TestIndependenceSkipBehavior.cs" />
     <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs" />
   </ItemGroup>
+
+  <!-- Exclude tests that publish as we don't support it for sessions (yet) -->
+  <ItemGroup>
+    <Compile Remove="..\AcceptanceTests\When_subscribing_in_FST.cs" />
+    <Compile Remove="..\AcceptanceTests\Should_be_delivered_to_all_subscribers.cs" />
+    <Compile Remove="..\AcceptanceTests\Should_be_processed_by_all_subscribers.cs" />
+    <Compile Remove="..\AcceptanceTests\Should_execute_twice_and_send_to_error_queue.cs" />
+    <Compile Remove="..\AcceptanceTests\MultiSubscribeToPolymorphicEvent.cs" />
+    <Compile Remove="..\AcceptanceTests\When_publishing_from_sendonly.cs" />
+    <Compile Remove="..\AcceptanceTests\When_publishing_to_scaled_out_subscribers.cs" />
+    <Compile Remove="..\AcceptanceTests\When_subscribing_to_a_base_event.cs" />
+    <Compile Remove="..\AcceptanceTests\When_unsubscribing_from_event.cs" />
+    <Compile Remove="..\AcceptanceTests\Should_receive_events_from_all_publishers.cs" />
+    <Compile Remove="..\AcceptanceTests\Should_be_delivered_to_all_subscribers.cs" />
+    <Compile Remove="..\AcceptanceTests\Event_should_be_published_using_instance_type.cs" />
+    <Compile Remove="..\AcceptanceTests\When_publishing_an_interface.cs" />
+    <Compile Remove="..\AcceptanceTests\When_publishing_an_interface_with_unobtrusive.cs" />
+    <Compile Remove="..\AcceptanceTests\When_publishing_pre_created_interface.cs" />
+    <Compile Remove="..\AcceptanceTests\When_publishing_using_base_type.cs" />
+    <Compile Remove="..\AcceptanceTests\When_replying_to_saga_event.cs" />
+    <Compile Remove="..\AcceptanceTests\When_started_by_base_event_from_other_saga.cs" />
+    <Compile Remove="..\AcceptanceTests\When_started_by_event_from_another_saga.cs" />
+    <Compile Remove="..\AcceptanceTests\When_publishing_with_overridden_local_address.cs" />
+    <Compile Remove="..\AcceptanceTests\When_multiple_versions_of_a_message_is_published.cs" />
+  </ItemGroup>
 </Project>
