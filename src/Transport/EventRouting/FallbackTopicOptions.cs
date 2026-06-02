@@ -9,6 +9,7 @@ public sealed class FallbackTopicOptions
     /// <summary>
     /// Name of the topic used for otherwise-unmapped events and subscriptions.
     /// </summary>
+    [AzureServiceBusTopics]
     public string? TopicName { get; set; }
 
     /// <summary>

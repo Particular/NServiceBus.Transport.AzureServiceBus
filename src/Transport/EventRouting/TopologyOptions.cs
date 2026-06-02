@@ -2,6 +2,7 @@ namespace NServiceBus.Transport.AzureServiceBus;
 
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Options;
 
 /// <summary>
 /// Serializable object that defines the topic-per-event topology
@@ -56,6 +57,7 @@ public class TopologyOptions
     /// <summary>
     /// Shared fallback topic configuration for unmapped events.
     /// </summary>
+    [ValidateObjectMembers]
     public FallbackTopicOptions? FallbackTopic { get; set; }
 
     /// <summary>

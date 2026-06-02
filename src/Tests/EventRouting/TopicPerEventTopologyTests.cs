@@ -148,6 +148,52 @@ public class TopicPerEventTopologyTests
         Assert.That(validationException!.Message, Does.Contain("FallbackTopic.Mode"));
     }
 
+    [Test]
+    public void Should_fail_validation_when_fallback_topic_name_is_too_long()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = new string('c', 261),
+                Mode = TopicRoutingMode.CorrelationFilter
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(validationException!.Message, Does.Contain("TopicName"));
+            Assert.That(validationException.Message, Does.Contain(new string('c', 261)));
+        }
+    }
+
+    [Test]
+    public void Should_fail_validation_when_fallback_topic_name_contains_invalid_characters()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "bad topic name!",
+                Mode = TopicRoutingMode.CorrelationFilter
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(validationException!.Message, Does.Contain("TopicName"));
+            Assert.That(validationException.Message, Does.Contain("bad topic name!"));
+        }
+    }
+
     // With the generic host validation can already be done at startup and this allows disabling further validation
     // for advanced scenarios to save startup time.
     [Test]

@@ -154,6 +154,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         public FallbackTopicOptions() { }
         public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode { get; set; }
+        [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         public string? TopicName { get; set; }
     }
     public sealed class HierarchyNamespaceOptions
@@ -272,6 +273,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     public class TopologyOptions
     {
         public TopologyOptions() { }
+        [Microsoft.Extensions.Options.ValidateObjectMembers]
         public NServiceBus.Transport.AzureServiceBus.FallbackTopicOptions? FallbackTopic { get; set; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         public System.Collections.Generic.Dictionary<string, string> PublishedEventToTopicsMap { get; init; }
