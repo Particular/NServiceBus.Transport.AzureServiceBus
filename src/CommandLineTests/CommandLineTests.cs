@@ -602,6 +602,30 @@
         }
 
         [Test]
+        public async Task Subscribe_endpoint_with_correlation_filter_validates_event_type_is_required()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode correlation-filter");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The --event-type option is required when --routing-mode is specified."));
+            }
+        }
+
+        [Test]
+        public async Task Subscribe_endpoint_with_sql_filter_validates_event_type_is_required()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode sql-filter");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The --event-type option is required when --routing-mode is specified."));
+            }
+        }
+
+        [Test]
         public async Task Subscribe_endpoint_validates_namespace_and_connection_string_cannot_be_used_together()
         {
             var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --namespace somenamespace.servicebus.windows.net --connection-string someConnectionString");

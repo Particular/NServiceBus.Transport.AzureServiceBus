@@ -66,6 +66,8 @@
                 var routingMode = subscribeCommand.Option("--routing-mode", "Routing mode: 'correlation-filter' or 'sql-filter'", CommandOptionType.SingleValue);
                 var eventTypes = subscribeCommand.Option("--event-type", "Event type full name to add a filtered rule for (can be specified multiple times)", CommandOptionType.MultipleValue);
 
+                routingMode.OnValidate(v => ValidateRoutingModeRequiresEventTypes(routingMode, eventTypes));
+
                 subscribeCommand.OnExecuteAsync(async ct =>
                 {
                     if (routingMode.HasValue())
@@ -412,6 +414,16 @@
             if (string.Equals(queueName, forwardingDestination, StringComparison.OrdinalIgnoreCase))
             {
                 return new ValidationResult("The queue name and the --forward-dlq-to option cannot resolve to the same queue.");
+            }
+
+            return ValidationResult.Success;
+        }
+
+        static ValidationResult ValidateRoutingModeRequiresEventTypes(CommandOption routingMode, CommandOption eventTypes)
+        {
+            if (routingMode.HasValue() && !eventTypes.HasValue())
+            {
+                return new ValidationResult("The --event-type option is required when --routing-mode is specified.");
             }
 
             return ValidationResult.Success;

@@ -142,7 +142,9 @@
                 remainingRules.Add(rule);
             }
 
-            if (remainingRules.Count == 0)
+            var hasOnlyDefaultRule = remainingRules.Count == 1 && remainingRules[0].Name == "$default";
+
+            if (remainingRules.Count == 0 || hasOnlyDefaultRule)
             {
                 await client.DeleteSubscriptionAsync(topicNameToUse, subscriptionNameToUse).ConfigureAwait(false);
                 Console.WriteLine($"Subscription '{subscriptionNameToUse}' deleted (no rules remain).");
