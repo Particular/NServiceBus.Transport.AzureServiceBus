@@ -23,7 +23,7 @@ public sealed class FallbackTopicModeAttribute : ValidationAttribute
             null or TopicRoutingMode.NotMultiplexed =>
                 new ValidationResult(
                     $"'{validationContext.MemberName}' must be either '{TopicRoutingMode.CorrelationFilter}' or '{TopicRoutingMode.SqlFilter}'.",
-                    [validationContext.MemberName]),
+                    validationContext.MemberName is not null ? [validationContext.MemberName] : []),
             _ => ValidationResult.Success,
         };
 }
