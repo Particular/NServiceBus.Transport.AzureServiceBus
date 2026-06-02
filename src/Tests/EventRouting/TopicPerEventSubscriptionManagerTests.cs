@@ -757,8 +757,69 @@ public class TopicPerEventSubscriptionManagerTests
         Approver.Verify(builder.ToString());
     }
 
+    [Test]
+    public async Task Should_inherit_fallback_mode_for_mapped_entry_pointing_at_fallback_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            },
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent3).FullName, ["SharedTopic"] }
+            },
+            QueueNameToSubscriptionNameMap = { { "SubscribingQueue", "MySubscriptionName" } },
+        };
+
+        var builder = new StringBuilder();
+        var client = new RecordingServiceBusClient(builder);
+        var administrationClient = new RecordingServiceBusAdministrationClient(builder);
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = client,
+            AdministrationClient = administrationClient
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent3))], new ContextBag());
+
+        Approver.Verify(builder.ToString());
+    }
+
+    [Test]
+    public void Should_keep_explicit_subscription_mode_when_entry_topic_matches_fallback()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            },
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent3).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.NotMultiplexed)] }
+            }
+        };
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = new RecordingServiceBusClient(new StringBuilder()),
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        Assert.DoesNotThrowAsync(async () =>
+            await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent3))], new ContextBag()));
+    }
+
     class MyEvent1;
     class MyEvent2;
     class VeryLongEventTypeNameThatShouldGenerateAHashedRuleNameForDeletionPath;
     interface IMyEvent;
+    class MyEvent3;
 }

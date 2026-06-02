@@ -93,6 +93,79 @@ public class TopicPerEventTopologyTests
     }
 
     [Test]
+    public void Should_default_routing_mode_to_fallback_for_mapped_event_pointing_at_fallback_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            },
+            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, "SharedTopic" } }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.That(topology.GetTopicRoutingMode(typeof(MyEvent).FullName!), Is.EqualTo(TopicRoutingMode.CorrelationFilter));
+    }
+
+    [Test]
+    public void Should_default_routing_mode_to_fallback_for_mapped_event_pointing_at_fallback_topic_with_sql_filter()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.SqlFilter
+            },
+            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, "SharedTopic" } }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.That(topology.GetTopicRoutingMode(typeof(MyEvent).FullName!), Is.EqualTo(TopicRoutingMode.SqlFilter));
+    }
+
+    [Test]
+    public void Should_keep_explicit_routing_options_for_mapped_event_pointing_at_fallback_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            },
+            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, "SharedTopic" } },
+            RoutingOptionsMap = { { typeof(MyEvent).FullName!, new RoutingOptions { Mode = TopicRoutingMode.NotMultiplexed } } }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.That(topology.GetTopicRoutingMode(typeof(MyEvent).FullName!), Is.EqualTo(TopicRoutingMode.NotMultiplexed));
+    }
+
+    [Test]
+    public void Should_default_to_not_multiplexed_for_mapped_event_pointing_at_unrelated_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            },
+            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, "OtherTopic" } }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.That(topology.GetTopicRoutingMode(typeof(MyEvent).FullName!), Is.EqualTo(TopicRoutingMode.NotMultiplexed));
+    }
+
+    [Test]
     public void Should_route_unmapped_events_to_fallback_topic()
     {
         var topologyOptions = new TopologyOptions

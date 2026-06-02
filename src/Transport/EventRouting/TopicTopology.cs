@@ -117,9 +117,15 @@ public abstract partial class TopicTopology
             return options.Mode.Value;
         }
 
-        if (!Options.PublishedEventToTopicsMap.ContainsKey(eventTypeFullName) && Options.FallbackTopic is { Mode: not null } fallbackTopic)
+        if (Options.FallbackTopic is { Mode: not null, TopicName: { Length: > 0 } fallbackTopicName } fallbackTopic)
         {
-            return fallbackTopic.Mode.Value;
+            // Unmapped events use the fallback topic; mapped events whose publish destination
+            // resolves to the fallback topic also use its mode unless explicitly overridden above.
+            if (!Options.PublishedEventToTopicsMap.ContainsKey(eventTypeFullName) ||
+                string.Equals(GetPublishDestinationCore(eventTypeFullName), fallbackTopicName, StringComparison.Ordinal))
+            {
+                return fallbackTopic.Mode.Value;
+            }
         }
 
         return TopicRoutingMode.NotMultiplexed;

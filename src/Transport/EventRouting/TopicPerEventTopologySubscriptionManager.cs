@@ -115,7 +115,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             foreach (var entry in entries)
             {
                 var topicName = entry.Topic;
-                var effectiveRoutingMode = NormalizeSubscriptionRoutingMode(ResolveTopicRoutingMode(entry.RoutingMode));
+                var effectiveRoutingMode = NormalizeSubscriptionRoutingMode(entry.RoutingMode!.Value);
                 if (topicRoutingModes.TryGetValue(topicName, out var existingMode))
                 {
                     if (existingMode != effectiveRoutingMode)
@@ -153,7 +153,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     HashSet<SubscriptionEntry> MapEventToSubscriptionEntries(string eventTypeFullName)
     {
         var entries = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, GetFallbackOrDefaultEntries(eventTypeFullName));
-        return [.. entries.Select(entry => entry with { Topic = destinationManager.GetDestination(entry.Topic, eventTypeFullName), RoutingMode = ResolveTopicRoutingMode(entry.RoutingMode) })];
+        return [.. entries.Select(entry => entry with { Topic = destinationManager.GetDestination(entry.Topic, eventTypeFullName), RoutingMode = ResolveTopicRoutingMode(entry) })];
     }
 
     HashSet<SubscriptionEntry> GetFallbackOrDefaultEntries(string eventTypeFullName)
@@ -166,7 +166,23 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         return [new SubscriptionEntry(eventTypeFullName)];
     }
 
-    TopicRoutingMode ResolveTopicRoutingMode(TopicRoutingMode? routingMode) => routingMode ?? TopicRoutingMode.NotMultiplexed;
+    TopicRoutingMode ResolveTopicRoutingMode(SubscriptionEntry entry)
+    {
+        if (entry.RoutingMode.HasValue)
+        {
+            return entry.RoutingMode.Value;
+        }
+
+        // Mapped entries whose topic equals the fallback topic name inherit the fallback mode
+        // so that publishing and subscribing stay symmetric with the resolved publish-side mode.
+        if (topologyOptions.FallbackTopic is { Mode: not null, TopicName: { Length: > 0 } fallbackTopicName }
+            && string.Equals(entry.Topic, fallbackTopicName, StringComparison.Ordinal))
+        {
+            return topologyOptions.FallbackTopic.Mode.Value;
+        }
+
+        return TopicRoutingMode.NotMultiplexed;
+    }
 
     static TopicRoutingMode NormalizeSubscriptionRoutingMode(TopicRoutingMode routingMode) =>
         routingMode switch
