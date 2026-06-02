@@ -269,6 +269,30 @@ public class TopicPerEventTopologyTests
         }
     }
 
+    [Test]
+    public void Should_fail_validation_when_fallback_topic_name_with_hierarchy_prefix_exceeds_length_limit()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" },
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = new string('c', 250),
+                Mode = TopicRoutingMode.CorrelationFilter
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(validationException!.Message, Does.Contain("my-hierarchy/"));
+            Assert.That(validationException.Message, Does.Contain("do not comply"));
+        }
+    }
+
     // With the generic host validation can already be done at startup and this allows disabling further validation
     // for advanced scenarios to save startup time.
     [Test]

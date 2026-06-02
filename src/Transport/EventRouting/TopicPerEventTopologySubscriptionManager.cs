@@ -149,7 +149,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     HashSet<SubscriptionEntry> MapEventToSubscriptionEntries(string eventTypeFullName)
     {
         var entries = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, GetFallbackOrDefaultEntries(eventTypeFullName));
-        return [.. entries.Select(entry => entry with { Topic = destinationManager.GetDestination(entry.Topic, eventTypeFullName), RoutingMode = ResolveTopicRoutingMode(entry, eventTypeFullName) })];
+        return [.. entries.Select(entry => entry with { Topic = destinationManager.GetDestination(entry.Topic, eventTypeFullName), RoutingMode = ResolveTopicRoutingMode(entry) })];
     }
 
     HashSet<SubscriptionEntry> GetFallbackOrDefaultEntries(string eventTypeFullName)
@@ -162,7 +162,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         return [new SubscriptionEntry(eventTypeFullName)];
     }
 
-    TopicRoutingMode ResolveTopicRoutingMode(SubscriptionEntry entry, string eventTypeFullName)
+    TopicRoutingMode ResolveTopicRoutingMode(SubscriptionEntry entry)
     {
         if (entry.RoutingMode.HasValue)
         {
