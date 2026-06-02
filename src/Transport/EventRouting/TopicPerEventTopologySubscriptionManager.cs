@@ -149,7 +149,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     HashSet<SubscriptionEntry> MapEventToSubscriptionEntries(string eventTypeFullName)
     {
         var entries = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, GetFallbackOrDefaultEntries(eventTypeFullName));
-        return [.. entries.Select(entry => entry with { Topic = destinationManager.GetDestination(entry.Topic, eventTypeFullName), RoutingMode = ResolveTopicRoutingMode(entry) })];
+        return [.. entries.Select(entry => entry with { Topic = destinationManager.GetDestination(entry.Topic, eventTypeFullName), RoutingMode = ResolveTopicRoutingMode(entry, eventTypeFullName) })];
     }
 
     HashSet<SubscriptionEntry> GetFallbackOrDefaultEntries(string eventTypeFullName)
@@ -162,7 +162,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         return [new SubscriptionEntry(eventTypeFullName)];
     }
 
-    TopicRoutingMode ResolveTopicRoutingMode(SubscriptionEntry entry)
+    TopicRoutingMode ResolveTopicRoutingMode(SubscriptionEntry entry, string eventTypeFullName)
     {
         if (entry.RoutingMode.HasValue)
         {
@@ -171,6 +171,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         // Mapped entries whose topic equals the fallback topic name inherit the fallback mode
         // so that publishing and subscribing stay symmetric with the resolved publish-side mode.
+        // The comparison runs against the raw (pre-hierarchy-prefix) entry topic, matching the
+        // publish-side resolution which also compares against the raw destination name.
         if (topologyOptions.FallbackTopic is { Mode: not null, TopicName: { Length: > 0 } fallbackTopicName }
             && string.Equals(entry.Topic, fallbackTopicName, StringComparison.Ordinal))
         {

@@ -817,6 +817,43 @@ public class TopicPerEventSubscriptionManagerTests
             await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent3))], new ContextBag()));
     }
 
+    [Test]
+    public async Task Should_inherit_fallback_mode_for_mapped_entry_pointing_at_fallback_topic_under_hierarchy()
+    {
+        var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+        var destinationManager = new DestinationManager(hierarchyOptions);
+        var queueName = destinationManager.GetDestination("SubscribingQueue");
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            },
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent3).FullName, ["SharedTopic"] }
+            },
+            QueueNameToSubscriptionNameMap = { { queueName, destinationManager.GetDestination("MySubscriptionName") } },
+            HierarchyNamespaceOptions = hierarchyOptions,
+        };
+
+        var builder = new StringBuilder();
+        var client = new RecordingServiceBusClient(builder);
+        var administrationClient = new RecordingServiceBusAdministrationClient(builder);
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = queueName,
+            Client = client,
+            AdministrationClient = administrationClient
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent3))], new ContextBag());
+
+        Approver.Verify(builder.ToString());
+    }
+
     class MyEvent1;
     class MyEvent2;
     class VeryLongEventTypeNameThatShouldGenerateAHashedRuleNameForDeletionPath;
