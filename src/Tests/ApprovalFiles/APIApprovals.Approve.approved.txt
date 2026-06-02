@@ -151,7 +151,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         public System.Collections.Generic.IDictionary<string, object>? PropertiesToModify { get; }
     }
     [System.AttributeUsage(System.AttributeTargets.Property)]
-    [System.Diagnostics.CodeAnalysis.Experimental("NSBASBEXP0004")]
+    [System.Diagnostics.CodeAnalysis.Experimental("NSBASBEXP0006")]
     public sealed class FallbackTopicModeAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
     {
         public FallbackTopicModeAttribute() { }
