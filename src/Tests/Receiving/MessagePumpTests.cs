@@ -201,10 +201,13 @@ public class MessagePumpTests
         await fakeProcessor.ProcessMessage(secondReceivedMessage, fakeReceiver, cancellationTokenSource.Token);
 
         Assert.That(fakeReceiver.CompletedMessages, Does.Not.Contain(firstReceivedMessage));
-        Assert.That(fakeReceiver.CompletedMessages, Does.Contain(secondReceivedMessage));
-        Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
-        Assert.That(onMessageCalled, Is.EqualTo(1));
-        Assert.That(onErrorCalled, Is.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(fakeReceiver.CompletedMessages, Does.Contain(secondReceivedMessage));
+            Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
+            Assert.That(onMessageCalled, Is.EqualTo(1));
+            Assert.That(onErrorCalled, Is.EqualTo(1));
+        }
     }
 
     [Test]
@@ -327,7 +330,9 @@ public class MessagePumpTests
     public async Task Should_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_not_set()
     {
         var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
         using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
+#pragma warning restore CS0618 // Type or member is obsolete
 
         var fakeClient = new FakeServiceBusClient();
         var fakeReceiver = new FakeReceiver();
@@ -354,7 +359,9 @@ public class MessagePumpTests
     public async Task Should_not_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_false()
     {
         var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
         using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
+#pragma warning restore CS0618 // Type or member is obsolete
 
         var fakeClient = new FakeServiceBusClient();
         var fakeReceiver = new FakeReceiver();
@@ -381,7 +388,9 @@ public class MessagePumpTests
     public async Task Should_not_warn_when_dead_lettering_and_AutoForwardDeadLetteredMessagesToErrorQueue_is_true()
     {
         var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
         using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
+#pragma warning restore CS0618 // Type or member is obsolete
 
         var fakeClient = new FakeServiceBusClient();
         var fakeReceiver = new FakeReceiver();
