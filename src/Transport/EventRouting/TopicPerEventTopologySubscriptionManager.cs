@@ -54,13 +54,53 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             throw new InvalidOperationException(invalidConfig);
         }
 
-        return eventTypes.Length switch
+        if (eventTypes.Length == 0)
         {
-            0 => Task.CompletedTask,
-            1 => SubscribeEvent(eventTypes[0].MessageType.FullName!, cancellationToken),
-            _ => Task.WhenAll([.. eventTypes.Select(eventType =>
-                    SubscribeEvent(eventType.MessageType.FullName!, cancellationToken))])
-        };
+            return Task.CompletedTask;
+        }
+
+        var allEntriesByTopic = (from eventType in eventTypes
+                                 let eventTypeFullName = eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null")
+                                 from entry in MapEventToSubscriptionEntries(eventTypeFullName)
+                                 group (eventTypeFullName, entry) by entry.Topic into g
+                                 select g).ToArray();
+
+        return Task.WhenAll([.. allEntriesByTopic.Select(group =>
+            ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, cancellationToken))]);
+    }
+
+    static async Task ProvisionSubscriptionForTopic(string topicName,
+        (string EventTypeFullName, SubscriptionEntry Entry)[] entries,
+        string subscriptionName,
+        SubscriptionManagerCreationOptions creationOptions,
+        CancellationToken cancellationToken)
+    {
+        if (creationOptions.SetupInfrastructure)
+        {
+            await CreateTopicIfNeeded(topicName, creationOptions, cancellationToken).ConfigureAwait(false);
+        }
+
+        var hasCatchAll = entries.Any(e => e.Entry.RoutingMode == TopicRoutingMode.NotMultiplexed);
+        var filteredEntries = entries.Where(e => e.Entry.RoutingMode is TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlFilter).ToArray();
+
+        if (hasCatchAll)
+        {
+            await CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
+        }
+        else if (filteredEntries.Length > 0)
+        {
+            await CreateSubscriptionWithFalseDefaultRule(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            await CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (filteredEntries.Length > 0)
+        {
+            await Task.WhenAll([.. filteredEntries.Select(e =>
+                AddFilterRule(topicName, subscriptionName, e.EventTypeFullName, e.Entry.RoutingMode!.Value, creationOptions, cancellationToken))]).ConfigureAwait(false);
+        }
     }
 
     string? ValidateSubscriptionConfiguration(MessageMetadata[] eventTypes)
@@ -110,12 +150,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         startupDiagnostic.Add("Manifest-Subscriptions", subscriptions);
     }
 
-    Task SubscribeEvent(string eventTypeFullName, CancellationToken cancellationToken)
-    {
-        var entries = MapEventToSubscriptionEntries(eventTypeFullName);
-        return CreateSubscriptionsForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken);
-    }
-
     HashSet<SubscriptionEntry> MapEventToSubscriptionEntries(string eventTypeFullName)
     {
         var entries = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, GetFallbackOrDefaultEntries(eventTypeFullName));
@@ -153,60 +187,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         return DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken);
     }
 
-    public static Task CreateSubscriptionsForEntries(HashSet<SubscriptionEntry> entries, string eventTypeFullName,
-        string subscriptionName,
-        SubscriptionManagerCreationOptions creationOptions,
-        CancellationToken cancellationToken = default) =>
-        Task.WhenAll([.. entries.Select(entry => CreateSubscriptionForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken))]);
-
-    static async Task CreateSubscriptionForEntry(SubscriptionEntry entry, string eventTypeFullName,
-        string subscriptionName,
-        SubscriptionManagerCreationOptions creationOptions,
-        CancellationToken cancellationToken)
-    {
-        var topicName = entry.Topic;
-
-        if (creationOptions.SetupInfrastructure)
-        {
-            var topicOptions = new CreateTopicOptions(topicName)
-            {
-                EnableBatchedOperations = true,
-                EnablePartitioning = creationOptions.EnablePartitioning,
-                MaxSizeInMegabytes = creationOptions.EntityMaximumSizeInMegabytes
-            };
-
-            try
-            {
-                await creationOptions.AdministrationClient.CreateTopicAsync(topicOptions, cancellationToken).ConfigureAwait(false);
-            }
-            catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
-            {
-            }
-            catch (ServiceBusException sbe) when (sbe.IsTransient)
-            {
-                Logger.Info($"Topic creation for topic {topicOptions.Name} is already in progress");
-            }
-            catch (UnauthorizedAccessException unauthorizedAccessException)
-            {
-                Logger.ErrorFormat("Topic {0} could not be created. Reason: {1}", topicOptions.Name, unauthorizedAccessException.Message);
-                throw;
-            }
-        }
-
-        switch (entry.RoutingMode)
-        {
-            case TopicRoutingMode.NotMultiplexed:
-                await CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
-                break;
-            case TopicRoutingMode.CorrelationFilter:
-            case TopicRoutingMode.SqlFilter:
-                await CreateFilteredSubscription(topicName, subscriptionName, eventTypeFullName, entry.RoutingMode.Value, creationOptions, cancellationToken).ConfigureAwait(false);
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(entry.RoutingMode), entry.RoutingMode, "Unknown routing mode");
-        }
-    }
-
     static async Task CreateCatchAllSubscription(string topicName, string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken)
@@ -239,8 +219,36 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         }
     }
 
-    static async Task CreateFilteredSubscription(string topicName, string subscriptionName, string eventTypeFullName,
-        TopicRoutingMode routingMode,
+    static async Task CreateTopicIfNeeded(string topicName,
+        SubscriptionManagerCreationOptions creationOptions,
+        CancellationToken cancellationToken)
+    {
+        var topicOptions = new CreateTopicOptions(topicName)
+        {
+            EnableBatchedOperations = true,
+            EnablePartitioning = creationOptions.EnablePartitioning,
+            MaxSizeInMegabytes = creationOptions.EntityMaximumSizeInMegabytes
+        };
+
+        try
+        {
+            await creationOptions.AdministrationClient.CreateTopicAsync(topicOptions, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+        {
+        }
+        catch (ServiceBusException sbe) when (sbe.IsTransient)
+        {
+            Logger.Info($"Topic creation for topic {topicOptions.Name} is already in progress");
+        }
+        catch (UnauthorizedAccessException unauthorizedAccessException)
+        {
+            Logger.ErrorFormat("Topic {0} could not be created. Reason: {1}", topicOptions.Name, unauthorizedAccessException.Message);
+            throw;
+        }
+    }
+
+    static async Task CreateSubscriptionWithFalseDefaultRule(string topicName, string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken)
     {
@@ -271,7 +279,13 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             Logger.ErrorFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
             throw;
         }
+    }
 
+    static async Task AddFilterRule(string topicName, string subscriptionName, string eventTypeFullName,
+        TopicRoutingMode routingMode,
+        SubscriptionManagerCreationOptions creationOptions,
+        CancellationToken cancellationToken)
+    {
         var ruleManager = creationOptions.Client.CreateRuleManager(topicName, subscriptionName);
         await using (ruleManager.ConfigureAwait(false))
         {
@@ -302,10 +316,10 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         return $"Rule-{hashString}";
     }
 
-    public static Task DeleteSubscriptionsOrRulesForEntries(HashSet<SubscriptionEntry> entries, string eventTypeFullName,
+    static Task DeleteSubscriptionsOrRulesForEntries(HashSet<SubscriptionEntry> entries, string eventTypeFullName,
         string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         Task.WhenAll([.. entries.Select(entry => DeleteSubscriptionOrRuleForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken))]);
 
     static Task DeleteSubscriptionOrRuleForEntry(SubscriptionEntry entry, string eventTypeFullName,
