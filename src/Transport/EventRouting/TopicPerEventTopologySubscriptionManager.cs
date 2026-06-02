@@ -46,8 +46,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     public override Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
         CancellationToken cancellationToken = default)
     {
-        WriteSubscriptionManifest(eventTypes);
-
         var invalidConfig = ValidateSubscriptionConfiguration(eventTypes);
         if (invalidConfig != null)
         {
@@ -58,6 +56,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         {
             return Task.CompletedTask;
         }
+
+        WriteSubscriptionManifest(eventTypes);
 
         var allEntriesByTopic = (from eventType in eventTypes
                                  let eventTypeFullName = eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null")
