@@ -74,6 +74,25 @@ public class TopicPerEventTopologyTests
     }
 
     [Test]
+    public void Should_validate_subscribed_event_to_topics_map_with_explicit_subscription_entries()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent).FullName, [new SubscriptionEntry(new string('d', 261), TopicRoutingMode.CorrelationFilter)] }
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        Assert.That(validationException!.Message, Does.Contain("SubscribedEventToTopicsMap"));
+        Assert.That(validationException.Message, Does.Contain(new string('d', 261)));
+    }
+
+    [Test]
     public void Should_route_unmapped_events_to_fallback_topic()
     {
         var topologyOptions = new TopologyOptions

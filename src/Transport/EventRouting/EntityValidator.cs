@@ -26,6 +26,15 @@ static partial class EntityValidator
         return ValidateTopics(topicNames, memberName);
     }
 
+    public static ValidationResult? ValidateTopics(Dictionary<string, HashSet<SubscriptionEntry>> typeToTopicNamesMap, string? memberName, HierarchyNamespaceOptions? hierarchyNamespaceOptions = null)
+    {
+        hierarchyNamespaceOptions ??= HierarchyNamespaceOptions.None;
+        var destinationManager = new DestinationManager(hierarchyNamespaceOptions);
+
+        var topicNames = typeToTopicNamesMap.SelectMany(set => set.Value.Select(entry => destinationManager.GetDestination(entry.Topic, set.Key)));
+        return ValidateTopics(topicNames, memberName);
+    }
+
     public static ValidationResult? ValidateTopics(IEnumerable<string> topicNames, string? memberName, HierarchyNamespaceOptions? hierarchyNamespaceOptions = null)
     {
         if (hierarchyNamespaceOptions is not null)
