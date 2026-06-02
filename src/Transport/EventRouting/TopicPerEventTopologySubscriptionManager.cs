@@ -83,17 +83,13 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         var hasCatchAll = entries.Any(e => e.Entry.RoutingMode == TopicRoutingMode.NotMultiplexed);
         var filteredEntries = entries.Where(e => e.Entry.RoutingMode is TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlFilter).ToArray();
 
-        if (hasCatchAll)
+        if (hasCatchAll || filteredEntries.Length == 0)
         {
             await CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
-        }
-        else if (filteredEntries.Length > 0)
-        {
-            await CreateSubscriptionWithFalseDefaultRule(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            await CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
+            await CreateSubscriptionWithFalseDefaultRule(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
         }
 
         if (filteredEntries.Length > 0)
