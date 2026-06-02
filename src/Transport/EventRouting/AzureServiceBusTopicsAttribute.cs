@@ -17,7 +17,7 @@ public sealed class AzureServiceBusTopicsAttribute : ValidationAttribute
     /// <inheritdoc />
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
-        var hierarchyOptions = (validationContext.ObjectInstance as TopologyOptions)?.HierarchyNamespaceOptions ?? HierarchyNamespaceOptions.None;
+        var hierarchyOptions = (validationContext.ObjectInstance as IHierarchyNamespaceAwareOptions)?.HierarchyNamespaceOptions ?? HierarchyNamespaceOptions.None;
         return value switch
         {
             string topic => EntityValidator.ValidateTopics([topic], validationContext.MemberName, hierarchyOptions),

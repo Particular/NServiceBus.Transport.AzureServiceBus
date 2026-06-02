@@ -250,7 +250,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 throw new ArgumentException("The provided topology is not supported.", nameof(value));
             }
 
-            value.Options.HierarchyNamespaceOptions = HierarchyNamespaceOptions;
+            value.Options.HierarchyOptions = HierarchyNamespaceOptions;
             topology = value;
         }
     }
@@ -266,7 +266,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         set
         {
             field = value;
-            Topology.Options.HierarchyNamespaceOptions = field;
+            Topology.Options.HierarchyOptions = field;
         }
     } = HierarchyNamespaceOptions.None;
 

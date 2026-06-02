@@ -102,24 +102,6 @@ public abstract partial class TopicTopology
         {
             throw new ValidationException(validationResult.FailureMessage);
         }
-
-        // The source-generated validator validates FallbackTopic.TopicName through the
-        // [AzureServiceBusTopics] attribute on the nested property, but that path cannot
-        // see the parent's HierarchyNamespaceOptions. A topic name plus its hierarchy
-        // prefix may exceed the 260-char limit even when the bare name does not. Re-run
-        // the same EntityValidator check with the hierarchy options in scope to close
-        // that gap.
-        if (Options.FallbackTopic is { TopicName: { Length: > 0 } topicName })
-        {
-            var topicNameValidation = EntityValidator.ValidateTopics(
-                [topicName],
-                $"{nameof(TopologyOptions.FallbackTopic)}.{nameof(FallbackTopicOptions.TopicName)}",
-                Options.HierarchyNamespaceOptions);
-            if (topicNameValidation is not null && topicNameValidation != ValidationResult.Success)
-            {
-                throw new ValidationException(topicNameValidation.ErrorMessage);
-            }
-        }
     }
 
     internal string GetPublishDestination(Type eventType)

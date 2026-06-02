@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 #pragma warning disable CS0618 // Type or member is obsolete
 [JsonDerivedType(typeof(MigrationTopologyOptions), typeDiscriminator: "migration-topology-options")]
 #pragma warning restore CS0618 // Type or member is obsolete
-public class TopologyOptions
+public class TopologyOptions : IHierarchyNamespaceAwareOptions
 {
     /// <summary>
     /// Maps event type full names to topics under which they are to be published.
@@ -58,7 +58,15 @@ public class TopologyOptions
     /// Shared fallback topic configuration for unmapped events.
     /// </summary>
     [ValidateObjectMembers]
-    public FallbackTopicOptions? FallbackTopic { get; set; }
+    public FallbackTopicOptions? FallbackTopic
+    {
+        get;
+        set
+        {
+            value?.HierarchyOptions = HierarchyOptions;
+            field = value;
+        }
+    }
 
     /// <summary>
     /// Determines if an exception should be thrown when attempting to publish an event not mapped in <see cref="PublishedEventToTopicsMap"/>.
@@ -67,9 +75,20 @@ public class TopologyOptions
     public bool ThrowIfUnmappedEventTypes { get; set; } = false;
 
     [JsonIgnore]
-    internal HierarchyNamespaceOptions HierarchyNamespaceOptions
+    internal HierarchyNamespaceOptions HierarchyOptions
     {
         get;
-        set => field = value ?? HierarchyNamespaceOptions.None;
+        set
+        {
+            field = value ?? HierarchyNamespaceOptions.None;
+            FallbackTopic?.HierarchyOptions = field;
+        }
     } = HierarchyNamespaceOptions.None;
+
+    [JsonIgnore]
+    HierarchyNamespaceOptions IHierarchyNamespaceAwareOptions.HierarchyNamespaceOptions
+    {
+        get => HierarchyOptions;
+        set => HierarchyOptions = value;
+    }
 }

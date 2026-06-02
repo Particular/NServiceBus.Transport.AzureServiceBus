@@ -273,7 +273,7 @@ public class TopicPerEventTopologyTests
     {
         var topologyOptions = new TopologyOptions
         {
-            HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" },
+            HierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" },
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = new string('c', 250),
@@ -382,7 +382,7 @@ public class TopicPerEventTopologyTests
 
         transport.Topology = topology;
 
-        Assert.That(topology.Options.HierarchyNamespaceOptions.HierarchyNamespace, Is.EqualTo("my-hierarchy"));
+        Assert.That(topology.Options.HierarchyOptions.HierarchyNamespace, Is.EqualTo("my-hierarchy"));
     }
 
     class MyEvent;

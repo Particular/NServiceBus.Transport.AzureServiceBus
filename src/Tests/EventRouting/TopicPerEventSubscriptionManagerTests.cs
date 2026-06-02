@@ -3,7 +3,6 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests;
 using System;
 using System.Text;
 using System.Threading.Tasks;
-using EventRouting;
 using Extensibility;
 using NServiceBus.Transport.AzureServiceBus.EventRouting;
 using NUnit.Framework;
@@ -78,7 +77,7 @@ public class TopicPerEventSubscriptionManagerTests
             {
                 { typeof(MyEvent1).FullName, [ destinationManager.GetDestination("MyTopic1"), destinationManager.GetDestination("MyTopic2")] }
             },
-            HierarchyNamespaceOptions = hierarchyOptions,
+            HierarchyOptions = hierarchyOptions,
         };
 
         var builder = new StringBuilder();
@@ -319,7 +318,7 @@ public class TopicPerEventSubscriptionManagerTests
                 { typeof(MyEvent1).FullName, [new SubscriptionEntry(destinationManager.GetDestination("MyTopic"), TopicRoutingMode.CorrelationFilter)] }
             },
             QueueNameToSubscriptionNameMap = { { queueName, destinationManager.GetDestination("MySubscriptionName") } },
-            HierarchyNamespaceOptions = hierarchyOptions,
+            HierarchyOptions = hierarchyOptions,
         };
 
         var builder = new StringBuilder();
@@ -344,7 +343,7 @@ public class TopicPerEventSubscriptionManagerTests
         var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
         var topologyOptions = new TopologyOptions
         {
-            HierarchyNamespaceOptions = hierarchyOptions,
+            HierarchyOptions = hierarchyOptions,
             QueueNameToSubscriptionNameMap = { { "my-hierarchy/SubscribingQueue", "my-hierarchy/MySubscriptionName" } },
         };
 
@@ -373,7 +372,7 @@ public class TopicPerEventSubscriptionManagerTests
         var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
         var topologyOptions = new TopologyOptions
         {
-            HierarchyNamespaceOptions = hierarchyOptions,
+            HierarchyOptions = hierarchyOptions,
             QueueNameToSubscriptionNameMap = { { "my-hierarchy/SubscribingQueue", "my-hierarchy/MySubscriptionName" } },
         };
 
@@ -532,7 +531,7 @@ public class TopicPerEventSubscriptionManagerTests
         var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
         var topologyOptions = new TopologyOptions
         {
-            HierarchyNamespaceOptions = hierarchyOptions,
+            HierarchyOptions = hierarchyOptions,
             SubscribedEventToTopicsMap =
             {
                 { typeof(MyEvent1).FullName, [new SubscriptionEntry("MyTopic", TopicRoutingMode.CorrelationFilter)] }
@@ -703,7 +702,7 @@ public class TopicPerEventSubscriptionManagerTests
         var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
         var topologyOptions = new TopologyOptions
         {
-            HierarchyNamespaceOptions = hierarchyOptions,
+            HierarchyOptions = hierarchyOptions,
             SubscribedEventToTopicsMap =
             {
                 { typeof(IMyEvent).FullName, [new SubscriptionEntry(sharedTopicName, TopicRoutingMode.CorrelationFilter)] }
@@ -733,7 +732,7 @@ public class TopicPerEventSubscriptionManagerTests
         var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
         var topologyOptions = new TopologyOptions
         {
-            HierarchyNamespaceOptions = hierarchyOptions,
+            HierarchyOptions = hierarchyOptions,
             SubscribedEventToTopicsMap =
             {
                 { typeof(MyEvent1).FullName, ["MyTopic"] }
@@ -835,7 +834,7 @@ public class TopicPerEventSubscriptionManagerTests
                 { typeof(MyEvent3).FullName, ["SharedTopic"] }
             },
             QueueNameToSubscriptionNameMap = { { queueName, destinationManager.GetDestination("MySubscriptionName") } },
-            HierarchyNamespaceOptions = hierarchyOptions,
+            HierarchyOptions = hierarchyOptions,
         };
 
         var builder = new StringBuilder();

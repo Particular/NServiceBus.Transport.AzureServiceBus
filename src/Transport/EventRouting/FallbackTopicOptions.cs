@@ -1,10 +1,12 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
+using System.Text.Json.Serialization;
+
 /// <summary>
 /// Configures the shared fallback topic used when an event or subscription has no explicit topic mapping.
 /// When configured, otherwise-unmapped events are routed to this topic instead of being treated as unmapped.
 /// </summary>
-public sealed class FallbackTopicOptions
+public sealed class FallbackTopicOptions : IHierarchyNamespaceAwareOptions
 {
     /// <summary>
     /// Name of the topic used for otherwise-unmapped events and subscriptions.
@@ -19,4 +21,18 @@ public sealed class FallbackTopicOptions
     /// </summary>
     [FallbackTopicMode]
     public TopicRoutingMode? Mode { get; set; }
+
+    [JsonIgnore]
+    internal HierarchyNamespaceOptions HierarchyOptions
+    {
+        get;
+        set => field = value ?? HierarchyNamespaceOptions.None;
+    } = HierarchyNamespaceOptions.None;
+
+    [JsonIgnore]
+    HierarchyNamespaceOptions IHierarchyNamespaceAwareOptions.HierarchyNamespaceOptions
+    {
+        get => HierarchyOptions;
+        set => HierarchyOptions = value;
+    }
 }

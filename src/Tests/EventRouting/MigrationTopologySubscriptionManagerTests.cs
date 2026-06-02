@@ -2,7 +2,6 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
 using System.Text;
 using System.Threading.Tasks;
-using EventRouting;
 using Extensibility;
 using NServiceBus.Transport.AzureServiceBus.EventRouting;
 using NUnit.Framework;
@@ -119,7 +118,7 @@ public class MigrationTopologySubscriptionManagerTests
             EventsToMigrateMap = { typeof(MyEvent1).FullName },
             SubscribedEventToRuleNameMap = { { typeof(MyEvent1).FullName, "MyRuleName" } },
             SubscribedEventToTopicsMap = { { typeof(MyEvent2).FullName, [destinationManager.GetDestination("MyTopic1"), destinationManager.GetDestination("MyTopic2")] } },
-            HierarchyNamespaceOptions = hierarchyOptions
+            HierarchyOptions = hierarchyOptions
         };
 
         var builder = new StringBuilder();
@@ -151,7 +150,7 @@ public class MigrationTopologySubscriptionManagerTests
             EventsToMigrateMap = { typeof(MyEvent1).FullName },
             QueueNameToSubscriptionNameMap = { { "SubscribingQueue", "MySubscriptionName" } },
             SubscribedEventToRuleNameMap = { { typeof(MyEvent1).FullName, "MyRuleName" } },
-            HierarchyNamespaceOptions = hierarchyOptions
+            HierarchyOptions = hierarchyOptions
         };
 
         var builder = new StringBuilder();
@@ -183,7 +182,7 @@ public class MigrationTopologySubscriptionManagerTests
             EventsToMigrateMap = { typeof(MyEvent1).FullName },
             QueueNameToSubscriptionNameMap = { { "my-hierarchy/SubscribingQueue", "MySubscriptionName" } },
             SubscribedEventToRuleNameMap = { { typeof(MyEvent1).FullName, "MyRuleName" } },
-            HierarchyNamespaceOptions = hierarchyOptions
+            HierarchyOptions = hierarchyOptions
         };
 
         var builder = new StringBuilder();
