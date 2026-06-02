@@ -143,7 +143,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             .Select(group => new
             {
                 TopicName = group.Key.Topic,
-                RoutingMode = group.Key.RoutingMode.ToString(),
+                RoutingMode = $"{group.Key.RoutingMode}",
                 MessageTypes = group.Select(x => x.MessageType).ToArray()
             })
             .ToArray();
