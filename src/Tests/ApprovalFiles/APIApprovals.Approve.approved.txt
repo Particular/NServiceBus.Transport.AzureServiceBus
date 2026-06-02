@@ -150,9 +150,17 @@ namespace NServiceBus.Transport.AzureServiceBus
         public string DeadLetterReason { get; }
         public System.Collections.Generic.IDictionary<string, object>? PropertiesToModify { get; }
     }
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    [System.Diagnostics.CodeAnalysis.Experimental("NSBASBEXP0004")]
+    public sealed class FallbackTopicModeAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
+    {
+        public FallbackTopicModeAttribute() { }
+        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) { }
+    }
     public sealed class FallbackTopicOptions
     {
         public FallbackTopicOptions() { }
+        [NServiceBus.Transport.AzureServiceBus.FallbackTopicMode]
         public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode { get; set; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         public string? TopicName { get; set; }

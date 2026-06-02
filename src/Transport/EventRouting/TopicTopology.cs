@@ -102,28 +102,6 @@ public abstract partial class TopicTopology
         {
             throw new ValidationException(validationResult.FailureMessage);
         }
-
-        var fallbackTopicValidationFailure = ValidateFallbackTopic();
-        if (fallbackTopicValidationFailure != null)
-        {
-            throw new ValidationException(fallbackTopicValidationFailure);
-        }
-    }
-
-    string? ValidateFallbackTopic()
-    {
-        if (Options.FallbackTopic is null)
-        {
-            return null;
-        }
-
-        return Options.FallbackTopic.Mode switch
-        {
-            TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlFilter => null,
-            null or TopicRoutingMode.NotMultiplexed =>
-                $"'{nameof(TopologyOptions.FallbackTopic)}.{nameof(FallbackTopicOptions.Mode)}' must be either '{TopicRoutingMode.CorrelationFilter}' or '{TopicRoutingMode.SqlFilter}'.",
-            _ => throw new ArgumentOutOfRangeException()
-        };
     }
 
     internal string GetPublishDestination(Type eventType)

@@ -145,7 +145,9 @@ public class TopicPerEventTopologyTests
 
         var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
 
-        Assert.That(validationException!.Message, Does.Contain("FallbackTopic.Mode"));
+        Assert.That(validationException!.Message, Does.Contain("Mode"));
+        Assert.That(validationException.Message, Does.Contain("CorrelationFilter"));
+        Assert.That(validationException.Message, Does.Contain("SqlFilter"));
     }
 
     [Test]

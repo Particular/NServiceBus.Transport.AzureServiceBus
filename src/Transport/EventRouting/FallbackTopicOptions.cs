@@ -17,5 +17,6 @@ public sealed class FallbackTopicOptions
     /// When a fallback topic is configured, this also means <see cref="TopologyOptions.ThrowIfUnmappedEventTypes"/>
     /// no longer throws for events resolved through this fallback topic.
     /// </summary>
+    [FallbackTopicMode]
     public TopicRoutingMode? Mode { get; set; }
 }
