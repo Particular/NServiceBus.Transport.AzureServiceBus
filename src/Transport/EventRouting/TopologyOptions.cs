@@ -17,7 +17,8 @@ public class TopologyOptions : IHierarchyNamespaceAwareOptions
     /// Maps event type full names to topics under which they are to be published.
     /// </summary>
     [AzureServiceBusTopics]
-    public Dictionary<string, string> PublishedEventToTopicsMap
+    [JsonConverter(typeof(PublishedEventToTopicsMapConverter))]
+    public Dictionary<string, PublishEntry> PublishedEventToTopicsMap
     {
         get;
         init => field = value ?? [];
@@ -40,15 +41,6 @@ public class TopologyOptions : IHierarchyNamespaceAwareOptions
     [AzureServiceBusQueues]
     [AzureServiceBusSubscriptions]
     public Dictionary<string, string> QueueNameToSubscriptionNameMap
-    {
-        get;
-        init => field = value ?? [];
-    } = [];
-
-    /// <summary>
-    /// Maps event type full names to routing options.
-    /// </summary>
-    public Dictionary<string, RoutingOptions> RoutingOptionsMap
     {
         get;
         init => field = value ?? [];

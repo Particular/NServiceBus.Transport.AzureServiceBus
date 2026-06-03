@@ -137,8 +137,7 @@ public class TopicPerEventTopologyTests
                 TopicName = "SharedTopic",
                 Mode = TopicRoutingMode.CorrelationFilter
             },
-            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, "SharedTopic" } },
-            RoutingOptionsMap = { { typeof(MyEvent).FullName!, new RoutingOptions { Mode = TopicRoutingMode.NotMultiplexed } } }
+            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, new PublishEntry("SharedTopic", TopicRoutingMode.NotMultiplexed) } }
         };
 
         var topology = TopicTopology.FromOptions(topologyOptions);

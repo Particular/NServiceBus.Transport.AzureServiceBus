@@ -57,11 +57,10 @@ public sealed class TopicPerEventTopology : TopicTopology
         ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
-        Options.PublishedEventToTopicsMap[eventType.FullName] = topicName;
-
         var routingOptions = new RoutingOptions();
         configure(routingOptions);
-        Options.RoutingOptionsMap[eventType.FullName] = routingOptions;
+
+        Options.PublishedEventToTopicsMap[eventType.FullName] = new PublishEntry(topicName, routingOptions.Mode);
     }
 
     /// <summary>
@@ -172,9 +171,9 @@ public sealed class TopicPerEventTopology : TopicTopology
     /// <inheritdoc />
     protected override string GetPublishDestinationCore(string eventTypeFullName)
     {
-        if (Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out string? topic))
+        if (Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entry))
         {
-            return topic;
+            return entry.Topic;
         }
 
         if (Options.FallbackTopic?.TopicName is { Length: > 0 } fallbackTopicName)

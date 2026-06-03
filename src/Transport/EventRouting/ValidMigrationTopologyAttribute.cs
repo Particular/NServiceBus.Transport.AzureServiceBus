@@ -31,7 +31,7 @@ public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
     {
         var builder = new ValidateOptionsResultBuilder();
 
-        foreach ((string? eventTypeFullName, string? topic) in options.PublishedEventToTopicsMap)
+        foreach ((string? eventTypeFullName, var entry) in options.PublishedEventToTopicsMap)
         {
             if (options.EventsToMigrateMap.Contains(eventTypeFullName))
             {
@@ -40,10 +40,10 @@ public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
                     [nameof(options.PublishedEventToTopicsMap)]));
             }
 
-            if (topic.Equals(options.TopicToPublishTo))
+            if (entry.Topic.Equals(options.TopicToPublishTo))
             {
                 builder.AddResult(new ValidationResult(
-                    $"The topic to publish '{topic}' for '{eventTypeFullName}' cannot be the same as the topic to publish to '{options.TopicToPublishTo}' for the migration topology.",
+                    $"The topic to publish '{entry.Topic}' for '{eventTypeFullName}' cannot be the same as the topic to publish to '{options.TopicToPublishTo}' for the migration topology.",
                     [nameof(options.TopicToPublishTo), nameof(options.PublishedEventToTopicsMap)]));
             }
         }

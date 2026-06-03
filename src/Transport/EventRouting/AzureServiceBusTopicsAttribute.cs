@@ -24,6 +24,7 @@ public sealed class AzureServiceBusTopicsAttribute : ValidationAttribute
             Dictionary<string, string> dic => EntityValidator.ValidateTopics(dic, validationContext.MemberName, hierarchyOptions),
             Dictionary<string, HashSet<string>> set => EntityValidator.ValidateTopics(set, validationContext.MemberName, hierarchyOptions),
             Dictionary<string, HashSet<SubscriptionEntry>> set => EntityValidator.ValidateTopics(set, validationContext.MemberName, hierarchyOptions),
+            Dictionary<string, PublishEntry> dic => EntityValidator.ValidateTopics(dic, validationContext.MemberName, hierarchyOptions),
             _ => ValidationResult.Success,
         };
     }

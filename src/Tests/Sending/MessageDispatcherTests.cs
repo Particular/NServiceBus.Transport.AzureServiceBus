@@ -1118,8 +1118,7 @@ public class MessageDispatcherTests
             new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
-                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.CorrelationFilter) } }
             }));
 
         var operation =
@@ -1158,8 +1157,7 @@ public class MessageDispatcherTests
             new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
-                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.NotMultiplexed } } }
+                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.NotMultiplexed) } }
             }));
 
         var operation =
@@ -1196,8 +1194,7 @@ public class MessageDispatcherTests
             new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
-                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.SqlFilter } } }
+                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.SqlFilter) } }
             }));
 
         var operation =
@@ -1234,8 +1231,7 @@ public class MessageDispatcherTests
             new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
-                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.CorrelationFilter) } }
             }));
 
         var operation =
@@ -1269,8 +1265,7 @@ public class MessageDispatcherTests
             new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
-                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.CorrelationFilter) } }
             }));
 
         var operation =
@@ -1395,8 +1390,7 @@ public class MessageDispatcherTests
             new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
-                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.CorrelationFilter) } }
             }));
 
         var operation =
@@ -1429,8 +1423,7 @@ public class MessageDispatcherTests
             new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
-                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                RoutingOptionsMap = { { typeof(SomeEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.CorrelationFilter) } }
             }));
 
         var operation =
@@ -1464,8 +1457,7 @@ public class MessageDispatcherTests
             new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
-                PublishedEventToTopicsMap = { { typeof(SomeImplementedEvent).FullName, "sometopic" } },
-                RoutingOptionsMap = { { typeof(SomeImplementedEvent).FullName, new RoutingOptions { Mode = TopicRoutingMode.CorrelationFilter } } }
+                PublishedEventToTopicsMap = { { typeof(SomeImplementedEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.CorrelationFilter) } }
             }));
 
         var proxyType = $"{typeof(SomeImplementedEvent).FullName}__impl";
