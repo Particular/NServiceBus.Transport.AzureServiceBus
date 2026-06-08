@@ -156,6 +156,24 @@ public sealed class TopicPerEventTopology : TopicTopology
     }
 
     /// <summary>
+    /// Instructs the topology to use the provided topic as a fallback for events and subscriptions that have no explicit mapping.
+    /// </summary>
+    /// <param name="topicName">Name of the fallback topic.</param>
+    /// <param name="mode">Routing mode for the fallback topic. Must be <see cref="TopicRoutingMode.CorrelationFilter"/> or <see cref="TopicRoutingMode.SqlFilter"/>.</param>
+    /// <remarks>Calling this method overrides any fallback topic previously set via <see cref="TopologyOptions.FallbackTopic"/>.</remarks>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
+    public void UseFallbackTopic(string topicName, TopicRoutingMode mode)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
+
+        Options.FallbackTopic = new FallbackTopicOptions
+        {
+            TopicName = topicName,
+            Mode = mode
+        };
+    }
+
+    /// <summary>
     /// Instructs the topology to use provided subscription name when subscribing to events that are to be forwarded to the given queue.
     /// </summary>
     /// <param name="queueName">Queue name for which the default subscription name is to be overridden.</param>

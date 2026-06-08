@@ -277,6 +277,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         public void SubscribeTo<TEventType>(string topicName, System.Action<NServiceBus.Transport.AzureServiceBus.RoutingOptions> configure) { }
         public void SubscribeTo<TEventType, TEventTypeImplementation>()
             where TEventTypeImplementation : TEventType { }
+        public void UseFallbackTopic(string topicName, NServiceBus.Transport.AzureServiceBus.TopicRoutingMode mode) { }
     }
     public enum TopicRoutingMode
     {
