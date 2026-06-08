@@ -13,12 +13,23 @@ using Routing;
 [TestFixture]
 public class MessageDispatcherTests
 {
+    static MessageDispatcher CreateDispatcher(
+        ServiceBusClient client,
+        TopicTopology topology,
+        bool throwOnMissingTopic = false,
+        DestinationManager destinationManager = null) =>
+        new(client,
+            new MessageSenderRegistry(),
+            topology,
+            destinationManager ?? new DestinationManager(HierarchyNamespaceOptions.None),
+            throwOnMissingTopic);
+
     [Test]
     public async Task Should_dispatch_unicast_isolated_dispatches_individually()
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()));
 
         var operation1 =
             new TransportOperation(new OutgoingMessage("SomeId",
@@ -52,7 +63,7 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()));
 
         var sender = new FakeSender
         {
@@ -76,9 +87,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
@@ -117,7 +127,7 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()
         {
             PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
         }));
@@ -154,7 +164,7 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()
         {
             PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
         }), throwOnMissingTopic: true);
@@ -190,7 +200,7 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()));
 
         var operation1 =
             new TransportOperation(new OutgoingMessage("SomeId",
@@ -228,9 +238,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap =
@@ -272,7 +281,7 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()));
 
         var operation1 =
             new TransportOperation(new OutgoingMessage("SomeId",
@@ -308,9 +317,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
@@ -350,7 +358,7 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()));
 
         var operation1 =
             new TransportOperation(new OutgoingMessage("SomeId",
@@ -398,9 +406,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap =
@@ -455,9 +462,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap =
@@ -539,7 +545,7 @@ public class MessageDispatcherTests
         defaultClient.Senders["SomeDestination"] = defaultSender;
         var transactionalClient = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+        var dispatcher = CreateDispatcher(defaultClient, TopicTopology.FromOptions(new TopologyOptions()));
 
         var operation1 =
             new TransportOperation(new OutgoingMessage("SomeId",
@@ -591,7 +597,7 @@ public class MessageDispatcherTests
             return false;
         };
 
-        var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+        var dispatcher = CreateDispatcher(defaultClient, TopicTopology.FromOptions(new TopologyOptions()));
 
         var nrOfMessages = 150;
         var operations = new List<TransportOperation>(nrOfMessages);
@@ -635,7 +641,7 @@ public class MessageDispatcherTests
             return false;
         };
 
-        var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+        var dispatcher = CreateDispatcher(defaultClient, TopicTopology.FromOptions(new TopologyOptions()));
 
         var operations = new List<TransportOperation>(200);
         for (int i = 0; i < 200; i++)
@@ -672,7 +678,7 @@ public class MessageDispatcherTests
 
         defaultSender.TryAdd = msg => false;
 
-        var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+        var dispatcher = CreateDispatcher(defaultClient, TopicTopology.FromOptions(new TopologyOptions()));
 
         var operations = new List<TransportOperation>(5);
         for (int i = 0; i < 5; i++)
@@ -710,7 +716,7 @@ public class MessageDispatcherTests
 
         defaultSender.TryAdd = msg => false;
 
-        var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+        var dispatcher = CreateDispatcher(defaultClient, TopicTopology.FromOptions(new TopologyOptions()));
 
         var operations = new List<TransportOperation>(5);
         for (int i = 0; i < 5; i++)
@@ -746,7 +752,7 @@ public class MessageDispatcherTests
 
         defaultSender.TryAdd = msg => false;
 
-        var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), throwOnMissingTopic: true);
+        var dispatcher = CreateDispatcher(defaultClient, TopicTopology.FromOptions(new TopologyOptions()), throwOnMissingTopic: true);
 
         var operations = new List<TransportOperation>(5);
         for (int i = 0; i < 5; i++)
@@ -786,7 +792,7 @@ public class MessageDispatcherTests
             };
         };
 
-        var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+        var dispatcher = CreateDispatcher(defaultClient, TopicTopology.FromOptions(new TopologyOptions()));
 
         var operations = new List<TransportOperation>(5);
         for (int i = 0; i < 10; i++)
@@ -819,7 +825,7 @@ public class MessageDispatcherTests
         var transactionalSender = new FakeSender();
         transactionalClient.Senders["SomeDestination"] = transactionalSender;
 
-        var dispatcher = new MessageDispatcher(defaultClient, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()));
+        var dispatcher = CreateDispatcher(defaultClient, TopicTopology.FromOptions(new TopologyOptions()));
 
         var operation1 =
             new TransportOperation(new OutgoingMessage("SomeId",
@@ -853,7 +859,7 @@ public class MessageDispatcherTests
         var client = new FakeServiceBusClient();
         var destinationManager = GetDestinationManager("SomeHierarchyNamespace");
 
-        var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), destinationManager, throwOnMissingTopic: false);
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()), destinationManager: destinationManager);
 
         var operation1 =
             new TransportOperation(new OutgoingMessage("SomeId",
@@ -904,14 +910,12 @@ public class MessageDispatcherTests
         var client = new FakeServiceBusClient();
         var destinationManager = GetDestinationManager("SomeHierarchyNamespace");
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
-            }),
-            destinationManager, throwOnMissingTopic: false);
+            }), destinationManager: destinationManager);
 
         var operation1 =
             new TransportOperation(new OutgoingMessage("SomeId",
@@ -966,7 +970,7 @@ public class MessageDispatcherTests
             options.ExcludeMessageType<ISomeCommandInterface>();
         });
 
-        var dispatcher = new MessageDispatcher(client, new MessageSenderRegistry(), TopicTopology.FromOptions(new TopologyOptions()), destinationManager, throwOnMissingTopic: false);
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()), destinationManager: destinationManager);
 
         var operation1 =
             new TransportOperation(new OutgoingMessage("SomeId",
@@ -1024,14 +1028,12 @@ public class MessageDispatcherTests
             options.ExcludeMessageType<ISomeEventInterface>();
         });
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" }, { typeof(SomeOtherEvent).FullName, "sometopic" }, { typeof(SomeImplementedEvent).FullName, "sometopic" } }
-            }),
-            destinationManager, throwOnMissingTopic: false);
+            }), destinationManager: destinationManager);
 
         var operation1 =
             new TransportOperation(new OutgoingMessage("SomeId",
@@ -1113,9 +1115,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.CorrelationFilter) } }
@@ -1152,9 +1153,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.NotMultiplexed) } }
@@ -1189,9 +1189,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.SqlFilter) } }
@@ -1226,9 +1225,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.CorrelationFilter) } }
@@ -1260,9 +1258,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.CorrelationFilter) } }
@@ -1294,9 +1291,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.CorrelationFilter }
@@ -1324,9 +1320,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.SqlFilter }
@@ -1354,9 +1349,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
@@ -1385,9 +1379,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.CorrelationFilter) } }
@@ -1418,9 +1411,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.CorrelationFilter) } }
@@ -1452,9 +1444,8 @@ public class MessageDispatcherTests
     {
         var client = new FakeServiceBusClient();
 
-        var dispatcher = new MessageDispatcher(
+        var dispatcher = CreateDispatcher(
             client,
-            new MessageSenderRegistry(),
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeImplementedEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.CorrelationFilter) } }
