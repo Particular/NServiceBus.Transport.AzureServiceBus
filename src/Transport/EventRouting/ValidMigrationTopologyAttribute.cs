@@ -65,6 +65,13 @@ public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
                         $"The topic to subscribe '{entry.Topic}' for '{eventTypeFullName}' cannot be the same as the topic to subscribe to '{options.TopicToSubscribeOn}' for the migration topology.",
                         [nameof(options.TopicToSubscribeOn), nameof(options.SubscribedEventToTopicsMap)]));
                 }
+
+                if (entry.RoutingMode.HasValue)
+                {
+                    builder.AddResult(new ValidationResult(
+                        $"Subscription entry for event '{eventTypeFullName}' has a routing mode of '{entry.RoutingMode}' but the migration topology does not support explicit routing modes. Use the topic-per-event topology instead.",
+                        [nameof(options.SubscribedEventToTopicsMap)]));
+                }
             }
         }
 

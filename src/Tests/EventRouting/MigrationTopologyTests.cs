@@ -152,6 +152,28 @@ public class MigrationTopologyTests
         Approver.Verify(builder.ToString());
     }
 
+    [Test]
+    public void Should_reject_explicit_routing_mode_on_subscription_entry()
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        var topologyOptions = new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
+        {
+            TopicToPublishTo = "TopicToPublishTo",
+            TopicToSubscribeOn = "TopicToSubscribeOn",
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent).FullName, [new SubscriptionEntry("MyTopic", TopicRoutingMode.CorrelationFilter)] }
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        Assert.That(validationException.Message, Does.Contain("does not support explicit routing modes"));
+    }
+
     class MyEvent;
     class MyEventMappedTwice;
 }
