@@ -853,6 +853,37 @@ public class TopicPerEventSubscriptionManagerTests
         Approver.Verify(builder.ToString());
     }
 
+    [Test]
+    public async Task Should_strip_hierarchy_prefix_from_hierarchical_subscription_name_override()
+    {
+        var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+        var destinationManager = new DestinationManager(hierarchyOptions);
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, [destinationManager.GetDestination("MyTopic1")] }
+            },
+            QueueNameToSubscriptionNameMap = { { "my-hierarchy/SubscribingQueue", "my-hierarchy/MySubscriptionName" } },
+            HierarchyOptions = hierarchyOptions,
+        };
+
+        var builder = new StringBuilder();
+        var client = new RecordingServiceBusClient(builder);
+        var administrationClient = new RecordingServiceBusAdministrationClient(builder);
+
+        var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "my-hierarchy/SubscribingQueue",
+            Client = client,
+            AdministrationClient = administrationClient
+        }, topologyOptions, new StartupDiagnosticEntries());
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        Approver.Verify(builder.ToString());
+    }
+
     class MyEvent1;
     class MyEvent2;
     class VeryLongEventTypeNameThatShouldGenerateAHashedRuleNameForDeletionPath;
