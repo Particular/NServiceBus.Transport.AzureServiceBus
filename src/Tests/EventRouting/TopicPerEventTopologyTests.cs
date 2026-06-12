@@ -4,7 +4,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Threading.Tasks;
-using EventRouting;
+using NServiceBus.Transport.AzureServiceBus.EventRouting;
 using NUnit.Framework;
 using Particular.Approvals;
 using Unicast.Messages;
@@ -70,6 +70,225 @@ public class TopicPerEventTopologyTests
         var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
 
         Approver.Verify(validationException.Message);
+    }
+
+    [Test]
+    public void Should_validate_subscribed_event_to_topics_map_with_explicit_subscription_entries()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent).FullName, [new SubscriptionEntry(new string('d', 261), TopicRoutingMode.CorrelationFilter)] }
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        Assert.That(validationException!.Message, Does.Contain("SubscribedEventToTopicsMap"));
+        Assert.That(validationException.Message, Does.Contain(new string('d', 261)));
+    }
+
+    [Test]
+    public void Should_default_routing_mode_to_fallback_for_mapped_event_pointing_at_fallback_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            },
+            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, "SharedTopic" } }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.That(topology.GetTopicRoutingMode(typeof(MyEvent).FullName!), Is.EqualTo(TopicRoutingMode.CorrelationFilter));
+    }
+
+    [Test]
+    public void Should_default_routing_mode_to_fallback_for_mapped_event_pointing_at_fallback_topic_with_sql_filter()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.SqlLikeFilter
+            },
+            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, "SharedTopic" } }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.That(topology.GetTopicRoutingMode(typeof(MyEvent).FullName!), Is.EqualTo(TopicRoutingMode.SqlLikeFilter));
+    }
+
+    [Test]
+    public void Should_keep_explicit_routing_options_for_mapped_event_pointing_at_fallback_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            },
+            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, new PublishEntry("SharedTopic", TopicRoutingMode.NotMultiplexed) } }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.That(topology.GetTopicRoutingMode(typeof(MyEvent).FullName!), Is.EqualTo(TopicRoutingMode.NotMultiplexed));
+    }
+
+    [Test]
+    public void Should_default_to_not_multiplexed_for_mapped_event_pointing_at_unrelated_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            },
+            PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, "OtherTopic" } }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.That(topology.GetTopicRoutingMode(typeof(MyEvent).FullName!), Is.EqualTo(TopicRoutingMode.NotMultiplexed));
+    }
+
+    [Test]
+    public void Should_route_unmapped_events_to_fallback_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.CorrelationFilter
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var result = topology.GetPublishDestination(typeof(MyEvent));
+
+        Assert.That(result, Is.EqualTo("SharedTopic"));
+    }
+
+    [Test]
+    public void Should_not_throw_for_unmapped_event_when_fallback_topic_is_configured_and_throw_if_unmapped_enabled()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            ThrowIfUnmappedEventTypes = true,
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.SqlLikeFilter
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        Assert.That(topology.GetPublishDestination(typeof(MyEvent)), Is.EqualTo("SharedTopic"));
+    }
+
+    [Test]
+    public void Should_fail_validation_when_fallback_topic_mode_is_not_supported()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "SharedTopic",
+                Mode = TopicRoutingMode.NotMultiplexed
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        Assert.That(validationException!.Message, Does.Contain("Mode"));
+        Assert.That(validationException.Message, Does.Contain("CorrelationFilter"));
+        Assert.That(validationException.Message, Does.Contain("SqlLikeFilter"));
+    }
+
+    [Test]
+    public void Should_fail_validation_when_fallback_topic_name_is_too_long()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = new string('c', 261),
+                Mode = TopicRoutingMode.CorrelationFilter
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(validationException!.Message, Does.Contain("TopicName"));
+            Assert.That(validationException.Message, Does.Contain(new string('c', 261)));
+        }
+    }
+
+    [Test]
+    public void Should_fail_validation_when_fallback_topic_name_contains_invalid_characters()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = "bad topic name!",
+                Mode = TopicRoutingMode.CorrelationFilter
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(validationException!.Message, Does.Contain("TopicName"));
+            Assert.That(validationException.Message, Does.Contain("bad topic name!"));
+        }
+    }
+
+    [Test]
+    public void Should_fail_validation_when_fallback_topic_name_with_hierarchy_prefix_exceeds_length_limit()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            HierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" },
+            FallbackTopic = new FallbackTopicOptions
+            {
+                TopicName = new string('c', 250),
+                Mode = TopicRoutingMode.CorrelationFilter
+            }
+        };
+
+        var topology = TopicTopology.FromOptions(topologyOptions);
+
+        var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(validationException!.Message, Does.Contain("my-hierarchy/"));
+            Assert.That(validationException.Message, Does.Contain("do not comply"));
+        }
     }
 
     // With the generic host validation can already be done at startup and this allows disabling further validation
@@ -148,6 +367,21 @@ public class TopicPerEventTopologyTests
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent))], new Extensibility.ContextBag());
 
         Approver.Verify(builder.ToString());
+    }
+
+    [Test]
+    public void Should_preserve_hierarchy_options_when_topology_is_assigned_after_transport_hierarchy_configuration()
+    {
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
+        {
+            HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" }
+        };
+
+        var topology = TopicTopology.Default;
+
+        transport.Topology = topology;
+
+        Assert.That(topology.Options.HierarchyOptions.HierarchyNamespace, Is.EqualTo("my-hierarchy"));
     }
 
     class MyEvent;

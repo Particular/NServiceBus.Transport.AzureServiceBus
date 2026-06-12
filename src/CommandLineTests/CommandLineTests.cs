@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Linq;
     using System.Runtime.InteropServices;
     using System.Threading.Tasks;
     using Azure.Messaging.ServiceBus;
@@ -402,6 +403,105 @@
         }
 
         [Test]
+        public async Task Subscribe_endpoint_with_correlation_filter()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            await Execute($"endpoint create {EndpointName}");
+            await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode correlation-filter --event-type MyNamespace.MyMessage1 --event-type MyNamespace.MyMessage2");
+
+            await VerifyQueue(QueueName);
+            await VerifyTopic(TopicName);
+            await VerifyFilteredSubscriptionWithCorrelationRules(TopicName, SubscriptionName, QueueName,
+            [
+                "MyNamespace.MyMessage1",
+                "MyNamespace.MyMessage2"
+            ]);
+        }
+
+        [Test]
+        public async Task Subscribe_endpoint_with_sql_filter()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            await Execute($"endpoint create {EndpointName}");
+            await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode sql-filter --event-type MyNamespace.MyMessage1 --event-type MyNamespace.MyMessage2");
+
+            await VerifyQueue(QueueName);
+            await VerifyTopic(TopicName);
+            await VerifyFilteredSubscriptionWithSqlRules(TopicName, SubscriptionName, QueueName,
+            [
+                "MyNamespace.MyMessage1",
+                "MyNamespace.MyMessage2"
+            ]);
+        }
+
+        [Test]
+        public async Task Subscribe_endpoint_with_correlation_filter_adds_rules_to_existing_subscription()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            await Execute($"endpoint create {EndpointName}");
+            await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode correlation-filter --event-type MyNamespace.MyMessage1");
+            await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode correlation-filter --event-type MyNamespace.MyMessage2");
+
+            await VerifyFilteredSubscriptionWithCorrelationRules(TopicName, SubscriptionName, QueueName,
+            [
+                "MyNamespace.MyMessage1",
+                "MyNamespace.MyMessage2"
+            ]);
+        }
+
+        [Test]
+        public async Task Unsubscribe_endpoint_with_correlation_filter_removes_rules_and_cleans_up_subscription()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            await Execute($"endpoint create {EndpointName}");
+            await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode correlation-filter --event-type MyNamespace.MyMessage1 --event-type MyNamespace.MyMessage2");
+            await Execute($"endpoint unsubscribe {EndpointName} {TopicName} --event-type MyNamespace.MyMessage1 --event-type MyNamespace.MyMessage2");
+
+            await VerifySubscriptionDoesNotExist(TopicName, SubscriptionName);
+        }
+
+        [Test]
+        public async Task Unsubscribe_endpoint_with_correlation_filter_leaves_subscription_when_rules_remain()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            await Execute($"endpoint create {EndpointName}");
+            await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode correlation-filter --event-type MyNamespace.MyMessage1 --event-type MyNamespace.MyMessage2");
+            await Execute($"endpoint unsubscribe {EndpointName} {TopicName} --event-type MyNamespace.MyMessage1");
+
+            await VerifyFilteredSubscriptionWithCorrelationRules(TopicName, SubscriptionName, QueueName,
+            [
+                "MyNamespace.MyMessage2"
+            ]);
+        }
+
+        [Test]
+        public async Task Subscribe_endpoint_with_sql_filter_adds_rules_to_existing_subscription()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            await Execute($"endpoint create {EndpointName}");
+            await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode sql-filter --event-type MyNamespace.MyMessage1");
+            await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode sql-filter --event-type MyNamespace.MyMessage2");
+
+            await VerifyFilteredSubscriptionWithSqlRules(TopicName, SubscriptionName, QueueName,
+            [
+                "MyNamespace.MyMessage1",
+                "MyNamespace.MyMessage2"
+            ]);
+        }
+
+        [Test]
         public async Task Subscribe_hierarchy_namespace_endpoint()
         {
             var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
@@ -499,6 +599,30 @@
             await VerifyTopic(topicName);
             await VerifyTopic(hierarchyTopicName);
             await VerifySingleTopicSubscription(hierarchyTopicName, SubscriptionName, queueName);
+        }
+
+        [Test]
+        public async Task Subscribe_endpoint_with_correlation_filter_validates_event_type_is_required()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode correlation-filter");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The --event-type option is required when --routing-mode is specified."));
+            }
+        }
+
+        [Test]
+        public async Task Subscribe_endpoint_with_sql_filter_validates_event_type_is_required()
+        {
+            var (_, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode sql-filter");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("The --event-type option is required when --routing-mode is specified."));
+            }
         }
 
         [Test]
@@ -1070,6 +1194,80 @@
             {
                 Assert.That(defaultRule.Name, Is.EqualTo("$default"));
                 Assert.That(((TrueRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new TrueRuleFilter().SqlExpression));
+            }
+        }
+
+        async Task VerifyFilteredSubscriptionWithCorrelationRules(string topicName, string subscriptionName, string queueName, string[] expectedEventTypes)
+        {
+            var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
+                Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
+                Assert.That(actual.EnableDeadLetteringOnFilterEvaluationExceptions, Is.EqualTo(false));
+                Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
+                Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
+                Assert.That(actual.UserMetadata, Is.EqualTo(queueName));
+            }
+
+            var rules = new List<RuleProperties>();
+            await foreach (var rule in client.GetRulesAsync(topicName, subscriptionName))
+            {
+                rules.Add(rule);
+            }
+
+            // $default (reject-all) + one per event type
+            Assert.That(rules, Has.Count.EqualTo(1 + expectedEventTypes.Length));
+
+            var defaultRule = rules[0];
+            Assert.That(defaultRule.Name, Is.EqualTo("$default"));
+            Assert.That(((FalseRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new FalseRuleFilter().SqlExpression));
+
+            var eventRules = rules.Skip(1).ToList();
+            for (var i = 0; i < expectedEventTypes.Length; i++)
+            {
+                var eventType = expectedEventTypes[i];
+                var rule = eventRules[i];
+                Assert.That(rule.Name, Is.EqualTo(eventType));
+                Assert.That(((CorrelationRuleFilter)rule.Filter).ApplicationProperties[eventType], Is.EqualTo(true));
+            }
+        }
+
+        async Task VerifyFilteredSubscriptionWithSqlRules(string topicName, string subscriptionName, string queueName, string[] expectedEventTypes)
+        {
+            var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
+                Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
+                Assert.That(actual.EnableDeadLetteringOnFilterEvaluationExceptions, Is.EqualTo(false));
+                Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
+                Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
+                Assert.That(actual.UserMetadata, Is.EqualTo(queueName));
+            }
+
+            var rules = new List<RuleProperties>();
+            await foreach (var rule in client.GetRulesAsync(topicName, subscriptionName))
+            {
+                rules.Add(rule);
+            }
+
+            // $default (reject-all) + one per event type
+            Assert.That(rules, Has.Count.EqualTo(1 + expectedEventTypes.Length));
+
+            var defaultRule = rules[0];
+            Assert.That(defaultRule.Name, Is.EqualTo("$default"));
+            Assert.That(((FalseRuleFilter)defaultRule.Filter).SqlExpression, Is.EqualTo(new FalseRuleFilter().SqlExpression));
+
+            var eventRules = rules.Skip(1).ToList();
+            for (var i = 0; i < expectedEventTypes.Length; i++)
+            {
+                var eventType = expectedEventTypes[i];
+                var rule = eventRules[i];
+                Assert.That(rule.Name, Is.EqualTo(eventType));
+                Assert.That(((SqlRuleFilter)rule.Filter).SqlExpression, Is.EqualTo(new SqlRuleFilter($"[NServiceBus.EnclosedMessageTypes] LIKE '%{eventType}%'").SqlExpression));
             }
         }
 

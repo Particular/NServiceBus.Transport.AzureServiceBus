@@ -31,7 +31,7 @@ public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
     {
         var builder = new ValidateOptionsResultBuilder();
 
-        foreach ((string? eventTypeFullName, string? topic) in options.PublishedEventToTopicsMap)
+        foreach ((string? eventTypeFullName, var entry) in options.PublishedEventToTopicsMap)
         {
             if (options.EventsToMigrateMap.Contains(eventTypeFullName))
             {
@@ -40,15 +40,15 @@ public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
                     [nameof(options.PublishedEventToTopicsMap)]));
             }
 
-            if (topic.Equals(options.TopicToPublishTo))
+            if (entry.Topic.Equals(options.TopicToPublishTo))
             {
                 builder.AddResult(new ValidationResult(
-                    $"The topic to publish '{topic}' for '{eventTypeFullName}' cannot be the same as the topic to publish to '{options.TopicToPublishTo}' for the migration topology.",
+                    $"The topic to publish '{entry.Topic}' for '{eventTypeFullName}' cannot be the same as the topic to publish to '{options.TopicToPublishTo}' for the migration topology.",
                     [nameof(options.TopicToPublishTo), nameof(options.PublishedEventToTopicsMap)]));
             }
         }
 
-        foreach ((string? eventTypeFullName, HashSet<string> topics) in options.SubscribedEventToTopicsMap)
+        foreach ((string? eventTypeFullName, HashSet<SubscriptionEntry> entries) in options.SubscribedEventToTopicsMap)
         {
             if (options.EventsToMigrateMap.Contains(eventTypeFullName))
             {
@@ -57,13 +57,20 @@ public sealed class ValidMigrationTopologyAttribute : ValidationAttribute
                     [nameof(options.SubscribedEventToTopicsMap)]));
             }
 
-            foreach (string topic in topics)
+            foreach (SubscriptionEntry entry in entries)
             {
-                if (topic.Equals(options.TopicToSubscribeOn))
+                if (entry.Topic.Equals(options.TopicToSubscribeOn))
                 {
                     builder.AddResult(new ValidationResult(
-                        $"The topic to subscribe '{topic}' for '{eventTypeFullName}' cannot be the same as the topic to subscribe to '{options.TopicToSubscribeOn}' for the migration topology.",
+                        $"The topic to subscribe '{entry.Topic}' for '{eventTypeFullName}' cannot be the same as the topic to subscribe to '{options.TopicToSubscribeOn}' for the migration topology.",
                         [nameof(options.TopicToSubscribeOn), nameof(options.SubscribedEventToTopicsMap)]));
+                }
+
+                if (entry.RoutingMode.HasValue)
+                {
+                    builder.AddResult(new ValidationResult(
+                        $"Subscription entry for event '{eventTypeFullName}' has a routing mode of '{entry.RoutingMode}' but the migration topology does not support explicit routing modes. Use the topic-per-event topology instead.",
+                        [nameof(options.SubscribedEventToTopicsMap)]));
                 }
             }
         }

@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.CommandLine;
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
@@ -41,6 +42,20 @@ static class TopicPerEventTopologyEndpoint
         }
     }
 
+    public static async Task SubscribeWithFilter(ServiceBusAdministrationClient client, CommandArgument name, CommandArgument topicName, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning, CommandOption hierarchyNamespace, List<string> eventTypes, bool useCorrelationFilter)
+    {
+        try
+        {
+            await Topic.Create(client, topicName, size, partitioning, hierarchyNamespace);
+        }
+        catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+        {
+            Console.WriteLine($"Topic '{topicName.Value}' already exists, skipping creation");
+        }
+
+        await Subscription.CreateWithFilteredRules(client, name, topicName, subscriptionName, hierarchyNamespace, eventTypes, useCorrelationFilter);
+    }
+
     public static async Task Unsubscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandArgument topicName, CommandOption subscriptionName, CommandOption hierarchyNamespace)
     {
         try
@@ -51,5 +66,10 @@ static class TopicPerEventTopologyEndpoint
         {
             Console.WriteLine($"Subscription '{name.Value}' already exists, skipping creation");
         }
+    }
+
+    public static async Task UnsubscribeWithFilter(ServiceBusAdministrationClient client, CommandArgument name, CommandArgument topicName, CommandOption subscriptionName, CommandOption hierarchyNamespace, List<string> eventTypes)
+    {
+        await Subscription.DeleteRules(client, name, topicName, subscriptionName, hierarchyNamespace, eventTypes);
     }
 }

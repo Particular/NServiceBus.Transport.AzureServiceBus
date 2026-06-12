@@ -29,7 +29,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
         this.startupDiagnostic = startupDiagnostic;
         // The subscription name is limited to 50 characters and the hierarchy is respected by the topic name
         // so there is no need to add it to the subscription name.
-        destinationManager = new DestinationManager(topologyOptions.HierarchyNamespaceOptions);
+        destinationManager = new DestinationManager(topologyOptions.HierarchyOptions);
         var subscribingQueueName = CreationOptions.SubscribingQueueName;
         var strippedSubscribingQueueName = destinationManager.StripHierarchyNamespace(subscribingQueueName);
 
@@ -77,9 +77,8 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 
     HashSet<string> MapEventToDestinationTopics(string eventTypeFullName)
     {
-        var topics = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName]);
-        topics = [.. topics.Select(t => destinationManager.GetDestination(t, eventTypeFullName))];
-        return topics;
+        var entries = topologyOptions.SubscribedEventToTopicsMap.GetValueOrDefault(eventTypeFullName, [eventTypeFullName]);
+        return [.. entries.Select(e => destinationManager.GetDestination(e.Topic, eventTypeFullName))];
     }
 
     async Task SubscribeEvent(string eventTypeFullName, CancellationToken cancellationToken)
@@ -102,11 +101,11 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
             return;
         }
 
-        if (topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
+        if (topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entries))
         {
-            topics = [.. topics.Select(t => destinationManager.GetDestination(t, eventTypeFullName))];
+            var topics = entries.Select(e => destinationManager.GetDestination(e.Topic, eventTypeFullName));
             await TopicPerEventTopologySubscriptionManager
-                .CreateSubscriptionsForTopics(topics, subscriptionName, CreationOptions, cancellationToken)
+                .CreateSubscriptionsForTopics([.. topics], subscriptionName, CreationOptions, cancellationToken)
                 .ConfigureAwait(false);
             return;
         }
@@ -137,10 +136,10 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
             return;
         }
 
-        if (topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
+        if (topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entries))
         {
-            topics = [.. topics.Select(t => destinationManager.GetDestination(t, eventTypeFullName))];
-            await TopicPerEventTopologySubscriptionManager.DeleteSubscriptionsForTopics(topics, subscriptionName,
+            var topics = entries.Select(e => destinationManager.GetDestination(e.Topic, eventTypeFullName));
+            await TopicPerEventTopologySubscriptionManager.DeleteSubscriptionsForTopics([.. topics], subscriptionName,
                     CreationOptions.AdministrationClient, cancellationToken)
                 .ConfigureAwait(false);
             return;

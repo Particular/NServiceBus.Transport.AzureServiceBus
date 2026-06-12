@@ -16,7 +16,7 @@ public sealed class AzureServiceBusQueuesAttribute : ValidationAttribute
     /// <inheritdoc />
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
-        var hierarchyOptions = (validationContext.ObjectInstance as TopologyOptions)?.HierarchyNamespaceOptions ?? HierarchyNamespaceOptions.None;
+        var hierarchyOptions = (validationContext.ObjectInstance as IHierarchyNamespaceAwareOptions)?.HierarchyNamespaceOptions ?? HierarchyNamespaceOptions.None;
         return value switch
         {
             Dictionary<string, string> dic => EntityValidator.ValidateQueues(dic.Keys, validationContext.MemberName, hierarchyOptions),

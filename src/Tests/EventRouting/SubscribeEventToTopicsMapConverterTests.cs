@@ -18,12 +18,12 @@ public class SubscribeEventToTopicsMapConverterTests
         TopologyOptions deserialized =
             JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.TopologyOptions);
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(deserialized.PublishedEventToTopicsMap, Is.Not.Null);
             Assert.That(deserialized.SubscribedEventToTopicsMap, Is.Not.Null);
             Assert.That(deserialized.QueueNameToSubscriptionNameMap, Is.Not.Null);
-        });
+        }
     }
 
     [Test]
@@ -41,14 +41,14 @@ public class SubscribeEventToTopicsMapConverterTests
         MigrationTopologyOptions deserialized = JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.MigrationTopologyOptions);
 #pragma warning restore CS0618 // Type or member is obsolete
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(deserialized.PublishedEventToTopicsMap, Is.Not.Null);
             Assert.That(deserialized.SubscribedEventToTopicsMap, Is.Not.Null);
             Assert.That(deserialized.QueueNameToSubscriptionNameMap, Is.Not.Null);
             Assert.That(deserialized.EventsToMigrateMap, Is.Not.Null);
             Assert.That(deserialized.SubscribedEventToRuleNameMap, Is.Not.Null);
-        });
+        }
     }
 
     [Test]
@@ -66,11 +66,11 @@ public class SubscribeEventToTopicsMapConverterTests
         var deserialized = (MigrationTopologyOptions)JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.TopologyOptions);
 #pragma warning restore CS0618 // Type or member is obsolete
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(deserialized.TopicToSubscribeOn, Is.EqualTo("bundle-1"));
             Assert.That(deserialized.TopicToPublishTo, Is.EqualTo("bundle-1"));
-        });
+        }
     }
 
     [Test]
@@ -87,12 +87,12 @@ public class SubscribeEventToTopicsMapConverterTests
         TopologyOptions deserialized =
             JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.TopologyOptions);
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
             Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
-                Is.EquivalentTo(["SomeTopic"]));
-        });
+                Is.EquivalentTo([new SubscriptionEntry("SomeTopic")]));
+        }
     }
 
     [Test]
@@ -110,12 +110,12 @@ public class SubscribeEventToTopicsMapConverterTests
         TopologyOptions deserialized =
             JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.TopologyOptions);
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
             Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
-                Is.EquivalentTo(["SomeTopic"]));
-        });
+                Is.EquivalentTo([new SubscriptionEntry("SomeTopic")]));
+        }
     }
 
     [Test]
@@ -133,12 +133,14 @@ public class SubscribeEventToTopicsMapConverterTests
         TopologyOptions deserialized =
             JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.TopologyOptions);
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
             Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
-                Is.EquivalentTo(["SomeTopic", "AnotherTopic"]));
-        });
+                Is.EquivalentTo([
+                    new SubscriptionEntry("SomeTopic"),
+                    new SubscriptionEntry("AnotherTopic")]));
+        }
     }
 
     [Test]
@@ -157,13 +159,15 @@ public class SubscribeEventToTopicsMapConverterTests
         TopologyOptions deserialized =
             JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.TopologyOptions);
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(2));
             Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent1"],
-                Is.EquivalentTo(["SomeTopic", "AnotherTopic"]));
+                Is.EquivalentTo([
+                    new SubscriptionEntry("SomeTopic"),
+                    new SubscriptionEntry("AnotherTopic")]));
             Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent2"],
-                Is.EquivalentTo(["SomeTopic"]));
-        });
+                Is.EquivalentTo([new SubscriptionEntry("SomeTopic")]));
+        }
     }
 }
