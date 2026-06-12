@@ -28,5 +28,5 @@ public enum TopicRoutingMode
     /// On subscribe, provisions a <see cref="Azure.Messaging.ServiceBus.Administration.SqlRuleFilter"/> that matches the subscribed type against that header.
     /// On unsubscribe, deletes the matching subscription rule.
     /// </summary>
-    SqlFilter
+    SqlLikeFilter
 }

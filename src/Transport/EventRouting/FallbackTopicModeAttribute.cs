@@ -8,7 +8,7 @@ using Configuration;
 /// <summary>
 /// Validates that a <see cref="FallbackTopicOptions.Mode"/> value is one of the supported
 /// shared-topic routing modes. When a fallback topic is configured, the mode must be
-/// <see cref="TopicRoutingMode.CorrelationFilter"/> or <see cref="TopicRoutingMode.SqlFilter"/>.
+/// <see cref="TopicRoutingMode.CorrelationFilter"/> or <see cref="TopicRoutingMode.SqlLikeFilter"/>.
 /// </summary>
 [Experimental(DiagnosticDescriptors.ExperimentalFallbackTopicModeAttribute)]
 [AttributeUsage(AttributeTargets.Property)]
@@ -18,7 +18,7 @@ public sealed class FallbackTopicModeAttribute : ValidationAttribute
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext) =>
         value switch
         {
-            null or TopicRoutingMode.NotMultiplexed => new ValidationResult($"'{validationContext.MemberName}' must be either '{TopicRoutingMode.CorrelationFilter}' or '{TopicRoutingMode.SqlFilter}'.", validationContext.MemberName is not null ? [validationContext.MemberName] : []),
+            null or TopicRoutingMode.NotMultiplexed => new ValidationResult($"'{validationContext.MemberName}' must be either '{TopicRoutingMode.CorrelationFilter}' or '{TopicRoutingMode.SqlLikeFilter}'.", validationContext.MemberName is not null ? [validationContext.MemberName] : []),
             TopicRoutingMode when Enum.GetNames<TopicRoutingMode>().Contains(value.ToString()) => ValidationResult.Success,
             _ => new ValidationResult($"'{validationContext.MemberName}' has value '{value}' which is not a recognized {nameof(TopicRoutingMode)}.", validationContext.MemberName is not null ? [validationContext.MemberName] : [])
         };

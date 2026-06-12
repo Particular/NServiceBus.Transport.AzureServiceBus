@@ -12,7 +12,7 @@ using Transport.AzureServiceBus.AcceptanceTests;
 
 public class When_using_topic_per_event_topology_with_sql_filter_fallback_topic : NServiceBusAcceptanceTest
 {
-    static readonly string SharedTopicName = "SqlFilterFallbackTopic";
+    static readonly string SharedTopicName = "SqlLikeFilterFallbackTopic";
 
     [SetUp]
     public async Task Setup()
@@ -87,7 +87,7 @@ public class When_using_topic_per_event_topology_with_sql_filter_fallback_topic 
                     FallbackTopic = new FallbackTopicOptions
                     {
                         TopicName = SharedTopicName,
-                        Mode = TopicRoutingMode.SqlFilter
+                        Mode = TopicRoutingMode.SqlLikeFilter
                     }
                 });
             }, metadata =>
@@ -108,7 +108,7 @@ public class When_using_topic_per_event_topology_with_sql_filter_fallback_topic 
                     FallbackTopic = new FallbackTopicOptions
                     {
                         TopicName = SharedTopicName,
-                        Mode = TopicRoutingMode.SqlFilter
+                        Mode = TopicRoutingMode.SqlLikeFilter
                     }
                 });
                 topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());

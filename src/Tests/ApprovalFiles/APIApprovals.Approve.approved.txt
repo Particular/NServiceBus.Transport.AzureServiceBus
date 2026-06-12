@@ -283,7 +283,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         NotMultiplexed = 0,
         CorrelationFilter = 1,
-        SqlFilter = 2,
+        SqlLikeFilter = 2,
     }
     [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions), "migration-topology-options")]
     [System.Text.Json.Serialization.JsonDerivedType(typeof(NServiceBus.Transport.AzureServiceBus.TopologyOptions), "topology-options")]

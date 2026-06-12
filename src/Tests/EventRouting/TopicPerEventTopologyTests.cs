@@ -117,14 +117,14 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.SqlFilter
+                Mode = TopicRoutingMode.SqlLikeFilter
             },
             PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, "SharedTopic" } }
         };
 
         var topology = TopicTopology.FromOptions(topologyOptions);
 
-        Assert.That(topology.GetTopicRoutingMode(typeof(MyEvent).FullName!), Is.EqualTo(TopicRoutingMode.SqlFilter));
+        Assert.That(topology.GetTopicRoutingMode(typeof(MyEvent).FullName!), Is.EqualTo(TopicRoutingMode.SqlLikeFilter));
     }
 
     [Test]
@@ -191,7 +191,7 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.SqlFilter
+                Mode = TopicRoutingMode.SqlLikeFilter
             }
         };
 
@@ -218,7 +218,7 @@ public class TopicPerEventTopologyTests
 
         Assert.That(validationException!.Message, Does.Contain("Mode"));
         Assert.That(validationException.Message, Does.Contain("CorrelationFilter"));
-        Assert.That(validationException.Message, Does.Contain("SqlFilter"));
+        Assert.That(validationException.Message, Does.Contain("SqlLikeFilter"));
     }
 
     [Test]

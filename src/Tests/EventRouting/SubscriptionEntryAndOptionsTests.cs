@@ -43,13 +43,13 @@ public class SubscriptionEntryTests
     {
         var notMultiplexedEntry = new SubscriptionEntry("Topic1", TopicRoutingMode.NotMultiplexed);
         var correlationEntry = new SubscriptionEntry("Topic2", TopicRoutingMode.CorrelationFilter);
-        var sqlEntry = new SubscriptionEntry("Topic3", TopicRoutingMode.SqlFilter);
+        var sqlEntry = new SubscriptionEntry("Topic3", TopicRoutingMode.SqlLikeFilter);
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(notMultiplexedEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.NotMultiplexed));
             Assert.That(correlationEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
-            Assert.That(sqlEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.SqlFilter));
+            Assert.That(sqlEntry.RoutingMode, Is.EqualTo(TopicRoutingMode.SqlLikeFilter));
         }
     }
 }
@@ -76,9 +76,9 @@ public class RoutingOptionsTests
     [Test]
     public void Can_set_sql_routing_mode()
     {
-        var options = new RoutingOptions { Mode = TopicRoutingMode.SqlFilter };
+        var options = new RoutingOptions { Mode = TopicRoutingMode.SqlLikeFilter };
 
-        Assert.That(options.Mode, Is.EqualTo(TopicRoutingMode.SqlFilter));
+        Assert.That(options.Mode, Is.EqualTo(TopicRoutingMode.SqlLikeFilter));
     }
 }
 
@@ -171,11 +171,11 @@ public class SubscriptionEntryJsonConverterTests
     [Test]
     public void Sql_filter_serializes_to_object()
     {
-        var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.SqlFilter);
+        var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.SqlLikeFilter);
 
         var json = JsonSerializer.Serialize(entry);
 
-        Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"RoutingMode\":\"SqlFilter\"}"));
+        Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"RoutingMode\":\"SqlLikeFilter\"}"));
     }
 
     [Test]
@@ -209,14 +209,14 @@ public class SubscriptionEntryJsonConverterTests
     [Test]
     public void Deserializes_sql_filter_object()
     {
-        const string json = "{\"Topic\":\"MyTopic\",\"RoutingMode\":\"SqlFilter\"}";
+        const string json = "{\"Topic\":\"MyTopic\",\"RoutingMode\":\"SqlLikeFilter\"}";
 
         var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(entry.Topic, Is.EqualTo("MyTopic"));
-            Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.SqlFilter));
+            Assert.That(entry.RoutingMode, Is.EqualTo(TopicRoutingMode.SqlLikeFilter));
         }
     }
 }

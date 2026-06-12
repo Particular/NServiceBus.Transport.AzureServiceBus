@@ -12,7 +12,7 @@ using Transport.AzureServiceBus.AcceptanceTests;
 
 public class When_using_topic_per_event_topology_with_sql_filter_multiplexing : NServiceBusAcceptanceTest
 {
-    static readonly string SharedTopicName = "SqlFilterMultiplexing";
+    static readonly string SharedTopicName = "SqlLikeFilterMultiplexing";
 
     [SetUp]
     public async Task Setup()
@@ -87,11 +87,11 @@ public class When_using_topic_per_event_topology_with_sql_filter_multiplexing : 
                 var topology = TopicTopology.Default;
                 topology.PublishTo<MyEvent1>(SharedTopicName, opts =>
                 {
-                    opts.Mode = TopicRoutingMode.SqlFilter;
+                    opts.Mode = TopicRoutingMode.SqlLikeFilter;
                 });
                 topology.PublishTo<MyEvent2>(SharedTopicName, opts =>
                 {
-                    opts.Mode = TopicRoutingMode.SqlFilter;
+                    opts.Mode = TopicRoutingMode.SqlLikeFilter;
                 });
                 transport.Topology = topology;
             }, metadata =>
@@ -112,7 +112,7 @@ public class When_using_topic_per_event_topology_with_sql_filter_multiplexing : 
 
                 topology.SubscribeTo<IMyEvent>(SharedTopicName, opts =>
                 {
-                    opts.Mode = TopicRoutingMode.SqlFilter;
+                    opts.Mode = TopicRoutingMode.SqlLikeFilter;
                 });
 
                 c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;

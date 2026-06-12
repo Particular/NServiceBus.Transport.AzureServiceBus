@@ -104,7 +104,7 @@ public class TopicPerEventSubscriptionManagerTests
             SubscribedEventToTopicsMap =
             {
                 { typeof(MyEvent1).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.CorrelationFilter)] },
-                { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.SqlFilter)] }
+                { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.SqlLikeFilter)] }
             },
             QueueNameToSubscriptionNameMap = { { "SubscribingQueue", "MySubscriptionName" } },
         };
@@ -157,7 +157,7 @@ public class TopicPerEventSubscriptionManagerTests
             SubscribedEventToTopicsMap =
             {
                 { typeof(MyEvent1).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.NotMultiplexed)] },
-                { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.SqlFilter)] }
+                { typeof(MyEvent2).FullName, [new SubscriptionEntry("SharedTopic", TopicRoutingMode.SqlLikeFilter)] }
             }
         };
 
@@ -259,7 +259,7 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribedEventToTopicsMap =
             {
-                { typeof(MyEvent1).FullName, [new SubscriptionEntry("MyTopic", TopicRoutingMode.SqlFilter)] }
+                { typeof(MyEvent1).FullName, [new SubscriptionEntry("MyTopic", TopicRoutingMode.SqlLikeFilter)] }
             },
             QueueNameToSubscriptionNameMap = { { "SubscribingQueue", "MySubscriptionName" } },
         };
@@ -400,7 +400,7 @@ public class TopicPerEventSubscriptionManagerTests
     {
         var topologyOptions = new TopologyOptions();
         var topology = (TopicPerEventTopology)TopicTopology.FromOptions(topologyOptions);
-        topology.SubscribeTo<MyEvent1>("MyTopic", options => options.Mode = TopicRoutingMode.SqlFilter);
+        topology.SubscribeTo<MyEvent1>("MyTopic", options => options.Mode = TopicRoutingMode.SqlLikeFilter);
 
         var builder = new StringBuilder();
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -423,7 +423,7 @@ public class TopicPerEventSubscriptionManagerTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.SqlFilter
+                Mode = TopicRoutingMode.SqlLikeFilter
             }
         };
 
@@ -591,7 +591,7 @@ public class TopicPerEventSubscriptionManagerTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.SqlFilter
+                Mode = TopicRoutingMode.SqlLikeFilter
             }
         };
 

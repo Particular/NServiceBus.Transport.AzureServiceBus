@@ -12,7 +12,7 @@ using Transport.AzureServiceBus.AcceptanceTests;
 
 public class When_using_topic_per_event_topology_with_selective_sql_filter_multiplexing : NServiceBusAcceptanceTest
 {
-    static readonly string SharedTopicName = "SelectiveSqlFilterMultiplexing";
+    static readonly string SharedTopicName = "SelectiveSqlLikeFilterMultiplexing";
 
     [SetUp]
     public async Task Setup()
@@ -82,8 +82,8 @@ public class When_using_topic_per_event_topology_with_selective_sql_filter_multi
             EndpointSetup<DefaultServer>(c =>
             {
                 var topology = TopicTopology.Default;
-                topology.PublishTo<MyEvent1>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlFilter);
-                topology.PublishTo<MyEvent2>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlFilter);
+                topology.PublishTo<MyEvent1>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlLikeFilter);
+                topology.PublishTo<MyEvent2>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlLikeFilter);
                 c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
             }, metadata =>
             {
@@ -100,7 +100,7 @@ public class When_using_topic_per_event_topology_with_selective_sql_filter_multi
                 var topology = TopicTopology.Default;
                 var endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberForEvent1));
                 topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
-                topology.SubscribeTo<MyEvent1>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlFilter);
+                topology.SubscribeTo<MyEvent1>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlLikeFilter);
                 c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
             }, metadata =>
             {
@@ -126,7 +126,7 @@ public class When_using_topic_per_event_topology_with_selective_sql_filter_multi
                 var topology = TopicTopology.Default;
                 var endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberForEvent2));
                 topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
-                topology.SubscribeTo<MyEvent2>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlFilter);
+                topology.SubscribeTo<MyEvent2>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlLikeFilter);
                 c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
             }, metadata =>
             {

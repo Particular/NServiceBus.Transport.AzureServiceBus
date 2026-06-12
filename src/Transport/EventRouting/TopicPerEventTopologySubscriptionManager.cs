@@ -81,7 +81,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         }
 
         var hasCatchAll = entries.Any(e => e.Entry.RoutingMode == TopicRoutingMode.NotMultiplexed);
-        var filteredEntries = entries.Where(e => e.Entry.RoutingMode is TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlFilter).ToArray();
+        var filteredEntries = entries.Where(e => e.Entry.RoutingMode is TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlLikeFilter).ToArray();
 
         if (hasCatchAll || filteredEntries.Length == 0)
         {
@@ -190,7 +190,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             // evaluates the rules using OR semantics, so the combination is harmless and should
             // not be rejected during startup validation.
             TopicRoutingMode.NotMultiplexed or TopicRoutingMode.CorrelationFilter => TopicRoutingMode.NotMultiplexed,
-            TopicRoutingMode.SqlFilter => TopicRoutingMode.SqlFilter,
+            TopicRoutingMode.SqlLikeFilter => TopicRoutingMode.SqlLikeFilter,
             _ => throw new ArgumentOutOfRangeException(nameof(routingMode), routingMode, null)
         };
 
@@ -343,7 +343,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         entry.RoutingMode switch
         {
             TopicRoutingMode.NotMultiplexed => DeleteSubscription(entry.Topic, subscriptionName, creationOptions.AdministrationClient, cancellationToken),
-            TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlFilter =>
+            TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlLikeFilter =>
                 DeleteRuleForFilteredSubscription(entry.Topic, eventTypeFullName, subscriptionName, creationOptions, cancellationToken),
             _ => DeleteSubscription(entry.Topic, subscriptionName, creationOptions.AdministrationClient, cancellationToken)
         };

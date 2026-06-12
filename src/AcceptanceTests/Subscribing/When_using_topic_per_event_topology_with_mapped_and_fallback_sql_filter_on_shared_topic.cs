@@ -12,7 +12,7 @@ using Transport.AzureServiceBus.AcceptanceTests;
 
 public class When_using_topic_per_event_topology_with_mapped_and_fallback_sql_filter_on_shared_topic : NServiceBusAcceptanceTest
 {
-    static readonly string SharedTopicName = "MappedAndFallbackSqlFilterSharedTopic";
+    static readonly string SharedTopicName = "MappedAndFallbackSqlLikeFilterSharedTopic";
 
     [SetUp]
     public async Task Setup()
@@ -82,10 +82,10 @@ public class When_using_topic_per_event_topology_with_mapped_and_fallback_sql_fi
                     FallbackTopic = new FallbackTopicOptions
                     {
                         TopicName = SharedTopicName,
-                        Mode = TopicRoutingMode.SqlFilter
+                        Mode = TopicRoutingMode.SqlLikeFilter
                     }
                 });
-                topology.PublishTo<MyEvent1>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlFilter);
+                topology.PublishTo<MyEvent1>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlLikeFilter);
 
                 c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
             }, metadata =>
@@ -106,11 +106,11 @@ public class When_using_topic_per_event_topology_with_mapped_and_fallback_sql_fi
                     FallbackTopic = new FallbackTopicOptions
                     {
                         TopicName = SharedTopicName,
-                        Mode = TopicRoutingMode.SqlFilter
+                        Mode = TopicRoutingMode.SqlLikeFilter
                     }
                 });
                 topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
-                topology.SubscribeTo<IMyEvent>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlFilter);
+                topology.SubscribeTo<IMyEvent>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlLikeFilter);
 
                 c.ConfigureTransport<AzureServiceBusTransport>().Topology = topology;
             }, metadata =>

@@ -1193,7 +1193,7 @@ public class MessageDispatcherTests
             client,
             TopicTopology.FromOptions(new TopologyOptions
             {
-                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.SqlFilter) } }
+                PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, new PublishEntry("sometopic", TopicRoutingMode.SqlLikeFilter) } }
             }));
 
         var operation =
@@ -1324,7 +1324,7 @@ public class MessageDispatcherTests
             client,
             TopicTopology.FromOptions(new TopologyOptions
             {
-                FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.SqlFilter }
+                FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.SqlLikeFilter }
             }));
 
         var operation =
