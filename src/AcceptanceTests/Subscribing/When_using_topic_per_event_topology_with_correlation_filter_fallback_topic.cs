@@ -121,6 +121,7 @@ public class When_using_topic_per_event_topology_with_correlation_filter_fallbac
                 metadata.RegisterPublisherFor<IMyEvent>("not-used");
             });
 
+        [Handler]
         public class MyHandler(Context testContext) : IHandleMessages<IMyEvent>
         {
             public Task Handle(IMyEvent messageThatIsEnlisted, IMessageHandlerContext context)

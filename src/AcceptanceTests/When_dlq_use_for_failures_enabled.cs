@@ -49,7 +49,8 @@ public class When_dlq_use_for_failures_enabled : NServiceBusAcceptanceTest
     {
         public UserEndpoint() => EndpointSetup<DefaultServer>();
 
-        class Handler : IHandleMessages<FailingMessage>
+        [Handler]
+        public class Handler : IHandleMessages<FailingMessage>
         {
             public Task Handle(FailingMessage message, IMessageHandlerContext context) => throw new SimulatedException("some message");
         }
@@ -57,10 +58,10 @@ public class When_dlq_use_for_failures_enabled : NServiceBusAcceptanceTest
 
     public class ErrorSpy : EndpointConfigurationBuilder
     {
-        public ErrorSpy() =>
-            EndpointSetup<DefaultServer>();
+        public ErrorSpy() => EndpointSetup<DefaultServer>();
 
-        class Handler(Context testContext) : IHandleMessages<FailingMessage>
+        [Handler]
+        public class Handler(Context testContext) : IHandleMessages<FailingMessage>
         {
             public Task Handle(FailingMessage message, IMessageHandlerContext context)
             {

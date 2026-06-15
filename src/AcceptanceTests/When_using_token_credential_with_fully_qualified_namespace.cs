@@ -60,6 +60,7 @@ public class When_using_token_credential_with_fully_qualified_namespace : NServi
             => EndpointSetup<DefaultPublisher>(_ => { },
                 metadata => metadata.RegisterSelfAsPublisherFor<MyEvent>(this));
 
+        [Handler]
         public class MyHandler : IHandleMessages<MyCommand>
         {
             public Task Handle(MyCommand message, IMessageHandlerContext context)
@@ -72,6 +73,7 @@ public class When_using_token_credential_with_fully_qualified_namespace : NServi
         public Subscriber() => EndpointSetup<DefaultServer>(_ => { },
             metadata => metadata.RegisterPublisherFor<MyEvent, Publisher>());
 
+        [Handler]
         public class MyHandler(Context testContext) : IHandleMessages<MyEvent>
         {
             public Task Handle(MyEvent message, IMessageHandlerContext context)

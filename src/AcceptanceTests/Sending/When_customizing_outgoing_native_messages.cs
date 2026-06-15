@@ -21,7 +21,7 @@ class When_customizing_outgoing_native_messages : NServiceBusAcceptanceTest
         Assert.That(scenario.ReceivedMessage.Subject, Is.EqualTo(TestSubject));
     }
 
-    class Context : ScenarioContext
+    internal class Context : ScenarioContext
     {
         public ServiceBusReceivedMessage ReceivedMessage { get; set; }
     }
@@ -35,7 +35,8 @@ class When_customizing_outgoing_native_messages : NServiceBusAcceptanceTest
                 transport.OutgoingNativeMessageCustomization = (_, message) => message.Subject = TestSubject;
             });
 
-        class MyEventHandler(Context testContext) : IHandleMessages<Message>
+        [Handler]
+        public class MyEventHandler(Context testContext) : IHandleMessages<Message>
         {
             public Task Handle(Message message, IMessageHandlerContext context)
             {

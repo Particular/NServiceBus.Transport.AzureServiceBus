@@ -70,6 +70,7 @@ public class When_customizing_an_outgoing_native_message : NServiceBusAcceptance
                 metadata.RegisterSelfAsPublisherFor<MessageHandlerContextPublishedEvent>(this);
             });
 
+        [Handler]
         public class Handler(Context testContext) :
             IHandleMessages<MessageSessionSentCommand>,
             IHandleMessages<PhysicalBehaviorSentCommand>,

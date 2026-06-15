@@ -89,6 +89,7 @@ public class When_multi_subscribing_to_a_polymorphic_event_using_topic_mappings 
                 metadata.RegisterPublisherFor<IMyEvent>("not-used");
             });
 
+        [Handler]
         public class MyHandler(Context testContext) : IHandleMessages<IMyEvent>
         {
             public Task Handle(IMyEvent messageThatIsEnlisted, IMessageHandlerContext context)

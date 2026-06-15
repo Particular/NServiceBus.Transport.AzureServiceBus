@@ -95,6 +95,7 @@ public class When_loading_from_options
                 metadata.RegisterSelfAsPublisherFor<Event>(this);
             });
 
+        [Handler]
         public class Handler(Context testContext) : IHandleMessages<Event>
         {
             public Task Handle(Event request, IMessageHandlerContext context)

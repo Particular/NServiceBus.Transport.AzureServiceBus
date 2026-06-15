@@ -20,10 +20,11 @@ class When_sending_message_outside_of_a_handler_with_incorrect_transaction_scope
         Assert.That(context.MessageReceived, Is.True);
     }
 
-    class Receiver : EndpointConfigurationBuilder
+    public class Receiver : EndpointConfigurationBuilder
     {
         public Receiver() => EndpointSetup<DefaultServer>(c => c.EnableFeature<SendMessageFeature>());
 
+        [Handler]
         public class MyMessageHandler(Context testContext) : IHandleMessages<MyMessage>
         {
             public Task Handle(MyMessage message, IMessageHandlerContext context)
@@ -53,10 +54,10 @@ class When_sending_message_outside_of_a_handler_with_incorrect_transaction_scope
         }
     }
 
-    class Context : ScenarioContext
+    internal class Context : ScenarioContext
     {
         public bool MessageReceived { get; set; }
     }
 
-    class MyMessage : IMessage;
+    internal class MyMessage : IMessage;
 }

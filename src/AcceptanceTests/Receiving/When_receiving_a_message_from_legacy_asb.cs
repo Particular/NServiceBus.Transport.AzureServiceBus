@@ -47,6 +47,7 @@ class When_receiving_a_message_from_legacy_asb
     {
         public Endpoint() => EndpointSetup<DefaultServer>();
 
+        [Handler]
         public class Handler(Context testContext) : IHandleMessages<Message>
         {
             public Task Handle(Message request, IMessageHandlerContext context)

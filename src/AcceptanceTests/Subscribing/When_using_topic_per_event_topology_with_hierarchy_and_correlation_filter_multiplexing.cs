@@ -127,6 +127,7 @@ public class When_using_topic_per_event_topology_with_hierarchy_and_correlation_
                 metadata.RegisterPublisherFor<IMyEvent>("not-used");
             });
 
+        [Handler]
         public class MyHandler(Context testContext) : IHandleMessages<IMyEvent>
         {
             public Task Handle(IMyEvent messageThatIsEnlisted, IMessageHandlerContext context)

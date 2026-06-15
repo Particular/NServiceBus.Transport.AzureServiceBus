@@ -79,6 +79,7 @@ public class When_sending_to_a_topic : NServiceBusAcceptanceTest
             c.GetSettings().Set("Installers.Enable", false);
         });
 
+        [Handler]
         public class MyMessageHandler(Context testContext) : IHandleMessages<MyMessage>
         {
             public Task Handle(MyMessage message, IMessageHandlerContext context)

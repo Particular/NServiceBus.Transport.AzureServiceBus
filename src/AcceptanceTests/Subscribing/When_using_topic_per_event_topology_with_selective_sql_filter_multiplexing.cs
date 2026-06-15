@@ -107,6 +107,7 @@ public class When_using_topic_per_event_topology_with_selective_sql_filter_multi
                 metadata.RegisterPublisherFor<MyEvent1>(typeof(Publisher));
             });
 
+        [Handler]
         public class Handler(Context context) : IHandleMessages<MyEvent1>
         {
             public Task Handle(MyEvent1 message, IMessageHandlerContext handlerContext)
@@ -133,6 +134,7 @@ public class When_using_topic_per_event_topology_with_selective_sql_filter_multi
                 metadata.RegisterPublisherFor<MyEvent2>(typeof(Publisher));
             });
 
+        [Handler]
         public class Handler(Context context) : IHandleMessages<MyEvent2>
         {
             public Task Handle(MyEvent2 message, IMessageHandlerContext handlerContext)

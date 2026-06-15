@@ -121,6 +121,7 @@ public class When_using_topic_per_event_topology_with_sql_filter_fallback_topic 
                 metadata.RegisterPublisherFor<IMyEvent>("not-used");
             });
 
+        [Handler]
         public class MyHandler(Context testContext) : IHandleMessages<IMyEvent>
         {
             public Task Handle(IMyEvent messageThatIsEnlisted, IMessageHandlerContext context)
