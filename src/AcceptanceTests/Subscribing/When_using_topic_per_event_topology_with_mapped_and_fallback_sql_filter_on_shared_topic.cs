@@ -50,8 +50,8 @@ public class When_using_topic_per_event_topology_with_mapped_and_fallback_sql_fi
         var context = await Scenario.Define<Context>()
             .WithEndpoint<Publisher>(b => b.When(async (session, c) =>
             {
-                await session.Publish(new MyEvent1 { Data = "event1" }).ConfigureAwait(false);
-                await session.Publish(new MyEvent2 { Data = "event2" }).ConfigureAwait(false);
+                await session.Publish(new MyEvent1 { Data = "event1" });
+                await session.Publish(new MyEvent2 { Data = "event2" });
             }))
             .WithEndpoint<Subscriber>()
             .Run();

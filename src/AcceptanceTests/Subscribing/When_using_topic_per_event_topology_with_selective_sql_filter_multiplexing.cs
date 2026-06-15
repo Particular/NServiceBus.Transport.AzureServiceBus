@@ -49,8 +49,8 @@ public class When_using_topic_per_event_topology_with_selective_sql_filter_multi
         var context = await Scenario.Define<Context>()
             .WithEndpoint<Publisher>(b => b.When(async (session, c) =>
             {
-                await session.Publish(new MyEvent1()).ConfigureAwait(false);
-                await session.Publish(new MyEvent2()).ConfigureAwait(false);
+                await session.Publish(new MyEvent1());
+                await session.Publish(new MyEvent2());
             }))
             .WithEndpoint<SubscriberForEvent1>()
             .WithEndpoint<SubscriberForEvent2>()
