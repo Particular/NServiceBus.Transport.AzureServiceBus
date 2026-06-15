@@ -20,6 +20,15 @@ public sealed class TopicPerEventTopology : TopicTopology
     public void PublishTo<TEventType>(string topicName) => PublishTo(typeof(TEventType), topicName);
 
     /// <summary>
+    /// Instructs the topology to use provided topic to publish events of a given type with routing configuration.
+    /// </summary>
+    /// <param name="topicName">Name of the topic to publish to.</param>
+    /// <param name="configure">Configuration for shared-topic routing.</param>
+    /// <typeparam name="TEventType">Type of the event.</typeparam>
+    public void PublishTo<TEventType>(string topicName, Action<RoutingOptions> configure) =>
+        PublishTo(typeof(TEventType), topicName, configure);
+
+    /// <summary>
     /// Instructs the topology to use provided topic to publish events of a given type.
     /// </summary>
     /// <param name="eventType">Name of the topic to publish to.</param>
@@ -33,6 +42,25 @@ public sealed class TopicPerEventTopology : TopicTopology
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
         Options.PublishedEventToTopicsMap[eventType.FullName] = topicName;
+    }
+
+    /// <summary>
+    /// Instructs the topology to use provided topic to publish events of a given type with routing configuration.
+    /// </summary>
+    /// <param name="eventType">Type of the event.</param>
+    /// <param name="topicName">Name of the topic to publish to.</param>
+    /// <param name="configure">Configuration for shared-topic routing.</param>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
+    /// <exception cref="ArgumentException">The event type is not set.</exception>
+    public void PublishTo(Type eventType, string topicName, Action<RoutingOptions> configure)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
+
+        var routingOptions = new RoutingOptions();
+        configure(routingOptions);
+
+        Options.PublishedEventToTopicsMap[eventType.FullName] = new PublishEntry(topicName, routingOptions.Mode);
     }
 
     /// <summary>
@@ -67,6 +95,15 @@ public sealed class TopicPerEventTopology : TopicTopology
     public void SubscribeTo<TEventType>(string topicName) => SubscribeTo(typeof(TEventType), topicName);
 
     /// <summary>
+    /// Instructs the topology to use provided topic to subscribe for events of a given type with routing configuration.
+    /// </summary>
+    /// <param name="topicName">Name of the topic to subscribe to.</param>
+    /// <param name="configure">Configuration for shared-topic routing.</param>
+    /// <typeparam name="TEventType">Type of the event.</typeparam>
+    public void SubscribeTo<TEventType>(string topicName, Action<RoutingOptions> configure) =>
+        SubscribeTo(typeof(TEventType), topicName, configure);
+
+    /// <summary>
     /// Instructs the topology to use provided topic to subscribe for events of a given type.
     /// </summary>
     /// <param name="eventType">Name of the topic to subscribe to.</param>
@@ -79,14 +116,61 @@ public sealed class TopicPerEventTopology : TopicTopology
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
 
         var eventTypeFullName = eventType.FullName;
-        if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topics))
+        if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entries))
         {
-            topics.Add(topicName);
+            entries.Add(new SubscriptionEntry(topicName));
         }
         else
         {
-            Options.SubscribedEventToTopicsMap[eventTypeFullName] = [topicName];
+            Options.SubscribedEventToTopicsMap[eventTypeFullName] = [new SubscriptionEntry(topicName)];
         }
+    }
+
+    /// <summary>
+    /// Instructs the topology to use provided topic to subscribe for events of a given type with routing configuration.
+    /// </summary>
+    /// <param name="eventType">Name of the topic to subscribe to.</param>
+    /// <param name="topicName">Type of the event.</param>
+    /// <param name="configure">Configuration for shared-topic routing.</param>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
+    /// <exception cref="ArgumentException">The event type is not set.</exception>
+    public void SubscribeTo(Type eventType, string topicName, Action<RoutingOptions> configure)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventType.FullName);
+
+        var routingOptions = new RoutingOptions();
+        configure(routingOptions);
+
+        var eventTypeFullName = eventType.FullName;
+        var entry = new SubscriptionEntry(topicName, routingOptions.Mode);
+
+        if (Options.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entries))
+        {
+            entries.Add(entry);
+        }
+        else
+        {
+            Options.SubscribedEventToTopicsMap[eventTypeFullName] = [entry];
+        }
+    }
+
+    /// <summary>
+    /// Instructs the topology to use the provided topic as a fallback for events and subscriptions that have no explicit mapping.
+    /// </summary>
+    /// <param name="topicName">Name of the fallback topic.</param>
+    /// <param name="mode">Routing mode for the fallback topic. Must be <see cref="TopicRoutingMode.CorrelationFilter"/> or <see cref="TopicRoutingMode.SqlLikeFilter"/>.</param>
+    /// <remarks>Calling this method overrides any fallback topic previously set via <see cref="TopologyOptions.FallbackTopic"/>.</remarks>
+    /// <exception cref="ArgumentException">The topic name is not set.</exception>
+    public void UseFallbackTopic(string topicName, TopicRoutingMode mode)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topicName);
+
+        Options.FallbackTopic = new FallbackTopicOptions
+        {
+            TopicName = topicName,
+            Mode = mode
+        };
     }
 
     /// <summary>
@@ -105,11 +189,17 @@ public sealed class TopicPerEventTopology : TopicTopology
     /// <inheritdoc />
     protected override string GetPublishDestinationCore(string eventTypeFullName)
     {
-        if (!Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out string? topic) && Options.ThrowIfUnmappedEventTypes)
+        if (Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entry))
         {
-            throw new Exception($"Unmapped event type '{eventTypeFullName}'. All events must be mapped in `{nameof(TopologyOptions.PublishedEventToTopicsMap)}` when `{nameof(TopologyOptions.ThrowIfUnmappedEventTypes)}` is set");
+            return entry.Topic;
         }
-        return topic ?? eventTypeFullName;
+
+        if (Options.FallbackTopic?.TopicName is { Length: > 0 } fallbackTopicName)
+        {
+            return fallbackTopicName;
+        }
+
+        return Options.ThrowIfUnmappedEventTypes ? throw new Exception($"Unmapped event type '{eventTypeFullName}'. All events must be mapped in `{nameof(TopologyOptions.PublishedEventToTopicsMap)}` when `{nameof(TopologyOptions.ThrowIfUnmappedEventTypes)}` is set") : eventTypeFullName;
     }
 
     internal override SubscriptionManager CreateSubscriptionManager(

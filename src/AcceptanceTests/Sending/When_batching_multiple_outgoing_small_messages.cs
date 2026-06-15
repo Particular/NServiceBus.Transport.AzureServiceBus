@@ -97,6 +97,7 @@ public class When_batching_multiple_outgoing_small_messages : NServiceBusAccepta
                 builder.ConfigureRouting().RouteToEndpoint(typeof(MyMessage), typeof(Receiver));
             });
 
+        [Handler]
         public class BatchHandler(Context testContext) : IHandleMessages<SendMessagesInBatches>
         {
             public async Task Handle(SendMessagesInBatches message, IMessageHandlerContext context)
@@ -125,6 +126,7 @@ public class When_batching_multiple_outgoing_small_messages : NServiceBusAccepta
     {
         public Receiver() => EndpointSetup<DefaultServer>(c => c.LimitMessageProcessingConcurrencyTo(60));
 
+        [Handler]
         public class MyMessageHandler(Context testContext) : IHandleMessages<MyMessage>
         {
             public Task Handle(MyMessage messageWithLargePayload, IMessageHandlerContext context)

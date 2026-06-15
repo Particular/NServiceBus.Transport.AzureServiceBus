@@ -8,4 +8,5 @@ static class DiagnosticDescriptors
     public const string ExperimentalSubscriptionsAttribute = "NSBASBEXP0003";
     public const string ExperimentalTopicsAttribute = "NSBASBEXP0004";
     public const string ExperimentalValidMigrationTopologyAttribute = "NSBASBEXP0005";
+    public const string ExperimentalFallbackTopicModeAttribute = "NSBASBEXP0006";
 }

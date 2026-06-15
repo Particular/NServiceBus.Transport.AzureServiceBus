@@ -38,5 +38,11 @@ public class RecordingServiceBusAdministrationClient(StringBuilder builder = nul
         return Task.FromResult<Response<QueueProperties>>(null);
     }
 
+    public override Task<Response> DeleteSubscriptionAsync(string topicName, string subscriptionName, CancellationToken cancellationToken = default)
+    {
+        builder.AppendLine($"DeleteSubscription(topicName: '{topicName}', subscriptionName: '{subscriptionName}')");
+        return Task.FromResult<Response>(null);
+    }
+
     public override string ToString() => builder.ToString();
 }

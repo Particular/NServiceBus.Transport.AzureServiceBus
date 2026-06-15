@@ -67,7 +67,7 @@ public class When_message_visibility_expired : NServiceBusAcceptanceTest
     static bool WasMarkedAsSuccessfullyCompleted(ScenarioContext.LogItem l, Context c)
         => l.Message.StartsWith($"Received message with id '{c.NativeMessageId}' was marked as successfully completed");
 
-    class Context : ScenarioContext
+    public class Context : ScenarioContext
     {
         public bool ShouldThrow { get; set; }
 
@@ -87,7 +87,8 @@ public class When_message_visibility_expired : NServiceBusAcceptanceTest
 
     public class MyMessage : IMessage;
 
-    class MyMessageHandler(Context testContext) : IHandleMessages<MyMessage>
+    [Handler]
+    public class MyMessageHandler(Context testContext) : IHandleMessages<MyMessage>
     {
         public async Task Handle(MyMessage message, IMessageHandlerContext context)
         {

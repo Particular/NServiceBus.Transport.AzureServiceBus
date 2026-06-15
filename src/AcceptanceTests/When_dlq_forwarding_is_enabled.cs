@@ -34,7 +34,7 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
         var nativeMessage = context.ServiceBusReceivedMessage;
         var failedMessageHeaders = context.FailedMessageHeaders;
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(nativeMessage, Is.Not.Null);
 
@@ -45,14 +45,15 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
             Assert.That(failedMessageHeaders[FaultsHeaderKeys.FailedQ], Is.EqualTo(nativeMessage.DeadLetterSource), $"{FaultsHeaderKeys.FailedQ} should be set to dlq source");
             Assert.That(failedMessageHeaders[FaultsHeaderKeys.ExceptionType], Is.EqualTo("Some reason"), $"{FaultsHeaderKeys.ExceptionType} should be set from dlq reason");
             Assert.That(failedMessageHeaders[FaultsHeaderKeys.Message], Is.EqualTo("Some description"), $"{FaultsHeaderKeys.Message} should be set to dlq description");
-        });
+        }
     }
 
     public class UserEndpoint : EndpointConfigurationBuilder
     {
         public UserEndpoint() => EndpointSetup<DefaultServer>();
 
-        class Handler : IHandleMessages<FailingMessage>
+        [Handler]
+        public class Handler : IHandleMessages<FailingMessage>
         {
             public Task Handle(FailingMessage message, IMessageHandlerContext context) => throw new SimulatedException("some message");
         }
@@ -62,7 +63,8 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
     {
         public ErrorSpy() => EndpointSetup<DefaultServer>();
 
-        class Handler(Context testContext) : IHandleMessages<FailingMessage>
+        [Handler]
+        public class Handler(Context testContext) : IHandleMessages<FailingMessage>
         {
             public Task Handle(FailingMessage message, IMessageHandlerContext context)
             {

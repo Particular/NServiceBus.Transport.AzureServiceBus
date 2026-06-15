@@ -91,12 +91,13 @@ public class When_using_hierarchy_namespace : NServiceBusAcceptanceTest
         );
     }
 
-    class HierarchyReceiver : EndpointConfigurationBuilder
+    public class HierarchyReceiver : EndpointConfigurationBuilder
     {
         public HierarchyReceiver() => EndpointSetup<DefaultServer>(
             _ => { },
             publishMetadata => publishMetadata.RegisterPublisherFor<MyEvent, Sender>());
 
+        [Handler]
         public class MyHandler(Context testContext) : IHandleMessages<MyMessage>, IHandleMessages<MyEvent>
         {
             public Task Handle(MyMessage message, IMessageHandlerContext context)
@@ -115,13 +116,14 @@ public class When_using_hierarchy_namespace : NServiceBusAcceptanceTest
         }
     }
 
-    class ExternalReceiver : EndpointConfigurationBuilder
+    public class ExternalReceiver : EndpointConfigurationBuilder
     {
         public ExternalReceiver() => EndpointSetup<DefaultServer>(
             _ => { },
             publishMetadata => publishMetadata.RegisterPublisherFor<MyEvent, Sender>()
         );
 
+        [Handler]
         public class MyMessageHandler(Context testContext) : IHandleMessages<MyMessage>, IHandleMessages<MyEvent>
         {
             public Task Handle(MyMessage message, IMessageHandlerContext context)

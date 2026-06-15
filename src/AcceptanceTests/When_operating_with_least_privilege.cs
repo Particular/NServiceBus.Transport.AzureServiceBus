@@ -89,6 +89,7 @@ public class When_operating_with_least_privilege : NServiceBusAcceptanceTest
             {
             }, metadata => metadata.RegisterSelfAsPublisherFor<MyEvent>(this));
 
+        [Handler]
         public class MyHandler : IHandleMessages<MyCommand>
         {
             public Task Handle(MyCommand message, IMessageHandlerContext context)
@@ -103,6 +104,7 @@ public class When_operating_with_least_privilege : NServiceBusAcceptanceTest
             {
             }, metadata => metadata.RegisterPublisherFor<MyEvent, Publisher>());
 
+        [Handler]
         public class MyHandler(Context testContext) : IHandleMessages<MyEvent>
         {
             public Task Handle(MyEvent message, IMessageHandlerContext context)

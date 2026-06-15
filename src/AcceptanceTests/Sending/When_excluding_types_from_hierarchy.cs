@@ -50,7 +50,7 @@ public class When_excluding_types_from_hierarchy : NServiceBusAcceptanceTest
         }
     }
 
-    class Context : ScenarioContext
+    public class Context : ScenarioContext
     {
         public bool HierarchyMessageReceived { get; set; }
         public bool HierarchyEventReceived { get; set; }
@@ -68,12 +68,13 @@ public class When_excluding_types_from_hierarchy : NServiceBusAcceptanceTest
         );
     }
 
-    class HierarchyReceiver : EndpointConfigurationBuilder
+    public class HierarchyReceiver : EndpointConfigurationBuilder
     {
         public HierarchyReceiver() => EndpointSetup<DefaultServer>(
             _ => { },
             publishMetadata => publishMetadata.RegisterPublisherFor<MyEvent, Sender>());
 
+        [Handler]
         public class MyMessageHandler(Context testContext) : IHandleMessages<MyMessage>, IHandleMessages<MyEvent>
         {
             public Task Handle(MyMessage message, IMessageHandlerContext context)
@@ -92,13 +93,14 @@ public class When_excluding_types_from_hierarchy : NServiceBusAcceptanceTest
         }
     }
 
-    class ExternalReceiver : EndpointConfigurationBuilder
+    public class ExternalReceiver : EndpointConfigurationBuilder
     {
         public ExternalReceiver() => EndpointSetup<DefaultServer>(
             _ => { },
             publishMetadata => publishMetadata.RegisterPublisherFor<MyEvent, Sender>()
         );
 
+        [Handler]
         public class MyMessageHandler(Context testContext) : IHandleMessages<MyMessage>, IHandleMessages<MyEvent>
         {
             public Task Handle(MyMessage message, IMessageHandlerContext context)

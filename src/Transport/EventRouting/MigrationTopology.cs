@@ -179,9 +179,9 @@ public sealed class MigrationTopology : TopicTopology
             return TopicToPublishTo;
         }
 
-        if (Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out var topic))
+        if (Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entry))
         {
-            return topic;
+            return entry.Topic;
         }
 
         throw new Exception($"When using migration topology, every event needs to be marked either as migrated or pending migration to avoid message loss. In the topology configuration use either MigratedPublishedEvent<'{eventTypeFullName}'>() or EventToMigrate<'{eventTypeFullName}'>(), depending on the migration state of this event.");
