@@ -105,6 +105,7 @@ public class When_using_topic_per_event_topology_with_selective_sql_filter_multi
             EndpointSetup<DefaultServer>(c =>
             {
                 c.DisableFeature<AutoSubscribe>();
+                c.LimitMessageProcessingConcurrencyTo(1);
 
                 var topology = TopicTopology.Default;
                 var endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberForEvent1));
@@ -146,6 +147,7 @@ public class When_using_topic_per_event_topology_with_selective_sql_filter_multi
             EndpointSetup<DefaultServer>(c =>
             {
                 c.DisableFeature<AutoSubscribe>();
+                c.LimitMessageProcessingConcurrencyTo(1);
 
                 var topology = TopicTopology.Default;
                 var endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberForEvent2));

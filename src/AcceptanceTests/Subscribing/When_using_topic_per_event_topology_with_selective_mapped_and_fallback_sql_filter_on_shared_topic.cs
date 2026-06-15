@@ -112,6 +112,7 @@ public class When_using_topic_per_event_topology_with_selective_mapped_and_fallb
             EndpointSetup<DefaultServer>(c =>
             {
                 c.DisableFeature<AutoSubscribe>();
+                c.LimitMessageProcessingConcurrencyTo(1);
 
                 var endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberForEvent1));
                 var topology = TopicTopology.Default;
@@ -151,6 +152,7 @@ public class When_using_topic_per_event_topology_with_selective_mapped_and_fallb
             EndpointSetup<DefaultServer>(c =>
             {
                 c.DisableFeature<AutoSubscribe>();
+                c.LimitMessageProcessingConcurrencyTo(1);
 
                 var endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberForEvent2));
                 var topology = TopicTopology.Default;
