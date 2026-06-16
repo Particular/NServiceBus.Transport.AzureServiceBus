@@ -121,15 +121,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             await administrationClient.AssertNamespaceManageRightsAvailable(cancellationToken)
                 .ConfigureAwait(false);
 
-            var allQueues = infrastructure.Receivers
-                .Select(r => (r.Value.ReceiveAddress, EnableSessions))
-                .Concat(sendingAddresses.Select(s =>
-                {
-                    var queueName = DestinationManager.GetDestination(s);
-                    //HINT: The queues passed in sendingAddresses are assumed to be non session-enabled.
-                    return (queueName, false);
-                }))
-                .ToArray();
+            var queuesToCreate = DetermineQueuesToCreate(receivers, sendingAddresses);
 
             var queueCreator = new TopologyCreator(this);
             await queueCreator.Create(administrationClient, queuesToCreate, cancellationToken).ConfigureAwait(false);
@@ -187,6 +179,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         foreach (var sendingAddress in sendingAddresses)
         {
             var sendingQueueName = DestinationManager.GetDestination(sendingAddress);
+            //HINT: The queues passed in the sending addresses (e.g. error queue and audit queue) are assumed to be non-session-enabled.
             queuesToCreate.Add(sendingQueueName, BuildDefaultCreateQueueOptions(sendingQueueName));
         }
 
@@ -213,6 +206,8 @@ public partial class AzureServiceBusTransport : TransportDefinition
             {
                 receiveQueue.ForwardDeadLetteredMessagesTo = errorQueueName;
             }
+
+            receiveQueue.RequiresSession = EnableSessions;
 
             queuesToCreate.Add(receiveQueueName, receiveQueue);
         }

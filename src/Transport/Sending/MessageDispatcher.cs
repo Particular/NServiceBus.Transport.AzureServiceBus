@@ -15,7 +15,6 @@ class MessageDispatcher(
     ServiceBusClient defaultClient,
     MessageSenderRegistry messageSenderRegistry,
     TopicTopology topology,
-    bool sessionsEnabled,
     DestinationManager destinationManager,
     bool throwOnMissingTopic,
     OutgoingNativeMessageCustomizationAction? customizerCallback = null)
@@ -29,14 +28,14 @@ class MessageDispatcher(
     readonly OutgoingNativeMessageCustomizationAction
         customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
 
-    public MessageDispatcher(
-        ServiceBusClient defaultClient,
-        MessageSenderRegistry messageSenderRegistry,
-        TopicTopology topology,
-        bool sessionsEnabled,
-        OutgoingNativeMessageCustomizationAction? customizerCallback = null) : this(defaultClient, messageSenderRegistry, topology, sessionsEnabled, new DestinationManager(HierarchyNamespaceOptions.None), customizerCallback)
-    {
-    }
+    //public MessageDispatcher(
+    //    ServiceBusClient defaultClient,
+    //    MessageSenderRegistry messageSenderRegistry,
+    //    TopicTopology topology,
+    //    bool sessionsEnabled,
+    //    OutgoingNativeMessageCustomizationAction? customizerCallback = null) : this(defaultClient, messageSenderRegistry, topology, sessionsEnabled, new DestinationManager(HierarchyNamespaceOptions.None), customizerCallback)
+    //{
+    //}
 
     public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
     {

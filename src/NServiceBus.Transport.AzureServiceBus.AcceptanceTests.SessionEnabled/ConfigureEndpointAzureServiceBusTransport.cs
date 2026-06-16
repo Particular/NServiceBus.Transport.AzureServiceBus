@@ -79,8 +79,8 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 
         configuration.UseTransport(transport);
 
-        configuration.RegisterComponents(c => c.AddSingleton<IMutateOutgoingTransportMessages, TestIndependenceMutator>());
-        configuration.Pipeline.Register("TestIndependenceBehavior", typeof(TestIndependenceSkipBehavior), "Skips messages not created during the current test.");
+        configuration.EnableTestIndependence();
+
         configuration.Pipeline.Register("GenerateRandomSessionIdForReplies", typeof(GenerateRandomSessionIdForReplies), "Sets random session ID to all outgoing replies");
         configuration.Pipeline.Register("GenerateRandomSessionIdForSends", typeof(GenerateRandomSessionIdForSends), "Sets random session ID to all outgoing sends");
 

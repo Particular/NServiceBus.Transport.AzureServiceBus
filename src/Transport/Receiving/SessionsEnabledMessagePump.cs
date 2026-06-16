@@ -6,6 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using AdvancedExtensibility;
 using Azure.Messaging.ServiceBus;
 using BitFaster.Caching.Lru;
 using Extensibility;
