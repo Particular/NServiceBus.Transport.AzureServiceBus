@@ -43,7 +43,6 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             defaultClient,
             messageSenderRegistry,
             transportSettings.Topology,
-            transportSettings.EnableSessions,
             destinationManager,
             transportSettings.ThrowOnMissingTopicWhenPublishing,
             transportSettings.OutgoingNativeMessageCustomization

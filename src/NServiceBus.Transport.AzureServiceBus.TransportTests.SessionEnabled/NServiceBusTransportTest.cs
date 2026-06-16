@@ -17,7 +17,9 @@ public abstract class NServiceBusTransportTest
     static NServiceBusTransportTest()
     {
         LogFactory = new TransportTestLoggerFactory();
+#pragma warning disable CS0618 // UseFactory is deprecated; transport tests use it for test setup
         LogManager.UseFactory(LogFactory);
+#pragma warning restore CS0618
     }
 
     [SetUp]
@@ -73,7 +75,7 @@ public abstract class NServiceBusTransportTest
 
         var testName = GetTestName();
 
-        InputQueueName = configurer.GetInputQueueName(testName, transactionMode, true);
+        InputQueueName = configurer.GetInputQueueName(testName, transactionMode);
         ErrorQueueName = configurer.GetErrorQueueName(testName, transactionMode);
 
         var hostSettings = new HostSettings(
@@ -113,7 +115,7 @@ public abstract class NServiceBusTransportTest
             (context, token) =>
                 context.Headers.Contains(TestIdHeaderName, testId) ? onMessage(context, token) : Task.CompletedTask,
             (context, token) =>
-                context.Message.Headers.Contains(TestIdHeaderName, testId) ? onError(context, token) : Task.FromResult(ErrorHandleResult.Handled),
+                context.Headers.Contains(TestIdHeaderName, testId) ? onError(context, token) : Task.FromResult(ErrorHandleResult.Handled),
             cancellationToken);
     }
 
@@ -159,8 +161,8 @@ public abstract class NServiceBusTransportTest
         var messageId = Guid.NewGuid().ToString();
         var message = new OutgoingMessage(messageId, headers ?? [], body ?? []);
 
-        message.Headers.TryAdd(TestIdHeaderName, testId);
         dispatchProperties ??= new DispatchProperties { { "SessionId", Guid.NewGuid().ToString() } };
+        message.Headers.TryAdd(TestIdHeaderName, testId);
 
         transportTransaction ??= new TransportTransaction();
 

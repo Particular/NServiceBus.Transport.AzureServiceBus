@@ -7,7 +7,7 @@ using Azure.Messaging.ServiceBus.Administration;
 
 class TopologyCreator(AzureServiceBusTransport transportSettings)
 {
-    public async Task Create(ServiceBusAdministrationClient adminClient, (string Queue, bool IsSessionEnabled)[] queues, string? instanceName = null,
+    public async Task Create(ServiceBusAdministrationClient adminClient, IReadOnlyCollection<CreateQueueOptions> queues,
         CancellationToken cancellationToken = default)
     {
         var topologyCreator = new MigrationTopologyCreator(transportSettings);
