@@ -61,6 +61,10 @@ namespace NServiceBus
     {
         public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
     }
+    public static class SendOptionsExtensions
+    {
+        public static void SetSessionId(this NServiceBus.SendOptions options, string sessionId) { }
+    }
     public abstract class TopicTopology
     {
         protected TopicTopology(NServiceBus.Transport.AzureServiceBus.TopologyOptions options, Microsoft.Extensions.Options.IValidateOptions<NServiceBus.Transport.AzureServiceBus.TopologyOptions> optionsValidator) { }
