@@ -43,7 +43,7 @@ sealed class PublishEntryConverter : JsonConverter<PublishEntry>
                     topicName = reader.GetString() ?? throw new JsonException("Topic cannot be null");
                     break;
                 case "RoutingMode":
-                    mode = Enum.Parse<TopicRoutingMode>(reader.GetString() ?? throw new JsonException("Mode cannot be null"));
+                    mode = Enum.Parse<TopicRoutingMode>(reader.GetString() ?? throw new JsonException("RoutingMode cannot be null"));
                     break;
                 default:
                     break;

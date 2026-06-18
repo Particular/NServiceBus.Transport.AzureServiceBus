@@ -38,7 +38,6 @@ sealed class SubscriptionEntryHashSetTypeConverter : TypeConverter
             using var enumerator = set.GetEnumerator();
             enumerator.MoveNext();
             return EntryConverter.ConvertToString(enumerator.Current);
-
         }
 
         return base.ConvertTo(context, culture, value, destinationType);
