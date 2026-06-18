@@ -1,11 +1,13 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 /// <summary>
 /// Represents a publish entry with topic and routing mode information.
 /// </summary>
 [JsonConverter(typeof(PublishEntryConverter))]
+[TypeConverter(typeof(PublishEntryTypeConverter))]
 public readonly record struct PublishEntry(string Topic, TopicRoutingMode? Mode = null)
 {
     /// <summary>

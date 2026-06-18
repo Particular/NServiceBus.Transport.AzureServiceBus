@@ -222,6 +222,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         public MigrationTopologyOptionsValidator() { }
         public Microsoft.Extensions.Options.ValidateOptionsResult Validate(string? name, NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions options) { }
     }
+    [System.ComponentModel.TypeConverter(typeof(NServiceBus.Transport.AzureServiceBus.PublishEntryTypeConverter))]
     [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.PublishEntryConverter))]
     public readonly struct PublishEntry : System.IEquatable<NServiceBus.Transport.AzureServiceBus.PublishEntry>
     {
@@ -254,6 +255,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         public RoutingOptions() { }
         public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode { get; set; }
     }
+    [System.ComponentModel.TypeConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscriptionEntryTypeConverter))]
     [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscriptionEntryConverter))]
     public readonly struct SubscriptionEntry : System.IEquatable<NServiceBus.Transport.AzureServiceBus.SubscriptionEntry>
     {

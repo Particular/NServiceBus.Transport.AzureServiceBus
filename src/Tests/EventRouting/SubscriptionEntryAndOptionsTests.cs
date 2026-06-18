@@ -118,7 +118,7 @@ public class SubscriptionEntryJsonConverterTests
     {
         const string json = "\"MyTopic\"";
 
-        var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
+        SubscriptionEntry entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
 
         using (Assert.EnterMultipleScope())
         {
@@ -132,7 +132,7 @@ public class SubscriptionEntryJsonConverterTests
     {
         var entry = new SubscriptionEntry("MyTopic");
 
-        var json = JsonSerializer.Serialize(entry);
+        string json = JsonSerializer.Serialize(entry);
 
         Assert.That(json, Is.EqualTo("\"MyTopic\""));
     }
@@ -142,8 +142,8 @@ public class SubscriptionEntryJsonConverterTests
     {
         const string json = "\"MyTopic\"";
 
-        var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
-        var serialized = JsonSerializer.Serialize(entry);
+        SubscriptionEntry entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
+        string serialized = JsonSerializer.Serialize(entry);
 
         Assert.That(serialized, Is.EqualTo(json));
     }
@@ -153,7 +153,7 @@ public class SubscriptionEntryJsonConverterTests
     {
         var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.NotMultiplexed);
 
-        var json = JsonSerializer.Serialize(entry);
+        string json = JsonSerializer.Serialize(entry);
 
         Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"RoutingMode\":\"NotMultiplexed\"}"));
     }
@@ -163,7 +163,7 @@ public class SubscriptionEntryJsonConverterTests
     {
         var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.CorrelationFilter);
 
-        var json = JsonSerializer.Serialize(entry);
+        string json = JsonSerializer.Serialize(entry);
 
         Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"RoutingMode\":\"CorrelationFilter\"}"));
     }
@@ -173,7 +173,7 @@ public class SubscriptionEntryJsonConverterTests
     {
         var entry = new SubscriptionEntry("MyTopic", TopicRoutingMode.SqlLikeFilter);
 
-        var json = JsonSerializer.Serialize(entry);
+        string json = JsonSerializer.Serialize(entry);
 
         Assert.That(json, Is.EqualTo("{\"Topic\":\"MyTopic\",\"RoutingMode\":\"SqlLikeFilter\"}"));
     }
@@ -183,7 +183,7 @@ public class SubscriptionEntryJsonConverterTests
     {
         const string json = "{\"Topic\":\"MyTopic\",\"RoutingMode\":\"CorrelationFilter\"}";
 
-        var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
+        SubscriptionEntry entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
 
         using (Assert.EnterMultipleScope())
         {
@@ -197,7 +197,7 @@ public class SubscriptionEntryJsonConverterTests
     {
         const string json = "{\"Topic\":\"MyTopic\",\"RoutingMode\":\"NotMultiplexed\"}";
 
-        var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
+        SubscriptionEntry entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
 
         using (Assert.EnterMultipleScope())
         {
@@ -211,7 +211,7 @@ public class SubscriptionEntryJsonConverterTests
     {
         const string json = "{\"Topic\":\"MyTopic\",\"RoutingMode\":\"SqlLikeFilter\"}";
 
-        var entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
+        SubscriptionEntry entry = JsonSerializer.Deserialize<SubscriptionEntry>(json);
 
         using (Assert.EnterMultipleScope())
         {
