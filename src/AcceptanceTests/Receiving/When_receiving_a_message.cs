@@ -13,13 +13,9 @@ public class When_receiving_a_message
     [Test]
     public async Task Should_have_access_to_the_native_message_via_extensions()
     {
-        var sendOptions = new SendOptions();
-        sendOptions.SetSessionId($"sessionId+{Guid.NewGuid()}");
-        sendOptions.RouteToThisEndpoint();
-
         var context = await Scenario.Define<Context>()
             .WithEndpoint<Endpoint>(b => b.When(
-                (session, c) => session.Send(new Message(), sendOptions)))
+                (session, c) => session.SendLocal(new Message())))
             .Run();
 
         Assert.That(context.NativeMessageFound, Is.True);

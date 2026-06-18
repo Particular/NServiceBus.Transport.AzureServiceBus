@@ -31,7 +31,7 @@ sealed class SessionsEnabledMessagePump(
     CancellationTokenSource? messageProcessingCancellationTokenSource;
     ServiceBusSessionProcessor? sessionProcessor;
 
-    static readonly ILog Logger = LogManager.GetLogger<MessagePump>();
+    static readonly ILog Logger = LogManager.GetLogger<SessionsEnabledMessagePump>();
 
     PushRuntimeSettings? limitations;
 

@@ -155,5 +155,5 @@ static class ProcessSessionMessageEventArgsExtensions
 
     // The extension methods here are related to functionality of the message pump. Therefore the same logger name
     // is used as the message pump.
-    static readonly ILog Logger = LogManager.GetLogger<MessagePump>();
+    static readonly ILog Logger = LogManager.GetLogger<SessionsEnabledMessagePump>();
 }
