@@ -161,7 +161,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         public FallbackTopicOptions() { }
         [NServiceBus.Transport.AzureServiceBus.FallbackTopicMode]
-        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode { get; set; }
+        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? RoutingMode { get; set; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         public string? TopicName { get; set; }
     }

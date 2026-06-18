@@ -87,7 +87,7 @@ public class When_using_topic_per_event_topology_with_sql_filter_fallback_topic 
                     FallbackTopic = new FallbackTopicOptions
                     {
                         TopicName = SharedTopicName,
-                        Mode = TopicRoutingMode.SqlLikeFilter
+                        RoutingMode = TopicRoutingMode.SqlLikeFilter
                     }
                 });
             }, metadata =>
@@ -108,7 +108,7 @@ public class When_using_topic_per_event_topology_with_sql_filter_fallback_topic 
                     FallbackTopic = new FallbackTopicOptions
                     {
                         TopicName = SharedTopicName,
-                        Mode = TopicRoutingMode.SqlLikeFilter
+                        RoutingMode = TopicRoutingMode.SqlLikeFilter
                     }
                 });
                 topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());

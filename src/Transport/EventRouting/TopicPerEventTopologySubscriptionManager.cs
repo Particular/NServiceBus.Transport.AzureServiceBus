@@ -156,7 +156,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     {
         if (topologyOptions.FallbackTopic?.TopicName is { Length: > 0 } fallbackTopicName)
         {
-            return [new SubscriptionEntry(fallbackTopicName, topologyOptions.FallbackTopic.Mode)];
+            return [new SubscriptionEntry(fallbackTopicName, topologyOptions.FallbackTopic.RoutingMode)];
         }
 
         return [new SubscriptionEntry(eventTypeFullName)];
@@ -173,10 +173,10 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         // so that publishing and subscribing stay symmetric with the resolved publish-side mode.
         // The comparison runs against the raw (pre-hierarchy-prefix) entry topic, matching the
         // publish-side resolution which also compares against the raw destination name.
-        if (topologyOptions.FallbackTopic is { Mode: not null, TopicName: { Length: > 0 } fallbackTopicName }
+        if (topologyOptions.FallbackTopic is { RoutingMode: not null, TopicName: { Length: > 0 } fallbackTopicName }
             && string.Equals(entry.Topic, fallbackTopicName, StringComparison.Ordinal))
         {
-            return topologyOptions.FallbackTopic.Mode.Value;
+            return topologyOptions.FallbackTopic.RoutingMode.Value;
         }
 
         return TopicRoutingMode.NotMultiplexed;

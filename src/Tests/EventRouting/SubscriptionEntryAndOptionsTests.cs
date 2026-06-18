@@ -93,19 +93,19 @@ public class FallbackTopicOptionsTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(options.TopicName, Is.Null);
-            Assert.That(options.Mode, Is.Null);
+            Assert.That(options.RoutingMode, Is.Null);
         }
     }
 
     [Test]
     public void Can_set_topic_name_and_mode()
     {
-        var options = new FallbackTopicOptions { TopicName = "SharedTopic", Mode = TopicRoutingMode.CorrelationFilter };
+        var options = new FallbackTopicOptions { TopicName = "SharedTopic", RoutingMode = TopicRoutingMode.CorrelationFilter };
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(options.TopicName, Is.EqualTo("SharedTopic"));
-            Assert.That(options.Mode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
+            Assert.That(options.RoutingMode, Is.EqualTo(TopicRoutingMode.CorrelationFilter));
         }
     }
 }
