@@ -1,6 +1,7 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 
@@ -13,6 +14,9 @@ using Microsoft.Extensions.Options;
 #pragma warning restore CS0618 // Type or member is obsolete
 public class TopologyOptions : IHierarchyNamespaceAwareOptions
 {
+    static TopologyOptions() =>
+        TypeDescriptor.AddAttributes(typeof(HashSet<SubscriptionEntry>), new TypeConverterAttribute(typeof(SubscriptionEntryHashSetTypeConverter)));
+
     /// <summary>
     /// Maps event type full names to topics under which they are to be published.
     /// </summary>

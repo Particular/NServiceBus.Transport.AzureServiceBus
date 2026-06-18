@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using Configuration;
 
 /// <summary>
-/// Validates that a <see cref="FallbackTopicOptions.Mode"/> value is one of the supported
+/// Validates that a <see cref="FallbackTopicOptions.RoutingMode"/> value is one of the supported
 /// shared-topic routing modes. When a fallback topic is configured, the mode must be
 /// <see cref="TopicRoutingMode.CorrelationFilter"/> or <see cref="TopicRoutingMode.SqlLikeFilter"/>.
 /// </summary>

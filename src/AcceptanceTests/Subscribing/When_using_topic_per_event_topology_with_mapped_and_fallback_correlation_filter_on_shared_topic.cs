@@ -87,7 +87,7 @@ public class When_using_topic_per_event_topology_with_mapped_and_fallback_correl
                     FallbackTopic = new FallbackTopicOptions
                     {
                         TopicName = SharedTopicName,
-                        Mode = TopicRoutingMode.CorrelationFilter
+                        RoutingMode = TopicRoutingMode.CorrelationFilter
                     }
                 });
                 topology.PublishTo<MyEvent1>(SharedTopicName, options => options.Mode = TopicRoutingMode.CorrelationFilter);
@@ -111,7 +111,7 @@ public class When_using_topic_per_event_topology_with_mapped_and_fallback_correl
                     FallbackTopic = new FallbackTopicOptions
                     {
                         TopicName = SharedTopicName,
-                        Mode = TopicRoutingMode.CorrelationFilter
+                        RoutingMode = TopicRoutingMode.CorrelationFilter
                     }
                 });
                 topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
