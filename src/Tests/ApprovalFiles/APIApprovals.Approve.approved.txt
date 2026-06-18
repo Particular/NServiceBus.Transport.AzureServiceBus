@@ -226,8 +226,8 @@ namespace NServiceBus.Transport.AzureServiceBus
     [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.PublishEntryConverter))]
     public readonly struct PublishEntry : System.IEquatable<NServiceBus.Transport.AzureServiceBus.PublishEntry>
     {
-        public PublishEntry(string Topic, NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode = default) { }
-        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode { get; init; }
+        public PublishEntry(string Topic, NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? RoutingMode = default) { }
+        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? RoutingMode { get; init; }
         public string Topic { get; init; }
         public static NServiceBus.Transport.AzureServiceBus.PublishEntry op_Implicit(string topic) { }
     }

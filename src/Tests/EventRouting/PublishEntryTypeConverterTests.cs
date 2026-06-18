@@ -20,7 +20,7 @@ public class PublishEntryTypeConverterTests
         {
             Assert.That(options.PublishedEventToTopicsMap, Has.Count.EqualTo(1));
             Assert.That(options.PublishedEventToTopicsMap["Shared.EventOne"].Topic, Is.EqualTo("event-one"));
-            Assert.That(options.PublishedEventToTopicsMap["Shared.EventOne"].Mode, Is.Null);
+            Assert.That(options.PublishedEventToTopicsMap["Shared.EventOne"].RoutingMode, Is.Null);
         }
     }
 }

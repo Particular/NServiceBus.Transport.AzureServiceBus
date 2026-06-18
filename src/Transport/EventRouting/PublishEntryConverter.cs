@@ -42,7 +42,7 @@ sealed class PublishEntryConverter : JsonConverter<PublishEntry>
                 case "Topic":
                     topicName = reader.GetString() ?? throw new JsonException("Topic cannot be null");
                     break;
-                case "Mode":
+                case "RoutingMode":
                     mode = Enum.Parse<TopicRoutingMode>(reader.GetString() ?? throw new JsonException("Mode cannot be null"));
                     break;
                 default:
@@ -55,7 +55,7 @@ sealed class PublishEntryConverter : JsonConverter<PublishEntry>
 
     public override void Write(Utf8JsonWriter writer, PublishEntry value, JsonSerializerOptions options)
     {
-        if (value.Mode is null)
+        if (value.RoutingMode is null)
         {
             writer.WriteStringValue(value.Topic);
         }
@@ -64,8 +64,8 @@ sealed class PublishEntryConverter : JsonConverter<PublishEntry>
             writer.WriteStartObject();
             writer.WritePropertyName("Topic");
             writer.WriteStringValue(value.Topic);
-            writer.WritePropertyName("Mode");
-            writer.WriteStringValue(value.Mode.Value.ToString());
+            writer.WritePropertyName("RoutingMode");
+            writer.WriteStringValue(value.RoutingMode.Value.ToString());
             writer.WriteEndObject();
         }
     }

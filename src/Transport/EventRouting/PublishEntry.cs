@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 /// </summary>
 [JsonConverter(typeof(PublishEntryConverter))]
 [TypeConverter(typeof(PublishEntryTypeConverter))]
-public readonly record struct PublishEntry(string Topic, TopicRoutingMode? Mode = null)
+public readonly record struct PublishEntry(string Topic, TopicRoutingMode? RoutingMode = null)
 {
     /// <summary>
     /// Implicitly converts a string to a PublishEntry with no routing mode specified.
