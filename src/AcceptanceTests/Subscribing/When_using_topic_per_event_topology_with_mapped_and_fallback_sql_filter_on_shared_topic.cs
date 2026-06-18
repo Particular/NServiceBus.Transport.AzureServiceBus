@@ -82,7 +82,7 @@ public class When_using_topic_per_event_topology_with_mapped_and_fallback_sql_fi
                     FallbackTopic = new FallbackTopicOptions
                     {
                         TopicName = SharedTopicName,
-                        Mode = TopicRoutingMode.SqlLikeFilter
+                        RoutingMode = TopicRoutingMode.SqlLikeFilter
                     }
                 });
                 topology.PublishTo<MyEvent1>(SharedTopicName, options => options.Mode = TopicRoutingMode.SqlLikeFilter);
@@ -106,7 +106,7 @@ public class When_using_topic_per_event_topology_with_mapped_and_fallback_sql_fi
                     FallbackTopic = new FallbackTopicOptions
                     {
                         TopicName = SharedTopicName,
-                        Mode = TopicRoutingMode.SqlLikeFilter
+                        RoutingMode = TopicRoutingMode.SqlLikeFilter
                     }
                 });
                 topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());

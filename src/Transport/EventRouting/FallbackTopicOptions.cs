@@ -20,7 +20,7 @@ public sealed class FallbackTopicOptions : IHierarchyNamespaceAwareOptions
     /// no longer throws for events resolved through this fallback topic.
     /// </summary>
     [FallbackTopicMode]
-    public TopicRoutingMode? Mode { get; set; }
+    public TopicRoutingMode? RoutingMode { get; set; }
 
     [JsonIgnore]
     internal HierarchyNamespaceOptions HierarchyOptions

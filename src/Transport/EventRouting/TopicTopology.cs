@@ -112,19 +112,19 @@ public abstract partial class TopicTopology
 
     internal TopicRoutingMode GetTopicRoutingMode(string eventTypeFullName)
     {
-        if (Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entry) && entry.Mode.HasValue)
+        if (Options.PublishedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entry) && entry.RoutingMode.HasValue)
         {
-            return entry.Mode.Value;
+            return entry.RoutingMode.Value;
         }
 
-        if (Options.FallbackTopic is { Mode: not null, TopicName: { Length: > 0 } fallbackTopicName } fallbackTopic)
+        if (Options.FallbackTopic is { RoutingMode: not null, TopicName: { Length: > 0 } fallbackTopicName } fallbackTopic)
         {
             // Unmapped events use the fallback topic; mapped events whose publish destination
             // resolves to the fallback topic also use its mode unless explicitly overridden above.
             if (!Options.PublishedEventToTopicsMap.ContainsKey(eventTypeFullName) ||
                 string.Equals(GetPublishDestinationCore(eventTypeFullName), fallbackTopicName, StringComparison.Ordinal))
             {
-                return fallbackTopic.Mode.Value;
+                return fallbackTopic.RoutingMode.Value;
             }
         }
 

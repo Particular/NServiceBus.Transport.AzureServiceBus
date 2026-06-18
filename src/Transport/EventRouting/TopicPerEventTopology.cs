@@ -169,7 +169,7 @@ public sealed class TopicPerEventTopology : TopicTopology
         Options.FallbackTopic = new FallbackTopicOptions
         {
             TopicName = topicName,
-            Mode = mode
+            RoutingMode = mode
         };
     }
 

@@ -87,7 +87,7 @@ public class When_using_topic_per_event_topology_with_correlation_filter_fallbac
                     FallbackTopic = new FallbackTopicOptions
                     {
                         TopicName = SharedTopicName,
-                        Mode = TopicRoutingMode.CorrelationFilter
+                        RoutingMode = TopicRoutingMode.CorrelationFilter
                     }
                 });
             }, metadata =>
@@ -108,7 +108,7 @@ public class When_using_topic_per_event_topology_with_correlation_filter_fallbac
                     FallbackTopic = new FallbackTopicOptions
                     {
                         TopicName = SharedTopicName,
-                        Mode = TopicRoutingMode.CorrelationFilter
+                        RoutingMode = TopicRoutingMode.CorrelationFilter
                     }
                 });
                 topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());

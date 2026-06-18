@@ -161,7 +161,7 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         public FallbackTopicOptions() { }
         [NServiceBus.Transport.AzureServiceBus.FallbackTopicMode]
-        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode { get; set; }
+        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? RoutingMode { get; set; }
         [NServiceBus.Transport.AzureServiceBus.AzureServiceBusTopics]
         public string? TopicName { get; set; }
     }
@@ -222,11 +222,12 @@ namespace NServiceBus.Transport.AzureServiceBus
         public MigrationTopologyOptionsValidator() { }
         public Microsoft.Extensions.Options.ValidateOptionsResult Validate(string? name, NServiceBus.Transport.AzureServiceBus.MigrationTopologyOptions options) { }
     }
+    [System.ComponentModel.TypeConverter(typeof(NServiceBus.Transport.AzureServiceBus.PublishEntryTypeConverter))]
     [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.PublishEntryConverter))]
     public readonly struct PublishEntry : System.IEquatable<NServiceBus.Transport.AzureServiceBus.PublishEntry>
     {
-        public PublishEntry(string Topic, NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode = default) { }
-        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode { get; init; }
+        public PublishEntry(string Topic, NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? RoutingMode = default) { }
+        public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? RoutingMode { get; init; }
         public string Topic { get; init; }
         public static NServiceBus.Transport.AzureServiceBus.PublishEntry op_Implicit(string topic) { }
     }
@@ -254,6 +255,7 @@ namespace NServiceBus.Transport.AzureServiceBus
         public RoutingOptions() { }
         public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode { get; set; }
     }
+    [System.ComponentModel.TypeConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscriptionEntryTypeConverter))]
     [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscriptionEntryConverter))]
     public readonly struct SubscriptionEntry : System.IEquatable<NServiceBus.Transport.AzureServiceBus.SubscriptionEntry>
     {

@@ -80,8 +80,8 @@ sealed class PublishedEventToTopicsMapConverter : JsonConverter<Dictionary<strin
                 case "Topic":
                     topicName = reader.GetString() ?? throw new JsonException("Topic cannot be null");
                     break;
-                case "Mode":
-                    mode = Enum.Parse<TopicRoutingMode>(reader.GetString() ?? throw new JsonException("Mode cannot be null"));
+                case "RoutingMode":
+                    mode = Enum.Parse<TopicRoutingMode>(reader.GetString() ?? throw new JsonException("RoutingMode cannot be null"));
                     break;
                 default:
                     break;
@@ -113,7 +113,7 @@ sealed class PublishedEventToTopicsMapConverter : JsonConverter<Dictionary<strin
 
     static void WritePublishEntry(Utf8JsonWriter writer, PublishEntry entry)
     {
-        if (entry.Mode is null)
+        if (entry.RoutingMode is null)
         {
             writer.WriteStringValue(entry.Topic);
         }
@@ -122,8 +122,8 @@ sealed class PublishedEventToTopicsMapConverter : JsonConverter<Dictionary<strin
             writer.WriteStartObject();
             writer.WritePropertyName("Topic");
             writer.WriteStringValue(entry.Topic);
-            writer.WritePropertyName("Mode");
-            writer.WriteStringValue(entry.Mode.Value.ToString());
+            writer.WritePropertyName("RoutingMode");
+            writer.WriteStringValue(entry.RoutingMode.Value.ToString());
             writer.WriteEndObject();
         }
     }

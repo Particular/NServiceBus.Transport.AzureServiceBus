@@ -1295,7 +1295,7 @@ public class MessageDispatcherTests
             client,
             TopicTopology.FromOptions(new TopologyOptions
             {
-                FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.CorrelationFilter }
+                FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
             }));
 
         var operation =
@@ -1324,7 +1324,7 @@ public class MessageDispatcherTests
             client,
             TopicTopology.FromOptions(new TopologyOptions
             {
-                FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.SqlLikeFilter }
+                FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", RoutingMode = TopicRoutingMode.SqlLikeFilter }
             }));
 
         var operation =
@@ -1354,7 +1354,7 @@ public class MessageDispatcherTests
             TopicTopology.FromOptions(new TopologyOptions
             {
                 PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } },
-                FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", Mode = TopicRoutingMode.CorrelationFilter }
+                FallbackTopic = new FallbackTopicOptions { TopicName = "sharedtopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
             }));
 
         var operation =
