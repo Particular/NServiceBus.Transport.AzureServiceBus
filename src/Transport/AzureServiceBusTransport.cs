@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 using Azure.Core;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
-using Microsoft.Azure.Amqp.Framing;
 using Transport;
 using Transport.AzureServiceBus;
 using Transport.AzureServiceBus.EventRouting;
