@@ -205,7 +205,7 @@ public class TopicPerEventSubscriptionManagerTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             },
             SubscribedEventToTopicsMap =
             {
@@ -423,7 +423,7 @@ public class TopicPerEventSubscriptionManagerTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.SqlLikeFilter
+                RoutingMode = TopicRoutingMode.SqlLikeFilter
             }
         };
 
@@ -448,7 +448,7 @@ public class TopicPerEventSubscriptionManagerTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             }
         };
 
@@ -563,7 +563,7 @@ public class TopicPerEventSubscriptionManagerTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             }
         };
 
@@ -591,7 +591,7 @@ public class TopicPerEventSubscriptionManagerTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.SqlLikeFilter
+                RoutingMode = TopicRoutingMode.SqlLikeFilter
             }
         };
 
@@ -620,7 +620,7 @@ public class TopicPerEventSubscriptionManagerTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             },
             SubscribedEventToTopicsMap = { { typeof(MyEvent1).FullName, ["MyTopic"] } }
         };
@@ -764,7 +764,7 @@ public class TopicPerEventSubscriptionManagerTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             },
             SubscribedEventToTopicsMap =
             {
@@ -797,7 +797,7 @@ public class TopicPerEventSubscriptionManagerTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             },
             SubscribedEventToTopicsMap =
             {
@@ -827,7 +827,7 @@ public class TopicPerEventSubscriptionManagerTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             },
             SubscribedEventToTopicsMap =
             {

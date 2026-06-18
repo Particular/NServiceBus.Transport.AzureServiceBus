@@ -144,6 +144,180 @@ public class SubscribeEventToTopicsMapConverterTests
     }
 
     [Test]
+    public void Supports_object_form_as_single_value()
+    {
+        const string jsonPayload = """
+                                   {
+                                     "$type" : "topology-options",
+                                     "SubscribedEventToTopicsMap" : {
+                                       "MyEvent" : {"Topic":"SomeTopic","RoutingMode":"CorrelationFilter"}
+                                     }
+                                   }
+                                   """;
+
+        TopologyOptions deserialized =
+            JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.TopologyOptions);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
+            Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
+                Is.EquivalentTo([new SubscriptionEntry("SomeTopic", TopicRoutingMode.CorrelationFilter)]));
+        }
+    }
+
+    [Test]
+    public void Supports_object_form_in_array()
+    {
+        const string jsonPayload = """
+                                   {
+                                     "$type" : "topology-options",
+                                     "SubscribedEventToTopicsMap" : {
+                                       "MyEvent" : [
+                                         {"Topic":"SomeTopic","RoutingMode":"CorrelationFilter"},
+                                         {"Topic":"AnotherTopic","RoutingMode":"NotMultiplexed"}
+                                       ]
+                                     }
+                                   }
+                                   """;
+
+        TopologyOptions deserialized =
+            JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.TopologyOptions);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
+            Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
+                Is.EquivalentTo([
+                    new SubscriptionEntry("SomeTopic", TopicRoutingMode.CorrelationFilter),
+                    new SubscriptionEntry("AnotherTopic", TopicRoutingMode.NotMultiplexed)]));
+        }
+    }
+
+    [Test]
+    public void Supports_mixed_string_and_object_in_array()
+    {
+        const string jsonPayload = """
+                                   {
+                                     "$type" : "topology-options",
+                                     "SubscribedEventToTopicsMap" : {
+                                       "MyEvent" : [
+                                         "SomeTopic",
+                                         {"Topic":"AnotherTopic","RoutingMode":"SqlLikeFilter"}
+                                       ]
+                                     }
+                                   }
+                                   """;
+
+        TopologyOptions deserialized =
+            JsonSerializer.Deserialize(jsonPayload, TopologyOptionsSerializationContext.Default.TopologyOptions);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
+            Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
+                Is.EquivalentTo([
+                    new SubscriptionEntry("SomeTopic"),
+                    new SubscriptionEntry("AnotherTopic", TopicRoutingMode.SqlLikeFilter)]));
+        }
+    }
+
+    [Test]
+    public void Single_string_round_trips()
+    {
+        var options = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap = new()
+            {
+                { "MyEvent", [new SubscriptionEntry("SomeTopic")] }
+            }
+        };
+
+        string json = JsonSerializer.Serialize(options, TopologyOptionsSerializationContext.Default.TopologyOptions);
+        TopologyOptions deserialized = JsonSerializer.Deserialize(json, TopologyOptionsSerializationContext.Default.TopologyOptions);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
+            Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
+                Is.EquivalentTo([new SubscriptionEntry("SomeTopic")]));
+        }
+    }
+
+    [Test]
+    public void Array_of_strings_round_trips()
+    {
+        var options = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap = new()
+            {
+                { "MyEvent", [new SubscriptionEntry("SomeTopic"), new SubscriptionEntry("AnotherTopic")] }
+            }
+        };
+
+        string json = JsonSerializer.Serialize(options, TopologyOptionsSerializationContext.Default.TopologyOptions);
+        TopologyOptions deserialized = JsonSerializer.Deserialize(json, TopologyOptionsSerializationContext.Default.TopologyOptions);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
+            Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
+                Is.EquivalentTo([
+                    new SubscriptionEntry("SomeTopic"),
+                    new SubscriptionEntry("AnotherTopic")]));
+        }
+    }
+
+    [Test]
+    public void Object_form_round_trips()
+    {
+        var options = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap = new()
+            {
+                { "MyEvent", [new SubscriptionEntry("SomeTopic", TopicRoutingMode.CorrelationFilter)] }
+            }
+        };
+
+        string json = JsonSerializer.Serialize(options, TopologyOptionsSerializationContext.Default.TopologyOptions);
+        TopologyOptions deserialized = JsonSerializer.Deserialize(json, TopologyOptionsSerializationContext.Default.TopologyOptions);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(1));
+            Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent"],
+                Is.EquivalentTo([new SubscriptionEntry("SomeTopic", TopicRoutingMode.CorrelationFilter)]));
+        }
+    }
+
+    [Test]
+    public void Mixed_single_and_array_round_trips()
+    {
+        var options = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap = new()
+            {
+                { "MyEvent1", [new SubscriptionEntry("SomeTopic"), new SubscriptionEntry("AnotherTopic")] },
+                { "MyEvent2", [new SubscriptionEntry("SingleTopic")] }
+            }
+        };
+
+        string json = JsonSerializer.Serialize(options, TopologyOptionsSerializationContext.Default.TopologyOptions);
+        TopologyOptions deserialized = JsonSerializer.Deserialize(json, TopologyOptionsSerializationContext.Default.TopologyOptions);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(deserialized.SubscribedEventToTopicsMap, Has.Count.EqualTo(2));
+            Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent1"],
+                Is.EquivalentTo([
+                    new SubscriptionEntry("SomeTopic"),
+                    new SubscriptionEntry("AnotherTopic")]));
+            Assert.That(deserialized.SubscribedEventToTopicsMap["MyEvent2"],
+                Is.EquivalentTo([new SubscriptionEntry("SingleTopic")]));
+        }
+    }
+
+    [Test]
     public void Supports_mixing_elements()
     {
         const string jsonPayload = """

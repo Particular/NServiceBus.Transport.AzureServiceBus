@@ -99,7 +99,7 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             },
             PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, "SharedTopic" } }
         };
@@ -117,7 +117,7 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.SqlLikeFilter
+                RoutingMode = TopicRoutingMode.SqlLikeFilter
             },
             PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, "SharedTopic" } }
         };
@@ -135,7 +135,7 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             },
             PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, new PublishEntry("SharedTopic", TopicRoutingMode.NotMultiplexed) } }
         };
@@ -153,7 +153,7 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             },
             PublishedEventToTopicsMap = { { typeof(MyEvent).FullName!, "OtherTopic" } }
         };
@@ -171,7 +171,7 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             }
         };
 
@@ -191,7 +191,7 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.SqlLikeFilter
+                RoutingMode = TopicRoutingMode.SqlLikeFilter
             }
         };
 
@@ -208,7 +208,7 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "SharedTopic",
-                Mode = TopicRoutingMode.NotMultiplexed
+                RoutingMode = TopicRoutingMode.NotMultiplexed
             }
         };
 
@@ -216,9 +216,12 @@ public class TopicPerEventTopologyTests
 
         var validationException = Assert.Catch<ValidationException>(() => topology.Validate());
 
-        Assert.That(validationException!.Message, Does.Contain("Mode"));
-        Assert.That(validationException.Message, Does.Contain("CorrelationFilter"));
-        Assert.That(validationException.Message, Does.Contain("SqlLikeFilter"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(validationException!.Message, Does.Contain("RoutingMode"));
+            Assert.That(validationException.Message, Does.Contain("CorrelationFilter"));
+            Assert.That(validationException.Message, Does.Contain("SqlLikeFilter"));
+        }
     }
 
     [Test]
@@ -229,7 +232,7 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = new string('c', 261),
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             }
         };
 
@@ -252,7 +255,7 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = "bad topic name!",
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             }
         };
 
@@ -276,7 +279,7 @@ public class TopicPerEventTopologyTests
             FallbackTopic = new FallbackTopicOptions
             {
                 TopicName = new string('c', 250),
-                Mode = TopicRoutingMode.CorrelationFilter
+                RoutingMode = TopicRoutingMode.CorrelationFilter
             }
         };
 
