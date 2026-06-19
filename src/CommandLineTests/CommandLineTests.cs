@@ -1296,7 +1296,7 @@
             process.Start();
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
-            process.WaitForExit(10000);
+            await process.WaitForExitAsync();
 
             var output = await outputTask;
             var error = await errorTask;
