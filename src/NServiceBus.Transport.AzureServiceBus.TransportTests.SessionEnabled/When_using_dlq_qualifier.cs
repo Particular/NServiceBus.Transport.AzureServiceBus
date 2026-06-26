@@ -1,12 +1,12 @@
-﻿namespace NServiceBus.Transport.AzureServiceBus.TransportTests;
+﻿namespace NServiceBus.Transport.AzureServiceBus.TransportTests.SessionEnabled;
 
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
-using NUnit.Framework;
 using Routing;
+using NUnit.Framework;
 
 [TestFixture]
 [FixtureLifeCycle(LifeCycle.InstancePerTestCase)]
@@ -72,7 +72,7 @@ public class When_using_dlq_qualifier
     {
         string fullyQualifiedNamespace = ConfigureAzureServiceBusTransportInfrastructure.ConnectionString;
         await using ServiceBusClient client = new(fullyQualifiedNamespace);
-        var receiver = await client.AcceptSessionAsync(inputQueueName, TestId, new ServiceBusSessionReceiverOptions{ ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete }, cancellationToken);
+        var receiver = await client.AcceptSessionAsync(inputQueueName, TestId, new ServiceBusSessionReceiverOptions { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete }, cancellationToken);
         try
         {
             await foreach (var receivedMessage in receiver.ReceiveMessagesAsync(cancellationToken: cancellationToken))

@@ -1,8 +1,8 @@
-﻿using System;
+﻿namespace NServiceBus.Transport.AzureServiceBus.TransportTests.SessionEnabled;
+
+using System;
 using System.Threading;
 using System.Threading.Tasks;
-using NServiceBus;
-using NServiceBus.Transport;
 using NServiceBus.TransportTests;
 
 public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTransportInfrastructure
@@ -13,16 +13,16 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
     {
         if (string.IsNullOrEmpty(ConnectionString))
         {
-            throw new InvalidOperationException("envvar AzureServiceBus_ConnectionString not set");
+            throw new InvalidOperationException("Environment variable AzureServiceBus_OrderedConnectionString not set");
         }
-        var transport = new AzureServiceBusTransport(ConnectionString, TopicTopology.Default);
-        transport.EnableSessions = true;
+
+        var transport = new AzureServiceBusTransport(ConnectionString, TopicTopology.Default) { EnableSessions = true };
         return transport;
     }
 
     public async Task<TransportInfrastructure> Configure(TransportDefinition transportDefinition, HostSettings hostSettings, QueueAddress inputQueueName, string errorQueueName, CancellationToken cancellationToken = default)
     {
-       var transportInfrastructure = await transportDefinition.Initialize(
+        var transportInfrastructure = await transportDefinition.Initialize(
             hostSettings,
             [
                 new ReceiveSettings(inputQueueName.ToString(), inputQueueName, true, false, errorQueueName)
