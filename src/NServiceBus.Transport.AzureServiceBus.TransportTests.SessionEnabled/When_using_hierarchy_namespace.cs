@@ -4,6 +4,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using NUnit.Framework;
 using NServiceBus.TransportTests;
+using SessionEnabled;
 
 [TestFixture]
 public class When_using_hierarchy_namespace : NServiceBusTransportTest

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 using NServiceBus;
 using NServiceBus.AcceptanceTesting.Customization;
 using NServiceBus.AcceptanceTesting.Support;
@@ -9,7 +8,6 @@ using NServiceBus.AcceptanceTests.Routing;
 using NServiceBus.AcceptanceTests.Routing.NativePublishSubscribe;
 using NServiceBus.AcceptanceTests.Sagas;
 using NServiceBus.AcceptanceTests.Versioning;
-using NServiceBus.MessageMutator;
 using NServiceBus.Transport.AzureServiceBus;
 using NServiceBus.Transport.AzureServiceBus.AcceptanceTests;
 using Conventions = NServiceBus.AcceptanceTesting.Customization.Conventions;
