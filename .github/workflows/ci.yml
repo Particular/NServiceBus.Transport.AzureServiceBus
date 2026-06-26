@@ -62,6 +62,12 @@ jobs:
           connection-string-name: AzureServiceBus_ConnectionString
           azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
           tag: ASBTransport
+      - name: Setup Azure Service Bus with restricted access
+        uses: Particular/setup-azureservicebus-action@v2.3.0
+        with:
+          connection-string-name: AzureServiceBus_ConnectionString_Restricted
+          azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
+          tag: ASBTransport
       - name: Setup ordered Azure Service Bus
         uses: Particular/setup-azureservicebus-action@v2.3.0
         with:

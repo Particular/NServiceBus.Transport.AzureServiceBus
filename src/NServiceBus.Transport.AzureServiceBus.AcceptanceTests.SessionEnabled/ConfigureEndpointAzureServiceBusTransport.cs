@@ -34,7 +34,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 {
     public Task Configure(string endpointName, EndpointConfiguration configuration, RunSettings settings, PublisherMetadata publisherMetadata)
     {
-        var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionStringOrdered");
+        var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_OrderedConnectionString");
 
         if (string.IsNullOrEmpty(connectionString))
         {
