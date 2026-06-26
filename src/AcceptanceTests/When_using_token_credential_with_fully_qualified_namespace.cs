@@ -21,6 +21,7 @@ public class When_using_token_credential_with_fully_qualified_namespace : NServi
         fullyQualifiedNamespace = connectionStringProperties.FullyQualifiedNamespace;
     }
 
+    //Useful Tip: https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-managed-service-identity
     [Test]
     public async Task Should_work()
     {

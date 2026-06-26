@@ -7,7 +7,7 @@ using NServiceBus.TransportTests;
 
 public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTransportInfrastructure
 {
-    public static readonly string ConnectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
+    public static readonly string ConnectionString = Environment.GetEnvironmentVariable("AzureServiceBus_OrderedConnectionString");
 
     public TransportDefinition CreateTransportDefinition()
     {
