@@ -10,6 +10,7 @@ namespace NServiceBus
         public System.TimeSpan? AutoDeleteOnIdle { get; set; }
         public bool? AutoForwardDeadLetteredMessagesToErrorQueue { get; set; }
         public bool EnablePartitioning { get; set; }
+        public bool EnableSessions { get; set; }
         public int EntityMaximumSize { get; set; }
         public NServiceBus.Transport.AzureServiceBus.HierarchyNamespaceOptions HierarchyNamespaceOptions { get; set; }
         public System.TimeSpan? MaxAutoLockRenewalDuration { get; set; }
@@ -59,6 +60,10 @@ namespace NServiceBus
     public static class CustomizeNativeMessageExtensions
     {
         public static void CustomizeNativeMessage(this NServiceBus.Extensibility.ExtendableOptions options, System.Action<Azure.Messaging.ServiceBus.ServiceBusMessage> customization) { }
+    }
+    public static class SendOptionsExtensions
+    {
+        public static void SetSessionId(this NServiceBus.SendOptions options, string sessionId) { }
     }
     public abstract class TopicTopology
     {

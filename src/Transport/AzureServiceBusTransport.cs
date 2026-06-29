@@ -178,6 +178,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         foreach (var sendingAddress in sendingAddresses)
         {
             var sendingQueueName = DestinationManager.GetDestination(sendingAddress);
+            //HINT: The queues passed in the sending addresses (e.g. error queue and audit queue) are assumed to be non-session-enabled.
             queuesToCreate.Add(sendingQueueName, BuildDefaultCreateQueueOptions(sendingQueueName));
         }
 
@@ -204,6 +205,8 @@ public partial class AzureServiceBusTransport : TransportDefinition
             {
                 receiveQueue.ForwardDeadLetteredMessagesTo = errorQueueName;
             }
+
+            receiveQueue.RequiresSession = EnableSessions;
 
             queuesToCreate.Add(receiveQueueName, receiveQueue);
         }
@@ -330,6 +333,11 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// Enables entity partitioning when creating queues and topics.
     /// </summary>
     public bool EnablePartitioning { get; set; }
+
+    /// <summary>
+    /// Enables sessions on the queue or topic
+    /// </summary>
+    public bool EnableSessions { get; set; }
 
     /// <summary>
     /// Controls whether dead-lettered messages are automatically forwarded to the configured error queue.

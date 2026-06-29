@@ -1,0 +1,69 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+<PropertyGroup>
+  <TargetFramework>net10.0</TargetFramework>
+</PropertyGroup>
+
+<ItemGroup>
+  <ProjectReference Include="..\Transport\NServiceBus.Transport.AzureServiceBus.csproj" />
+</ItemGroup>
+
+<ItemGroup>
+  <PackageReference Include="GitHubActionsTestLogger" Version="3.0.4" />
+  <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+  <PackageReference Include="NUnit" Version="4.6.1" />
+  <PackageReference Include="NUnit.Analyzers" Version="4.14.0" />
+  <PackageReference Include="NUnit3TestAdapter" Version="6.2.0" />
+</ItemGroup>
+
+<ItemGroup>
+  <PackageReference Include="Azure.Identity" Version="1.21.0" />
+  <PackageReference Include="NServiceBus.AcceptanceTests.Sources" Version="10.2.7" GeneratePathProperty="true" />
+  <PackageReference Include="System.IO.Hashing" Version="10.0.9" />
+</ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\AcceptanceTests\AcceptanceTestExtensions.cs" />
+<!--    <Compile Include="..\AcceptanceTests\TestIndependenceMutator.cs" />-->
+<!--    <Compile Include="..\AcceptanceTests\TestIndependenceSkipBehavior.cs" />-->
+    <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs" />
+  </ItemGroup>
+
+  <!-- Exclude tests that publish as we don't support it for sessions (yet) -->
+  <ItemGroup Condition="'$(PkgNServiceBus_AcceptanceTests_Sources)' != ''">
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_subscribing_in_FST.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Should_be_delivered_to_all_subscribers.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Should_be_processed_by_all_subscribers.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Should_execute_twice_and_send_to_error_queue.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\MultiSubscribeToPolymorphicEvent.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_from_sendonly.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_to_scaled_out_subscribers.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_subscribing_to_a_base_event.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_unsubscribing_from_event.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Should_receive_events_from_all_publishers.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Should_be_delivered_to_all_subscribers.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Event_should_be_published_using_instance_type.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_an_interface.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_an_interface_with_unobtrusive.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_pre_created_interface.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_using_base_type.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_replying_to_saga_event.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_started_by_base_event_from_other_saga.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_started_by_event_from_another_saga.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_with_overridden_local_address.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_multiple_versions_of_a_message_is_published.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_an_event_implementing_two_unrelated_interfaces.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_subscribers_handles_the_same_event.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_with_outbox.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_base_event_from_2_publishers.cs" />
+  </ItemGroup>
+
+  <!-- Exclude tests that perform delayed delivery as we don't support this yet -->
+  <ItemGroup Condition="'$(PkgNServiceBus_AcceptanceTests_Sources)' != ''">
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_immediate_retries_fail.cs" />    
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_delayed_retries_with_immediate_retries_disabled.cs" />    
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\CustomPolicyDoes1DelayedRetryThenSendsToError.cs" />    
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_deferring_a_message.cs" />    
+  </ItemGroup>
+</Project>
