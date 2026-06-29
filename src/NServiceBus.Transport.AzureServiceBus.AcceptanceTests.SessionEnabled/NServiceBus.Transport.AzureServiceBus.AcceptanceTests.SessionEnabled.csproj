@@ -53,7 +53,7 @@
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_with_overridden_local_address.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_multiple_versions_of_a_message_is_published.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_an_event_implementing_two_unrelated_interfaces.cs" />
-    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_outbox_is_used_by_multiple_subscribers_for_the_same_event.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_subscribers_handles_the_same_event.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_with_outbox.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_base_event_from_2_publishers.cs" />
