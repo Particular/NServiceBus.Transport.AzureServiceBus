@@ -11,6 +11,7 @@ using Azure.Messaging.ServiceBus;
 using BitFaster.Caching.Lru;
 using Extensibility;
 using Logging;
+using Receiving;
 
 sealed class SessionsEnabledMessagePump(
     ServiceBusClient serviceBusClient,
@@ -18,9 +19,11 @@ sealed class SessionsEnabledMessagePump(
     string receiveAddress,
     ReceiveSettings receiveSettings,
     Action<string, Exception, CancellationToken> criticalErrorAction,
-    ISubscriptionManager? subscriptionManager)
+    ISubscriptionManager? subscriptionManager,
+    TopologyOptions topologyOptions)
     : IMessageReceiver, IAsyncDisposable
 {
+    readonly TopologyOptions topologyOptions = topologyOptions;
     readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
 
     OnMessage? onMessage;
@@ -30,6 +33,7 @@ sealed class SessionsEnabledMessagePump(
     // Start
     CancellationTokenSource? messageProcessingCancellationTokenSource;
     ServiceBusSessionProcessor? sessionProcessor;
+    List<OrderedSubscriptionForwarder> forwarder = [];
 
     static readonly ILog Logger = LogManager.GetLogger<SessionsEnabledMessagePump>();
 
@@ -50,6 +54,15 @@ sealed class SessionsEnabledMessagePump(
         this.limitations = limitations;
         this.onMessage = onMessage;
         this.onError = onError;
+
+        foreach (KeyValuePair<string, HashSet<SubscriptionEntry>> eventTypeSubscription in topologyOptions.SubscribedEventToTopicsMap)
+        {
+            foreach (var subscription in eventTypeSubscription.Value)
+            {
+                //var forwarder = new OrderedSubscriptionForwarder(subscription.Topic, "", ReceiveAddress);
+                
+            }
+        }
 
         return Task.CompletedTask;
     }

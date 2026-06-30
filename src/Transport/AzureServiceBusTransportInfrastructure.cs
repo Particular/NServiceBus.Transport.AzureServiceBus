@@ -117,7 +117,8 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                         SetupInfrastructure = hostSettings.SetupInfrastructure,
                         SubscribingQueueName = receiveAddress
                     }, hostSettings)
-                    : null);
+                    : null,
+                transportSettings.Topology.Options);
         }
 
         return new MessagePump(
