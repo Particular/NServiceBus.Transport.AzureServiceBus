@@ -91,15 +91,17 @@ public partial class AzureServiceBusTransport : TransportDefinition
             var receiveClient = TokenCredential != null
                 ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, receiveClientOptions)
                 : new ServiceBusClient(ConnectionString, receiveClientOptions);
+
             return (receiver, receiveClient);
         }).ToArray();
 
+        var clientId = Guid.NewGuid();
         var defaultClientOptions = new ServiceBusClientOptions
         {
             TransportType = transportType,
             // for the default client we never want things to automatically use cross entity transaction
             EnableCrossEntityTransactions = false,
-            Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{hostSettings.Name}-{Guid.NewGuid()}"
+            Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{hostSettings.Name}-{clientId}"
         };
         ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
         ApplyWebProxyIfNeeded(defaultClientOptions);
@@ -107,13 +109,29 @@ public partial class AzureServiceBusTransport : TransportDefinition
             ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
             : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
+        ServiceBusClient? forwardingClient = null;
+        if (enableCrossEntityTransactions)
+        {
+            var receiveClientOptions = new ServiceBusClientOptions
+            {
+                TransportType = defaultClientOptions.TransportType,
+                EnableCrossEntityTransactions = enableCrossEntityTransactions,
+                Identifier = $"Client-Forwarder-to-{receivers.First().ReceiveAddress}-{clientId}"
+            };
+            ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
+            ApplyWebProxyIfNeeded(receiveClientOptions);
+            forwardingClient = TokenCredential != null
+                ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, receiveClientOptions)
+                : new ServiceBusClient(ConnectionString, receiveClientOptions);
+        }
+
         var administrationConnectionString = IsUsingDevelopmentEmulator(ConnectionString)
             ? InjectEmulatorAdminPort(ConnectionString!)
             : ConnectionString!;
         var administrationClient = TokenCredential != null
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
             : new ServiceBusAdministrationClient(administrationConnectionString);
-        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient, DestinationManager);
+        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, forwardingClient, administrationClient, DestinationManager);
 
         if (hostSettings.SetupInfrastructure)
         {

@@ -201,6 +201,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         return DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken);
     }
 
+    internal override string SubcriptionName => subscriptionName;
+
     static async Task CreateCatchAllSubscription(string topicName, string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken)

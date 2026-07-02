@@ -16,6 +16,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     readonly MessageSenderRegistry messageSenderRegistry;
     readonly HostSettings hostSettings;
     readonly ServiceBusClient defaultClient;
+    readonly ServiceBusClient? forwardingClient;
     readonly ServiceBusAdministrationClient administrationClient;
     readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
     readonly DestinationManager destinationManager;
@@ -25,6 +26,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         HostSettings hostSettings,
         (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
         ServiceBusClient defaultClient,
+        ServiceBusClient? forwardingClient,
         ServiceBusAdministrationClient administrationClient,
         DestinationManager destinationManager
     )
@@ -33,6 +35,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
         this.hostSettings = hostSettings;
         this.defaultClient = defaultClient;
+        this.forwardingClient = forwardingClient;
         this.administrationClient = administrationClient;
         this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
         this.destinationManager = destinationManager;
@@ -101,24 +104,36 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             {
                 throw new Exception("Cannot use a session-enabled receiver to receive from a dead-letter queue");
             }
+
+            if (forwardingClient == null)
+            {
+                throw new Exception("Forwarding client was not initialized");
+            }
+
+            SubscriptionManager? subscriptionManager = null;
+            if (receiveSettings.UsePublishSubscribe)
+            {
+                subscriptionManager= transportSettings.Topology.CreateSubscriptionManager(new SubscriptionManagerCreationOptions
+                {
+                    AdministrationClient = administrationClient,
+                    Client = defaultClient,
+                    EnablePartitioning = transportSettings.EnablePartitioning,
+                    EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
+                    MaxDeliveryCount = transportSettings.MaxDeliveryCount,
+                    SetupInfrastructure = hostSettings.SetupInfrastructure,
+                    SubscribingQueueName = receiveAddress
+                }, hostSettings);
+            }
+
             return new SessionsEnabledMessagePump(receiveClient,
+                forwardingClient,
                 transportSettings,
                 receiveAddress,
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
-                receiveSettings.UsePublishSubscribe
-                    ? transportSettings.Topology.CreateSubscriptionManager(new SubscriptionManagerCreationOptions
-                    {
-                        AdministrationClient = administrationClient,
-                        Client = defaultClient,
-                        EnablePartitioning = transportSettings.EnablePartitioning,
-                        EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
-                        MaxDeliveryCount = transportSettings.MaxDeliveryCount,
-                        SetupInfrastructure = hostSettings.SetupInfrastructure,
-                        SubscribingQueueName = receiveAddress
-                    }, hostSettings)
-                    : null,
-                transportSettings.Topology.Options);
+                subscriptionManager,
+                transportSettings.Topology.Options,
+                subscriptionManager?.SubcriptionName);
         }
 
         return new MessagePump(

@@ -14,26 +14,26 @@ using Logging;
 using Receiving;
 
 sealed class SessionsEnabledMessagePump(
-    ServiceBusClient serviceBusClient,
+    ServiceBusClient receiveClient,
+    ServiceBusClient forwardingClient,
     AzureServiceBusTransport transportSettings,
     string receiveAddress,
     ReceiveSettings receiveSettings,
     Action<string, Exception, CancellationToken> criticalErrorAction,
     ISubscriptionManager? subscriptionManager,
-    TopologyOptions topologyOptions)
+    TopologyOptions topologyOptions,
+    string? subscriptionName)
     : IMessageReceiver, IAsyncDisposable
 {
-    readonly TopologyOptions topologyOptions = topologyOptions;
     readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
 
     OnMessage? onMessage;
     OnError? onError;
     RepeatedFailuresOverTimeCircuitBreaker? circuitBreaker;
 
-    // Start
     CancellationTokenSource? messageProcessingCancellationTokenSource;
     ServiceBusSessionProcessor? sessionProcessor;
-    List<OrderedSubscriptionForwarder> forwarder = [];
+    List<OrderedSubscriptionForwarder> forwarders;
 
     static readonly ILog Logger = LogManager.GetLogger<SessionsEnabledMessagePump>();
 
@@ -55,12 +55,14 @@ sealed class SessionsEnabledMessagePump(
         this.onMessage = onMessage;
         this.onError = onError;
 
+        forwarders = [];
+
         foreach (KeyValuePair<string, HashSet<SubscriptionEntry>> eventTypeSubscription in topologyOptions.SubscribedEventToTopicsMap)
         {
             foreach (var subscription in eventTypeSubscription.Value)
             {
-                //var forwarder = new OrderedSubscriptionForwarder(subscription.Topic, "", ReceiveAddress);
-                
+                var singleForwarder = new OrderedSubscriptionForwarder(forwardingClient, subscription.Topic, subscriptionName, ReceiveAddress);
+                forwarders.Add(singleForwarder);
             }
         }
 
@@ -69,6 +71,11 @@ sealed class SessionsEnabledMessagePump(
 
     public async Task StartReceive(CancellationToken cancellationToken = default)
     {
+        foreach (var subscriptionForwarder in forwarders)
+        {
+            await subscriptionForwarder.StartReceive(cancellationToken).ConfigureAwait(false);
+        }
+
         var sessionReceiveOptions = new ServiceBusSessionProcessorOptions
         {
             PrefetchCount = CalculatePrefetchCount(limitations!.MaxConcurrency),
@@ -85,7 +92,7 @@ sealed class SessionsEnabledMessagePump(
             sessionReceiveOptions.MaxAutoLockRenewalDuration = transportSettings.MaxAutoLockRenewalDuration.Value;
         }
 
-        sessionProcessor = serviceBusClient.CreateSessionProcessor(ReceiveAddress, sessionReceiveOptions);
+        sessionProcessor = receiveClient.CreateSessionProcessor(ReceiveAddress, sessionReceiveOptions);
         sessionProcessor.ProcessErrorAsync += OnProcessorError;
         sessionProcessor.ProcessMessageAsync += OnProcessMessage;
 
@@ -340,7 +347,7 @@ sealed class SessionsEnabledMessagePump(
 
     AzureServiceBusTransportTransaction CreateTransaction(string incomingQueuePartitionKey) =>
         TransactionMode == TransportTransactionMode.SendsAtomicWithReceive
-            ? new AzureServiceBusTransportTransaction(serviceBusClient, incomingQueuePartitionKey,
+            ? new AzureServiceBusTransportTransaction(receiveClient, incomingQueuePartitionKey,
                 new TransactionOptions
                 {
                     IsolationLevel = IsolationLevel.Serializable,

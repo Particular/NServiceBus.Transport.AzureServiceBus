@@ -15,15 +15,12 @@ public class OrderedSubscriptionForwarder
     ServiceBusSender sender;
     CancellationTokenSource forwardingCancellationTokenSource;
 
-    public OrderedSubscriptionForwarder(string topicName, string subscriptionName, string inputQueueAddress)
+    public OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string topicName, string subscriptionName, string inputQueueAddress)
     {
         this.topicName = topicName;
         this.subscriptionName = subscriptionName;
         this.inputQueueAddress = inputQueueAddress;
-        serviceBusClient = new ServiceBusClient(inputQueueAddress, new ServiceBusClientOptions
-        {
-            EnableCrossEntityTransactions = true // to ensure that completing the incoming message and outgoing send are wrapped in a transaction to avoid duplicates
-        }); // TODO: check missing options
+        serviceBusClient = forwardingClient;
     }
 
     public async Task StartReceive(CancellationToken cancellationToken)
