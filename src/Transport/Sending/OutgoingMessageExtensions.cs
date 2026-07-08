@@ -2,10 +2,18 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 using Azure.Messaging.ServiceBus;
 
 static class OutgoingMessageExtensions
 {
+    // The actual property size limit is 32767 but the total size of all properties must be at most 65534.
+    // We use buffer to avoid hitting the limit
+    internal const int MaxPropertySize = 32767;
+    const int Buffer = 2048;
+    internal static readonly string[] HeadersToTrim = ["NServiceBus.ExceptionInfo.StackTrace", "NServiceBus.ExceptionInfo.Message"];
+
     public static ServiceBusMessage ToAzureServiceBusMessage(
         this IOutgoingTransportOperation outgoingTransportOperation,
         string? incomingQueuePartitionKey
@@ -28,6 +36,8 @@ static class OutgoingMessageExtensions
         SetReplyToAddress(message, outgoingMessage.Headers);
 
         CopyHeaders(message, outgoingMessage.Headers);
+
+        TrimTooLongKnownHeadersInPlace(message);
 
         return message;
     }
@@ -79,6 +89,39 @@ static class OutgoingMessageExtensions
         foreach (var header in headers)
         {
             outgoingMessage.ApplicationProperties[header.Key] = header.Value;
+        }
+    }
+
+    static void TrimTooLongKnownHeadersInPlace(ServiceBusMessage message)
+    {
+        foreach (var headerNamer in HeadersToTrim)
+        {
+            message.ApplicationProperties.TryGetValue(headerNamer, out var headerValue);
+
+            if (headerValue is not string value || Encoding.UTF8.GetByteCount(value) <= MaxPropertySize)
+            {
+                continue;
+            }
+
+            var sb = new StringBuilder(value.Length);
+            int usedBytes = 0;
+
+            var enumerator = StringInfo.GetTextElementEnumerator(value);
+            while (enumerator.MoveNext())
+            {
+                string element = (string)enumerator.Current;
+                int elementBytes = Encoding.UTF8.GetByteCount(element);
+
+                if (usedBytes + elementBytes + Buffer > MaxPropertySize)
+                {
+                    break;
+                }
+
+                sb.Append(element);
+                usedBytes += elementBytes;
+            }
+
+            message.ApplicationProperties[headerNamer] = sb.ToString();
         }
     }
 }
