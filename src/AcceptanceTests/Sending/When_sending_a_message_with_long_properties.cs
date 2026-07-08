@@ -50,14 +50,14 @@ public class When_sending_a_message_with_long_properties : NServiceBusAcceptance
     public class Sender : EndpointConfigurationBuilder
     {
         public Sender() =>
-            EndpointSetup<DefaultServer>(c  => c.LimitMessageProcessingConcurrencyTo(1));
+            EndpointSetup<DefaultServer>(c => c.LimitMessageProcessingConcurrencyTo(1));
 
         [Handler]
         public class MyMessageHandler(Context testContext) : IHandleMessages<MyMessage>
         {
             public Task Handle(MyMessage message, IMessageHandlerContext context)
             {
-                testContext.ReceivedCount ++;
+                testContext.ReceivedCount++;
                 testContext.MarkAsCompleted(testContext.ReceivedCount == 2);
                 return Task.CompletedTask;
             }
