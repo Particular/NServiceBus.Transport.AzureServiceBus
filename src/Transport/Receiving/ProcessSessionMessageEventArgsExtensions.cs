@@ -12,11 +12,10 @@ static class ProcessSessionMessageEventArgsExtensions
 {
     public static async ValueTask<bool> TrySafeCompleteMessage(this ProcessSessionMessageEventArgs args,
         ServiceBusReceivedMessage message, TransportTransactionMode transportTransactionMode,
-        ICache<string, bool> messagesToBeCompleted, // TODO: do we need this to be ordered?
+        ICache<string, bool> messagesToBeCompleted,
         CancellationToken cancellationToken = default)
     {
         args.ReleaseSession();
-        // TODO: Do we support ReceiveOnly for sessions? If so, does that work with session state?
         if (transportTransactionMode == TransportTransactionMode.ReceiveOnly && messagesToBeCompleted.TryGet(message.GetMessageId(), out _))
         {
             if (Logger.IsDebugEnabled)
