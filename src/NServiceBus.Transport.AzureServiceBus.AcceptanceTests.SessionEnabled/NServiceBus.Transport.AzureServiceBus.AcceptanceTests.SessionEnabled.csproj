@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <!-- Exclude tests that publish as we don't support it for sessions (yet) -->
-  <ItemGroup Condition="'$(PkgNServiceBus_AcceptanceTests_Sources)' != ''">
+  <!--<ItemGroup Condition="'$(PkgNServiceBus_AcceptanceTests_Sources)' != ''">
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_subscribing_in_FST.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Should_be_delivered_to_all_subscribers.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Should_be_processed_by_all_subscribers.cs" />
@@ -57,7 +57,7 @@
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_with_outbox.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_base_event_from_2_publishers.cs" />
-  </ItemGroup>
+  </ItemGroup>-->
 
   <!-- Exclude tests that perform delayed delivery as we don't support this yet -->
   <ItemGroup Condition="'$(PkgNServiceBus_AcceptanceTests_Sources)' != ''">

@@ -19,6 +19,17 @@ public class GenerateRandomSessionIdForSends : Behavior<IOutgoingSendContext>
     }
 }
 
+public class GenerateRandomSessionIdForPublishes : Behavior<IOutgoingPublishContext>
+{
+    public override Task Invoke(IOutgoingPublishContext context, Func<Task> next)
+    {
+        var dispatchProperties = context.Extensions.Get<DispatchProperties>();
+        dispatchProperties["SessionId"] = Guid.NewGuid().ToString();
+
+        return next();
+    }
+}
+
 public class GenerateRandomSessionIdForReplies : Behavior<IOutgoingReplyContext>
 {
     public override Task Invoke(IOutgoingReplyContext context, Func<Task> next)
@@ -74,6 +85,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 
         configuration.Pipeline.Register("GenerateRandomSessionIdForReplies", typeof(GenerateRandomSessionIdForReplies), "Sets random session ID to all outgoing replies");
         configuration.Pipeline.Register("GenerateRandomSessionIdForSends", typeof(GenerateRandomSessionIdForSends), "Sets random session ID to all outgoing sends");
+        configuration.Pipeline.Register("GenerateRandomSessionIdForPublishes", typeof(GenerateRandomSessionIdForPublishes), "Sets random session ID to all outgoing publishes");
 
         configuration.EnforcePublisherMetadataRegistration(endpointName, publisherMetadata);
 

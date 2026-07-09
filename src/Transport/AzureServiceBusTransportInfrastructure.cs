@@ -117,6 +117,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                 {
                     AdministrationClient = administrationClient,
                     Client = defaultClient,
+                    RequiresSession = true,
                     EnablePartitioning = transportSettings.EnablePartitioning,
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
                     MaxDeliveryCount = transportSettings.MaxDeliveryCount,
@@ -147,6 +148,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                 {
                     AdministrationClient = administrationClient,
                     Client = defaultClient,
+                    RequiresSession = false,
                     EnablePartitioning = transportSettings.EnablePartitioning,
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
                     MaxDeliveryCount = transportSettings.MaxDeliveryCount,

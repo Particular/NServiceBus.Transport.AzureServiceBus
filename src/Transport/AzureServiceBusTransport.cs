@@ -110,7 +110,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
         ServiceBusClient? forwardingClient = null;
-        if (enableCrossEntityTransactions)
+        if (EnableSessions)
         {
             var receiveClientOptions = new ServiceBusClientOptions
             {

@@ -57,12 +57,15 @@ sealed class SessionsEnabledMessagePump(
 
         forwarders = [];
 
-        foreach (KeyValuePair<string, HashSet<SubscriptionEntry>> eventTypeSubscription in topologyOptions.SubscribedEventToTopicsMap)
+        if (subscriptionName is not null)
         {
-            foreach (var subscription in eventTypeSubscription.Value)
+            foreach (KeyValuePair<string, HashSet<SubscriptionEntry>> eventTypeSubscription in topologyOptions.SubscribedEventToTopicsMap)
             {
-                var singleForwarder = new OrderedSubscriptionForwarder(forwardingClient, subscription.Topic, subscriptionName, ReceiveAddress);
-                forwarders.Add(singleForwarder);
+                foreach (var subscription in eventTypeSubscription.Value)
+                {
+                    var forwarder = new OrderedSubscriptionForwarder(forwardingClient, subscription.Topic, subscriptionName, ReceiveAddress);
+                    forwarders.Add(forwarder);
+                }
             }
         }
 
@@ -73,7 +76,7 @@ sealed class SessionsEnabledMessagePump(
     {
         foreach (var subscriptionForwarder in forwarders)
         {
-            await subscriptionForwarder.StartReceive(cancellationToken).ConfigureAwait(false);
+            await subscriptionForwarder.Start(cancellationToken).ConfigureAwait(false);
         }
 
         var sessionReceiveOptions = new ServiceBusSessionProcessorOptions
@@ -243,6 +246,11 @@ sealed class SessionsEnabledMessagePump(
                 Logger.Debug($"Operation canceled while stopping the receiver {sessionProcessor.EntityPath}.", ex);
             }
         }
+
+        foreach (var subscriptionForwarder in forwarders)
+        {
+            await subscriptionForwarder.Stop(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -254,6 +262,11 @@ sealed class SessionsEnabledMessagePump(
 
             await sessionProcessor.DisposeAsync().ConfigureAwait(false);
             sessionProcessor = null;
+        }
+
+        foreach (var subscriptionForwarder in forwarders)
+        {
+            await subscriptionForwarder.DisposeAsync().ConfigureAwait(false);
         }
 
         messageProcessingCancellationTokenSource?.Dispose();
