@@ -71,7 +71,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
         {
             throw new Exception("The transport has not been initialized. Either provide a connection string or a fully qualified namespace and token credential.");
         }
-
         Topology.Validate();
         HierarchyNamespaceOptions.ValidateDestinations(receivers.Select(x => x.ReceiveAddress.ToString()));
 
@@ -112,11 +111,14 @@ public partial class AzureServiceBusTransport : TransportDefinition
         ServiceBusClient? forwardingClient = null;
         if (EnableSessions)
         {
+            //receivers can be empty if the transport is used in send-only mode
+            var identifier = receivers.Length > 0 ? receivers.First().ReceiveAddress.ToString() : "send-only";
+
             var receiveClientOptions = new ServiceBusClientOptions
             {
                 TransportType = defaultClientOptions.TransportType,
                 EnableCrossEntityTransactions = enableCrossEntityTransactions,
-                Identifier = $"Client-Forwarder-to-{receivers.First().ReceiveAddress}-{clientId}"
+                Identifier = $"Client-Forwarder-to-{identifier}-{clientId}"
             };
             ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
             ApplyWebProxyIfNeeded(receiveClientOptions);
