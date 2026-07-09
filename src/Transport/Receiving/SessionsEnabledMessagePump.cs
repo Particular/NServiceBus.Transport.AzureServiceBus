@@ -33,7 +33,7 @@ sealed class SessionsEnabledMessagePump(
 
     CancellationTokenSource? messageProcessingCancellationTokenSource;
     ServiceBusSessionProcessor? sessionProcessor;
-    List<OrderedSubscriptionForwarder> forwarders;
+    List<OrderedSubscriptionForwarder> forwarders = [];
 
     static readonly ILog Logger = LogManager.GetLogger<SessionsEnabledMessagePump>();
 
@@ -54,8 +54,6 @@ sealed class SessionsEnabledMessagePump(
         this.limitations = limitations;
         this.onMessage = onMessage;
         this.onError = onError;
-
-        forwarders = [];
 
         if (subscriptionName is not null)
         {

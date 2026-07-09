@@ -5,30 +5,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using Azure.Messaging.ServiceBus;
-using Microsoft.Extensions.Logging;
 using Logging;
 
-class OrderedSubscriptionForwarder : IAsyncDisposable
+class OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string topicName, string subscriptionName, string inputQueueAddress)
+    : IAsyncDisposable
 {
     static readonly ILog Logger = LogManager.GetLogger<OrderedSubscriptionForwarder>();
 
-    readonly ServiceBusClient serviceBusClient;
-    readonly string topicName;
-    readonly string subscriptionName;
-    readonly string inputQueueAddress;
     ServiceBusSessionProcessor? sessionProcessor;
-    ServiceBusSender sender;
-    CancellationTokenSource forwardingCancellationTokenSource;
+    ServiceBusSender? sender;
+    CancellationTokenSource forwardingCancellationTokenSource = new CancellationTokenSource();
 
-    public OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string topicName, string subscriptionName, string inputQueueAddress)
-    {
-        this.topicName = topicName;
-        this.subscriptionName = subscriptionName;
-        this.inputQueueAddress = inputQueueAddress;
-        serviceBusClient = forwardingClient;
-    }
-
-    public async Task Start(CancellationToken cancellationToken)
+    public async Task Start(CancellationToken cancellationToken = default)
     {
         var sessionReceiveOptions = new ServiceBusSessionProcessorOptions
         {
@@ -39,17 +27,15 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
             AutoCompleteMessages = false,
         };
 
-        sessionProcessor = serviceBusClient.CreateSessionProcessor(inputQueueAddress, sessionReceiveOptions);
+        sessionProcessor = forwardingClient.CreateSessionProcessor(inputQueueAddress, sessionReceiveOptions);
         sessionProcessor.ProcessErrorAsync += OnError;
         sessionProcessor.ProcessMessageAsync += OnMessage;
-
-        forwardingCancellationTokenSource = new CancellationTokenSource();
 
         await sessionProcessor.StartProcessingAsync(cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task Stop(CancellationToken cancellationToken)
+    public async Task Stop(CancellationToken cancellationToken = default)
     {
         await sessionProcessor!.StopProcessingAsync(cancellationToken).ConfigureAwait(false);
 
@@ -67,7 +53,9 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         }
     }
 
+#pragma warning disable PS0018
     async Task OnMessage(ProcessSessionMessageEventArgs arg)
+#pragma warning restore PS0018
     {
         using var ts = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
 
@@ -93,7 +81,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         }
 
         await arg.CompleteMessageAsync(arg.Message, forwardingCancellationTokenSource.Token).ConfigureAwait(false);
-        sender = serviceBusClient.CreateSender(inputQueueAddress, new ServiceBusSenderOptions
+        sender = forwardingClient.CreateSender(inputQueueAddress, new ServiceBusSenderOptions
         {
             Identifier = $"Forwarding-Sender-{topicName}-{subscriptionName}"
         });
@@ -101,7 +89,9 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         ts.Complete();
     }
 
+#pragma warning disable PS0018
     Task OnError(ProcessErrorEventArgs arg)
+#pragma warning restore PS0018
     {
         //TODO: How do we handle forwarding errors?
         return Task.CompletedTask;

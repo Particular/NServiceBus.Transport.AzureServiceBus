@@ -119,7 +119,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             SubscriptionManager? subscriptionManager = null;
             if (receiveSettings.UsePublishSubscribe)
             {
-                subscriptionManager= transportSettings.Topology.CreateSubscriptionManager(new SubscriptionManagerCreationOptions
+                subscriptionManager = transportSettings.Topology.CreateSubscriptionManager(new SubscriptionManagerCreationOptions
                 {
                     AdministrationClient = administrationClient,
                     Client = defaultClient,
