@@ -14,6 +14,9 @@ using Routing;
 [TestFixture]
 public class MessageDispatcherTests
 {
+    const int MaxPropertySize = 32767;
+    static readonly string[] HeadersToTrim = ["NServiceBus.ExceptionInfo.StackTrace", "NServiceBus.ExceptionInfo.Message"];
+
     static MessageDispatcher CreateDispatcher(
         ServiceBusClient client,
         TopicTopology topology,
@@ -1487,9 +1490,9 @@ public class MessageDispatcherTests
 
         var operation1 =
             new TransportOperation(new OutgoingMessage("SomeId",
-                    OutgoingMessageExtensions.HeadersToTrim
+                    HeadersToTrim
                         .ToDictionary(
-                            header => header, _ => new string('x', OutgoingMessageExtensions.MaxPropertySize * 2)
+                            header => header, _ => new string('x', MaxPropertySize * 2)
                         ),
                     ReadOnlyMemory<byte>.Empty),
                 new UnicastAddressTag("SomeDestination"),
@@ -1506,9 +1509,9 @@ public class MessageDispatcherTests
             Assert.That(sender.BatchSentMessages, Is.Empty);
 
             var sentMessage = sender.IndividuallySentMessages.First();
-            foreach (var header in OutgoingMessageExtensions.HeadersToTrim)
+            foreach (var header in HeadersToTrim)
             {
-                Assert.That(Encoding.UTF8.GetByteCount(sentMessage.ApplicationProperties[header]!.ToString()!), Is.LessThan(OutgoingMessageExtensions.MaxPropertySize));
+                Assert.That(Encoding.UTF8.GetByteCount(sentMessage.ApplicationProperties[header]!.ToString()!), Is.LessThan(MaxPropertySize));
             }
         }
     }

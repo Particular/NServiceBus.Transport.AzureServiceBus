@@ -9,9 +9,9 @@ static class OutgoingMessageExtensions
 {
     // The actual property size limit is 32767 but the total size of all properties must be at most 65534.
     // We use buffer to avoid hitting the limit
-    internal const int MaxPropertySize = 32767;
+    const int MaxPropertySize = 32767;
     const int Buffer = 2048;
-    internal static readonly string[] HeadersToTrim = ["NServiceBus.ExceptionInfo.StackTrace", "NServiceBus.ExceptionInfo.Message"];
+    static readonly string[] HeadersToTrim = ["NServiceBus.ExceptionInfo.StackTrace", "NServiceBus.ExceptionInfo.Message"];
 
     public static ServiceBusMessage ToAzureServiceBusMessage(
         this IOutgoingTransportOperation outgoingTransportOperation,

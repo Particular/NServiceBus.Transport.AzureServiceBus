@@ -9,6 +9,9 @@ using NUnit.Framework;
 
 public class When_sending_a_message_with_long_properties : NServiceBusAcceptanceTest
 {
+    const int MaxPropertySize = 32767;
+    static readonly string[] HeadersToTrim = ["NServiceBus.ExceptionInfo.StackTrace", "NServiceBus.ExceptionInfo.Message"];
+
     [Test]
     public async Task Should_trim_properties_before_sending()
     {
@@ -16,9 +19,9 @@ public class When_sending_a_message_with_long_properties : NServiceBusAcceptance
         {
             var options = new SendOptions();
             options.RouteToThisEndpoint();
-            foreach (var header in OutgoingMessageExtensions.HeadersToTrim)
+            foreach (var header in HeadersToTrim)
             {
-                options.SetHeader(header, new string('x', OutgoingMessageExtensions.MaxPropertySize * 2));
+                options.SetHeader(header, new string('x', MaxPropertySize * 2));
             }
 
             return options;
