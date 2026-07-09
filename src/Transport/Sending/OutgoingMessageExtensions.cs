@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Text;
 using Azure.Messaging.ServiceBus;
 
@@ -94,34 +93,21 @@ static class OutgoingMessageExtensions
 
     static void TrimTooLongKnownHeadersInPlace(ServiceBusMessage message)
     {
-        foreach (var headerNamer in HeadersToTrim)
+        var encoder = Encoding.UTF8.GetEncoder();
+        var trimBuffer = new byte[MaxPropertySize - Buffer];
+
+        foreach (var headerName in HeadersToTrim)
         {
-            message.ApplicationProperties.TryGetValue(headerNamer, out var headerValue);
+            message.ApplicationProperties.TryGetValue(headerName, out var headerValue);
 
             if (headerValue is not string value || Encoding.UTF8.GetByteCount(value) <= MaxPropertySize)
             {
                 continue;
             }
 
-            var sb = new StringBuilder(value.Length);
-            int usedBytes = 0;
-
-            var enumerator = StringInfo.GetTextElementEnumerator(value);
-            while (enumerator.MoveNext())
-            {
-                string element = (string)enumerator.Current;
-                int elementBytes = Encoding.UTF8.GetByteCount(element);
-
-                if (usedBytes + elementBytes + Buffer > MaxPropertySize)
-                {
-                    break;
-                }
-
-                sb.Append(element);
-                usedBytes += elementBytes;
-            }
-
-            message.ApplicationProperties[headerNamer] = sb.ToString();
+            encoder.Reset();
+            encoder.Convert(value.AsSpan(), trimBuffer.AsSpan(), flush: false, out _, out int bytesUsed, out _);
+            message.ApplicationProperties[headerName] = Encoding.UTF8.GetString(trimBuffer, 0, bytesUsed);
         }
     }
 }
