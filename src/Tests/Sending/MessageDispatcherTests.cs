@@ -1492,7 +1492,7 @@ public class MessageDispatcherTests
             new TransportOperation(new OutgoingMessage("SomeId",
                     HeadersToTrim
                         .ToDictionary(
-                            header => header, _ => new string('x', MaxPropertySize * 2)
+                            header => header, _ => new string('€', MaxPropertySize * 2)
                         ),
                     ReadOnlyMemory<byte>.Empty),
                 new UnicastAddressTag("SomeDestination"),
