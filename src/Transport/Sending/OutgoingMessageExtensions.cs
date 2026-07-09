@@ -91,27 +91,28 @@ static class OutgoingMessageExtensions
         }
     }
 
-static void TrimTooLongKnownHeadersInPlace(ServiceBusMessage message)
-{
-    var maxUtf8Bytes = MaxPropertySize - Buffer;
-
-    Encoder? encoder = null;
-    byte[]? trimBuffer = null;
-
-    foreach (var headerName in HeadersToTrim)
+    static void TrimTooLongKnownHeadersInPlace(ServiceBusMessage message)
     {
-        if (!message.ApplicationProperties.TryGetValue(headerName, out var headerValue) ||
-            headerValue is not string value ||
-            Encoding.UTF8.GetByteCount(value) <= maxUtf8Bytes)
+        var maxUtf8Bytes = MaxPropertySize - Buffer;
+
+        Encoder? encoder = null;
+        byte[]? trimBuffer = null;
+
+        foreach (var headerName in HeadersToTrim)
         {
-            continue;
+            if (!message.ApplicationProperties.TryGetValue(headerName, out var headerValue) ||
+                headerValue is not string value ||
+                Encoding.UTF8.GetByteCount(value) <= maxUtf8Bytes)
+            {
+                continue;
+            }
+
+            encoder ??= Encoding.UTF8.GetEncoder();
+            trimBuffer ??= new byte[maxUtf8Bytes];
+
+            encoder.Reset();
+            encoder.Convert(value.AsSpan(), trimBuffer.AsSpan(), flush: false, out _, out int bytesUsed, out _);
+            message.ApplicationProperties[headerName] = Encoding.UTF8.GetString(trimBuffer, 0, bytesUsed);
         }
-
-        encoder ??= Encoding.UTF8.GetEncoder();
-        trimBuffer ??= new byte[maxUtf8Bytes];
-
-        encoder.Reset();
-        encoder.Convert(value.AsSpan(), trimBuffer.AsSpan(), flush: false, out _, out int bytesUsed, out _);
-        message.ApplicationProperties[headerName] = Encoding.UTF8.GetString(trimBuffer, 0, bytesUsed);
     }
 }
