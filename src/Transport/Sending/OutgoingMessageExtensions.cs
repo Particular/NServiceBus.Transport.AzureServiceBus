@@ -8,7 +8,8 @@ using Azure.Messaging.ServiceBus;
 static class OutgoingMessageExtensions
 {
     // The actual property size limit is 32767 but the total size of all properties must be at most 65534.
-    // We use buffer to avoid hitting the limit
+    // Based on https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-quotas
+    // We also use some buffer to avoid hitting the limit
     const int MaxPropertySize = 32767;
     const int Buffer = 2048;
     static readonly string[] HeadersToTrim = ["NServiceBus.ExceptionInfo.StackTrace", "NServiceBus.ExceptionInfo.Message"];
