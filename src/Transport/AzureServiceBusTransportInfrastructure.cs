@@ -50,6 +50,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             transportSettings.ThrowOnMissingTopicWhenPublishing,
             transportSettings.OutgoingNativeMessageCustomization
         );
+
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
         {
             var (receiveSettings, _) = settingsAndClient;
@@ -103,12 +104,6 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             if (subQueue != SubQueue.None)
             {
                 throw new Exception("Cannot use a session-enabled receiver to receive from a dead-letter queue");
-            }
-
-            //TODO : What about raw mode?
-            if (hostSettings.CoreSettings != null && hostSettings.CoreSettings.GetOrDefault<bool>("Endpoint.SendOnly"))
-            {
-                throw new Exception("Cannot use a session-enabled receiver in send-only mode");
             }
 
             if (forwardingClient == null)

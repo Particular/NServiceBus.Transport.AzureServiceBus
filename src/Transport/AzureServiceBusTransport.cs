@@ -111,14 +111,22 @@ public partial class AzureServiceBusTransport : TransportDefinition
         ServiceBusClient? forwardingClient = null;
         if (EnableSessions)
         {
-            //receivers can be empty if the transport is used in send-only mode
-            var identifier = receivers.Length > 0 ? receivers.First().ReceiveAddress.ToString() : "send-only";
+            if (receivers.Length == 0)
+            {
+                throw new Exception("Cannot use a session-enabled receiver in send-only mode");
+            }
+
+            //TODO : Document this decision
+            if (TransportTransactionMode == TransportTransactionMode.None)
+            {
+                throw new Exception("TransportTransactionMode.None is not supported for session-enabled receivers");
+            }
 
             var receiveClientOptions = new ServiceBusClientOptions
             {
                 TransportType = defaultClientOptions.TransportType,
                 EnableCrossEntityTransactions = enableCrossEntityTransactions,
-                Identifier = $"Client-Forwarder-to-{identifier}-{clientId}"
+                Identifier = $"Client-Forwarder-to-{receivers.First().ReceiveAddress}-{clientId}"
             };
             ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
             ApplyWebProxyIfNeeded(receiveClientOptions);
@@ -133,6 +141,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         var administrationClient = TokenCredential != null
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
             : new ServiceBusAdministrationClient(administrationConnectionString);
+
         var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, forwardingClient, administrationClient, DestinationManager);
 
         if (hostSettings.SetupInfrastructure)
@@ -245,12 +254,24 @@ public partial class AzureServiceBusTransport : TransportDefinition
     }
 
     /// <inheritdoc />
-    public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes() =>
-    [
-        TransportTransactionMode.None,
-        TransportTransactionMode.ReceiveOnly,
-        TransportTransactionMode.SendsAtomicWithReceive
-    ];
+    public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes()
+    {
+        if (EnableSessions)
+        {
+            return
+            [
+                TransportTransactionMode.ReceiveOnly,
+                TransportTransactionMode.SendsAtomicWithReceive
+            ];
+        }
+
+        return
+        [
+            TransportTransactionMode.None,
+            TransportTransactionMode.ReceiveOnly,
+            TransportTransactionMode.SendsAtomicWithReceive
+        ];
+    }
 
     /// <summary>
     /// Gets the topic topology used.
