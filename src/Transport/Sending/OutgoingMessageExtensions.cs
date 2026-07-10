@@ -2,11 +2,19 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Azure.Messaging.ServiceBus;
 using Configuration;
 
 static class OutgoingMessageExtensions
 {
+    // The actual property size limit is 32767 but the total size of all properties must be at most 65534.
+    // Based on https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-quotas
+    // We also use some buffer to avoid hitting the limit
+    const int MaxPropertySize = 32767;
+    const int Buffer = 2048;
+    static readonly string[] HeadersToTrim = ["NServiceBus.ExceptionInfo.StackTrace", "NServiceBus.ExceptionInfo.Message"];
+
     public static ServiceBusMessage ToAzureServiceBusMessage(
         this IOutgoingTransportOperation outgoingTransportOperation,
         string? incomingQueuePartitionKey,
@@ -37,6 +45,8 @@ static class OutgoingMessageExtensions
         SetReplyToAddress(message, outgoingMessage.Headers);
 
         CopyHeaders(message, outgoingMessage.Headers);
+
+        TrimTooLongKnownHeadersInPlace(message);
 
         return message;
     }
@@ -88,6 +98,31 @@ static class OutgoingMessageExtensions
         foreach (var header in headers)
         {
             outgoingMessage.ApplicationProperties[header.Key] = header.Value;
+        }
+    }
+
+    static void TrimTooLongKnownHeadersInPlace(ServiceBusMessage message)
+    {
+        var maxUtf8Bytes = MaxPropertySize - Buffer;
+
+        Encoder? encoder = null;
+        byte[]? trimBuffer = null;
+
+        foreach (var headerName in HeadersToTrim)
+        {
+            if (!message.ApplicationProperties.TryGetValue(headerName, out var headerValue) ||
+                headerValue is not string value ||
+                Encoding.UTF8.GetByteCount(value) <= maxUtf8Bytes)
+            {
+                continue;
+            }
+
+            encoder ??= Encoding.UTF8.GetEncoder();
+            trimBuffer ??= new byte[maxUtf8Bytes];
+
+            encoder.Reset();
+            encoder.Convert(value.AsSpan(), trimBuffer.AsSpan(), flush: false, out _, out int bytesUsed, out _);
+            message.ApplicationProperties[headerName] = Encoding.UTF8.GetString(trimBuffer, 0, bytesUsed);
         }
     }
 }
