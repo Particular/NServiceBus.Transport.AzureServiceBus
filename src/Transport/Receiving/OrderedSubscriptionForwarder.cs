@@ -27,7 +27,7 @@ class OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string top
             AutoCompleteMessages = false,
         };
 
-        sessionProcessor = forwardingClient.CreateSessionProcessor(inputQueueAddress, sessionReceiveOptions);
+        sessionProcessor = forwardingClient.CreateSessionProcessor(topicName, subscriptionName, sessionReceiveOptions);
         sessionProcessor.ProcessErrorAsync += OnError;
         sessionProcessor.ProcessMessageAsync += OnMessage;
 
