@@ -213,7 +213,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             EnableDeadLetteringOnFilterEvaluationExceptions = false,
             MaxDeliveryCount = creationOptions.MaxDeliveryCount,
             EnableBatchedOperations = true,
-            UserMetadata = creationOptions.SubscribingQueueName
+            UserMetadata = creationOptions.SubscribingQueueName,
+            RequiresSession = creationOptions.RequiresSession
         };
 
         if (!creationOptions.RequiresSession)
