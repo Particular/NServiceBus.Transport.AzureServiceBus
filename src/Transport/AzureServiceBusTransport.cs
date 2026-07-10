@@ -116,7 +116,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 throw new Exception("Cannot use a session-enabled receiver in send-only mode");
             }
 
-            //TODO : Document this decision
             if (TransportTransactionMode == TransportTransactionMode.None)
             {
                 throw new Exception("TransportTransactionMode.None is not supported for session-enabled receivers");
