@@ -14,7 +14,7 @@ class OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string top
 
     ServiceBusSessionProcessor? sessionProcessor;
     ServiceBusSender? sender;
-    CancellationTokenSource forwardingCancellationTokenSource = new CancellationTokenSource();
+    CancellationTokenSource forwardingCancellationTokenSource = new();
 
     public async Task Start(CancellationToken cancellationToken = default)
     {

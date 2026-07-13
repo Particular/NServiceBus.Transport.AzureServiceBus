@@ -30,6 +30,8 @@
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_non_transactional_message_is_moved_to_error_queue.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_from_sendonly.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\At_most_once.cs" />
+   
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing.cs" />
   </ItemGroup>
   
 
