@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using NServiceBus;
 using NServiceBus.AcceptanceTesting.Customization;
@@ -48,22 +49,16 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 
         if (string.IsNullOrEmpty(connectionString))
         {
-            throw new InvalidOperationException("env var AzureServiceBus_ConnectionStringOrdered not set");
+            throw new InvalidOperationException("envvar AzureServiceBus_ConnectionStringOrdered not set");
         }
 
         var topology = TopicTopology.Default;
         topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
 
-        foreach (var publisher in publisherMetadata.Publishers)
+        foreach (var eventType in publisherMetadata.Publishers.SelectMany(p => p.Events))
         {
-            foreach (var eventType in publisher.Events)
-            {
-                topology.PublishTo(eventType, eventType.ToTopicName());
-                if (!endpointName.Equals(publisher.PublisherName, StringComparison.OrdinalIgnoreCase))
-                {
-                    topology.SubscribeTo(eventType, eventType.ToTopicName());
-                }
-            }
+            topology.PublishTo(eventType, eventType.ToTopicName());
+            topology.SubscribeTo(eventType, eventType.ToTopicName());
         }
 
         var transport = new AzureServiceBusTransport(connectionString, topology);
