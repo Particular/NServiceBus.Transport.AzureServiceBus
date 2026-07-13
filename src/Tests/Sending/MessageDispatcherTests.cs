@@ -3,6 +3,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Sending;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Transactions;
 using Azure.Messaging.ServiceBus;
@@ -13,6 +14,9 @@ using Routing;
 [TestFixture]
 public class MessageDispatcherTests
 {
+    const int MaxPropertySize = 32767;
+    static readonly string[] HeadersToTrim = ["NServiceBus.ExceptionInfo.StackTrace", "NServiceBus.ExceptionInfo.Message"];
+
     static MessageDispatcher CreateDispatcher(
         ServiceBusClient client,
         TopicTopology topology,
@@ -1474,6 +1478,41 @@ public class MessageDispatcherTests
             Assert.That(message.ApplicationProperties, Contains.Key(typeof(ISomeEventInterface).FullName));
             Assert.That(message.ApplicationProperties.ContainsKey(proxyType), Is.False);
             Assert.That(message.ApplicationProperties.ContainsKey(typeof(ISomeEventInterface).AssemblyQualifiedName), Is.False);
+        }
+    }
+
+    [Test]
+    public async Task Should_trim_too_long_properties_for_isolated_messages()
+    {
+        var client = new FakeServiceBusClient();
+
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()));
+
+        var operation1 =
+            new TransportOperation(new OutgoingMessage("SomeId",
+                    HeadersToTrim
+                        .ToDictionary(
+                            header => header, _ => new string('€', MaxPropertySize * 2)
+                        ),
+                    ReadOnlyMemory<byte>.Empty),
+                new UnicastAddressTag("SomeDestination"),
+                [],
+                DispatchConsistency.Isolated);
+
+        await dispatcher.Dispatch(new TransportOperations(operation1), new TransportTransaction());
+
+        var sender = client.Senders["SomeDestination"];
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(1));
+            Assert.That(sender.BatchSentMessages, Is.Empty);
+
+            var sentMessage = sender.IndividuallySentMessages.First();
+            foreach (var header in HeadersToTrim)
+            {
+                Assert.That(Encoding.UTF8.GetByteCount(sentMessage.ApplicationProperties[header]!.ToString()!), Is.LessThan(MaxPropertySize));
+            }
         }
     }
 }
