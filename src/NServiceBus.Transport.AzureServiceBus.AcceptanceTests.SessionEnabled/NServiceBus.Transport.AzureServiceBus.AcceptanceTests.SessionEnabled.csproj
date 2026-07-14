@@ -31,6 +31,7 @@
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_from_sendonly.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\At_most_once.cs" />   
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_with_outbox.cs" />
   </ItemGroup>
   
 
