@@ -128,7 +128,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 Identifier = $"Client-Forwarder-to-{receivers.First().ReceiveAddress}-{clientId}"
             };
 
-            //TODO: Outbox acceptance test fails because subscribers are on ReceiveOnly transaction mode and enableCrossEntityTransactions is true only when SendsAtomicWithReceive is true.
+            //Outbox acceptance test fails because subscribers are on ReceiveOnly transaction mode and enableCrossEntityTransactions is true only when SendsAtomicWithReceive is true.
             //This forms a separate  client options for the forwarding client which always uses cross entity transactions for the subscription bridge
             var forwardingClientOptions = new ServiceBusClientOptions
             {
