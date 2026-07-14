@@ -127,11 +127,20 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 EnableCrossEntityTransactions = enableCrossEntityTransactions,
                 Identifier = $"Client-Forwarder-to-{receivers.First().ReceiveAddress}-{clientId}"
             };
+
+            //TODO: Outbox acceptance test fails because subscribers are on ReceiveOnly transaction mode and enableCrossEntityTransactions is true only when SendsAtomicWithReceive is true.
+            //This forms a separate  client options for the forwarding client which always uses cross entity transactions for the subscription bridge
+            var forwardingClientOptions = new ServiceBusClientOptions
+            {
+                TransportType = defaultClientOptions.TransportType,
+                EnableCrossEntityTransactions = true,
+                Identifier = $"Client-Forwarder-to-{receivers.First().ReceiveAddress}-{clientId}"
+            };
             ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
             ApplyWebProxyIfNeeded(receiveClientOptions);
             forwardingClient = TokenCredential != null
-                ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, receiveClientOptions)
-                : new ServiceBusClient(ConnectionString, receiveClientOptions);
+                ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, forwardingClientOptions)
+                : new ServiceBusClient(ConnectionString, forwardingClientOptions);
         }
 
         var administrationConnectionString = IsUsingDevelopmentEmulator(ConnectionString)
