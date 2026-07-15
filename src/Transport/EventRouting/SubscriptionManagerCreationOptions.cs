@@ -13,6 +13,8 @@ sealed class SubscriptionManagerCreationOptions
 
     public bool EnablePartitioning { get; init; }
 
+    public bool RequiresSession { get; init; }
+
     public int EntityMaximumSizeInMegabytes { get; init; }
 
     public bool SetupInfrastructure { get; init; }

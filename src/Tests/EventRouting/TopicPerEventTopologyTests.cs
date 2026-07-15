@@ -327,6 +327,7 @@ public class TopicPerEventTopologyTests
             hostSettings,
             [(receiveSettings, client)],
             client,
+            null,
             administrationClient,
             destinationManager);
 
@@ -358,6 +359,7 @@ public class TopicPerEventTopologyTests
             hostSettings,
             [(receiveSettings, client)],
             client,
+            null,
             administrationClient,
             destinationManager);
 

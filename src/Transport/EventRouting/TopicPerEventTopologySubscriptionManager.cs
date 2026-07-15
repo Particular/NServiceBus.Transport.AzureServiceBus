@@ -201,6 +201,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         return DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken);
     }
 
+    internal override string SubcriptionName => subscriptionName;
+
     static async Task CreateCatchAllSubscription(string topicName, string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken)
@@ -208,12 +210,17 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         var subscriptionOptions = new CreateSubscriptionOptions(topicName, subscriptionName)
         {
             LockDuration = TimeSpan.FromMinutes(5),
-            ForwardTo = creationOptions.SubscribingQueueName,
             EnableDeadLetteringOnFilterEvaluationExceptions = false,
             MaxDeliveryCount = creationOptions.MaxDeliveryCount,
             EnableBatchedOperations = true,
-            UserMetadata = creationOptions.SubscribingQueueName
+            UserMetadata = creationOptions.SubscribingQueueName,
+            RequiresSession = creationOptions.RequiresSession
         };
+
+        if (!creationOptions.RequiresSession)
+        {
+            subscriptionOptions.ForwardTo = creationOptions.SubscribingQueueName;
+        }
 
         try
         {
@@ -241,6 +248,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         {
             EnableBatchedOperations = true,
             EnablePartitioning = creationOptions.EnablePartitioning,
+            SupportOrdering = creationOptions.RequiresSession,
             MaxSizeInMegabytes = creationOptions.EntityMaximumSizeInMegabytes
         };
 
@@ -269,12 +277,16 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         var subscriptionOptions = new CreateSubscriptionOptions(topicName, subscriptionName)
         {
             LockDuration = TimeSpan.FromMinutes(5),
-            ForwardTo = creationOptions.SubscribingQueueName,
             EnableDeadLetteringOnFilterEvaluationExceptions = false,
             MaxDeliveryCount = creationOptions.MaxDeliveryCount,
             EnableBatchedOperations = true,
             UserMetadata = creationOptions.SubscribingQueueName
         };
+
+        if (!creationOptions.RequiresSession)
+        {
+            subscriptionOptions.ForwardTo = creationOptions.SubscribingQueueName;
+        }
 
         try
         {
