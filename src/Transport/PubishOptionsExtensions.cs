@@ -4,7 +4,7 @@ using System;
 using Extensibility;
 
 /// <summary>
-/// Extensions for <see cref="SendOptions"/>.
+/// Extensions for <see cref="PublishOptions"/>.
 /// </summary>
 public static class PubishOptionsExtensions
 {
