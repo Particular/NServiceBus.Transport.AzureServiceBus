@@ -75,7 +75,7 @@ public class When_batching_multiple_outgoing_small_messages : NServiceBusAccepta
         var singleBatchLines = logoutput.ReplaceLineEndings()
             .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
             .Where(x => x.StartsWith("Sent batch '1' with '1'") && !x.Contains(kickOffMessageId));
-        Assert.That(singleBatchLines.Count(), Is.EqualTo(context.MessageIdsForImmediateDispatch.Count), "Should have used 1 batch for each immediate dispatch messages but didn't");
+        Assert.That(singleBatchLines.Count(), Is.EqualTo(context.MessageIdsForImmediateDispatch.Count), "Should have used 1 batch for each immediate dispatch message but didn't");
     }
 
     static string AggregateBatchLogOutput(ScenarioContext context)
