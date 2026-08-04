@@ -62,9 +62,11 @@ public class When_batching_multiple_outgoing_small_messages : NServiceBusAccepta
             Assert.That(logoutput, Does.Contain(messageIdForBatching), $"{messageIdForBatching} not found in any of the batches. Output: {logoutput}");
         }
 
+        Assert.That(logoutput, Does.Contain($"Sent batch '1' with '{context.MessageIdsForImmediateDispatch.Count}'"), "Should have used 1 batch for the immediate dispatch messages but didn't");
+
         foreach (var messageIdForImmediateDispatch in listOfMessagesForImmediateDispatch)
         {
-            Assert.That(logoutput, Does.Not.Contain(messageIdForImmediateDispatch), $"{messageIdForImmediateDispatch} should not be included in any of the batches. Output: {logoutput}");
+            Assert.That(logoutput, Does.Contain(messageIdForImmediateDispatch), $"{messageIdForImmediateDispatch} should be included in the immediate dispatch batch. Output: {logoutput}");
         }
     }
 
