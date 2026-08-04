@@ -149,50 +149,6 @@ class MessageDispatcher(
         return Task.WhenAll(dispatchTasks);
     }
 
-    // The parameters of this method are deliberately mutable and of the original collection type to make sure
-    // no boxing occurs
-    Task DispatchIsolatedOperations(
-        Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> transportOperationsPerDestination,
-        int numberOfTransportOperations,
-        TransportTransaction transportTransaction,
-        AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
-        CancellationToken cancellationToken)
-    {
-        if (numberOfTransportOperations == 0)
-        {
-            return Task.CompletedTask;
-        }
-
-        // It is OK to use the pumps client and partition key (keeps things compliant as before) but
-        // isolated dispatches should never use the committable transaction regardless whether it is present
-        // or not.
-        Transaction? noTransaction = null;
-        var dispatchTasks = new List<Task>(numberOfTransportOperations);
-        foreach (var destinationAndOperations in transportOperationsPerDestination)
-        {
-            var destination = destinationAndOperations.Key;
-            var (isTopic, operations) = destinationAndOperations.Value;
-            var messagesToSend = new Queue<(ServiceBusMessage Message, TopicRoutingMode RoutingMode)>(operations.Count);
-            foreach (var operation in operations)
-            {
-                ServiceBusMessage message = operation.ToAzureServiceBusMessage(
-                    azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
-                var (_, enclosedMessageTypes, routingMode) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
-                if (routingMode == TopicRoutingMode.CorrelationFilter)
-                {
-                    ApplyMultiplexingStamps(message, enclosedMessageTypes);
-                }
-                operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
-                customizerCallback(operation, message);
-
-                messagesToSend.Enqueue((message, routingMode));
-            }
-            dispatchTasks.Add(DispatchBatchOrFallbackToIndividualSendsForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, messagesToSend, cancellationToken));
-        }
-
-        return Task.WhenAll(dispatchTasks);
-    }
-
     static readonly ConcurrentDictionary<string, string[]> NormalizedEnclosedMessageTypesCache = new(StringComparer.OrdinalIgnoreCase);
 
     static void ApplyMultiplexingStamps(ServiceBusMessage message, string? enclosedMessageTypes)
@@ -338,6 +294,51 @@ class MessageDispatcher(
                 Log.Debug($"Sent '{messagesTooLargeToBeBatched.Count}' that were too large for the batch individually to destination {destination}.");
             }
         }
+    }
+
+    // The parameters of this method are deliberately mutable and of the original collection type to make sure
+    // no boxing occurs
+    Task DispatchIsolatedOperations(
+        Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> transportOperationsPerDestination,
+        int numberOfTransportOperations,
+        TransportTransaction transportTransaction,
+        AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
+        CancellationToken cancellationToken)
+    {
+        if (numberOfTransportOperations == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        // It is OK to use the pumps client and partition key (keeps things compliant as before) but
+        // isolated dispatches should never use the committable transaction regardless whether it is present
+        // or not.
+        Transaction? noTransaction = null;
+        var dispatchTasks = new List<Task>(numberOfTransportOperations);
+        foreach (var destinationAndOperations in transportOperationsPerDestination)
+        {
+            var destination = destinationAndOperations.Key;
+            var (isTopic, operations) = destinationAndOperations.Value;
+            var messagesToSend = new Queue<(ServiceBusMessage Message, TopicRoutingMode RoutingMode)>(operations.Count);
+
+            foreach (var operation in operations)
+            {
+                ServiceBusMessage message = operation.ToAzureServiceBusMessage(
+                    azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
+                var (_, enclosedMessageTypes, routingMode) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
+                if (routingMode == TopicRoutingMode.CorrelationFilter)
+                {
+                    ApplyMultiplexingStamps(message, enclosedMessageTypes);
+                }
+                operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
+                customizerCallback(operation, message);
+
+                messagesToSend.Enqueue((message, routingMode));
+            }
+            dispatchTasks.Add(DispatchBatchOrFallbackToIndividualSendsForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, messagesToSend, cancellationToken));
+        }
+
+        return Task.WhenAll(dispatchTasks);
     }
 
     async Task DispatchForDestination(string destination, bool isMulticast, ServiceBusClient? client,
