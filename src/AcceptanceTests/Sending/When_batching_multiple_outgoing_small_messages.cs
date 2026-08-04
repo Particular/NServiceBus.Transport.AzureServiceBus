@@ -69,7 +69,7 @@ public class When_batching_multiple_outgoing_small_messages : NServiceBusAccepta
         }
 
         //Assert immediate dispatch messages were not batched together
-        Assert.That(logoutput, Does.Not.Contain($"Sent batch '1' with '{context.MessageIdsForImmediateDispatch.Count}'"), "Should have used 1 batch for each immediate dispatch messages but didn't");
+        Assert.That(logoutput, Does.Not.Contain($"Sent batch '1' with '{context.MessageIdsForImmediateDispatch.Count}'"), "Should have used 1 batch for each immediate dispatch message but didn't");
 
         //assert that immediate dispatch messages were sent in their own batches
         var singleBatchLines = logoutput.ReplaceLineEndings()
