@@ -29,7 +29,7 @@ public class MessageDispatcherTests
             throwOnMissingTopic);
 
     [Test]
-    public async Task Should_dispatch_unicast_isolated_dispatches_individually()
+    public async Task Should_batch_unicast_isolated_dispatches_to_same_destination()
     {
         var client = new FakeServiceBusClient();
 
@@ -57,9 +57,11 @@ public class MessageDispatcherTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
-            Assert.That(sender.BatchSentMessages, Is.Empty);
+            Assert.That(sender.IndividuallySentMessages, Is.Empty);
+            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
         }
+        var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+        Assert.That(batchContent, Has.Count.EqualTo(2));
     }
 
     [Test]
@@ -71,7 +73,7 @@ public class MessageDispatcherTests
 
         var sender = new FakeSender
         {
-            SendMessageAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
+            SendMessageBatchAction = _ => throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound)
         };
         client.Senders["SomeDestination"] = sender;
 
@@ -87,7 +89,7 @@ public class MessageDispatcherTests
     }
 
     [Test]
-    public async Task Should_dispatch_multicast_isolated_dispatches_individually()
+    public async Task Should_batch_multicast_isolated_dispatches_to_same_destination()
     {
         var client = new FakeServiceBusClient();
 
@@ -120,9 +122,11 @@ public class MessageDispatcherTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
-            Assert.That(sender.BatchSentMessages, Is.Empty);
+            Assert.That(sender.IndividuallySentMessages, Is.Empty);
+            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
         }
+        var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+        Assert.That(batchContent, Has.Count.EqualTo(2));
     }
 
     // With pub sub the cases of the topic not being available are similar to having a topic without any subscribers
@@ -196,11 +200,11 @@ public class MessageDispatcherTests
                 [],
                 DispatchConsistency.Default);
 
-        Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction()), Throws.Exception.InstanceOf<ServiceBusException>());
+        Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction()), Throws.InstanceOf<InvalidOperationException>());
     }
 
     [Test]
-    public async Task Should_dispatch_unicast_isolated_dispatches_individually_per_destination()
+    public async Task Should_batch_unicast_isolated_dispatches_separately_per_destination()
     {
         var client = new FakeServiceBusClient();
 
@@ -229,16 +233,23 @@ public class MessageDispatcherTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(someDestinationSender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(someDestinationSender.BatchSentMessages, Is.Empty);
-            Assert.That(someOtherDestinationSender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(someOtherDestinationSender.BatchSentMessages, Is.Empty);
+            Assert.That(someDestinationSender.IndividuallySentMessages, Is.Empty);
+            Assert.That(someDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
+            Assert.That(someOtherDestinationSender.IndividuallySentMessages, Is.Empty);
+            Assert.That(someOtherDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
+        }
+        var someDestinationBatchContent = someDestinationSender[someDestinationSender.BatchSentMessages.ElementAt(0)];
+        var someOtherDestinationBatchContent = someOtherDestinationSender[someOtherDestinationSender.BatchSentMessages.ElementAt(0)];
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(someDestinationBatchContent, Has.Count.EqualTo(1));
+            Assert.That(someOtherDestinationBatchContent, Has.Count.EqualTo(1));
         }
     }
 
     [Test]
     public async Task
-        Should_dispatch_multicast_isolated_dispatches_individually_regardless_of_the_event_to_the_topic()
+        Should_batch_multicast_isolated_dispatches_to_same_topic_regardless_of_the_event()
     {
         var client = new FakeServiceBusClient();
 
@@ -275,9 +286,11 @@ public class MessageDispatcherTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
-            Assert.That(sender.BatchSentMessages, Is.Empty);
+            Assert.That(sender.IndividuallySentMessages, Is.Empty);
+            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
         }
+        var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+        Assert.That(batchContent, Has.Count.EqualTo(2));
     }
 
     [Test]
@@ -519,26 +532,34 @@ public class MessageDispatcherTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(someDestinationSender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(someDestinationSender.BatchSentMessages, Is.Empty);
+            Assert.That(someDestinationSender.IndividuallySentMessages, Is.Empty);
+            Assert.That(someDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
 
             Assert.That(someOtherDestinationSender.IndividuallySentMessages, Is.Empty);
             Assert.That(someOtherDestinationSender.BatchSentMessages, Has.Count.EqualTo(1));
         }
+        var someDestinationBatchContent =
+            someDestinationSender[someDestinationSender.BatchSentMessages.ElementAt(0)];
         var someOtherDestinationBatchContent =
             someOtherDestinationSender[someOtherDestinationSender.BatchSentMessages.ElementAt(0)];
         using (Assert.EnterMultipleScope())
         {
+            Assert.That(someDestinationBatchContent, Has.Count.EqualTo(1));
             Assert.That(someOtherDestinationBatchContent, Has.Count.EqualTo(1));
 
-            Assert.That(someTopicSender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(someTopicSender.BatchSentMessages, Has.Count.Zero);
+            Assert.That(someTopicSender.IndividuallySentMessages, Is.Empty);
+            Assert.That(someTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
 
             Assert.That(someOtherTopicSender.IndividuallySentMessages, Has.Count.Zero);
             Assert.That(someOtherTopicSender.BatchSentMessages, Has.Count.EqualTo(1));
         }
+        var someTopicSenderBatchContent = someTopicSender[someTopicSender.BatchSentMessages.ElementAt(0)];
         var someOtherTopicSenderBatchContent = someOtherTopicSender[someOtherTopicSender.BatchSentMessages.ElementAt(0)];
-        Assert.That(someOtherTopicSenderBatchContent, Has.Count.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(someTopicSenderBatchContent, Has.Count.EqualTo(1));
+            Assert.That(someOtherTopicSenderBatchContent, Has.Count.EqualTo(1));
+        }
     }
 
     [Test]
@@ -903,8 +924,8 @@ public class MessageDispatcherTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
-            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            Assert.That(sender.IndividuallySentMessages, Is.Empty);
+            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(2));
         }
     }
 
@@ -959,8 +980,8 @@ public class MessageDispatcherTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(2));
-            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            Assert.That(sender.IndividuallySentMessages, Is.Empty);
+            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(2));
         }
     }
 
@@ -1015,10 +1036,10 @@ public class MessageDispatcherTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(externalSender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(externalSender.BatchSentMessages, Has.Count.EqualTo(1));
-            Assert.That(hierarchySender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(hierarchySender.BatchSentMessages, Has.Count.EqualTo(1));
+            Assert.That(externalSender.IndividuallySentMessages, Is.Empty);
+            Assert.That(externalSender.BatchSentMessages, Has.Count.EqualTo(2));
+            Assert.That(hierarchySender.IndividuallySentMessages, Is.Empty);
+            Assert.That(hierarchySender.BatchSentMessages, Has.Count.EqualTo(2));
         }
     }
 
@@ -1078,10 +1099,10 @@ public class MessageDispatcherTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(externalSender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(externalSender.BatchSentMessages, Has.Count.EqualTo(1));
-            Assert.That(hierarchySender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(hierarchySender.BatchSentMessages, Has.Count.EqualTo(1));
+            Assert.That(externalSender.IndividuallySentMessages, Is.Empty);
+            Assert.That(externalSender.BatchSentMessages, Has.Count.EqualTo(2));
+            Assert.That(hierarchySender.IndividuallySentMessages, Is.Empty);
+            Assert.That(hierarchySender.BatchSentMessages, Has.Count.EqualTo(2));
         }
     }
 
@@ -1401,7 +1422,11 @@ public class MessageDispatcherTests
         await dispatcher.Dispatch(new TransportOperations(operation), new TransportTransaction());
 
         var sender = client.Senders["sometopic"];
-        var message = sender.IndividuallySentMessages.Single();
+
+        Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+        var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+        Assert.That(batchContent, Has.Count.EqualTo(1));
+        var message = batchContent.ElementAt(0);
 
         using (Assert.EnterMultipleScope())
         {
@@ -1505,14 +1530,15 @@ public class MessageDispatcherTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(sender.IndividuallySentMessages, Has.Count.EqualTo(1));
-            Assert.That(sender.BatchSentMessages, Is.Empty);
-
-            var sentMessage = sender.IndividuallySentMessages.First();
-            foreach (var header in HeadersToTrim)
-            {
-                Assert.That(Encoding.UTF8.GetByteCount(sentMessage.ApplicationProperties[header]!.ToString()!), Is.LessThan(MaxPropertySize));
-            }
+            Assert.That(sender.IndividuallySentMessages, Is.Empty);
+            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+        }
+        var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+        Assert.That(batchContent, Has.Count.EqualTo(1));
+        var sentMessage = batchContent.ElementAt(0);
+        foreach (var header in HeadersToTrim)
+        {
+            Assert.That(Encoding.UTF8.GetByteCount(sentMessage.ApplicationProperties[header]!.ToString()!), Is.LessThan(MaxPropertySize));
         }
     }
 }
