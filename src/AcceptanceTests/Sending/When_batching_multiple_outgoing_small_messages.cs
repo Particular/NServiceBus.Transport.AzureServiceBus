@@ -62,12 +62,15 @@ public class When_batching_multiple_outgoing_small_messages : NServiceBusAccepta
             Assert.That(logoutput, Does.Contain(messageIdForBatching), $"{messageIdForBatching} not found in any of the batches. Output: {logoutput}");
         }
 
-        Assert.That(logoutput, Does.Not.Contain($"Sent batch '1' with '{context.MessageIdsForImmediateDispatch.Count}'"), "Should have used 1 batch for each immediate dispatch messages but didn't");
-
         foreach (var messageIdForImmediateDispatch in listOfMessagesForImmediateDispatch)
         {
-            Assert.That(logoutput, Does.Contain(messageIdForImmediateDispatch), $"{messageIdForImmediateDispatch} should be included in the immediate dispatch batch. Output: {logoutput}");
+            Assert.That(logoutput, Does.Contain(messageIdForImmediateDispatch), $"{messageIdForImmediateDispatch} not found in any of the batches. Output: {logoutput}");
         }
+
+        Assert.That(logoutput, Does.Not.Contain($"Sent batch '1' with '{context.MessageIdsForImmediateDispatch.Count}'"), "Should have used 1 batch for each immediate dispatch messages but didn't");
+
+        var numberOfSingleBatches = logoutput.ReplaceLineEndings().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Where(x => x.StartsWith("Sent batch '1' with '1'")).Count();
+        Assert.That(numberOfSingleBatches, Is.EqualTo(context.MessageIdsForImmediateDispatch.Count), "Should have used 1 batch for each immediate dispatch messages but didn't");
     }
 
     static string AggregateBatchLogOutput(ScenarioContext context)
