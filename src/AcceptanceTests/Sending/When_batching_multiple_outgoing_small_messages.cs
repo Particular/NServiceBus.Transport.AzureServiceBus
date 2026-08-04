@@ -54,9 +54,10 @@ public class When_batching_multiple_outgoing_small_messages : NServiceBusAccepta
         var logoutput = AggregateBatchLogOutput(context);
 
         Assert.That(logoutput, Does.Contain(kickOffMessageId), "Kickoff message was not present in any of the batches");
-        Assert.That(logoutput, Does.Contain("Sent batch '1' with '1'"), "Should have used 1 batch for the initial kickoff message but didn't");
+        Assert.That(logoutput, Does.Contain($"Sent batch '1' with '1' message ids '{kickOffMessageId}'"), "Should have used 1 batch for the initial kickoff message but didn't");
         Assert.That(logoutput, Does.Contain($"Sent batch '1' with '{context.MessageIdsForBatching.Count}'"), "Should have used 1 batch for the batched message dispatch but didn't");
 
+        //assert that all messages are batched
         foreach (var messageIdForBatching in listOfMessagesForBatching)
         {
             Assert.That(logoutput, Does.Contain(messageIdForBatching), $"{messageIdForBatching} not found in any of the batches. Output: {logoutput}");
@@ -67,10 +68,14 @@ public class When_batching_multiple_outgoing_small_messages : NServiceBusAccepta
             Assert.That(logoutput, Does.Contain(messageIdForImmediateDispatch), $"{messageIdForImmediateDispatch} not found in any of the batches. Output: {logoutput}");
         }
 
+        //Assert immediate dispatch messages were not batched together
         Assert.That(logoutput, Does.Not.Contain($"Sent batch '1' with '{context.MessageIdsForImmediateDispatch.Count}'"), "Should have used 1 batch for each immediate dispatch messages but didn't");
 
-        var numberOfSingleBatches = logoutput.ReplaceLineEndings().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Where(x => x.StartsWith("Sent batch '1' with '1'")).Count();
-        Assert.That(numberOfSingleBatches, Is.EqualTo(context.MessageIdsForImmediateDispatch.Count), "Should have used 1 batch for each immediate dispatch messages but didn't");
+        //assert that immediate dispatch messages were sent in their own batches
+        var singleBatchLines = logoutput.ReplaceLineEndings()
+            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+            .Where(x => x.StartsWith("Sent batch '1' with '1'") && !x.Contains(kickOffMessageId));
+        Assert.That(singleBatchLines.Count(), Is.EqualTo(context.MessageIdsForImmediateDispatch.Count), "Should have used 1 batch for each immediate dispatch messages but didn't");
     }
 
     static string AggregateBatchLogOutput(ScenarioContext context)
