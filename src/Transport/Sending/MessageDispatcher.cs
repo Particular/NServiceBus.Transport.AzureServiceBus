@@ -186,7 +186,6 @@ class MessageDispatcher(
                 customizerCallback(operation, message);
 
                 messagesToSend.Enqueue((message, routingMode));
-                dispatchTasks.Add(DispatchForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
             }
             dispatchTasks.Add(DispatchBatchOrFallbackToIndividualSendsForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, messagesToSend, cancellationToken));
         }
