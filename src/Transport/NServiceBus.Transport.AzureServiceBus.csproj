@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
     <PackageReference Include="BitFaster.Caching" Version="2.6.0" />
     <PackageReference Include="NServiceBus" Version="10.2.7" />
   </ItemGroup>
