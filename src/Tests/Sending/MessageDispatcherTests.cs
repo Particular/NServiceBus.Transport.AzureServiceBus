@@ -200,7 +200,7 @@ public class MessageDispatcherTests
                 [],
                 DispatchConsistency.Default);
 
-        Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction()), Throws.InstanceOf<InvalidOperationException>());
+        Assert.That(async () => await dispatcher.Dispatch(new TransportOperations(operation1, operation2), new TransportTransaction()), Throws.InstanceOf<ServiceBusException>());
     }
 
     [Test]
