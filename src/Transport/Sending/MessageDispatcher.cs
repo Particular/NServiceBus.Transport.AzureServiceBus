@@ -239,7 +239,7 @@ class MessageDispatcher(
 
                 if (throwOnMissingTopic)
                 {
-                    throw new InvalidOperationException($"Publishing messages to topic {destination} failed because the destination does not exist.", e);
+                    throw;
                 }
 
                 return;
