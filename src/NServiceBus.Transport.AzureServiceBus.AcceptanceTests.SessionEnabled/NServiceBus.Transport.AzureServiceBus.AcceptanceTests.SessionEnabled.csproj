@@ -18,7 +18,7 @@
 
 <ItemGroup>
   <PackageReference Include="Azure.Identity" Version="1.21.0" />
-  <PackageReference Include="NServiceBus.AcceptanceTests.Sources" Version="10.2.7" GeneratePathProperty="true" />
+  <PackageReference Include="NServiceBus.AcceptanceTests.Sources" Version="10.2.8" GeneratePathProperty="true" />
   <PackageReference Include="System.IO.Hashing" Version="10.0.9" />
 </ItemGroup>
 
@@ -57,13 +57,5 @@
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_with_outbox.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_base_event_from_2_publishers.cs" />
-  </ItemGroup>
-
-  <!-- Exclude tests that perform delayed delivery as we don't support this yet -->
-  <ItemGroup Condition="'$(PkgNServiceBus_AcceptanceTests_Sources)' != ''">
-    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_immediate_retries_fail.cs" />    
-    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_delayed_retries_with_immediate_retries_disabled.cs" />    
-    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\CustomPolicyDoes1DelayedRetryThenSendsToError.cs" />    
-    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_deferring_a_message.cs" />    
   </ItemGroup>
 </Project>
