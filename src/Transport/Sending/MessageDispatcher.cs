@@ -319,6 +319,7 @@ class MessageDispatcher(
         {
             var destination = destinationAndOperations.Key;
             var (isTopic, operations) = destinationAndOperations.Value;
+            var messagesToSend = new Queue<(ServiceBusMessage Message, TopicRoutingMode RoutingMode)>(operations.Count);
 
             foreach (var operation in operations)
             {
@@ -331,8 +332,10 @@ class MessageDispatcher(
                 }
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
-                dispatchTasks.Add(DispatchForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, message, cancellationToken));
+
+                messagesToSend.Enqueue((message, routingMode));
             }
+            dispatchTasks.Add(DispatchBatchOrFallbackToIndividualSendsForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, messagesToSend, cancellationToken));
         }
 
         return Task.WhenAll(dispatchTasks);
