@@ -137,6 +137,7 @@ class MessageDispatcher(
                 }
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
+                SetSessionIdIfNeeded(operation, message);
 
                 messagesToSend.Enqueue((message, routingMode));
             }
@@ -334,11 +335,21 @@ class MessageDispatcher(
                 customizerCallback(operation, message);
 
                 messagesToSend.Enqueue((message, routingMode));
+                SetSessionIdIfNeeded(operation, message);
             }
             dispatchTasks.Add(DispatchBatchOrFallbackToIndividualSendsForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, messagesToSend, cancellationToken));
         }
 
         return Task.WhenAll(dispatchTasks);
+    }
+
+    void SetSessionIdIfNeeded(IOutgoingTransportOperation operation, ServiceBusMessage message)
+    {
+        var sessionId = ExtractSessionId(operation);
+        if (sessionId is not null)
+        {
+            message.SessionId = sessionId;
+        }
     }
 
     async Task DispatchForDestination(string destination, bool isMulticast, ServiceBusClient? client,
@@ -378,5 +389,11 @@ class MessageDispatcher(
 
             throw;
         }
+    }
+
+    string? ExtractSessionId(IOutgoingTransportOperation outgoingTransportOperation)
+    {
+        outgoingTransportOperation.Properties.TryGetValue("SessionId", out var sessionId);
+        return sessionId;
     }
 }
