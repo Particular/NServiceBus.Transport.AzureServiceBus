@@ -24,9 +24,9 @@
 
   <ItemGroup>
     <Compile Include="..\AcceptanceTests\AcceptanceTestExtensions.cs" />
-<!--    <Compile Include="..\AcceptanceTests\TestIndependenceMutator.cs" />-->
-<!--    <Compile Include="..\AcceptanceTests\TestIndependenceSkipBehavior.cs" />-->
     <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs" />
+    <Compile Include="..\AcceptanceTests\When_dlq_forwarding_is_enabled.cs" />
+    <Compile Include="..\AcceptanceTests\When_dlq_use_for_failures_enabled.cs" />
   </ItemGroup>
 
   <!-- Exclude tests that publish as we don't support it for sessions (yet) -->

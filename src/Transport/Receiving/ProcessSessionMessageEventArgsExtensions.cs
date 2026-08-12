@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AdvancedExtensibility;
@@ -102,6 +103,34 @@ static class ProcessSessionMessageEventArgsExtensions
         else
         {
             Logger.Warn($"Poison message detected. Message will be discarded, transaction mode is set to None. Exception: {exception.Message}", exception);
+        }
+    }
+
+    public static async Task SafeDeadLetterMessage(this ProcessSessionMessageEventArgs args, ServiceBusReceivedMessage message,
+        TransportTransactionMode transportTransactionMode, DeadLetterRequest request, CancellationToken cancellationToken = default)
+    {
+        args.ReleaseSession();
+        if (transportTransactionMode == TransportTransactionMode.None)
+        {
+            Logger.Info($"Dead lettering message '{message.GetMessageId()}' is not possible since TransportTransactionMode.None is being used");
+            return;
+        }
+
+        try
+        {
+            await args.DeadLetterMessageAsync(message,
+                    (Dictionary<string, object>)request.PropertiesToModify!,
+                    request.DeadLetterReason,
+                    request.DeadLetterErrorDescription,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception deadLetterEx) when (!deadLetterEx.IsCausedBy(cancellationToken))
+        {
+            if (Logger.IsDebugEnabled)
+            {
+                Logger.Debug($"Error dead lettering message with id '{message.GetMessageId()}'.", deadLetterEx);
+            }
         }
     }
 

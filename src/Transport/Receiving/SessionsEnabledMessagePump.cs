@@ -33,6 +33,8 @@ sealed class SessionsEnabledMessagePump(
 
     static readonly ILog Logger = LogManager.GetLogger<SessionsEnabledMessagePump>();
 
+    int autoForwardWarningLogged;
+
     PushRuntimeSettings? limitations;
 
     [MemberNotNull(nameof(limitations), nameof(onMessage), nameof(onError))]
@@ -275,34 +277,46 @@ sealed class SessionsEnabledMessagePump(
         {
             try
             {
-                ErrorHandleResult result;
+                using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
 
-                using (var azureServiceBusTransaction = CreateTransaction(message.PartitionKey))
+                var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), nativeMessageId, body,
+                    receiveProperties, azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
+
+                var result = await onError!(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
+
+                switch (result)
                 {
-                    var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), nativeMessageId, body,
-                        receiveProperties, azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
-
-                    result = await onError!(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
-
-                    if (result == ErrorHandleResult.Handled)
-                    {
-                        await processMessageEventArgs.SafeCompleteMessage(message,
+                    case ErrorHandleResult.RetryRequired:
+                        await processMessageEventArgs.SafeAbandonMessage(message,
                                 TransactionMode,
-                                azureServiceBusTransaction,
-                                messagesToBeCompleted,
                                 cancellationToken: messageProcessingCancellationToken)
                             .ConfigureAwait(false);
-                    }
+                        break;
+                    case ErrorHandleResult.Handled:
+                        if (azureServiceBusTransaction.TransportTransaction.TryGet<DeadLetterRequest>(out var deadLetterRequest))
+                        {
+                            WarnIfDeadLetteringWithoutForwarding(nativeMessageId, message.DeliveryCount);
+                            await processMessageEventArgs.SafeDeadLetterMessage(message,
+                                    TransactionMode,
+                                    deadLetterRequest,
+                                    cancellationToken: messageProcessingCancellationToken)
+                                .ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await processMessageEventArgs.SafeCompleteMessage(message,
+                                    TransactionMode,
+                                    azureServiceBusTransaction,
+                                    messagesToBeCompleted,
+                                    cancellationToken: messageProcessingCancellationToken)
+                                .ConfigureAwait(false);
 
-                    azureServiceBusTransaction.Commit();
-                }
+                            azureServiceBusTransaction.Commit();
+                        }
 
-                if (result == ErrorHandleResult.RetryRequired)
-                {
-                    await processMessageEventArgs.SafeAbandonMessage(message,
-                            TransactionMode,
-                            cancellationToken: messageProcessingCancellationToken)
-                        .ConfigureAwait(false);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(result), result, "Unknown error handle result");
                 }
             }
             catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
@@ -335,6 +349,20 @@ sealed class SessionsEnabledMessagePump(
                     Timeout = TransactionManager.DefaultTimeout
                 })
             : new AzureServiceBusTransportTransaction();
+
+    void WarnIfDeadLetteringWithoutForwarding(string nativeMessageId, int deliveryCount)
+    {
+        if (transportSettings.AutoForwardDeadLetteredMessagesToErrorQueue != null || Interlocked.CompareExchange(ref autoForwardWarningLogged, 1, 0) != 0)
+        {
+            return;
+        }
+
+        Logger.Warn($"Message '{nativeMessageId}' (delivery count: {deliveryCount}) is being moved to the dead-letter queue. " +
+                    "Dead-lettered messages will not automatically appear in the error queue. " +
+                    "Consider setting 'AutoForwardDeadLetteredMessagesToErrorQueue = true' on the transport to automatically forward dead-lettered messages to the error queue, " +
+                    "making them visible for monitoring and reprocessing. Other messages moved to the dead-letter queue will not be logged to avoid flooding the logs." +
+                    "To suppress this warning, explicitly set 'AutoForwardDeadLetteredMessagesToErrorQueue = false'.");
+    }
 
     public ISubscriptionManager? Subscriptions { get; } = subscriptionManager;
 
