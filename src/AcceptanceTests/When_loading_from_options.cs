@@ -1,6 +1,5 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving;
 
-using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using AcceptanceTesting;
@@ -19,9 +18,7 @@ public class When_loading_from_options
     {
         TopicName = "PublisherFromOptions";
 
-        var adminClient =
-            new ServiceBusAdministrationClient(
-                Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
         try
         {
             // makes sure during local development the topic gets cleared before each test run

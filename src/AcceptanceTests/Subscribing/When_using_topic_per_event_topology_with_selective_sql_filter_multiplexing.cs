@@ -18,8 +18,7 @@ public class When_using_topic_per_event_topology_with_selective_sql_filter_multi
     [SetUp]
     public async Task Setup()
     {
-        var adminClient = new ServiceBusAdministrationClient(
-            Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
         await CleanupEntity(adminClient, SharedTopicName);
         await adminClient.CreateTopicAsync(SharedTopicName);
@@ -28,8 +27,7 @@ public class When_using_topic_per_event_topology_with_selective_sql_filter_multi
     [TearDown]
     public async Task Teardown()
     {
-        var adminClient = new ServiceBusAdministrationClient(
-            Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
         await CleanupEntity(adminClient, SharedTopicName);
     }

@@ -1,6 +1,5 @@
 namespace NServiceBus.AcceptanceTests.NativePubSub;
 
-using System;
 using System.Threading.Tasks;
 using AcceptanceTesting;
 using AcceptanceTesting.Customization;
@@ -18,8 +17,7 @@ public class When_using_topic_per_event_topology_with_correlation_filter_multipl
     [SetUp]
     public async Task Setup()
     {
-        var adminClient = new ServiceBusAdministrationClient(
-            Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
         await CleanupEntity(adminClient, SharedTopicName);
 
@@ -29,8 +27,7 @@ public class When_using_topic_per_event_topology_with_correlation_filter_multipl
     [TearDown]
     public async Task Teardown()
     {
-        var adminClient = new ServiceBusAdministrationClient(
-            Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
         await CleanupEntity(adminClient, SharedTopicName);
     }

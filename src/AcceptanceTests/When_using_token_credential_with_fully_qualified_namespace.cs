@@ -1,6 +1,5 @@
 namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests;
 
-using System;
 using System.Threading.Tasks;
 using AcceptanceTesting;
 using Azure.Identity;
@@ -16,7 +15,7 @@ public class When_using_token_credential_with_fully_qualified_namespace : NServi
     [SetUp]
     public void Setup()
     {
-        var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
+        var connectionString = AcceptanceTestConnectionString.Get();
         var connectionStringProperties = ServiceBusConnectionStringProperties.Parse(connectionString);
         fullyQualifiedNamespace = connectionStringProperties.FullyQualifiedNamespace;
     }
