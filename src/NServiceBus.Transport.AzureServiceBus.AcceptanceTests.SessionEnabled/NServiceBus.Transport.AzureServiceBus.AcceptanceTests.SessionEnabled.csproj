@@ -25,29 +25,29 @@
 </ItemGroup>
 
   <ItemGroup>
+    <!-- Tests from the AcceptanceTests package that publish; kept here, the ones that are commented out should be reincluded once publishing is supported for sessions -->
     <Compile Include="..\AcceptanceTests\AcceptanceTestExtensions.cs" />
     <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs" />
+    <!-- Main folder -->
     <Compile Include="..\AcceptanceTests\When_dlq_forwarding_is_enabled.cs" />
     <Compile Include="..\AcceptanceTests\When_dlq_use_for_failures_enabled.cs" />
-  </ItemGroup>
-
-  <!-- Exclude tests that publish as we don't support it for sessions (yet) -->
-  <ItemGroup>
-    <!-- Local tests (not sourced from the NuGet package below) that publish; kept here, commented out, to be reincluded once publishing is supported for sessions -->
+    <Compile Include="..\AcceptanceTests\When_using_auto_delete_on_idle.cs" />
     <!--    <Compile Include="..\AcceptanceTests\When_loading_from_options.cs" />-->
     <!--    <Compile Include="..\AcceptanceTests\When_operating_with_least_privilege.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_multi_subscribing_to_a_polymorphic_event_using_topic_mappings.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_using_topic_per_event_topology_with_correlation_filter_fallback_topic.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_using_topic_per_event_topology_with_correlation_filter_multiplexing.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_using_topic_per_event_topology_with_hierarchy_and_correlation_filter_multiplexing.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_using_topic_per_event_topology_with_mapped_and_fallback_correlation_filter_on_shared_topic.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_using_topic_per_event_topology_with_mapped_and_fallback_sql_filter_on_shared_topic.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_using_topic_per_event_topology_with_selective_correlation_filter_multiplexing.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_using_topic_per_event_topology_with_selective_mapped_and_fallback_correlation_filter_on_shared_topic.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_using_topic_per_event_topology_with_selective_mapped_and_fallback_sql_filter_on_shared_topic.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_using_topic_per_event_topology_with_selective_sql_filter_multiplexing.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_using_topic_per_event_topology_with_sql_filter_fallback_topic.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_using_topic_per_event_topology_with_sql_filter_multiplexing.cs" />-->
+    <!--    <Compile Include="..\AcceptanceTests\When_using_token_credential_with_fully_qualified_namespace.cs" />-->
+    <!-- Receiving -->
+    <Compile Include="..\AcceptanceTests\Receiving\*.cs" Exclude="..\AcceptanceTests\Receiving\When_message_visibility_expired.cs"  >
+      <Link>Receiving\*.cs</Link>
+    </Compile>
+    <!-- Sending -->
+    <Compile Include="..\AcceptanceTests\Sending\*.cs" 
+             Exclude="..\AcceptanceTests\Sending\When_batching_multiple_outgoing_small_messages.cs,..\AcceptanceTests\Sending\When_batching_multiple_outgoing_small_messages.cs,When_sending_a_message_with_long_properties,When_sending_a_message_with_long_properties"  >
+      <Link>Sending\*.cs</Link>
+    </Compile>
+    <!-- Subscribing - to be included when publishes are supported -->
+    <!--    <Compile Include="..\AcceptanceTests\Subscribing\*.cs">-->
+    <!--      <Link>Subscribing\*.cs</Link>-->
+    <!--    </Compile>-->
   </ItemGroup>
 
   <ItemGroup Condition="'$(PkgNServiceBus_AcceptanceTests_Sources)' != ''">
