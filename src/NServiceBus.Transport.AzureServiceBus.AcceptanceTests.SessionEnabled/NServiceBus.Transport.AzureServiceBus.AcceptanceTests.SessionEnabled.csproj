@@ -40,10 +40,9 @@
       <Link>Receiving\*.cs</Link>
     </Compile>
     <!-- Sending -->
-    <Compile Include="..\AcceptanceTests\Sending\*.cs" 
-             Exclude="..\AcceptanceTests\Sending\When_batching_multiple_outgoing_small_messages.cs,..\AcceptanceTests\Sending\When_batching_multiple_outgoing_small_messages.cs,When_sending_a_message_with_long_properties,When_sending_a_message_with_long_properties"  >
-      <Link>Sending\*.cs</Link>
-    </Compile>
+    <Compile Include="..\AcceptanceTests\Sending\When_batching_multiple_outgoing_small_messages.cs" />
+    <Compile Include="..\AcceptanceTests\Sending\When_sending_a_message_with_long_properties.cs" />
+    <Compile Include="..\AcceptanceTests\Sending\When_using_dispatcher_directly_within_transactionscope_and_conflicting_isolation_level.cs" />
     <!-- Subscribing - to be included when publishes are supported -->
     <!--    <Compile Include="..\AcceptanceTests\Subscribing\*.cs">-->
     <!--      <Link>Subscribing\*.cs</Link>-->
