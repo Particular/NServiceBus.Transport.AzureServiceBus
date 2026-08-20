@@ -21,7 +21,7 @@ static class ProcessSessionMessageEventArgsExtensions
         {
             if (Logger.IsDebugEnabled)
             {
-                Logger.DebugFormat("Received message with id '{0}' was marked as successfully completed. Trying to immediately acknowledge the message without invoking the pipeline.", message.GetMessageId());
+                Logger.DebugFormat("Received message with id '{0}' from session '{1}' was marked as successfully completed. Trying to immediately acknowledge the message without invoking the pipeline.", message.GetMessageId(), args.SessionId);
             }
 
             try
@@ -51,7 +51,7 @@ static class ProcessSessionMessageEventArgsExtensions
         if (transportTransactionMode != TransportTransactionMode.None && message.LockedUntil < DateTimeOffset.UtcNow)
         {
             Logger.Warn(
-                $"Skip handling the message with id '{message.GetMessageId()}' because the lock has expired at '{message.LockedUntil}'. " +
+                $"Skip handling the message with id '{message.GetMessageId()}' from session '{args.SessionId}' because the lock has expired at '{message.LockedUntil}'. " +
                 "This is usually an indication that the endpoint prefetches more messages than it is able to handle within the configured" +
                 " peek lock duration. Consider tweaking the prefetch configuration to values that are better aligned with the concurrency" +
                 " of the endpoint and the time it takes to handle the messages.");
@@ -67,7 +67,7 @@ static class ProcessSessionMessageEventArgsExtensions
                 if (Logger.IsDebugEnabled)
                 {
                     // nothing we can do about it, message will be retried
-                    Logger.Debug($"Error abandoning the message with id '{message.GetMessageId()}' because the lock has expired at '{message.LockedUntil}.", e);
+                    Logger.Debug($"Error abandoning the message with id '{message.GetMessageId()}' from session '{args.SessionId}' because the lock has expired at '{message.LockedUntil}.", e);
                 }
             }
         }
@@ -81,7 +81,7 @@ static class ProcessSessionMessageEventArgsExtensions
         args.ReleaseSession();
         if (transportTransactionMode != TransportTransactionMode.None)
         {
-            Logger.Warn($"Poison message detected. Message will be moved to the poison queue. Exception: {exception.Message}", exception);
+            Logger.Warn($"Poison message detected. Message with id {message.GetMessageId()} from session '{args.SessionId}' will be moved to the poison queue. Exception: {exception.Message}", exception);
 
             try
             {
@@ -112,7 +112,7 @@ static class ProcessSessionMessageEventArgsExtensions
         args.ReleaseSession();
         if (transportTransactionMode == TransportTransactionMode.None)
         {
-            Logger.Info($"Dead lettering message '{message.GetMessageId()}' is not possible since TransportTransactionMode.None is being used");
+            Logger.Info($"Dead lettering message '{message.GetMessageId()}' for session '{args.SessionId}' is not possible since TransportTransactionMode.None is being used");
             return;
         }
 
@@ -129,7 +129,7 @@ static class ProcessSessionMessageEventArgsExtensions
         {
             if (Logger.IsDebugEnabled)
             {
-                Logger.Debug($"Error dead lettering message with id '{message.GetMessageId()}'.", deadLetterEx);
+                Logger.Debug($"Error dead lettering message with id '{message.GetMessageId()}' from session '{args.SessionId}'.", deadLetterEx);
             }
         }
     }
@@ -149,9 +149,12 @@ static class ProcessSessionMessageEventArgsExtensions
                 await args.CompleteMessageAsync(message, cancellationToken).ConfigureAwait(false);
                 scope.Complete();
             }
-            catch (ServiceBusException e) when (transportTransactionMode == TransportTransactionMode.ReceiveOnly && e.Reason == ServiceBusFailureReason.MessageLockLost)
+            catch (ServiceBusException e) when (transportTransactionMode == TransportTransactionMode.ReceiveOnly
+                && e.Reason is ServiceBusFailureReason.MessageLockLost or ServiceBusFailureReason.SessionLockLost)
             {
                 // We tried to complete the message because it was successfully either by the pipeline or recoverability, but the lock was lost.
+                // For session-enabled entities the message lock is tied to the session lock, so losing it surfaces as
+                // SessionLockLost rather than MessageLockLost.
                 // To make sure we are not reprocessing it unnecessarily we are tracking the message ID and will complete it
                 // on the next receive. For SendsWithAtomicReceive it is necessary to throw which causes the rollback
                 // of the transaction and will trigger recoverability.
@@ -169,13 +172,15 @@ static class ProcessSessionMessageEventArgsExtensions
             {
                 await args.AbandonMessageAsync(message, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
-            catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.MessageLockLost)
+            catch (ServiceBusException e) when (e.Reason is ServiceBusFailureReason.MessageLockLost or ServiceBusFailureReason.SessionLockLost)
             {
                 if (Logger.IsDebugEnabled)
                 {
                     // We tried to abandon the message because it needs to be retried, but the lock was lost.
+                    // For session-enabled entities the message lock is tied to the session lock, so losing it surfaces as
+                    // SessionLockLost rather than MessageLockLost.
                     // the message will reappear on the next receive anyway so we can just ignore this case.
-                    Logger.DebugFormat("Attempted to abandon the message with id '{0}' but the lock was lost.", message.GetMessageId());
+                    Logger.DebugFormat("Attempted to abandon the message with id '{0}' from session '{1}' but the lock was lost.", message.GetMessageId(), args.SessionId);
                 }
             }
         }

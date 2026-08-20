@@ -319,7 +319,7 @@ sealed class SessionsEnabledMessagePump(
                         throw new ArgumentOutOfRangeException(nameof(result), result, "Unknown error handle result");
                 }
             }
-            catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
+            catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost or ServiceBusFailureReason.SessionLockLost)
             {
                 Logger.Debug("Failed to execute recoverability.", onErrorEx);
 
