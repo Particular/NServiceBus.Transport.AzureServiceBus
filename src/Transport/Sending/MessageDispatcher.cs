@@ -333,9 +333,9 @@ class MessageDispatcher(
                 }
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
+                SetSessionIdIfNeeded(operation, message);
 
                 messagesToSend.Enqueue((message, routingMode));
-                SetSessionIdIfNeeded(operation, message);
             }
             dispatchTasks.Add(DispatchBatchOrFallbackToIndividualSendsForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, messagesToSend, cancellationToken));
         }
