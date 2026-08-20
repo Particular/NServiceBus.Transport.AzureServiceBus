@@ -109,17 +109,15 @@ sealed class SessionsEnabledMessagePump(
     async Task OnProcessMessage(ProcessSessionMessageEventArgs arg)
 #pragma warning restore PS0018
     {
-        string nativeMessageId;
         Dictionary<string, string?> headers;
         BinaryData body;
         var message = arg.Message;
+        var nativeMessageId = message.GetMessageId();
 
         circuitBreaker!.Success();
 
         try
         {
-            nativeMessageId = message.GetMessageId();
-
             // Deliberately not using the cancellation token to make sure we abandon the message even when the
             // cancellation token is already set.
             if (await arg.TrySafeCompleteMessage(message, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
@@ -139,7 +137,9 @@ sealed class SessionsEnabledMessagePump(
         }
         catch (Exception ex)
         {
-            await arg.SafeDeadLetterMessage(message, TransactionMode, ex, CancellationToken.None).ConfigureAwait(false);
+            Logger.Error($"Moving message '{nativeMessageId}' to the dead letter queue", ex);
+            WarnIfDeadLetteringWithoutForwarding(nativeMessageId, message.DeliveryCount);
+            await arg.SafeDeadLetterMessage(message, TransactionMode, new DeadLetterRequest(ex), CancellationToken.None).ConfigureAwait(false);
 
             return;
         }
