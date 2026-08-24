@@ -15,7 +15,7 @@ using Receiving;
 
 sealed class SessionsEnabledMessagePump(
     ServiceBusClient receiveClient,
-    ServiceBusClient forwardingClient,
+    Func<ServiceBusClient> forwardingClientFactory,
     AzureServiceBusTransport transportSettings,
     string receiveAddress,
     ReceiveSettings receiveSettings,
@@ -63,7 +63,7 @@ sealed class SessionsEnabledMessagePump(
             {
                 foreach (var subscription in eventTypeSubscription.Value)
                 {
-                    var forwarder = new OrderedSubscriptionForwarder(forwardingClient, subscription.Topic, subscriptionName, ReceiveAddress);
+                    var forwarder = new OrderedSubscriptionForwarder(forwardingClientFactory(), subscription.Topic, subscriptionName, ReceiveAddress);
                     forwarders.Add(forwarder);
                 }
             }

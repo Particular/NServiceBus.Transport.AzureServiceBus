@@ -120,20 +120,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
             {
                 throw new Exception("TransportTransactionMode.None is not supported for session-enabled receivers");
             }
-
-            //Outbox acceptance test fails because subscribers are on ReceiveOnly transaction mode and enableCrossEntityTransactions is true only when SendsAtomicWithReceive is true.
-            //This forms a separate  client options for the forwarding client which always uses cross entity transactions for the subscription bridge
-            var forwardingClientOptions = new ServiceBusClientOptions
-            {
-                TransportType = defaultClientOptions.TransportType,
-                EnableCrossEntityTransactions = true,
-                Identifier = $"Client-Forwarder-to-{receivers.First().ReceiveAddress}-{clientId}"
-            };
-            ApplyRetryPolicyOptionsIfNeeded(forwardingClientOptions);
-            ApplyWebProxyIfNeeded(forwardingClientOptions);
-            forwardingClient = TokenCredential != null
-                ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, forwardingClientOptions)
-                : new ServiceBusClient(ConnectionString, forwardingClientOptions);
         }
 
         var administrationConnectionString = IsUsingDevelopmentEmulator(ConnectionString)
@@ -143,7 +129,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
             : new ServiceBusAdministrationClient(administrationConnectionString);
 
-        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, forwardingClient, administrationClient, DestinationManager);
+        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, () => CreateForwardingClient(receivers, defaultClientOptions, clientId), administrationClient, DestinationManager);
 
         if (hostSettings.SetupInfrastructure)
         {
@@ -166,6 +152,24 @@ public partial class AzureServiceBusTransport : TransportDefinition
         }
 
         return infrastructure;
+    }
+
+    ServiceBusClient CreateForwardingClient(ReceiveSettings[] receivers, ServiceBusClientOptions defaultClientOptions,
+        Guid clientId)
+    {
+        ServiceBusClient forwardingClient;
+        var forwardingClientOptions = new ServiceBusClientOptions
+        {
+            TransportType = defaultClientOptions.TransportType,
+            EnableCrossEntityTransactions = true,
+            Identifier = $"Client-Forwarder-to-{receivers.First().ReceiveAddress}-{clientId}"
+        };
+        ApplyRetryPolicyOptionsIfNeeded(forwardingClientOptions);
+        ApplyWebProxyIfNeeded(forwardingClientOptions);
+        forwardingClient = TokenCredential != null
+            ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, forwardingClientOptions)
+            : new ServiceBusClient(ConnectionString, forwardingClientOptions);
+        return forwardingClient;
     }
 
     internal static string InjectEmulatorAdminPort(string connectionString)

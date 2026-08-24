@@ -16,7 +16,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     readonly MessageSenderRegistry messageSenderRegistry;
     readonly HostSettings hostSettings;
     readonly ServiceBusClient defaultClient;
-    readonly ServiceBusClient? forwardingClient;
+    readonly Func<ServiceBusClient> forwardingClientFactory;
     readonly ServiceBusAdministrationClient administrationClient;
     readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
     readonly DestinationManager destinationManager;
@@ -26,7 +26,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         HostSettings hostSettings,
         (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
         ServiceBusClient defaultClient,
-        ServiceBusClient? forwardingClient,
+        Func<ServiceBusClient> forwardingClientFactory,
         ServiceBusAdministrationClient administrationClient,
         DestinationManager destinationManager
     )
@@ -35,7 +35,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
         this.hostSettings = hostSettings;
         this.defaultClient = defaultClient;
-        this.forwardingClient = forwardingClient;
+        this.forwardingClientFactory = forwardingClientFactory;
         this.administrationClient = administrationClient;
         this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
         this.destinationManager = destinationManager;
@@ -106,11 +106,6 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                 throw new Exception("Cannot use a session-enabled receiver to receive from a dead-letter queue");
             }
 
-            if (forwardingClient == null)
-            {
-                throw new Exception("Forwarding client was not initialized");
-            }
-
             SubscriptionManager? subscriptionManager = null;
             if (receiveSettings.UsePublishSubscribe)
             {
@@ -128,7 +123,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             }
 
             return new SessionsEnabledMessagePump(receiveClient,
-                forwardingClient,
+                forwardingClientFactory,
                 transportSettings,
                 receiveAddress,
                 receiveSettings,
