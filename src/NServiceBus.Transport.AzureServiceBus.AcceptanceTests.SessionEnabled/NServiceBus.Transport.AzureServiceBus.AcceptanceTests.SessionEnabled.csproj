@@ -29,7 +29,7 @@
     <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(PkgNServiceBus_TransportTests_Sources)' != ''">
     <!-- Main folder -->
     <Compile Include="..\AcceptanceTests\When_dlq_forwarding_is_enabled.cs" />
     <Compile Include="..\AcceptanceTests\When_dlq_use_for_failures_enabled.cs" />
