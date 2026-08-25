@@ -29,7 +29,7 @@
     <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(PkgNServiceBus_TransportTests_Sources)' != ''">
+  <ItemGroup>
     <!-- Main folder -->
     <Compile Include="..\AcceptanceTests\When_dlq_forwarding_is_enabled.cs" />
     <Compile Include="..\AcceptanceTests\When_dlq_use_for_failures_enabled.cs" />
@@ -52,12 +52,9 @@
     </Compile>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(PkgNServiceBus_TransportTests_Sources)' != ''">
-    <!-- https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/issues/1212 -->
-    <Compile Remove="$(PkgNServiceBus_TransportTests_Sources)\**\When_multiple_messages_are_available_and_concurrency_is_lowered_after_pump_started.cs" />
-    <Compile Remove="$(PkgNServiceBus_TransportTests_Sources)\**\NServiceBusTransportTest.cs" />
+  <ItemGroup Condition="'$(PkgNServiceBus_AcceptanceTests_Sources)' != ''">
     <!-- The transport does not support running without transactions in session-enabled mode but this cannot be declared in TransportDefinition-->
-    <Compile Remove="$(PkgNServiceBus_TransportTests_Sources)\**\When_non_transactional_message_is_moved_to_error_queue.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_non_transactional_message_is_moved_to_error_queue.cs" />
   </ItemGroup>
   
 </Project>
