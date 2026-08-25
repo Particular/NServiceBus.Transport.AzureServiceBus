@@ -108,14 +108,8 @@ public partial class AzureServiceBusTransport : TransportDefinition
             ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
             : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
-        ServiceBusClient? forwardingClient = null;
         if (EnableSessions)
         {
-            if (receivers.Length == 0)
-            {
-                throw new Exception("Cannot use a session-enabled receiver in send-only mode");
-            }
-
             if (TransportTransactionMode == TransportTransactionMode.None)
             {
                 throw new Exception("TransportTransactionMode.None is not supported for session-enabled receivers");

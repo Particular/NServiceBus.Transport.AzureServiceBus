@@ -12,7 +12,72 @@ using Azure.Messaging.ServiceBus.Administration;
 using EventRouting;
 using Extensibility;
 using Logging;
+using Receiving;
 using Unicast.Messages;
+
+interface ISubscriptionForwarders
+{
+    Task StartForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default);
+    Task StopForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default);
+}
+
+sealed class NullSubscriptionForwarders : ISubscriptionForwarders
+{
+    public Task StartForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task StopForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default) => Task.CompletedTask;
+}
+
+sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string inputQueue) : ISubscriptionForwarders
+{
+    readonly Dictionary<(string Topic, string Subscription), OrderedSubscriptionForwarder> forwarders = [];
+    readonly SemaphoreSlim lockSemaphore = new(1, 1);
+
+    public async Task StartForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default)
+    {
+        await lockSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            // Synchronized via lockSemaphore
+            // ReSharper disable InconsistentlySynchronizedField
+            if (!forwarders.TryGetValue((topic, subscription), out var forwarder))
+            {
+                forwarder = new OrderedSubscriptionForwarder(clientFactory(), topic, subscription, inputQueue);
+                await forwarder.Start(cancellationToken).ConfigureAwait(false);
+                forwarders[(topic, subscription)] = forwarder;
+
+            }
+            // ReSharper restore InconsistentlySynchronizedField
+
+            forwarder.RegisterType(eventTypeFullName);
+        }
+        finally
+        {
+            lockSemaphore.Release();
+        }
+    }
+
+    public async Task StopForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Synchronized via lockSemaphore
+            // ReSharper disable InconsistentlySynchronizedField
+            if (forwarders.TryGetValue((topic, subscription), out var forwarder)
+                && forwarder.UnregisterType(eventTypeFullName))
+            {
+                forwarders.Remove((topic, subscription));
+                await forwarder.Stop(cancellationToken).ConfigureAwait(false);
+            }
+            // ReSharper restore InconsistentlySynchronizedField
+        }
+        finally
+        {
+            lockSemaphore.Release();
+        }
+    }
+}
 
 sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 {
@@ -20,6 +85,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     readonly StartupDiagnosticEntries startupDiagnostic;
     readonly string subscriptionName;
     readonly DestinationManager destinationManager;
+    readonly ISubscriptionForwarders subscriptionForwarders;
 
     public TopicPerEventTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
         TopologyOptions topologyOptions,
@@ -37,6 +103,10 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(subscribingQueueName)
             ?? topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(strippedSubscribingQueueName)
             ?? subscribingQueueName;
+
+        subscriptionForwarders = creationOptions.RequiresSession
+            ? new SubscriptionForwarders(creationOptions.ForwarderClientFactory!, creationOptions.SubscribingQueueName)
+            : new NullSubscriptionForwarders();
 
         subscriptionName = destinationManager.StripHierarchyNamespace(subscriptionNameCandidate);
     }
@@ -66,13 +136,14 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                                  select g).ToArray();
 
         return Task.WhenAll([.. allEntriesByTopic.Select(group =>
-            ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, cancellationToken))]);
+            ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, subscriptionForwarders, cancellationToken))]);
     }
 
     static async Task ProvisionSubscriptionForTopic(string topicName,
         (string EventTypeFullName, SubscriptionEntry Entry)[] entries,
         string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
+        ISubscriptionForwarders subscriptionForwarders,
         CancellationToken cancellationToken)
     {
         if (creationOptions.SetupInfrastructure)
@@ -86,6 +157,10 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         if (hasCatchAll || filteredEntries.Length == 0)
         {
             await CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
+
+            //TODO: Do we always have the type?
+            var eventTypeFullName = entries.First(e => e.Entry.RoutingMode == TopicRoutingMode.NotMultiplexed).EventTypeFullName;
+            await subscriptionForwarders.StartForwarding(topicName, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -94,8 +169,11 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         if (filteredEntries.Length > 0)
         {
-            await Task.WhenAll([.. filteredEntries.Select(e =>
-                AddFilterRule(topicName, subscriptionName, e.EventTypeFullName, e.Entry.RoutingMode!.Value, creationOptions, cancellationToken))]).ConfigureAwait(false);
+            await Task.WhenAll([.. filteredEntries.Select(async e =>
+            {
+                await subscriptionForwarders.StartForwarding(topicName, subscriptionName, e.EventTypeFullName, cancellationToken).ConfigureAwait(false);
+                await AddFilterRule(topicName, subscriptionName, e.EventTypeFullName, e.Entry.RoutingMode!.Value, creationOptions, cancellationToken).ConfigureAwait(false);
+            })]).ConfigureAwait(false);
         }
     }
 
@@ -198,10 +276,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     {
         var eventTypeFullName = eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null");
         var entries = MapEventToSubscriptionEntries(eventTypeFullName);
-        return DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken);
+        return DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, subscriptionForwarders, cancellationToken);
     }
-
-    internal override string SubcriptionName => subscriptionName;
 
     static async Task CreateCatchAllSubscription(string topicName, string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
@@ -254,6 +330,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         try
         {
+            //TODO: Should we throw exception if topic does not exist and we are in session mode? If topic does not exist the forwarder will be failing
             await creationOptions.AdministrationClient.CreateTopicAsync(topicOptions, cancellationToken).ConfigureAwait(false);
         }
         catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
@@ -345,8 +422,13 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     static Task DeleteSubscriptionsOrRulesForEntries(HashSet<SubscriptionEntry> entries, string eventTypeFullName,
         string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
+        ISubscriptionForwarders subscriptionForwarders,
         CancellationToken cancellationToken) =>
-        Task.WhenAll([.. entries.Select(entry => DeleteSubscriptionOrRuleForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken))]);
+        Task.WhenAll([.. entries.Select(async entry =>
+        {
+            await subscriptionForwarders.StartForwarding(entry.Topic, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
+            await DeleteSubscriptionOrRuleForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
+        })]);
 
     static Task DeleteSubscriptionOrRuleForEntry(SubscriptionEntry entry, string eventTypeFullName,
         string subscriptionName,

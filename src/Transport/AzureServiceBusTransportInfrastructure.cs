@@ -16,7 +16,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     readonly MessageSenderRegistry messageSenderRegistry;
     readonly HostSettings hostSettings;
     readonly ServiceBusClient defaultClient;
-    readonly Func<ServiceBusClient> forwardingClientFactory;
+    readonly Func<ServiceBusClient> forwarderClientFactory;
     readonly ServiceBusAdministrationClient administrationClient;
     readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
     readonly DestinationManager destinationManager;
@@ -26,7 +26,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         HostSettings hostSettings,
         (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
         ServiceBusClient defaultClient,
-        Func<ServiceBusClient> forwardingClientFactory,
+        Func<ServiceBusClient> forwarderClientFactory,
         ServiceBusAdministrationClient administrationClient,
         DestinationManager destinationManager
     )
@@ -35,7 +35,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
         this.hostSettings = hostSettings;
         this.defaultClient = defaultClient;
-        this.forwardingClientFactory = forwardingClientFactory;
+        this.forwarderClientFactory = forwarderClientFactory;
         this.administrationClient = administrationClient;
         this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
         this.destinationManager = destinationManager;
@@ -114,6 +114,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     AdministrationClient = administrationClient,
                     Client = defaultClient,
                     RequiresSession = true,
+                    ForwarderClientFactory = forwarderClientFactory,
                     EnablePartitioning = transportSettings.EnablePartitioning,
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
                     MaxDeliveryCount = transportSettings.MaxDeliveryCount,
@@ -123,14 +124,11 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             }
 
             return new SessionsEnabledMessagePump(receiveClient,
-                forwardingClientFactory,
                 transportSettings,
                 receiveAddress,
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
-                subscriptionManager,
-                transportSettings.Topology.Options,
-                subscriptionManager?.SubcriptionName);
+                subscriptionManager);
         }
 
         return new MessagePump(
@@ -145,6 +143,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     AdministrationClient = administrationClient,
                     Client = defaultClient,
                     RequiresSession = false,
+                    ForwarderClientFactory = forwarderClientFactory,
                     EnablePartitioning = transportSettings.EnablePartitioning,
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
                     MaxDeliveryCount = transportSettings.MaxDeliveryCount,

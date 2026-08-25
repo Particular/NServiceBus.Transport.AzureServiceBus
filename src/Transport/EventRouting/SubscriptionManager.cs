@@ -21,6 +21,4 @@ abstract class SubscriptionManager(
         CreationOptions.SetupInfrastructure ? SetupInfrastructureCore(cancellationToken) : default;
 
     protected virtual ValueTask SetupInfrastructureCore(CancellationToken cancellationToken = default) => default;
-
-    internal abstract string SubcriptionName { get; }
 }

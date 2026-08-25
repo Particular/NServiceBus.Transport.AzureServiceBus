@@ -1,6 +1,7 @@
 namespace NServiceBus.Transport.AzureServiceBus.Receiving;
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -12,6 +13,7 @@ class OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string top
 {
     static readonly ILog Logger = LogManager.GetLogger<OrderedSubscriptionForwarder>();
 
+    HashSet<string> eventTypes = [];
     ServiceBusSessionProcessor? sessionProcessor;
     ServiceBusSender? sender;
     CancellationTokenSource forwardingCancellationTokenSource = new();
@@ -107,5 +109,16 @@ class OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string top
             await sessionProcessor.DisposeAsync().ConfigureAwait(false);
             sessionProcessor = null;
         }
+    }
+
+    public void RegisterType(string eventTypeFullName)
+    {
+        eventTypes.Add(eventTypeFullName);
+    }
+
+    public bool UnregisterType(string eventTypeFullName)
+    {
+        eventTypes.Remove(eventTypeFullName);
+        return eventTypes.Count == 0;
     }
 }

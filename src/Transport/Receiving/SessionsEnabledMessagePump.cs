@@ -11,18 +11,14 @@ using Azure.Messaging.ServiceBus;
 using BitFaster.Caching.Lru;
 using Extensibility;
 using Logging;
-using Receiving;
 
 sealed class SessionsEnabledMessagePump(
     ServiceBusClient receiveClient,
-    Func<ServiceBusClient> forwardingClientFactory,
     AzureServiceBusTransport transportSettings,
     string receiveAddress,
     ReceiveSettings receiveSettings,
     Action<string, Exception, CancellationToken> criticalErrorAction,
-    ISubscriptionManager? subscriptionManager,
-    TopologyOptions topologyOptions,
-    string? subscriptionName)
+    ISubscriptionManager? subscriptionManager)
     : IMessageReceiver, IAsyncDisposable
 {
     readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
@@ -33,7 +29,6 @@ sealed class SessionsEnabledMessagePump(
 
     CancellationTokenSource? messageProcessingCancellationTokenSource;
     ServiceBusSessionProcessor? sessionProcessor;
-    List<OrderedSubscriptionForwarder> forwarders = [];
 
     static readonly ILog Logger = LogManager.GetLogger<SessionsEnabledMessagePump>();
 
@@ -57,28 +52,11 @@ sealed class SessionsEnabledMessagePump(
         this.onMessage = onMessage;
         this.onError = onError;
 
-        if (subscriptionName is not null)
-        {
-            foreach (KeyValuePair<string, HashSet<SubscriptionEntry>> eventTypeSubscription in topologyOptions.SubscribedEventToTopicsMap)
-            {
-                foreach (var subscription in eventTypeSubscription.Value)
-                {
-                    var forwarder = new OrderedSubscriptionForwarder(forwardingClientFactory(), subscription.Topic, subscriptionName, ReceiveAddress);
-                    forwarders.Add(forwarder);
-                }
-            }
-        }
-
         return Task.CompletedTask;
     }
 
     public async Task StartReceive(CancellationToken cancellationToken = default)
     {
-        foreach (var subscriptionForwarder in forwarders)
-        {
-            await subscriptionForwarder.Start(cancellationToken).ConfigureAwait(false);
-        }
-
         var sessionReceiveOptions = new ServiceBusSessionProcessorOptions
         {
             PrefetchCount = CalculatePrefetchCount(limitations!.MaxConcurrency),
@@ -246,11 +224,6 @@ sealed class SessionsEnabledMessagePump(
                 Logger.Debug($"Operation canceled while stopping the receiver {sessionProcessor.EntityPath}.", ex);
             }
         }
-
-        foreach (var subscriptionForwarder in forwarders)
-        {
-            await subscriptionForwarder.Stop(cancellationToken).ConfigureAwait(false);
-        }
     }
 
     public async ValueTask DisposeAsync()
@@ -262,11 +235,6 @@ sealed class SessionsEnabledMessagePump(
 
             await sessionProcessor.DisposeAsync().ConfigureAwait(false);
             sessionProcessor = null;
-        }
-
-        foreach (var subscriptionForwarder in forwarders)
-        {
-            await subscriptionForwarder.DisposeAsync().ConfigureAwait(false);
         }
 
         messageProcessingCancellationTokenSource?.Dispose();

@@ -29,10 +29,35 @@
     <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Main folder -->
+    <Compile Include="..\AcceptanceTests\When_dlq_forwarding_is_enabled.cs" />
+    <Compile Include="..\AcceptanceTests\When_dlq_use_for_failures_enabled.cs" />
+    <Compile Include="..\AcceptanceTests\When_using_auto_delete_on_idle.cs" />
+    <!--    <Compile Include="..\AcceptanceTests\When_loading_from_options.cs" />-->
+    <!--    <Compile Include="..\AcceptanceTests\When_operating_with_least_privilege.cs" />-->
+    <!--    <Compile Include="..\AcceptanceTests\When_using_token_credential_with_fully_qualified_namespace.cs" />-->
+
+    <!-- Receiving -->
+    <Compile Include="..\AcceptanceTests\Receiving\*.cs" Exclude="..\AcceptanceTests\Receiving\When_message_visibility_expired.cs"  >
+      <Link>Receiving\*.cs</Link>
+    </Compile>
+
+    <!-- Sending -->
+    <Compile Include="..\AcceptanceTests\Sending\When_batching_multiple_outgoing_small_messages.cs" />
+    <Compile Include="..\AcceptanceTests\Sending\When_sending_a_message_with_long_properties.cs" />
+    <Compile Include="..\AcceptanceTests\Sending\When_using_dispatcher_directly_within_transactionscope_and_conflicting_isolation_level.cs" />
+    <Compile Include="..\AcceptanceTests\Subscribing\*.cs">
+      <Link>Subscribing\*.cs</Link>
+    </Compile>
+  </ItemGroup>
+
   <ItemGroup Condition="'$(PkgNServiceBus_TransportTests_Sources)' != ''">
     <!-- https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/issues/1212 -->
     <Compile Remove="$(PkgNServiceBus_TransportTests_Sources)\**\When_multiple_messages_are_available_and_concurrency_is_lowered_after_pump_started.cs" />
     <Compile Remove="$(PkgNServiceBus_TransportTests_Sources)\**\NServiceBusTransportTest.cs" />
+    <!-- The transport does not support running without transactions in session-enabled mode but this cannot be declared in TransportDefinition-->
+    <Compile Remove="$(PkgNServiceBus_TransportTests_Sources)\**\When_non_transactional_message_is_moved_to_error_queue.cs" />
   </ItemGroup>
   
 </Project>

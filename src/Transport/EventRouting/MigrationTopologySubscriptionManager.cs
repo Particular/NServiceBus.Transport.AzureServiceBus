@@ -43,8 +43,6 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 
     static readonly ILog Logger = LogManager.GetLogger<MigrationTopologySubscriptionManager>();
 
-    internal override string SubcriptionName => subscriptionName;
-
     public override Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
         CancellationToken cancellationToken = default)
     {

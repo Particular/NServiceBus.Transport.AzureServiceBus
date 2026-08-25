@@ -61,12 +61,6 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         var topology = TopicTopology.Default;
         topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
 
-        foreach (var eventType in publisherMetadata.Publishers.SelectMany(p => p.Events))
-        {
-            topology.PublishTo(eventType, eventType.ToTopicName());
-            topology.SubscribeTo(eventType, eventType.ToTopicName());
-        }
-
         var transport = new AzureServiceBusTransport(connectionString, topology);
 
         if (endpointName.Contains("AuditSpy")
@@ -85,7 +79,15 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
             transport.EnableSessions = true;
         }
 
-        ApplyMappingsToSupportMultipleInheritance(endpointName, topology);
+        //Use default topology mapping if not overriden by specific test configuration
+        if (!ApplyMappingsToSupportMultipleInheritance(endpointName, topology))
+        {
+            foreach (var eventType in publisherMetadata.Publishers.SelectMany(p => p.Events))
+            {
+                topology.PublishTo(eventType, eventType.ToTopicName());
+                topology.SubscribeTo(eventType, eventType.ToTopicName());
+            }
+        }
 
         configuration.UseTransport(transport);
 
@@ -100,17 +102,27 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         return Task.CompletedTask;
     }
 
-    static void ApplyMappingsToSupportMultipleInheritance(string endpointName, TopicPerEventTopology topology)
+    static bool ApplyMappingsToSupportMultipleInheritance(string endpointName, TopicPerEventTopology topology)
     {
         if (endpointName == Conventions.EndpointNamingConvention(typeof(MultiSubscribeToPolymorphicEvent.Subscriber)))
         {
             topology.SubscribeTo<MultiSubscribeToPolymorphicEvent.IMyEvent>(typeof(MultiSubscribeToPolymorphicEvent.MyEvent1).ToTopicName());
             topology.SubscribeTo<MultiSubscribeToPolymorphicEvent.IMyEvent>(typeof(MultiSubscribeToPolymorphicEvent.MyEvent2).ToTopicName());
+            return true;
         }
 
         if (endpointName == Conventions.EndpointNamingConvention(typeof(When_subscribing_to_a_base_event.GeneralSubscriber)))
         {
             topology.SubscribeTo<When_subscribing_to_a_base_event.IBaseEvent>(typeof(When_subscribing_to_a_base_event.SpecificEvent).ToTopicName());
+            topology.SubscribeTo<When_subscribing_to_a_base_event.SpecificEvent>(typeof(When_subscribing_to_a_base_event.SpecificEvent).ToTopicName());
+            return true;
+        }
+
+        if (endpointName == Conventions.EndpointNamingConvention(typeof(When_subscribing_to_a_base_event.Publisher)))
+        {
+            topology.PublishTo<When_subscribing_to_a_base_event.IBaseEvent>(typeof(When_subscribing_to_a_base_event.SpecificEvent).ToTopicName());
+            topology.PublishTo<When_subscribing_to_a_base_event.SpecificEvent>(typeof(When_subscribing_to_a_base_event.SpecificEvent).ToTopicName());
+            return true;
         }
 
         if (endpointName == Conventions.EndpointNamingConvention(
@@ -120,6 +132,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
                 typeof(When_publishing_an_event_implementing_two_unrelated_interfaces.CompositeEvent).ToTopicName());
             topology.SubscribeTo<When_publishing_an_event_implementing_two_unrelated_interfaces.IEventB>(
                 typeof(When_publishing_an_event_implementing_two_unrelated_interfaces.CompositeEvent).ToTopicName());
+            return true;
         }
 
         if (endpointName == Conventions.EndpointNamingConvention(
@@ -127,6 +140,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         {
             topology.SubscribeTo<When_started_by_base_event_from_other_saga.IBaseEvent>(
                 typeof(When_started_by_base_event_from_other_saga.ISomethingHappenedEvent).ToTopicName());
+            return true;
         }
 
         if (endpointName == Conventions.EndpointNamingConvention(
@@ -134,7 +148,10 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         {
             topology.SubscribeTo<When_multiple_versions_of_a_message_is_published.V1Event>(
                 typeof(When_multiple_versions_of_a_message_is_published.V2Event).ToTopicName());
+            return true;
         }
+
+        return false;
     }
 
     public Task Cleanup() => Task.CompletedTask;

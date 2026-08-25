@@ -1,5 +1,6 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
+using System;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 
@@ -10,6 +11,8 @@ sealed class SubscriptionManagerCreationOptions
     public required ServiceBusAdministrationClient AdministrationClient { get; init; }
 
     public required ServiceBusClient Client { get; init; }
+
+    public Func<ServiceBusClient>? ForwarderClientFactory { get; init; }
 
     public bool EnablePartitioning { get; init; }
 
