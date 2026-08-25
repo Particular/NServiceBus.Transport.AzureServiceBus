@@ -40,15 +40,17 @@
 
     <!-- Receiving -->
     <Compile Include="..\AcceptanceTests\Receiving\*.cs" Exclude="..\AcceptanceTests\Receiving\When_message_visibility_expired.cs"  >
-      <Link>Receiving\*.cs</Link>
+      <Link>Receiving\%(Filename)%(Extension)</Link>
     </Compile>
 
     <!-- Sending -->
     <Compile Include="..\AcceptanceTests\Sending\When_batching_multiple_outgoing_small_messages.cs" />
     <Compile Include="..\AcceptanceTests\Sending\When_sending_a_message_with_long_properties.cs" />
     <Compile Include="..\AcceptanceTests\Sending\When_using_dispatcher_directly_within_transactionscope_and_conflicting_isolation_level.cs" />
+
+    <!-- Subscribing -->
     <Compile Include="..\AcceptanceTests\Subscribing\*.cs">
-      <Link>Subscribing\*.cs</Link>
+      <Link>Subscribing\%(Filename)%(Extension)</Link>
     </Compile>
   </ItemGroup>
 

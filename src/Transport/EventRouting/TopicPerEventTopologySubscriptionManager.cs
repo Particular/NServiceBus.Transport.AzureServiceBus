@@ -60,6 +60,8 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
 
     public async Task StopForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default)
     {
+        await lockSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
         try
         {
             // Synchronized via lockSemaphore
@@ -357,7 +359,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             EnableDeadLetteringOnFilterEvaluationExceptions = false,
             MaxDeliveryCount = creationOptions.MaxDeliveryCount,
             EnableBatchedOperations = true,
-            UserMetadata = creationOptions.SubscribingQueueName
+            UserMetadata = creationOptions.SubscribingQueueName,
+            RequiresSession = creationOptions.RequiresSession
         };
 
         if (!creationOptions.RequiresSession)
@@ -426,7 +429,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         CancellationToken cancellationToken) =>
         Task.WhenAll([.. entries.Select(async entry =>
         {
-            await subscriptionForwarders.StartForwarding(entry.Topic, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
+            await subscriptionForwarders.StopForwarding(entry.Topic, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
             await DeleteSubscriptionOrRuleForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
         })]);
 
