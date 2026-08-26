@@ -71,7 +71,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                                  select g).ToArray();
 
         await Task.WhenAll([.. allEntriesByTopic.Select(group =>
-            ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, subscriptionForwarders, cancellationToken))])
+            ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, cancellationToken))])
             .ConfigureAwait(false);
 
         foreach (var group in allEntriesByTopic)
@@ -87,7 +87,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         (string EventTypeFullName, SubscriptionEntry Entry)[] entries,
         string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
-        ISubscriptionForwarders subscriptionForwarders,
         CancellationToken cancellationToken)
     {
         if (creationOptions.SetupInfrastructure)
