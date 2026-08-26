@@ -58,4 +58,14 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
             lockSemaphore.Release();
         }
     }
+
+    public async Task Shutdown(CancellationToken cancellationToken = default)
+    {
+        //HINT: No need to lock because we are shutting down the endpoint and noone can subscribe or unsubscribe now
+        foreach (var forwarder in forwarders)
+        {
+            await forwarder.Value.Stop(cancellationToken).ConfigureAwait(false);
+            await forwarder.Value.DisposeAsync().ConfigureAwait(false);
+        }
+    }
 }

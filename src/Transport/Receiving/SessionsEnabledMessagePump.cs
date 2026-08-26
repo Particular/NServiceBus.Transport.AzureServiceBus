@@ -18,7 +18,7 @@ sealed class SessionsEnabledMessagePump(
     string receiveAddress,
     ReceiveSettings receiveSettings,
     Action<string, Exception, CancellationToken> criticalErrorAction,
-    ISubscriptionManager? subscriptionManager)
+    SubscriptionManager? subscriptionManager)
     : IMessageReceiver, IAsyncDisposable
 {
     readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
@@ -197,6 +197,11 @@ sealed class SessionsEnabledMessagePump(
         {
             // Receiver hasn't been started or is already stopped
             return;
+        }
+
+        if (subscriptionManager != null)
+        {
+            await subscriptionManager.SetupInfrastructureIfNecessary(cancellationToken).ConfigureAwait(false);
         }
 
         // Wiring up the stop token to trigger the cancellation token that is being

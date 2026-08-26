@@ -223,6 +223,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         await DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken).ConfigureAwait(false);
     }
 
+    public override Task Shutdown(CancellationToken cancellationToken = default) => subscriptionForwarders.Shutdown(cancellationToken);
+
     static async Task CreateCatchAllSubscription(string topicName, string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken)

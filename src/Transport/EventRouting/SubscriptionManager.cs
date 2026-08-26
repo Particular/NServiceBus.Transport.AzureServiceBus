@@ -21,4 +21,6 @@ abstract class SubscriptionManager(
         CreationOptions.SetupInfrastructure ? SetupInfrastructureCore(cancellationToken) : default;
 
     protected virtual ValueTask SetupInfrastructureCore(CancellationToken cancellationToken = default) => default;
+
+    public abstract Task Shutdown(CancellationToken cancellationToken = default);
 }

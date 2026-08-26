@@ -7,4 +7,5 @@ interface ISubscriptionForwarders
 {
     Task StartForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default);
     Task StopForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default);
+    Task Shutdown(CancellationToken cancellationToken = default);
 }
