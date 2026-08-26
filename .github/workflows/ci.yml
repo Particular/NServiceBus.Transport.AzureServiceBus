@@ -20,6 +20,7 @@ jobs:
         include:
           - os: windows-latest
             name: Windows
+# Pinned because Pyhron 3.14 is not supported in Azure CLI and causes build failures, see https://github.com/Azure/azure-cli/issues/32869
           - os: ubuntu-24.04
             name: Linux
       fail-fast: false
