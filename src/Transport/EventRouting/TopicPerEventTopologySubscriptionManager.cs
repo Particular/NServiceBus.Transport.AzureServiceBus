@@ -12,74 +12,7 @@ using Azure.Messaging.ServiceBus.Administration;
 using EventRouting;
 using Extensibility;
 using Logging;
-using Receiving;
 using Unicast.Messages;
-
-interface ISubscriptionForwarders
-{
-    Task StartForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default);
-    Task StopForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default);
-}
-
-sealed class NullSubscriptionForwarders : ISubscriptionForwarders
-{
-    public Task StartForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-    public Task StopForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default) => Task.CompletedTask;
-}
-
-sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string inputQueue) : ISubscriptionForwarders
-{
-    readonly Dictionary<(string Topic, string Subscription), OrderedSubscriptionForwarder> forwarders = [];
-    readonly SemaphoreSlim lockSemaphore = new(1, 1);
-
-    public async Task StartForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default)
-    {
-        await lockSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-        try
-        {
-            // Synchronized via lockSemaphore
-            // ReSharper disable InconsistentlySynchronizedField
-            if (!forwarders.TryGetValue((topic, subscription), out var forwarder))
-            {
-                forwarder = new OrderedSubscriptionForwarder(clientFactory(), topic, subscription, inputQueue);
-                await forwarder.Start(cancellationToken).ConfigureAwait(false);
-                forwarders[(topic, subscription)] = forwarder;
-
-            }
-            // ReSharper restore InconsistentlySynchronizedField
-
-            forwarder.RegisterType(eventTypeFullName);
-        }
-        finally
-        {
-            lockSemaphore.Release();
-        }
-    }
-
-    public async Task StopForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default)
-    {
-        await lockSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-        try
-        {
-            // Synchronized via lockSemaphore
-            // ReSharper disable InconsistentlySynchronizedField
-            if (forwarders.TryGetValue((topic, subscription), out var forwarder)
-                && forwarder.UnregisterType(eventTypeFullName))
-            {
-                forwarders.Remove((topic, subscription));
-                await forwarder.Stop(cancellationToken).ConfigureAwait(false);
-            }
-            // ReSharper restore InconsistentlySynchronizedField
-        }
-        finally
-        {
-            lockSemaphore.Release();
-        }
-    }
-}
 
 sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 {
@@ -115,7 +48,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
     static readonly ILog Logger = LogManager.GetLogger<TopicPerEventTopologySubscriptionManager>();
 
-    public override Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
+    public override async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
         CancellationToken cancellationToken = default)
     {
         var invalidConfig = ValidateSubscriptionConfiguration(eventTypes);
@@ -126,7 +59,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         if (eventTypes.Length == 0)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         WriteSubscriptionManifest(eventTypes);
@@ -137,8 +70,17 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                                  group (eventTypeFullName, entry) by entry.Topic into g
                                  select g).ToArray();
 
-        return Task.WhenAll([.. allEntriesByTopic.Select(group =>
-            ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, subscriptionForwarders, cancellationToken))]);
+        await Task.WhenAll([.. allEntriesByTopic.Select(group =>
+            ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, subscriptionForwarders, cancellationToken))])
+            .ConfigureAwait(false);
+
+        foreach (var group in allEntriesByTopic)
+        {
+            foreach ((string eventTypeFullName, SubscriptionEntry entry) entry in group)
+            {
+                await subscriptionForwarders.StartForwarding(group.Key, subscriptionName, entry.eventTypeFullName, cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     static async Task ProvisionSubscriptionForTopic(string topicName,
@@ -159,10 +101,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         if (hasCatchAll || filteredEntries.Length == 0)
         {
             await CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
-
-            //TODO: Do we always have the type?
-            var eventTypeFullName = entries.First(e => e.Entry.RoutingMode == TopicRoutingMode.NotMultiplexed).EventTypeFullName;
-            await subscriptionForwarders.StartForwarding(topicName, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -173,7 +111,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         {
             await Task.WhenAll([.. filteredEntries.Select(async e =>
             {
-                await subscriptionForwarders.StartForwarding(topicName, subscriptionName, e.EventTypeFullName, cancellationToken).ConfigureAwait(false);
                 await AddFilterRule(topicName, subscriptionName, e.EventTypeFullName, e.Entry.RoutingMode!.Value, creationOptions, cancellationToken).ConfigureAwait(false);
             })]).ConfigureAwait(false);
         }
@@ -274,11 +211,17 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             _ => throw new ArgumentOutOfRangeException(nameof(routingMode), routingMode, null)
         };
 
-    public override Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
+    public override async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
     {
         var eventTypeFullName = eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null");
         var entries = MapEventToSubscriptionEntries(eventTypeFullName);
-        return DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, subscriptionForwarders, cancellationToken);
+
+        foreach (var entry in entries)
+        {
+            await subscriptionForwarders.StopForwarding(entry.Topic, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
+        }
+
+        await DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken).ConfigureAwait(false);
     }
 
     static async Task CreateCatchAllSubscription(string topicName, string subscriptionName,
@@ -425,13 +368,13 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     static Task DeleteSubscriptionsOrRulesForEntries(HashSet<SubscriptionEntry> entries, string eventTypeFullName,
         string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
-        ISubscriptionForwarders subscriptionForwarders,
         CancellationToken cancellationToken) =>
-        Task.WhenAll([.. entries.Select(async entry =>
-        {
-            await subscriptionForwarders.StopForwarding(entry.Topic, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
-            await DeleteSubscriptionOrRuleForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
-        })]);
+        Task.WhenAll([
+            .. entries.Select(async entry =>
+            {
+                await DeleteSubscriptionOrRuleForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
+            })
+        ]);
 
     static Task DeleteSubscriptionOrRuleForEntry(SubscriptionEntry entry, string eventTypeFullName,
         string subscriptionName,
