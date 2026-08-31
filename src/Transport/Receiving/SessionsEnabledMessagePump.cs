@@ -186,8 +186,7 @@ sealed class SessionsEnabledMessagePump(
 
     void UpdateProcessingCapacity(int maxConcurrency)
     {
-        // TODO: review
-        sessionProcessor!.UpdateConcurrency(maxConcurrency, 1); // TODO: does the hard coded maxconcurrentcalls here make sense
+        sessionProcessor!.UpdateConcurrency(maxConcurrency, 1);
         sessionProcessor!.UpdatePrefetchCount(CalculatePrefetchCount(maxConcurrency));
     }
 
