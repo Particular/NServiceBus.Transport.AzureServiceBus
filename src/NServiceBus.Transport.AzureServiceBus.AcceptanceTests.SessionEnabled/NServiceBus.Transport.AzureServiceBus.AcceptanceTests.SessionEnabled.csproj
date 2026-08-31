@@ -34,19 +34,20 @@
     <Compile Include="..\AcceptanceTests\When_dlq_forwarding_is_enabled.cs" />
     <Compile Include="..\AcceptanceTests\When_dlq_use_for_failures_enabled.cs" />
     <Compile Include="..\AcceptanceTests\When_using_auto_delete_on_idle.cs" />
-    <!--    <Compile Include="..\AcceptanceTests\When_loading_from_options.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_operating_with_least_privilege.cs" />-->
-    <!--    <Compile Include="..\AcceptanceTests\When_using_token_credential_with_fully_qualified_namespace.cs" />-->
+    <Compile Include="..\AcceptanceTests\When_loading_from_options.cs" />
+    <Compile Include="..\AcceptanceTests\When_operating_with_least_privilege.cs" />
+    <Compile Include="..\AcceptanceTests\When_using_token_credential_with_fully_qualified_namespace.cs" />
 
     <!-- Receiving -->
-    <Compile Include="..\AcceptanceTests\Receiving\*.cs" Exclude="..\AcceptanceTests\Receiving\When_message_visibility_expired.cs"  >
+    <Compile Include="..\AcceptanceTests\Receiving\*.cs" Exclude="..\AcceptanceTests\Receiving\When_message_visibility_expired.cs">
       <Link>Receiving\%(Filename)%(Extension)</Link>
     </Compile>
 
     <!-- Sending -->
-    <Compile Include="..\AcceptanceTests\Sending\When_batching_multiple_outgoing_small_messages.cs" />
-    <Compile Include="..\AcceptanceTests\Sending\When_sending_a_message_with_long_properties.cs" />
-    <Compile Include="..\AcceptanceTests\Sending\When_using_dispatcher_directly_within_transactionscope_and_conflicting_isolation_level.cs" />
+    <!--Exluding When_sending_to_a_topic because it requires forwarding between entities which is not possible with sessions-->
+    <Compile Include="..\AcceptanceTests\Sending\*.cs" Exclude="..\AcceptanceTests\Sending\When_sending_to_a_topic.cs" >
+      <Link>Sending\%(Filename)%(Extension)</Link>
+    </Compile>
 
     <!-- Subscribing -->
     <Compile Include="..\AcceptanceTests\Subscribing\*.cs">
