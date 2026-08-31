@@ -40,7 +40,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             ?? subscribingQueueName;
 
         subscriptionForwarders = creationOptions.RequiresSession
-            ? new SubscriptionForwarders(creationOptions.ForwarderClientFactory!, creationOptions.SubscribingQueueName)
+            ? new SubscriptionForwarders(creationOptions.ForwarderClientFactory!, creationOptions.SubscribingQueueName, creationOptions.TimeBeforeTriggeringCircuitBreaker, creationOptions.CriticalErrorAction)
             : new NullSubscriptionForwarders();
 
         subscriptionName = destinationManager.StripHierarchyNamespace(subscriptionNameCandidate);
@@ -276,7 +276,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         try
         {
-            //TODO: Should we throw exception if topic does not exist and we are in session mode? If topic does not exist the forwarder will be failing
             await creationOptions.AdministrationClient.CreateTopicAsync(topicOptions, cancellationToken).ConfigureAwait(false);
         }
         catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)

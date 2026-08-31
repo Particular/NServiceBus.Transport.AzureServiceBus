@@ -8,8 +8,7 @@ using System.Transactions;
 using Azure.Messaging.ServiceBus;
 using Logging;
 
-class OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string topicName, string subscriptionName, string inputQueueAddress)
-    : IAsyncDisposable
+class OrderedSubscriptionForwarder : IAsyncDisposable
 {
     static readonly ILog Logger = LogManager.GetLogger<OrderedSubscriptionForwarder>();
 
@@ -17,6 +16,26 @@ class OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string top
     ServiceBusSessionProcessor? sessionProcessor;
     ServiceBusSender? sender;
     CancellationTokenSource forwardingCancellationTokenSource = new();
+    readonly RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
+    readonly ServiceBusClient forwardingClient;
+    readonly string topicName;
+    readonly string subscriptionName;
+    readonly string inputQueueAddress;
+
+    public OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string topicName, string subscriptionName, string inputQueueAddress, TimeSpan timeBeforeTriggeringCircuitBreaker, Action<string, Exception, CancellationToken> criticalErrorAction)
+    {
+        this.forwardingClient = forwardingClient;
+        this.topicName = topicName;
+        this.subscriptionName = subscriptionName;
+        this.inputQueueAddress = inputQueueAddress;
+
+        circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"Forwarding-Processor-{topicName}-{subscriptionName}-{inputQueueAddress}",
+            timeBeforeTriggeringCircuitBreaker, ex =>
+            {
+                criticalErrorAction("Failed to receive message from Azure Service Bus.", ex,
+                    CancellationToken.None);
+            });
+    }
 
     public async Task Start(CancellationToken cancellationToken = default)
     {
@@ -24,7 +43,7 @@ class OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string top
         {
             PrefetchCount = 50, // TODO: do we want to make the prefetch count configurable
             ReceiveMode = ServiceBusReceiveMode.PeekLock,
-            Identifier = $"Forwarding-Processor-{topicName}-{subscriptionName}",
+            Identifier = $"Forwarding-Processor-{topicName}-{subscriptionName}-{inputQueueAddress}",
             MaxConcurrentSessions = 10, // TODO: do we want to make the session concurrency configurable
             AutoCompleteMessages = false,
         };
@@ -89,14 +108,25 @@ class OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string top
         });
         await sender.SendMessageAsync(serviceBusMessage, forwardingCancellationTokenSource.Token).ConfigureAwait(false);
         ts.Complete();
+
+        circuitBreaker.Success();
     }
 
 #pragma warning disable PS0018
-    Task OnError(ProcessErrorEventArgs arg)
+    async Task OnError(ProcessErrorEventArgs arg)
 #pragma warning restore PS0018
     {
-        //TODO: How do we handle forwarding errors?
-        return Task.CompletedTask;
+        string message = $"Failed to receive a message on pump '{arg.Identifier}' listening on '{arg.EntityPath}' connected to '{arg.FullyQualifiedNamespace}' due to '{arg.ErrorSource}'. Exception: {arg.Exception}";
+        // Making sure transient exceptions do not trigger the circuit breaker.
+        if (arg.Exception is ServiceBusException { IsTransient: true })
+        {
+            Logger.Debug(message, arg.Exception);
+            return;
+        }
+
+        Logger.Warn(message, arg.Exception);
+        await circuitBreaker.Failure(arg.Exception, arg.CancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()
@@ -109,6 +139,8 @@ class OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string top
             await sessionProcessor.DisposeAsync().ConfigureAwait(false);
             sessionProcessor = null;
         }
+
+        circuitBreaker.Dispose();
     }
 
     public void RegisterType(string eventTypeFullName)

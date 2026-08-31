@@ -119,7 +119,9 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
                     MaxDeliveryCount = transportSettings.MaxDeliveryCount,
                     SetupInfrastructure = hostSettings.SetupInfrastructure,
-                    SubscribingQueueName = receiveAddress
+                    SubscribingQueueName = receiveAddress,
+                    CriticalErrorAction = hostSettings.CriticalErrorAction,
+                    TimeBeforeTriggeringCircuitBreaker = transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker
                 }, hostSettings);
             }
 
@@ -148,7 +150,9 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
                     MaxDeliveryCount = transportSettings.MaxDeliveryCount,
                     SetupInfrastructure = hostSettings.SetupInfrastructure,
-                    SubscribingQueueName = receiveAddress
+                    SubscribingQueueName = receiveAddress,
+                    CriticalErrorAction = hostSettings.CriticalErrorAction,
+                    TimeBeforeTriggeringCircuitBreaker = transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker
                 }, hostSettings)
                 : null,
             subQueue

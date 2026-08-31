@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Receiving;
 
-sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string inputQueue) : ISubscriptionForwarders
+sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string inputQueue, TimeSpan timeBeforeTriggeringCircuitBreaker, Action<string, Exception, CancellationToken> criticalErrorAction) : ISubscriptionForwarders
 {
     readonly Dictionary<(string Topic, string Subscription), OrderedSubscriptionForwarder> forwarders = [];
     readonly SemaphoreSlim lockSemaphore = new(1, 1);
@@ -22,7 +22,7 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
             // ReSharper disable InconsistentlySynchronizedField
             if (!forwarders.TryGetValue((topic, subscription), out var forwarder))
             {
-                forwarder = new OrderedSubscriptionForwarder(clientFactory(), topic, subscription, inputQueue);
+                forwarder = new OrderedSubscriptionForwarder(clientFactory(), topic, subscription, inputQueue, timeBeforeTriggeringCircuitBreaker, criticalErrorAction);
                 await forwarder.Start(cancellationToken).ConfigureAwait(false);
                 forwarders[(topic, subscription)] = forwarder;
 

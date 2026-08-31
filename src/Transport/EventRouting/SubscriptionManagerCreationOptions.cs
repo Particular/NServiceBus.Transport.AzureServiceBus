@@ -1,6 +1,7 @@
 namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
+using System.Threading;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 
@@ -23,4 +24,8 @@ sealed class SubscriptionManagerCreationOptions
     public bool SetupInfrastructure { get; init; }
 
     internal int MaxDeliveryCount { get; init; } = int.MaxValue;
+
+    public TimeSpan TimeBeforeTriggeringCircuitBreaker { get; init; }
+
+    public required Action<string, Exception, CancellationToken> CriticalErrorAction { get; init; }
 }
