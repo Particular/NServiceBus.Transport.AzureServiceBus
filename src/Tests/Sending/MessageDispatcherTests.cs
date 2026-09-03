@@ -15,6 +15,7 @@ using Routing;
 public class MessageDispatcherTests
 {
     const int MaxPropertySize = 32767;
+    const int Buffer = 2048;
     static readonly string[] HeadersToTrim = ["NServiceBus.ExceptionInfo.StackTrace", "NServiceBus.ExceptionInfo.Message"];
 
     static MessageDispatcher CreateDispatcher(
@@ -1539,6 +1540,175 @@ public class MessageDispatcherTests
         foreach (var header in HeadersToTrim)
         {
             Assert.That(Encoding.UTF8.GetByteCount(sentMessage.ApplicationProperties[header]!.ToString()!), Is.LessThan(MaxPropertySize));
+        }
+    }
+
+    [Test]
+    public async Task Should_not_trim_multibyte_values_that_fit_the_budget()
+    {
+        var client = new FakeServiceBusClient();
+
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()));
+
+        // (MaxPropertySize - Buffer) / 3 chars of '€' is (MaxPropertySize - Buffer) - 2 bytes and fits the budget without trimming
+        var value = new string('€', (MaxPropertySize - Buffer) / 3);
+
+        var operation1 =
+            new TransportOperation(new OutgoingMessage("SomeId",
+                    HeadersToTrim
+                        .ToDictionary(
+                            header => header, _ => value
+                        ),
+                    ReadOnlyMemory<byte>.Empty),
+                new UnicastAddressTag("SomeDestination"),
+                [],
+                DispatchConsistency.Isolated);
+
+        await dispatcher.Dispatch(new TransportOperations(operation1), new TransportTransaction());
+
+        var sender = client.Senders["SomeDestination"];
+
+        var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+        var sentMessage = batchContent.ElementAt(0);
+        foreach (var header in HeadersToTrim)
+        {
+            Assert.That(sentMessage.ApplicationProperties[header]!.ToString(), Is.EqualTo(value));
+        }
+    }
+
+    [Test]
+    public async Task Should_trim_multibyte_values_that_just_exceed_the_budget()
+    {
+        var client = new FakeServiceBusClient();
+
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()));
+
+        // one '€' char (three bytes) more than the budget allows, trimming must cut the last char without corrupting the remaining ones
+        var value = new string('€', ((MaxPropertySize - Buffer) / 3) + 1);
+
+        var operation1 =
+            new TransportOperation(new OutgoingMessage("SomeId",
+                    HeadersToTrim
+                        .ToDictionary(
+                            header => header, _ => value
+                        ),
+                    ReadOnlyMemory<byte>.Empty),
+                new UnicastAddressTag("SomeDestination"),
+                [],
+                DispatchConsistency.Isolated);
+
+        await dispatcher.Dispatch(new TransportOperations(operation1), new TransportTransaction());
+
+        var sender = client.Senders["SomeDestination"];
+
+        var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+        var sentMessage = batchContent.ElementAt(0);
+        foreach (var header in HeadersToTrim)
+        {
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(Encoding.UTF8.GetByteCount(sentMessage.ApplicationProperties[header]!.ToString()!), Is.LessThanOrEqualTo(MaxPropertySize - Buffer));
+                Assert.That(sentMessage.ApplicationProperties[header]!.ToString(), Is.EqualTo(value[..^1]));
+            }
+        }
+    }
+
+    [Test]
+    public async Task Should_not_trim_value_that_exactly_fits_the_budget()
+    {
+        var client = new FakeServiceBusClient();
+
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()));
+
+        // 10239 three-byte chars plus two ASCII chars are exactly (MaxPropertySize - Buffer) UTF-8 bytes and must pass through the conversion unchanged
+        var value = new string('€', (MaxPropertySize - Buffer) / 3) + "aa";
+
+        var operation1 =
+            new TransportOperation(new OutgoingMessage("SomeId",
+                    HeadersToTrim
+                        .ToDictionary(
+                            header => header, _ => value
+                        ),
+                    ReadOnlyMemory<byte>.Empty),
+                new UnicastAddressTag("SomeDestination"),
+                [],
+                DispatchConsistency.Isolated);
+
+        await dispatcher.Dispatch(new TransportOperations(operation1), new TransportTransaction());
+
+        var sender = client.Senders["SomeDestination"];
+
+        var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+        var sentMessage = batchContent.ElementAt(0);
+        foreach (var header in HeadersToTrim)
+        {
+            Assert.That(sentMessage.ApplicationProperties[header]!.ToString(), Is.EqualTo(value));
+        }
+    }
+
+    [Test]
+    public async Task Should_trim_value_with_unpaired_surrogate_at_the_cut_point()
+    {
+        var client = new FakeServiceBusClient();
+
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()));
+
+        // the trailing unpaired high surrogate is flushed as U+FFFD which no longer fits the budget, so trimming must drop it without corrupting the preceding chars
+        var value = new string('€', (MaxPropertySize - Buffer) / 3) + "\uD800";
+
+        var operation1 =
+            new TransportOperation(new OutgoingMessage("SomeId",
+                    HeadersToTrim
+                        .ToDictionary(
+                            header => header, _ => value
+                        ),
+                    ReadOnlyMemory<byte>.Empty),
+                new UnicastAddressTag("SomeDestination"),
+                [],
+                DispatchConsistency.Isolated);
+
+        await dispatcher.Dispatch(new TransportOperations(operation1), new TransportTransaction());
+
+        var sender = client.Senders["SomeDestination"];
+
+        var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+        var sentMessage = batchContent.ElementAt(0);
+        foreach (var header in HeadersToTrim)
+        {
+            Assert.That(sentMessage.ApplicationProperties[header]!.ToString(), Is.EqualTo(value[..^1]));
+        }
+    }
+
+    [Test]
+    public async Task Should_not_trim_long_ascii_values_that_pass_the_prescan()
+    {
+        var client = new FakeServiceBusClient();
+
+        var dispatcher = CreateDispatcher(client, TopicTopology.FromOptions(new TopologyOptions()));
+
+        // long enough to pass the cheap prescan but comfortably within the byte budget when counted as UTF-8
+        var value = new string('a', ((MaxPropertySize - Buffer) / 3) + 1);
+
+        var operation1 =
+            new TransportOperation(new OutgoingMessage("SomeId",
+                    HeadersToTrim
+                        .ToDictionary(
+                            header => header, _ => value
+                        ),
+                    ReadOnlyMemory<byte>.Empty),
+                new UnicastAddressTag("SomeDestination"),
+                [],
+                DispatchConsistency.Isolated);
+
+        await dispatcher.Dispatch(new TransportOperations(operation1), new TransportTransaction());
+
+        var sender = client.Senders["SomeDestination"];
+
+        var batchContent = sender[sender.BatchSentMessages.ElementAt(0)];
+        var sentMessage = batchContent.ElementAt(0);
+        foreach (var header in HeadersToTrim)
+        {
+            Assert.That(sentMessage.ApplicationProperties[header]!.ToString(), Is.EqualTo(value));
         }
     }
 }

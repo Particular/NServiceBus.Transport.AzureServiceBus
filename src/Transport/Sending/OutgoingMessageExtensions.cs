@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus;
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 using Azure.Messaging.ServiceBus;
@@ -99,21 +100,39 @@ static class OutgoingMessageExtensions
         Encoder? encoder = null;
         byte[]? trimBuffer = null;
 
-        foreach (var headerName in HeadersToTrim)
+        try
         {
-            if (!message.ApplicationProperties.TryGetValue(headerName, out var headerValue) ||
-                headerValue is not string value ||
-                Encoding.UTF8.GetByteCount(value) <= maxUtf8Bytes)
+            foreach (var headerName in HeadersToTrim)
             {
-                continue;
+                // Each UTF-16 code unit contributes at most three UTF-8 bytes; a valid surrogate pair contributes four bytes across two code units.
+                // This cheap prescan avoids scanning and counting the bytes of values that are certainly short enough.
+                if (!message.ApplicationProperties.TryGetValue(headerName, out var headerValue) ||
+                    headerValue is not string value ||
+                    value.Length <= maxUtf8Bytes / 3)
+                {
+                    continue;
+                }
+
+                trimBuffer ??= ArrayPool<byte>.Shared.Rent(maxUtf8Bytes);
+                encoder ??= Encoding.UTF8.GetEncoder();
+
+                encoder.Reset();
+                encoder.Convert(value.AsSpan(), trimBuffer.AsSpan(0, maxUtf8Bytes), flush: true, out _, out int bytesUsed, out bool completed);
+
+                if (!completed)
+                {
+                    message.ApplicationProperties[headerName] = Encoding.UTF8.GetString(trimBuffer, 0, bytesUsed);
+                }
             }
-
-            encoder ??= Encoding.UTF8.GetEncoder();
-            trimBuffer ??= new byte[maxUtf8Bytes];
-
-            encoder.Reset();
-            encoder.Convert(value.AsSpan(), trimBuffer.AsSpan(), flush: false, out _, out int bytesUsed, out _);
-            message.ApplicationProperties[headerName] = Encoding.UTF8.GetString(trimBuffer, 0, bytesUsed);
+        }
+        finally
+        {
+            if (trimBuffer is not null)
+            {
+                // The buffer contains header values that can hold sensitive information (stack traces, exception messages)
+                // and the shared pool hands it to unrelated future renters, so it must be cleared before returning it.
+                ArrayPool<byte>.Shared.Return(trimBuffer, clearArray: true);
+            }
         }
     }
 }
