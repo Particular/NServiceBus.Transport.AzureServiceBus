@@ -13,20 +13,32 @@ using NUnit.Framework;
 
 public class When_saga_processes_multiple_messages_in_the_same_session : NServiceBusAcceptanceTest
 {
-    static readonly string[] AllProducts = ["Apples", "Bananas", "Cherries", "Dates", "Eggplant"];
-    static readonly string[] ProductsToRemove = ["Bananas", "Dates"];
+    // The operations that make up the basket's activity in the order they are sent.
+    static readonly List<(bool IsAdd, string Product)> BasketOperations =
+    [
+        (IsAdd: true, Product: "Dates"),
+        (IsAdd: true, Product: "Apples"),
+        (IsAdd: true, Product: "Bananas"),
+        (IsAdd: false, Product: "Dates"),
+        (IsAdd: true, Product: "Eggplant"),
+        (IsAdd: false, Product: "Bananas"),
+        (IsAdd: true, Product: "Dates"),
+        (IsAdd: true, Product: "Cherries"),
+    ];
+
+    // The net effect of all the operations above
+    static readonly string[] ExpectedFinalProducts = ["Dates", "Apples", "Eggplant", "Cherries"];
 
     [Test]
     public async Task Should_correlate_all_saga_messages_to_the_same_session()
     {
         var orderId = Guid.NewGuid();
         var sessionId = orderId.ToString();
-        var operations = BuildShuffledOperations(new Random());
 
         var ctx = await Scenario.Define<Context>()
             .WithEndpoint<Endpoint>(b => b.When(async (session, _) =>
             {
-                foreach (var (isAdd, product) in operations)
+                foreach (var (isAdd, product) in BasketOperations)
                 {
                     var options = new SendOptions();
                     options.SetSessionId(sessionId);
@@ -48,40 +60,16 @@ public class When_saga_processes_multiple_messages_in_the_same_session : NServic
             .Done(c => c.SagaCompleted)
             .Run();
 
-        var expectedProducts = AllProducts.Except(ProductsToRemove).Order();
-        var expectedMessageCount = operations.Count + 1; // + Checkout
-
+        var expectedMessageCount = BasketOperations.Count + 1; // + 1 = Checkout
         Assert.Multiple(() =>
         {
             Assert.That(ctx.SessionIds, Has.Count.EqualTo(expectedMessageCount),
                 "Every add/remove/checkout message should have been processed.");
             Assert.That(ctx.SessionIds, Is.All.EqualTo(sessionId),
-                "All messages belonging that were processed in the saga should have the same session id.");
-            Assert.That(ctx.FinalProducts.Order(), Is.EqualTo(expectedProducts),
-                "The saga should reflect the net effect of all add/remove messages in the order they arrived in.");
+                "All messages that were processed by the saga should have the same session id.");
+            Assert.That(ctx.FinalProducts.Order(), Is.EqualTo(ExpectedFinalProducts.Order()),
+                "The saga should reflect the net effect of all add/remove messages in the order they were sent in.");
         });
-    }
-
-    static List<(bool IsAdd, string Product)> BuildShuffledOperations(Random random)
-    {
-        // First do the adds, so we don't remove anything we didn't add first
-        var pending = AllProducts.Select(p => (IsAdd: true, Product: p)).ToList();
-        var scheduled = new List<(bool IsAdd, string Product)>();
-
-        while (pending.Count > 0)
-        {
-            var index = random.Next(pending.Count);
-            var operation = pending[index];
-            pending.RemoveAt(index);
-            scheduled.Add(operation);
-
-            if (operation.IsAdd && ProductsToRemove.Contains(operation.Product))
-            {
-                pending.Add(operation with { IsAdd = false });
-            }
-        }
-
-        return scheduled;
     }
 
     public class Context : ScenarioContext
