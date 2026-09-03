@@ -19,6 +19,9 @@ using Transport.AzureServiceBus.EventRouting;
 /// </summary>
 public partial class AzureServiceBusTransport : TransportDefinition
 {
+    const string recoverabilityDelayedDefaultPolicyRetriesKey = "Recoverability.Delayed.DefaultPolicy.Retries";
+    const string recoverabilityCustomPolicyKey = "Recoverability.CustomPolicy";
+
     /// <summary>
     /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
     /// </summary>
@@ -71,6 +74,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         {
             throw new Exception("The transport has not been initialized. Either provide a connection string or a fully qualified namespace and token credential.");
         }
+
         Topology.Validate();
         HierarchyNamespaceOptions.ValidateDestinations(receivers.Select(x => x.ReceiveAddress.ToString()));
 
@@ -79,12 +83,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
         var receiveSettingsAndClientPairs = receivers.Select(receiver =>
         {
-            var receiveClientOptions = new ServiceBusClientOptions
-            {
-                TransportType = transportType,
-                EnableCrossEntityTransactions = enableCrossEntityTransactions,
-                Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
-            };
+            var receiveClientOptions = new ServiceBusClientOptions { TransportType = transportType, EnableCrossEntityTransactions = enableCrossEntityTransactions, Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}" };
             ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
             ApplyWebProxyIfNeeded(receiveClientOptions);
             var receiveClient = TokenCredential != null
@@ -113,6 +112,20 @@ public partial class AzureServiceBusTransport : TransportDefinition
             if (TransportTransactionMode == TransportTransactionMode.None)
             {
                 throw new Exception("TransportTransactionMode.None is not supported for session-enabled receivers");
+            }
+
+            var configuredNumberOfDelayedRetries = hostSettings.CoreSettings?.Get<int>(recoverabilityDelayedDefaultPolicyRetriesKey);
+            var delayedConfig = hostSettings.CoreSettings?.TryGet(recoverabilityCustomPolicyKey, out RecoverabilityConfig recoverabilityConfig) == true
+                ? recoverabilityConfig.Delayed
+                : null;
+            if (delayedConfig != null)
+            {
+                configuredNumberOfDelayedRetries = delayedConfig.MaxNumberOfRetries;
+            }
+
+            if (configuredNumberOfDelayedRetries.HasValue && configuredNumberOfDelayedRetries.Value > 0)
+            {
+                throw new Exception("Delayed retries are not supported for session-enabled receivers");
             }
         }
 
@@ -152,12 +165,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         Guid clientId)
     {
         ServiceBusClient forwardingClient;
-        var forwardingClientOptions = new ServiceBusClientOptions
-        {
-            TransportType = defaultClientOptions.TransportType,
-            EnableCrossEntityTransactions = true,
-            Identifier = $"Client-Forwarder-to-{receivers.First().ReceiveAddress}-{clientId}"
-        };
+        var forwardingClientOptions = new ServiceBusClientOptions { TransportType = defaultClientOptions.TransportType, EnableCrossEntityTransactions = true, Identifier = $"Client-Forwarder-to-{receivers.First().ReceiveAddress}-{clientId}" };
         ApplyRetryPolicyOptionsIfNeeded(forwardingClientOptions);
         ApplyWebProxyIfNeeded(forwardingClientOptions);
         forwardingClient = TokenCredential != null
@@ -313,8 +321,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         }
     } = HierarchyNamespaceOptions.None;
 
-    [field: AllowNull, MaybeNull]
-    DestinationManager DestinationManager => field ??= new DestinationManager(HierarchyNamespaceOptions);
+    [field: AllowNull, MaybeNull] DestinationManager DestinationManager => field ??= new DestinationManager(HierarchyNamespaceOptions);
 
     string HierarchyNamespaceClientIdentifier => HierarchyNamespaceOptions != HierarchyNamespaceOptions.None ? $"{HierarchyNamespaceOptions.HierarchyNamespace.Replace('/', '-')}-" : string.Empty;
 
