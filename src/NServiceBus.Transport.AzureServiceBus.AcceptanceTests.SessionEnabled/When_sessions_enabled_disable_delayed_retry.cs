@@ -108,7 +108,7 @@ public class When_sessions_enabled_delayed_retry_tests : NServiceBusAcceptanceTe
             });
 
         [Handler]
-        public class MessageToBeRetriedHandler() : IHandleMessages<MyMessage>
+        public class MessageToBeRetriedHandler : IHandleMessages<MyMessage>
         {
             public Task Handle(MyMessage message, IMessageHandlerContext context)
             {
