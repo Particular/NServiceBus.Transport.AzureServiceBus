@@ -59,6 +59,8 @@
     <!-- The transport does not support running without transactions in session-enabled mode but this cannot be declared in TransportDefinition-->
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_non_transactional_message_is_moved_to_error_queue.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\At_most_once.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_delayed_retries_with_immediate_retries_disabled.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_immediate_retries_fail.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_saga_message_goes_through_delayed_retries.cs" />
   </ItemGroup>
-  
-</Project>
+  </Project>
