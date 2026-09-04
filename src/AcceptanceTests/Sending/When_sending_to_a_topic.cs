@@ -1,6 +1,5 @@
 namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending;
 
-using System;
 using System.Threading.Tasks;
 using AcceptanceTesting;
 using AcceptanceTesting.Customization;
@@ -25,9 +24,7 @@ public class When_sending_to_a_topic : NServiceBusAcceptanceTest
     {
         TopicName = "SendingToATopic";
 
-        var adminClient =
-            new ServiceBusAdministrationClient(
-                Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
         if (await adminClient.TopicExistsAsync(TopicName))
         {

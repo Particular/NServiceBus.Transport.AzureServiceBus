@@ -95,6 +95,30 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
         string receiveAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
         SubQueue subQueue = ToSubQueue(receiveSettings.ReceiveAddress);
+        if (transportSettings.EnableSessions)
+        {
+            if (subQueue != SubQueue.None)
+            {
+                throw new Exception("Cannot use a session-enabled receiver to receive from a dead-letter queue");
+            }
+            return new SessionsEnabledMessagePump(receiveClient,
+                transportSettings,
+                receiveAddress,
+                receiveSettings,
+                hostSettings.CriticalErrorAction,
+                receiveSettings.UsePublishSubscribe
+                    ? transportSettings.Topology.CreateSubscriptionManager(new SubscriptionManagerCreationOptions
+                    {
+                        AdministrationClient = administrationClient,
+                        Client = defaultClient,
+                        EnablePartitioning = transportSettings.EnablePartitioning,
+                        EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
+                        MaxDeliveryCount = transportSettings.MaxDeliveryCount,
+                        SetupInfrastructure = hostSettings.SetupInfrastructure,
+                        SubscribingQueueName = receiveAddress
+                    }, hostSettings)
+                    : null);
+        }
 
         return new MessagePump(
             receiveClient,
@@ -131,8 +155,10 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         {
             foreach (var messageReceiver in Receivers.Values)
             {
-                var receiver = (MessagePump)messageReceiver;
-                await receiver.DisposeAsync().ConfigureAwait(false);
+                if (messageReceiver is IAsyncDisposable disposableReceiver)
+                {
+                    await disposableReceiver.DisposeAsync().ConfigureAwait(false);
+                }
             }
 
             foreach (var (_, serviceBusClient) in receiveSettingsAndClientPairs)

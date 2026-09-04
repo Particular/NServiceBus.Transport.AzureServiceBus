@@ -1,6 +1,5 @@
 namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests;
 
-using System;
 using System.Threading.Tasks;
 using AcceptanceTesting;
 using Azure.Messaging.ServiceBus;
@@ -18,9 +17,7 @@ public class When_operating_with_least_privilege : NServiceBusAcceptanceTest
     [SetUp]
     public async Task Setup()
     {
-        var adminClient =
-            new ServiceBusAdministrationClient(
-                Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
         try
         {
             // makes sure during local development the topic gets cleared before each test run
@@ -53,8 +50,7 @@ public class When_operating_with_least_privilege : NServiceBusAcceptanceTest
                     c.DisableFeature<AutoSubscribe>();
 
                     var transport = c.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.ConnectionString =
-                        Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString_Restricted");
+                    transport.ConnectionString = AcceptanceTestConnectionString.RestrictedConnectionString;
                 });
                 b.When(session => session.SendLocal(new MyCommand()));
             })
@@ -68,8 +64,7 @@ public class When_operating_with_least_privilege : NServiceBusAcceptanceTest
                     c.DisableFeature<AutoSubscribe>();
 
                     var transport = c.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.ConnectionString =
-                        Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString_Restricted");
+                    transport.ConnectionString = AcceptanceTestConnectionString.RestrictedConnectionString;
                 });
             })
             .Run();

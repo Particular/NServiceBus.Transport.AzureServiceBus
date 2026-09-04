@@ -18,9 +18,7 @@ public class When_using_auto_delete_on_idle : NServiceBusAcceptanceTest
     [SetUp]
     public async Task Setup()
     {
-        var adminClient =
-            new ServiceBusAdministrationClient(
-                Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
         try
         {
             // makes sure during local development the topic gets cleared before each test run
@@ -51,8 +49,7 @@ public class When_using_auto_delete_on_idle : NServiceBusAcceptanceTest
             .Run();
 
         // Verify that the queue was created with the correct AutoDeleteOnIdle setting
-        var adminClient = new ServiceBusAdministrationClient(
-            Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
         var queueProperties = await adminClient.GetQueueAsync(HasAutoDeleteOnIdleEndpointInstanceName);
 
@@ -74,8 +71,7 @@ public class When_using_auto_delete_on_idle : NServiceBusAcceptanceTest
             .Run();
 
         // Verify that the queue was created with the correct AutoDeleteOnIdle setting
-        var adminClient = new ServiceBusAdministrationClient(
-            Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
         var queueProperties = await adminClient.GetQueueAsync(NoAutoDeleteOnIdleEndpointInstanceName);
 
@@ -98,8 +94,7 @@ public class When_using_auto_delete_on_idle : NServiceBusAcceptanceTest
             .Run();
 
         // Verify that the queue was created with the correct AutoDeleteOnIdle setting
-        var adminClient = new ServiceBusAdministrationClient(
-            Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
         var queueProperties = await adminClient.GetQueueAsync(HasAutoDeleteOnIdleButNoInstancesEndpointName);
 
