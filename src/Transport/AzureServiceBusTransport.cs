@@ -21,6 +21,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 {
     const string recoverabilityDelayedDefaultPolicyRetriesKey = "Recoverability.Delayed.DefaultPolicy.Retries";
     const string recoverabilityCustomPolicyKey = "Recoverability.CustomPolicy";
+    const string isSendOnlyKey = "Endpoint.SendOnly";
 
     /// <summary>
     /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
@@ -125,7 +126,13 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
             if (configuredNumberOfDelayedRetries.HasValue && configuredNumberOfDelayedRetries.Value > 0)
             {
-                throw new Exception("Delayed retries are not supported for session-enabled receivers. Please disable them.");
+                throw new Exception("Delayed retries are not supported for session-enabled receivers. Please disable delayed retries.");
+            }
+
+            var isSendOnly = hostSettings.CoreSettings?.Get<bool>(isSendOnlyKey) ?? false;
+            if (isSendOnly)
+            {
+                throw new Exception("Sessions cannot be enabled for send-only endpoints");
             }
         }
 
