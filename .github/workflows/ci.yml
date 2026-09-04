@@ -66,11 +66,20 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          sudo apt-get update
+          set -e
+
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+          echo "Available Azure CLI versions:"
+          apt-cache policy azure-cli
+
           sudo apt-get install --allow-downgrades -y azure-cli=2.83.0-1~noble
 
           echo "Azure CLI:"
+          which az
           az --version
+          python3 --version
+          echo "ImageVersion=$ImageVersion"
 
       - name: Azure login
         uses: azure/login@v3.0.1
