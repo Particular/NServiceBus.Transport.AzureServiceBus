@@ -19,7 +19,7 @@ public class GenerateRandomSessionIdForSends : Behavior<IOutgoingSendContext>
     public override Task Invoke(IOutgoingSendContext context, Func<Task> next)
     {
         var dispatchProperties = context.Extensions.Get<DispatchProperties>();
-        dispatchProperties["SessionId"] = Guid.NewGuid().ToString();
+        dispatchProperties.TryAdd("SessionId", Guid.NewGuid().ToString());
 
         return next();
     }
@@ -41,7 +41,7 @@ public class GenerateRandomSessionIdForReplies : Behavior<IOutgoingReplyContext>
     public override Task Invoke(IOutgoingReplyContext context, Func<Task> next)
     {
         var dispatchProperties = context.Extensions.Get<DispatchProperties>();
-        dispatchProperties["SessionId"] = Guid.NewGuid().ToString();
+        dispatchProperties.TryAdd("SessionId", Guid.NewGuid().ToString());
 
         return next();
     }
@@ -52,7 +52,6 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
     public Task Configure(string endpointName, EndpointConfiguration configuration, RunSettings settings, PublisherMetadata publisherMetadata)
     {
         var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_OrderedConnectionString");
-
         if (string.IsNullOrEmpty(connectionString))
         {
             throw new InvalidOperationException("envvar AzureServiceBus_ConnectionStringOrdered not set");
