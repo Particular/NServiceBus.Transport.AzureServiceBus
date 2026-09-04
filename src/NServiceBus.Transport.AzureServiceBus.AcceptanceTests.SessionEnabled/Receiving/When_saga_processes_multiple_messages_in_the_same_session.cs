@@ -72,16 +72,68 @@ public class When_saga_processes_multiple_messages_in_the_same_session : NServic
         });
     }
 
+    [Test]
+    public async Task Should_not_break_message_order_when_a_handler_fails_once()
+    {
+        var orderId = Guid.NewGuid();
+        var sessionId = orderId.ToString();
+
+        var failingStep = new Random().Next(BasketOperations.Count);
+
+        var ctx = await Scenario.Define<Context>(c => c.FailingStep = failingStep)
+            .WithEndpoint<Endpoint>(b => b.When(async (session, _) =>
+            {
+                for (var step = 0; step < BasketOperations.Count; step++)
+                {
+                    var (isAdd, product) = BasketOperations[step];
+
+                    var options = new SendOptions();
+                    options.SetSessionId(sessionId);
+                    options.RouteToThisEndpoint();
+
+                    object message = isAdd
+                        ? new AddProductToBasket { OrderId = orderId, Product = product, Step = step }
+                        : new RemoveProductFromBasket { OrderId = orderId, Product = product, Step = step };
+
+                    await session.Send(message, options);
+                }
+
+                var checkoutOptions = new SendOptions();
+                checkoutOptions.SetSessionId(sessionId);
+                checkoutOptions.RouteToThisEndpoint();
+
+                await session.Send(new Checkout { OrderId = orderId, Step = BasketOperations.Count }, checkoutOptions);
+            }))
+            .Done(c => c.SagaCompleted)
+            .Run();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ctx.ProcessedSteps, Is.EqualTo(Enumerable.Range(0, BasketOperations.Count + 1)),
+                $"Due to an induced failure, the messages in the session were not processed in order.");
+            Assert.That(ctx.FinalProducts.Order(), Is.EqualTo(ExpectedFinalProducts.Order()),
+                "The saga should reflect the net effect of all add/remove messages even though one of them failed and was retried.");
+        });
+    }
+
     public class Context : ScenarioContext
     {
+        public int FailingStep { get; set; } = -1; // -1 will never fail
+        public ConcurrentDictionary<int, bool> FailureInduced { get; } = new();
         public ConcurrentQueue<string> SessionIds { get; } = new();
+        public ConcurrentQueue<int> ProcessedSteps { get; } = new();
         public List<string> FinalProducts { get; set; } = [];
         public bool SagaCompleted { get; set; }
     }
 
     public class Endpoint : EndpointConfigurationBuilder
     {
-        public Endpoint() => EndpointSetup<DefaultServer>();
+        public Endpoint() => EndpointSetup<DefaultServer>(c =>
+        {
+            c.Recoverability()
+                .Delayed(d => d.NumberOfRetries(0))
+                .Immediate(i => i.NumberOfRetries(3));
+        });
 
         [Saga]
         public class OrderSaga(Context testContext) : Saga<OrderSaga.OrderSagaData>,
@@ -98,32 +150,43 @@ public class When_saga_processes_multiple_messages_in_the_same_session : NServic
 
             public Task Handle(AddProductToBasket message, IMessageHandlerContext context)
             {
+                FailStepIfNeeded(message.Step);
                 Data.OrderId = message.OrderId;
                 Data.Products.Add(message.Product);
-                RecordSessionId(context);
+                RecordProcessedStep(context, message.Step);
                 return Task.CompletedTask;
             }
 
             public Task Handle(RemoveProductFromBasket message, IMessageHandlerContext context)
             {
+                FailStepIfNeeded(message.Step);
                 Data.Products.Remove(message.Product);
-                RecordSessionId(context);
+                RecordProcessedStep(context, message.Step);
                 return Task.CompletedTask;
             }
 
             public Task Handle(Checkout message, IMessageHandlerContext context)
             {
-                RecordSessionId(context);
+                RecordProcessedStep(context, message.Step);
                 testContext.FinalProducts = [.. Data.Products];
                 testContext.SagaCompleted = true;
                 MarkAsComplete();
                 return Task.CompletedTask;
             }
 
-            void RecordSessionId(IMessageHandlerContext context)
+            void FailStepIfNeeded(int step)
+            {
+                if (step == testContext.FailingStep && testContext.FailureInduced.TryAdd(step, true))
+                {
+                    throw new SimulatedException($"Simulated failure for step {step}");
+                }
+            }
+
+            void RecordProcessedStep(IMessageHandlerContext context, int step)
             {
                 var nativeMessage = context.Extensions.Get<ServiceBusReceivedMessage>();
                 testContext.SessionIds.Enqueue(nativeMessage.SessionId);
+                testContext.ProcessedSteps.Enqueue(step);
             }
 
             public class OrderSagaData : ContainSagaData
@@ -138,16 +201,19 @@ public class When_saga_processes_multiple_messages_in_the_same_session : NServic
     {
         public Guid OrderId { get; set; }
         public string Product { get; set; }
+        public int Step { get; set; }
     }
 
     public class RemoveProductFromBasket : IMessage
     {
         public Guid OrderId { get; set; }
         public string Product { get; set; }
+        public int Step { get; set; }
     }
 
     public class Checkout : IMessage
     {
         public Guid OrderId { get; set; }
+        public int Step { get; set; }
     }
 }
