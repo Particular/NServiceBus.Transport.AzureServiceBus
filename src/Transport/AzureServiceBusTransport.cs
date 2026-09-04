@@ -125,7 +125,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
             if (configuredNumberOfDelayedRetries.HasValue && configuredNumberOfDelayedRetries.Value > 0)
             {
-                throw new Exception("Delayed retries are not supported for session-enabled receivers");
+                throw new Exception("Delayed retries are not supported for session-enabled receivers. Please disable them.");
             }
         }
 
