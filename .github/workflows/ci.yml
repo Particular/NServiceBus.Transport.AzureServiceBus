@@ -1,4 +1,5 @@
 name: CI
+
 on:
   push:
     branches:
@@ -6,39 +7,49 @@ on:
       - release-*
   pull_request:
   workflow_dispatch:
+
 env:
   DOTNET_NOLOGO: true
+
 defaults:
   run:
     shell: pwsh
+
 jobs:
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
             name: Windows
-# Pinned because Pyhron 3.14 is not supported in Azure CLI and causes build failures, see https://github.com/Azure/azure-cli/issues/32869
+
           - os: ubuntu-24.04
             name: Linux
-      fail-fast: false
+
     steps:
       - name: Check for secrets
         env:
           SECRETS_AVAILABLE: ${{ secrets.SECRETS_AVAILABLE }}
-        run: exit $(If ($env:SECRETS_AVAILABLE -eq 'true') { 0 } Else { 1 })
+        run: |
+          exit $(If ($env:SECRETS_AVAILABLE -eq 'true') { 0 } Else { 1 })
+
       - name: Checkout
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v6.0.0
         with:
           global-json-file: global.json
+
       - name: Build
         run: dotnet build src --configuration Release
+
       - name: Upload packages
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v7.0.1
@@ -46,28 +57,47 @@ jobs:
           name: NuGet packages
           path: nugets/
           retention-days: 7
+
+      # setup-azureservicebus-action invokes the az executable installed
+      # on the runner. Pin it on Linux to avoid the Python 3.14 Azure CLI
+      # module-loader deadlock:
+      # https://github.com/Azure/azure-cli/issues/32869
+      - name: Pin Azure CLI
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --allow-downgrades -y azure-cli=2.83.0-1~noble
+
+          echo "Azure CLI:"
+          az --version
+
       - name: Azure login
         uses: azure/login@v3.0.1
         with:
           creds: ${{ secrets.AZURE_ACI_CREDENTIALS }}
+
       - name: Setup Azure Service Bus Emulator
         uses: Particular/setup-azureservicebus-action@v2.5.0
         with:
           connection-string-name: AzureServiceBus_Emulator_ConnectionString
           azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
           use-emulator: true
-          tag: ASBTransport          
+          tag: ASBTransport
+
       - name: Setup Azure Service Bus
         uses: Particular/setup-azureservicebus-action@v2.5.0
         with:
           connection-string-name: AzureServiceBus_ConnectionString
           azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
           tag: ASBTransport
+
       - name: Setup ordered Azure Service Bus
         uses: Particular/setup-azureservicebus-action@v2.3.0
         with:
           connection-string-name: AzureServiceBus_OrderedConnectionString
           azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
           tag: ASBTransportOrdered
+
       - name: Run tests
         uses: Particular/run-tests-action@v1.7.0
