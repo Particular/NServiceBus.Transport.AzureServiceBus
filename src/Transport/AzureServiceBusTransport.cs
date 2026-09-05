@@ -19,6 +19,10 @@ using Transport.AzureServiceBus.EventRouting;
 /// </summary>
 public partial class AzureServiceBusTransport : TransportDefinition
 {
+    const string recoverabilityDelayedDefaultPolicyRetriesKey = "Recoverability.Delayed.DefaultPolicy.Retries";
+    const string recoverabilityCustomPolicyKey = "Recoverability.CustomPolicy";
+    const string isSendOnlyKey = "Endpoint.SendOnly";
+
     /// <summary>
     /// Creates a new instance of <see cref="AzureServiceBusTransport"/>.
     /// </summary>
@@ -80,26 +84,23 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
         var receiveSettingsAndClientPairs = receivers.Select(receiver =>
         {
-            var receiveClientOptions = new ServiceBusClientOptions
-            {
-                TransportType = transportType,
-                EnableCrossEntityTransactions = enableCrossEntityTransactions,
-                Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}"
-            };
+            var receiveClientOptions = new ServiceBusClientOptions { TransportType = transportType, EnableCrossEntityTransactions = enableCrossEntityTransactions, Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{receiver.Id}-{receiver.ReceiveAddress}-{Guid.NewGuid()}" };
             ApplyRetryPolicyOptionsIfNeeded(receiveClientOptions);
             ApplyWebProxyIfNeeded(receiveClientOptions);
             var receiveClient = TokenCredential != null
                 ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, receiveClientOptions)
                 : new ServiceBusClient(ConnectionString, receiveClientOptions);
+
             return (receiver, receiveClient);
         }).ToArray();
 
+        var clientId = Guid.NewGuid();
         var defaultClientOptions = new ServiceBusClientOptions
         {
             TransportType = transportType,
             // for the default client we never want things to automatically use cross entity transaction
             EnableCrossEntityTransactions = false,
-            Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{hostSettings.Name}-{Guid.NewGuid()}"
+            Identifier = $"Client-{HierarchyNamespaceClientIdentifier}{hostSettings.Name}-{clientId}"
         };
         ApplyRetryPolicyOptionsIfNeeded(defaultClientOptions);
         ApplyWebProxyIfNeeded(defaultClientOptions);
@@ -107,13 +108,42 @@ public partial class AzureServiceBusTransport : TransportDefinition
             ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
             : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
+        if (EnableSessions)
+        {
+            if (TransportTransactionMode == TransportTransactionMode.None)
+            {
+                throw new Exception("TransportTransactionMode.None is not supported for session-enabled receivers");
+            }
+
+            var configuredNumberOfDelayedRetries = hostSettings.CoreSettings?.Get<int>(recoverabilityDelayedDefaultPolicyRetriesKey);
+            var delayedConfig = hostSettings.CoreSettings?.TryGet(recoverabilityCustomPolicyKey, out RecoverabilityConfig recoverabilityConfig) == true
+                ? recoverabilityConfig.Delayed
+                : null;
+            if (delayedConfig != null)
+            {
+                configuredNumberOfDelayedRetries = delayedConfig.MaxNumberOfRetries;
+            }
+
+            if (configuredNumberOfDelayedRetries.HasValue && configuredNumberOfDelayedRetries.Value > 0)
+            {
+                throw new Exception("Delayed retries are not supported for session-enabled receivers. Please disable delayed retries.");
+            }
+
+            var isSendOnly = hostSettings.CoreSettings?.Get<bool>(isSendOnlyKey) ?? false;
+            if (isSendOnly)
+            {
+                throw new Exception("Sessions cannot be enabled for send-only endpoints");
+            }
+        }
+
         var administrationConnectionString = IsUsingDevelopmentEmulator(ConnectionString)
             ? InjectEmulatorAdminPort(ConnectionString!)
             : ConnectionString!;
         var administrationClient = TokenCredential != null
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
             : new ServiceBusAdministrationClient(administrationConnectionString);
-        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, administrationClient, DestinationManager);
+
+        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, () => CreateForwardingClient(receivers, defaultClientOptions, clientId), administrationClient, DestinationManager);
 
         if (hostSettings.SetupInfrastructure)
         {
@@ -136,6 +166,19 @@ public partial class AzureServiceBusTransport : TransportDefinition
         }
 
         return infrastructure;
+    }
+
+    ServiceBusClient CreateForwardingClient(ReceiveSettings[] receivers, ServiceBusClientOptions defaultClientOptions,
+        Guid clientId)
+    {
+        ServiceBusClient forwardingClient;
+        var forwardingClientOptions = new ServiceBusClientOptions { TransportType = defaultClientOptions.TransportType, EnableCrossEntityTransactions = true, Identifier = $"Client-Forwarder-to-{receivers.First().ReceiveAddress}-{clientId}" };
+        ApplyRetryPolicyOptionsIfNeeded(forwardingClientOptions);
+        ApplyWebProxyIfNeeded(forwardingClientOptions);
+        forwardingClient = TokenCredential != null
+            ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, forwardingClientOptions)
+            : new ServiceBusClient(ConnectionString, forwardingClientOptions);
+        return forwardingClient;
     }
 
     internal static string InjectEmulatorAdminPort(string connectionString)
@@ -225,12 +268,24 @@ public partial class AzureServiceBusTransport : TransportDefinition
     }
 
     /// <inheritdoc />
-    public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes() =>
-    [
-        TransportTransactionMode.None,
-        TransportTransactionMode.ReceiveOnly,
-        TransportTransactionMode.SendsAtomicWithReceive
-    ];
+    public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes()
+    {
+        if (EnableSessions)
+        {
+            return
+            [
+                TransportTransactionMode.ReceiveOnly,
+                TransportTransactionMode.SendsAtomicWithReceive
+            ];
+        }
+
+        return
+        [
+            TransportTransactionMode.None,
+            TransportTransactionMode.ReceiveOnly,
+            TransportTransactionMode.SendsAtomicWithReceive
+        ];
+    }
 
     /// <summary>
     /// Gets the topic topology used.
@@ -273,8 +328,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         }
     } = HierarchyNamespaceOptions.None;
 
-    [field: AllowNull, MaybeNull]
-    DestinationManager DestinationManager => field ??= new DestinationManager(HierarchyNamespaceOptions);
+    [field: AllowNull, MaybeNull] DestinationManager DestinationManager => field ??= new DestinationManager(HierarchyNamespaceOptions);
 
     string HierarchyNamespaceClientIdentifier => HierarchyNamespaceOptions != HierarchyNamespaceOptions.None ? $"{HierarchyNamespaceOptions.HierarchyNamespace.Replace('/', '-')}-" : string.Empty;
 

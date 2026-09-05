@@ -20,6 +20,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     readonly StartupDiagnosticEntries startupDiagnostic;
     readonly string subscriptionName;
     readonly DestinationManager destinationManager;
+    readonly ISubscriptionForwarders subscriptionForwarders;
 
     public TopicPerEventTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
         TopologyOptions topologyOptions,
@@ -38,12 +39,16 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             ?? topologyOptions.QueueNameToSubscriptionNameMap.GetValueOrDefault(strippedSubscribingQueueName)
             ?? subscribingQueueName;
 
+        subscriptionForwarders = creationOptions.RequiresSession
+            ? new SubscriptionForwarders(creationOptions.ForwarderClientFactory!, creationOptions.SubscribingQueueName, creationOptions.TimeBeforeTriggeringCircuitBreaker, creationOptions.CriticalErrorAction)
+            : new NullSubscriptionForwarders();
+
         subscriptionName = destinationManager.StripHierarchyNamespace(subscriptionNameCandidate);
     }
 
     static readonly ILog Logger = LogManager.GetLogger<TopicPerEventTopologySubscriptionManager>();
 
-    public override Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
+    public override async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
         CancellationToken cancellationToken = default)
     {
         var invalidConfig = ValidateSubscriptionConfiguration(eventTypes);
@@ -54,7 +59,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         if (eventTypes.Length == 0)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         WriteSubscriptionManifest(eventTypes);
@@ -65,8 +70,17 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                                  group (eventTypeFullName, entry) by entry.Topic into g
                                  select g).ToArray();
 
-        return Task.WhenAll([.. allEntriesByTopic.Select(group =>
-            ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, cancellationToken))]);
+        await Task.WhenAll([.. allEntriesByTopic.Select(group =>
+            ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, cancellationToken))])
+            .ConfigureAwait(false);
+
+        foreach (var group in allEntriesByTopic)
+        {
+            foreach ((string eventTypeFullName, SubscriptionEntry entry) entry in group)
+            {
+                await subscriptionForwarders.StartForwarding(group.Key, subscriptionName, entry.eventTypeFullName, cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     static async Task ProvisionSubscriptionForTopic(string topicName,
@@ -94,8 +108,10 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         if (filteredEntries.Length > 0)
         {
-            await Task.WhenAll([.. filteredEntries.Select(e =>
-                AddFilterRule(topicName, subscriptionName, e.EventTypeFullName, e.Entry.RoutingMode!.Value, creationOptions, cancellationToken))]).ConfigureAwait(false);
+            await Task.WhenAll([.. filteredEntries.Select(async e =>
+            {
+                await AddFilterRule(topicName, subscriptionName, e.EventTypeFullName, e.Entry.RoutingMode!.Value, creationOptions, cancellationToken).ConfigureAwait(false);
+            })]).ConfigureAwait(false);
         }
     }
 
@@ -194,12 +210,20 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             _ => throw new ArgumentOutOfRangeException(nameof(routingMode), routingMode, null)
         };
 
-    public override Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
+    public override async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
     {
         var eventTypeFullName = eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null");
         var entries = MapEventToSubscriptionEntries(eventTypeFullName);
-        return DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken);
+
+        foreach (var entry in entries)
+        {
+            await subscriptionForwarders.StopForwarding(entry.Topic, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
+        }
+
+        await DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken).ConfigureAwait(false);
     }
+
+    public override Task Shutdown(CancellationToken cancellationToken = default) => subscriptionForwarders.Shutdown(cancellationToken);
 
     static async Task CreateCatchAllSubscription(string topicName, string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
@@ -208,12 +232,17 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         var subscriptionOptions = new CreateSubscriptionOptions(topicName, subscriptionName)
         {
             LockDuration = TimeSpan.FromMinutes(5),
-            ForwardTo = creationOptions.SubscribingQueueName,
             EnableDeadLetteringOnFilterEvaluationExceptions = false,
             MaxDeliveryCount = creationOptions.MaxDeliveryCount,
             EnableBatchedOperations = true,
-            UserMetadata = creationOptions.SubscribingQueueName
+            UserMetadata = creationOptions.SubscribingQueueName,
+            RequiresSession = creationOptions.RequiresSession
         };
+
+        if (!creationOptions.RequiresSession)
+        {
+            subscriptionOptions.ForwardTo = creationOptions.SubscribingQueueName;
+        }
 
         try
         {
@@ -241,6 +270,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         {
             EnableBatchedOperations = true,
             EnablePartitioning = creationOptions.EnablePartitioning,
+            SupportOrdering = creationOptions.RequiresSession,
             MaxSizeInMegabytes = creationOptions.EntityMaximumSizeInMegabytes
         };
 
@@ -269,12 +299,17 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         var subscriptionOptions = new CreateSubscriptionOptions(topicName, subscriptionName)
         {
             LockDuration = TimeSpan.FromMinutes(5),
-            ForwardTo = creationOptions.SubscribingQueueName,
             EnableDeadLetteringOnFilterEvaluationExceptions = false,
             MaxDeliveryCount = creationOptions.MaxDeliveryCount,
             EnableBatchedOperations = true,
-            UserMetadata = creationOptions.SubscribingQueueName
+            UserMetadata = creationOptions.SubscribingQueueName,
+            RequiresSession = creationOptions.RequiresSession
         };
+
+        if (!creationOptions.RequiresSession)
+        {
+            subscriptionOptions.ForwardTo = creationOptions.SubscribingQueueName;
+        }
 
         try
         {
@@ -334,7 +369,12 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken) =>
-        Task.WhenAll([.. entries.Select(entry => DeleteSubscriptionOrRuleForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken))]);
+        Task.WhenAll([
+            .. entries.Select(async entry =>
+            {
+                await DeleteSubscriptionOrRuleForEntry(entry, eventTypeFullName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
+            })
+        ]);
 
     static Task DeleteSubscriptionOrRuleForEntry(SubscriptionEntry entry, string eventTypeFullName,
         string subscriptionName,

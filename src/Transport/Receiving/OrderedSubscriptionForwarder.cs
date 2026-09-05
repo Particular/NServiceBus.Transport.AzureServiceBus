@@ -1,0 +1,156 @@
+namespace NServiceBus.Transport.AzureServiceBus.Receiving;
+
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Transactions;
+using Azure.Messaging.ServiceBus;
+using Logging;
+
+class OrderedSubscriptionForwarder : IAsyncDisposable
+{
+    static readonly ILog Logger = LogManager.GetLogger<OrderedSubscriptionForwarder>();
+
+    HashSet<string> eventTypes = [];
+    ServiceBusSessionProcessor? sessionProcessor;
+    ServiceBusSender? sender;
+    CancellationTokenSource forwardingCancellationTokenSource = new();
+    readonly RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
+    readonly ServiceBusClient forwardingClient;
+    readonly string topicName;
+    readonly string subscriptionName;
+    readonly string inputQueueAddress;
+
+    public OrderedSubscriptionForwarder(ServiceBusClient forwardingClient, string topicName, string subscriptionName, string inputQueueAddress, TimeSpan timeBeforeTriggeringCircuitBreaker, Action<string, Exception, CancellationToken> criticalErrorAction)
+    {
+        this.forwardingClient = forwardingClient;
+        this.topicName = topicName;
+        this.subscriptionName = subscriptionName;
+        this.inputQueueAddress = inputQueueAddress;
+
+        circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"Forwarding-Processor-{topicName}-{subscriptionName}-{inputQueueAddress}",
+            timeBeforeTriggeringCircuitBreaker, ex =>
+            {
+                criticalErrorAction("Failed to receive message from Azure Service Bus.", ex,
+                    CancellationToken.None);
+            });
+    }
+
+    public async Task Start(CancellationToken cancellationToken = default)
+    {
+        var sessionReceiveOptions = new ServiceBusSessionProcessorOptions
+        {
+            PrefetchCount = 50, // TODO: do we want to make the prefetch count configurable
+            ReceiveMode = ServiceBusReceiveMode.PeekLock,
+            Identifier = $"Forwarding-Processor-{topicName}-{subscriptionName}-{inputQueueAddress}",
+            MaxConcurrentSessions = 10, // TODO: do we want to make the session concurrency configurable
+            AutoCompleteMessages = false,
+        };
+
+        sessionProcessor = forwardingClient.CreateSessionProcessor(topicName, subscriptionName, sessionReceiveOptions);
+        sessionProcessor.ProcessErrorAsync += OnError;
+        sessionProcessor.ProcessMessageAsync += OnMessage;
+
+        await sessionProcessor.StartProcessingAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task Stop(CancellationToken cancellationToken = default)
+    {
+        await sessionProcessor!.StopProcessingAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await sessionProcessor.CloseAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
+        {
+            if (Logger.IsDebugEnabled)
+            {
+                Logger.Debug($"Operation canceled while stopping the forwarder {sessionProcessor.EntityPath}.", ex);
+            }
+        }
+    }
+
+#pragma warning disable PS0018
+    async Task OnMessage(ProcessSessionMessageEventArgs arg)
+#pragma warning restore PS0018
+    {
+        using var ts = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+
+        var serviceBusMessage = new ServiceBusMessage()
+        {
+            Body = arg.Message.Body,
+            ContentType = arg.Message.ContentType,
+            CorrelationId = arg.Message.CorrelationId,
+            MessageId = arg.Message.MessageId,
+            PartitionKey = arg.Message.PartitionKey,
+            ReplyTo = arg.Message.ReplyTo,
+            ReplyToSessionId = arg.Message.ReplyToSessionId,
+            ScheduledEnqueueTime = arg.Message.ScheduledEnqueueTime,
+            SessionId = arg.Message.SessionId,
+            Subject = arg.Message.Subject,
+            TimeToLive = arg.Message.TimeToLive,
+            To = arg.Message.To
+        };
+
+        foreach (var messageApplicationProperty in arg.Message.ApplicationProperties)
+        {
+            serviceBusMessage.ApplicationProperties.Add(messageApplicationProperty.Key, messageApplicationProperty.Value);
+        }
+
+        await arg.CompleteMessageAsync(arg.Message, forwardingCancellationTokenSource.Token).ConfigureAwait(false);
+        sender = forwardingClient.CreateSender(inputQueueAddress, new ServiceBusSenderOptions
+        {
+            Identifier = $"Forwarding-Sender-{topicName}-{subscriptionName}"
+        });
+        await sender.SendMessageAsync(serviceBusMessage, forwardingCancellationTokenSource.Token).ConfigureAwait(false);
+        ts.Complete();
+
+        circuitBreaker.Success();
+    }
+
+#pragma warning disable PS0018
+    async Task OnError(ProcessErrorEventArgs arg)
+#pragma warning restore PS0018
+    {
+        string message = $"Failed to receive a message on pump '{arg.Identifier}' listening on '{arg.EntityPath}' connected to '{arg.FullyQualifiedNamespace}' due to '{arg.ErrorSource}'. Exception: {arg.Exception}";
+        // Making sure transient exceptions do not trigger the circuit breaker.
+        if (arg.Exception is ServiceBusException { IsTransient: true })
+        {
+            Logger.Debug(message, arg.Exception);
+            return;
+        }
+
+        Logger.Warn(message, arg.Exception);
+        await circuitBreaker.Failure(arg.Exception, arg.CancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (sessionProcessor != null)
+        {
+            sessionProcessor.ProcessErrorAsync -= OnError;
+            sessionProcessor.ProcessMessageAsync -= OnMessage;
+
+            await sessionProcessor.DisposeAsync().ConfigureAwait(false);
+            sessionProcessor = null;
+        }
+
+        circuitBreaker.Dispose();
+    }
+
+    public void RegisterType(string eventTypeFullName)
+    {
+        eventTypes.Add(eventTypeFullName);
+    }
+
+    public bool UnregisterType(string eventTypeFullName)
+    {
+        eventTypes.Remove(eventTypeFullName);
+        return eventTypes.Count == 0;
+    }
+}
