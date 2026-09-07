@@ -101,7 +101,7 @@ public class When_a_handler_uses_session_state : NServiceBusAcceptanceTest
         public async Task Handle(Tick message, IMessageHandlerContext context)
         {
             testContext.NrOfMessagesProcessed++;
-            IAzureServiceBusSessionState sessionState = context.Extensions.Get<IAzureServiceBusSessionState>();
+            IAzureServiceBusSessionState sessionState = context.GetSessionState();
 
             // Evolve state based on what's already there
             CounterState state = await sessionState.Get<CounterState>(context.CancellationToken) ?? new CounterState();
