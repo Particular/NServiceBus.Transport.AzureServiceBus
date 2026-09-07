@@ -77,6 +77,17 @@ public class QueueCreatorTests
         Approver.Verify(output);
     }
 
+    [Test]
+    public async Task Should_set_RequiresSession_to_true_when_setting_enable_session()
+    {
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default) { EnableSessions = true };
+
+        var output = await CreateQueues(transport,
+            sendingAddresses: ["audit", "error", "some-destination-queue"]);
+
+        Approver.Verify(output);
+    }
+
     async Task<string> CreateQueues(AzureServiceBusTransport transport,
         string receiveAddress = "test-queue",
         string instanceSuffix = null,
@@ -99,4 +110,6 @@ public class QueueCreatorTests
 
         return recordingClient.ToString();
     }
+
+
 }

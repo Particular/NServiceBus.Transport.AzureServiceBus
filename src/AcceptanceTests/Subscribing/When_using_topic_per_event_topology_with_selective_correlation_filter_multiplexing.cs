@@ -18,8 +18,7 @@ public class When_using_topic_per_event_topology_with_selective_correlation_filt
     [SetUp]
     public async Task Setup()
     {
-        var adminClient = new ServiceBusAdministrationClient(
-            Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
         await CleanupEntity(adminClient, SharedTopicName);
 
@@ -29,8 +28,7 @@ public class When_using_topic_per_event_topology_with_selective_correlation_filt
     [TearDown]
     public async Task Teardown()
     {
-        var adminClient = new ServiceBusAdministrationClient(
-            Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
         await CleanupEntity(adminClient, SharedTopicName);
     }
