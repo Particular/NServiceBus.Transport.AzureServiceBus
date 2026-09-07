@@ -102,7 +102,7 @@ jobs:
           tag: ASBTransport
 
       - name: Setup ordered Azure Service Bus
-        uses: Particular/setup-azureservicebus-action@v2.3.0
+        uses: Particular/setup-azureservicebus-action@v2.5.0
         with:
           connection-string-name: AzureServiceBus_OrderedConnectionString
           azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
