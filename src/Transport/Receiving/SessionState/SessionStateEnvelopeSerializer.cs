@@ -47,7 +47,7 @@ static class SessionStateEnvelopeSerializer
 
     // The session state already carries state this transport did not write so we throw
     static Exception NotOurEnvelope(string sessionId, Exception? innerException) =>
-        new Exception(
+        new(
             $"The Azure Service Bus session state for session '{sessionId}' is not in the format written by " +
             $"{nameof(IAzureServiceBusSessionState)}. Session state must only be read and written through " +
             $"{nameof(IAzureServiceBusSessionState)} (available via context.Extensions in a message handler); " +
