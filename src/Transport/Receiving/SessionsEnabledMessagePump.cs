@@ -198,11 +198,6 @@ sealed class SessionsEnabledMessagePump(
             return;
         }
 
-        if (subscriptionManager != null)
-        {
-            await subscriptionManager.SetupInfrastructureIfNecessary(cancellationToken).ConfigureAwait(false);
-        }
-
         // Wiring up the stop token to trigger the cancellation token that is being
         // used inside the message handling pipeline
         await using var _ = cancellationToken
