@@ -52,6 +52,11 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         sessionProcessor.ProcessErrorAsync += OnError;
         sessionProcessor.ProcessMessageAsync += OnMessage;
 
+        sender = forwardingClient.CreateSender(inputQueueAddress, new ServiceBusSenderOptions
+        {
+            Identifier = $"Forwarding-Sender-{topicName}-{subscriptionName}"
+        });
+
         await sessionProcessor.StartProcessingAsync(cancellationToken)
             .ConfigureAwait(false);
     }
@@ -102,13 +107,8 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         }
 
         await arg.CompleteMessageAsync(arg.Message, forwardingCancellationTokenSource.Token).ConfigureAwait(false);
-        sender = forwardingClient.CreateSender(inputQueueAddress, new ServiceBusSenderOptions
-        {
-            Identifier = $"Forwarding-Sender-{topicName}-{subscriptionName}"
-        });
-        await sender.SendMessageAsync(serviceBusMessage, forwardingCancellationTokenSource.Token).ConfigureAwait(false);
+        await sender!.SendMessageAsync(serviceBusMessage, forwardingCancellationTokenSource.Token).ConfigureAwait(false);
         ts.Complete();
-
         circuitBreaker.Success();
     }
 
@@ -138,6 +138,12 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
 
             await sessionProcessor.DisposeAsync().ConfigureAwait(false);
             sessionProcessor = null;
+        }
+
+        if (sender != null)
+        {
+            await sender.DisposeAsync().ConfigureAwait(false);
+            sender = null;
         }
 
         circuitBreaker.Dispose();
