@@ -40,10 +40,12 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
     {
         var sessionReceiveOptions = new ServiceBusSessionProcessorOptions
         {
-            PrefetchCount = 50, // TODO: do we want to make the prefetch count configurable
+            //HINT: We intentionally use conservative values here to not overwhelm the broker
+            //      There is no evidence yet that these values need to be configurable
+            PrefetchCount = 10,
+            MaxConcurrentSessions = 16,
             ReceiveMode = ServiceBusReceiveMode.PeekLock,
             Identifier = $"Forwarding-Processor-{topicName}-{subscriptionName}-{inputQueueAddress}",
-            MaxConcurrentSessions = 10, // TODO: do we want to make the session concurrency configurable
             AutoCompleteMessages = false,
         };
 
