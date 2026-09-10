@@ -264,7 +264,6 @@ sealed class SessionsEnabledMessagePump(
 
             if (Activity.Current is { } activity)
             {
-                messageContext.Extensions.Set(activity);
                 activity.AddTag("nservicebus.azureservicebus.session_id", message.SessionId);
             }
 
