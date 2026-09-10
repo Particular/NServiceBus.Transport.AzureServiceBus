@@ -37,7 +37,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_OrderedConnectionString");
         if (string.IsNullOrEmpty(connectionString))
         {
-            throw new InvalidOperationException("envvar AzureServiceBus_ConnectionStringOrdered not set");
+            throw new InvalidOperationException("envvar AzureServiceBus_OrderedConnectionString not set");
         }
 
         var topology = TopicTopology.Default;
