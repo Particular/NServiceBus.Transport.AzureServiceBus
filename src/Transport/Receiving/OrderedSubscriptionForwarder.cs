@@ -15,7 +15,6 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
     HashSet<string> eventTypes = [];
     ServiceBusSessionProcessor? sessionProcessor;
     ServiceBusSender? sender;
-    CancellationTokenSource forwardingCancellationTokenSource = new();
     readonly RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
     readonly ServiceBusClient forwardingClient;
     readonly string topicName;
@@ -106,8 +105,8 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
             serviceBusMessage.ApplicationProperties.Add(messageApplicationProperty.Key, messageApplicationProperty.Value);
         }
 
-        await arg.CompleteMessageAsync(arg.Message, forwardingCancellationTokenSource.Token).ConfigureAwait(false);
-        await sender!.SendMessageAsync(serviceBusMessage, forwardingCancellationTokenSource.Token).ConfigureAwait(false);
+        await arg.CompleteMessageAsync(arg.Message, arg.CancellationToken).ConfigureAwait(false);
+        await sender!.SendMessageAsync(serviceBusMessage, arg.CancellationToken).ConfigureAwait(false);
         ts.Complete();
         circuitBreaker.Success();
     }
