@@ -82,7 +82,7 @@ jobs:
           echo "ImageVersion=$ImageVersion"
 
       - name: Azure login
-        uses: azure/login@v3.0.2
+        uses: azure/login@v3.1.0
         with:
           creds: ${{ secrets.AZURE_ACI_CREDENTIALS }}
 
