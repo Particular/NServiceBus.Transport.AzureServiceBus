@@ -18,7 +18,7 @@ sealed class MessagePump(
     string receiveAddress,
     ReceiveSettings receiveSettings,
     Action<string, Exception, CancellationToken> criticalErrorAction,
-    ISubscriptionManager? subscriptionManager,
+    SubscriptionManager? subscriptionManager,
     SubQueue subQueue = SubQueue.None)
     : IMessageReceiver, IAsyncDisposable
 {

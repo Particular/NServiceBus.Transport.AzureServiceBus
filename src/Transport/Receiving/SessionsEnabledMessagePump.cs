@@ -13,12 +13,12 @@ using Extensibility;
 using Logging;
 
 sealed class SessionsEnabledMessagePump(
-    ServiceBusClient serviceBusClient,
+    ServiceBusClient receiveClient,
     AzureServiceBusTransport transportSettings,
     string receiveAddress,
     ReceiveSettings receiveSettings,
     Action<string, Exception, CancellationToken> criticalErrorAction,
-    ISubscriptionManager? subscriptionManager)
+    SubscriptionManager? subscriptionManager)
     : IMessageReceiver, IAsyncDisposable
 {
     readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
@@ -27,7 +27,6 @@ sealed class SessionsEnabledMessagePump(
     OnError? onError;
     RepeatedFailuresOverTimeCircuitBreaker? circuitBreaker;
 
-    // Start
     CancellationTokenSource? messageProcessingCancellationTokenSource;
     ServiceBusSessionProcessor? sessionProcessor;
 
@@ -66,14 +65,14 @@ sealed class SessionsEnabledMessagePump(
                 : ServiceBusReceiveMode.PeekLock,
             Identifier = $"Processor-{Id}-{ReceiveAddress}-{Guid.NewGuid()}",
             MaxConcurrentSessions = limitations.MaxConcurrency,
-            AutoCompleteMessages = false
+            AutoCompleteMessages = false,
         };
         if (transportSettings.MaxAutoLockRenewalDuration.HasValue)
         {
             sessionReceiveOptions.MaxAutoLockRenewalDuration = transportSettings.MaxAutoLockRenewalDuration.Value;
         }
 
-        sessionProcessor = serviceBusClient.CreateSessionProcessor(ReceiveAddress, sessionReceiveOptions);
+        sessionProcessor = receiveClient.CreateSessionProcessor(ReceiveAddress, sessionReceiveOptions);
         sessionProcessor.ProcessErrorAsync += OnProcessorError;
         sessionProcessor.ProcessMessageAsync += OnProcessMessage;
 
@@ -342,7 +341,7 @@ sealed class SessionsEnabledMessagePump(
 
     AzureServiceBusTransportTransaction CreateTransaction(string incomingQueuePartitionKey) =>
         TransactionMode == TransportTransactionMode.SendsAtomicWithReceive
-            ? new AzureServiceBusTransportTransaction(serviceBusClient, incomingQueuePartitionKey,
+            ? new AzureServiceBusTransportTransaction(receiveClient, incomingQueuePartitionKey,
                 new TransactionOptions
                 {
                     IsolationLevel = IsolationLevel.Serializable,
