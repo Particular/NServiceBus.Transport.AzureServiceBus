@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
@@ -87,7 +88,7 @@ sealed class SessionsEnabledMessagePump(
             () => UpdateProcessingCapacity(limitations.MaxConcurrency));
 
         await sessionProcessor.StartProcessingAsync(cancellationToken)
-        .ConfigureAwait(false);
+            .ConfigureAwait(false);
     }
 
     TransportTransactionMode TransactionMode => transportSettings.TransportTransactionMode;
@@ -261,6 +262,11 @@ sealed class SessionsEnabledMessagePump(
             using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
             var messageContext = new MessageContext(nativeMessageId, headers, body, receiveProperties, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
+            if (Activity.Current is { } activity)
+            {
+                activity.AddTag("nservicebus.azureservicebus.session_id", message.SessionId);
+            }
+
             await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
             await processMessageEventArgs.SafeCompleteMessage(message,
@@ -342,11 +348,7 @@ sealed class SessionsEnabledMessagePump(
     AzureServiceBusTransportTransaction CreateTransaction(string incomingQueuePartitionKey) =>
         TransactionMode == TransportTransactionMode.SendsAtomicWithReceive
             ? new AzureServiceBusTransportTransaction(receiveClient, incomingQueuePartitionKey,
-                new TransactionOptions
-                {
-                    IsolationLevel = IsolationLevel.Serializable,
-                    Timeout = TransactionManager.DefaultTimeout
-                })
+                new TransactionOptions { IsolationLevel = IsolationLevel.Serializable, Timeout = TransactionManager.DefaultTimeout })
             : new AzureServiceBusTransportTransaction();
 
     void WarnIfDeadLetteringWithoutForwarding(string nativeMessageId, int deliveryCount)
