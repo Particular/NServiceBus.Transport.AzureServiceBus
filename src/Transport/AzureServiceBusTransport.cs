@@ -112,7 +112,14 @@ public partial class AzureServiceBusTransport : TransportDefinition
         {
             if (TransportTransactionMode == TransportTransactionMode.None)
             {
-                throw new Exception("TransportTransactionMode.None is not supported for session-enabled receivers");
+                throw new Exception("TransportTransactionMode.None is not supported in session-enabled endpoints.");
+            }
+
+#pragma warning disable CS0618 // Type or member is obsolete
+            if (Topology is MigrationTopology)
+#pragma warning restore CS0618 // Type or member is obsolete
+            {
+                throw new Exception("Migration topology is not supported is not supported in session-enabled endpoints.");
             }
 
             var configuredNumberOfDelayedRetries = hostSettings.CoreSettings?.Get<int>(recoverabilityDelayedDefaultPolicyRetriesKey);
