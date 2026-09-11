@@ -62,6 +62,7 @@ class MessageDispatcher(
                     {
                         defaultOperationsPerDestination[destination].Operations.Add(operation);
                     }
+
                     break;
                 case DispatchConsistency.Isolated:
                     // every isolated operation counts
@@ -76,6 +77,7 @@ class MessageDispatcher(
                     {
                         isolatedOperationsPerDestination[destination].Operations.Add(operation);
                     }
+
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -135,18 +137,21 @@ class MessageDispatcher(
                 {
                     ApplyMultiplexingStamps(message, enclosedMessageTypes);
                 }
+
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
                 SetSessionIdIfNeeded(operation, message);
 
                 messagesToSend.Enqueue((message, routingMode));
             }
+
             // Accessing azureServiceBusTransaction.CommittableTransaction will initialize it if it isn't yet
             // doing the access as late as possible but still on the synchronous path. Initializing the transaction
             // as late as possible is important because it will start the transaction timer. If the transaction
             // is started too early it might shorten the overall transaction time available.
             dispatchTasks.Add(DispatchBatchOrFallbackToIndividualSendsForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, azureServiceBusTransportTransaction?.Transaction, messagesToSend, cancellationToken));
         }
+
         return Task.WhenAll(dispatchTasks);
     }
 
@@ -207,6 +212,7 @@ class MessageDispatcher(
                         dequeueMessage.Message.ApplicationProperties.TryGetValue(Headers.MessageId, out var messageId);
                         Log.Debug($"Message '{messageId ?? dequeueMessage.Message.MessageId}' is too large for the batch '{batchCount}' and will be sent individually to destination {destination}.");
                     }
+
                     messagesTooLargeToBeBatched ??= [];
                     messagesTooLargeToBeBatched.Add(dequeueMessage.Message);
                     continue;
@@ -231,6 +237,7 @@ class MessageDispatcher(
                 {
                     Log.Debug($"Sending batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
                 }
+
 
                 using var scope = transaction.ToScope();
                 await sender.SendMessagesAsync(messageBatch, cancellationToken).ConfigureAwait(false);
@@ -271,6 +278,10 @@ class MessageDispatcher(
                 }
 
                 throw;
+            }
+            catch (InvalidOperationException e) when (e.Message.Contains("The SessionId was not set on a message, and it cannot be sent to the entity", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"The SessionId was not set on a message, and it cannot be sent to the entity {destination} that has sessions enabled", e);
             }
         }
 
@@ -331,12 +342,14 @@ class MessageDispatcher(
                 {
                     ApplyMultiplexingStamps(message, enclosedMessageTypes);
                 }
+
                 operation.ApplyCustomizationToOutgoingNativeMessage(message, transportTransaction, Log);
                 customizerCallback(operation, message);
                 SetSessionIdIfNeeded(operation, message);
 
                 messagesToSend.Enqueue((message, routingMode));
             }
+
             dispatchTasks.Add(DispatchBatchOrFallbackToIndividualSendsForDestination(destination, isTopic, azureServiceBusTransportTransaction?.ServiceBusClient, noTransaction, messagesToSend, cancellationToken));
         }
 
@@ -388,6 +401,10 @@ class MessageDispatcher(
             }
 
             throw;
+        }
+        catch (InvalidOperationException e) when (e.Message.Contains("The SessionId was not set on a message, and it cannot be sent to the entity", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"The SessionId was not set on a message, and it cannot be sent to the entity {destination} that has sessions enabled", e);
         }
     }
 
