@@ -172,6 +172,21 @@ public partial class AzureServiceBusTransport : TransportDefinition
             }
         }
 
+        if (EnableSessions)
+        {
+            var receiverQueues = ConfigureReceiverQueues(receivers);
+            foreach (var receiverQueue in receiverQueues.Keys)
+            {
+                var queueProperties = await administrationClient.GetQueueAsync(receiverQueue, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!queueProperties.Value.RequiresSession)
+                {
+                    throw new ArgumentException($"Azure Service Bus requires sessions for all receivers when EnableSessions is set to true. Queue '{receiverQueue}' does not require sessions.");
+                }
+            }
+        }
+
         return infrastructure;
     }
 
@@ -232,6 +247,19 @@ public partial class AzureServiceBusTransport : TransportDefinition
             queuesToCreate.Add(sendingQueueName, BuildDefaultCreateQueueOptions(sendingQueueName));
         }
 
+        var receiverQueues = ConfigureReceiverQueues(receivers);
+        foreach (var receiverQueue in receiverQueues)
+        {
+            queuesToCreate.Add(receiverQueue.Key, receiverQueue.Value);
+        }
+
+        // Make sure that queues without forwarding are created first since they might, like the error queue, be the target for dlq forwarding.
+        return [.. queuesToCreate.Values.OrderBy(static queue => queue.ForwardDeadLetteredMessagesTo is null ? 0 : 1)];
+    }
+
+    Dictionary<string, CreateQueueOptions> ConfigureReceiverQueues(ReceiveSettings[] receivers)
+    {
+        Dictionary<string, CreateQueueOptions> queuesToCreate = [];
         foreach (var receiver in receivers)
         {
             // When hosted by core this will always be the same value for all receivers but in raw mode this might differ
@@ -261,10 +289,11 @@ public partial class AzureServiceBusTransport : TransportDefinition
             queuesToCreate.Add(receiveQueueName, receiveQueue);
         }
 
-        // Make sure that queues without forwarding are created first since they might, like the error queue, be the target for dlq forwarding.
-        return [.. queuesToCreate.Values.OrderBy(static queue => queue.ForwardDeadLetteredMessagesTo is null ? 0 : 1)];
+        return queuesToCreate;
+    }
 
-        CreateQueueOptions BuildDefaultCreateQueueOptions(string queueName) => new(queueName)
+    CreateQueueOptions BuildDefaultCreateQueueOptions(string queueName) =>
+        new(queueName)
         {
             EnableBatchedOperations = true,
             LockDuration = TimeSpan.FromMinutes(5),
@@ -272,7 +301,6 @@ public partial class AzureServiceBusTransport : TransportDefinition
             MaxSizeInMegabytes = EntityMaximumSizeInMegabytes,
             EnablePartitioning = EnablePartitioning
         };
-    }
 
     /// <inheritdoc />
     public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes()
