@@ -254,6 +254,10 @@ sealed class SessionsEnabledMessagePump(
         contextBag.Set(message);
         contextBag.Set(processMessageEventArgs);
 
+        var sessionStateStore = new SessionStateStoreThroughProcessingArgs(processMessageEventArgs);
+        var sessionState = new AzureServiceBusSessionState(sessionStateStore, message.SessionId);
+        contextBag.Set<IAzureServiceBusSessionState>(sessionState);
+
         // Pass on the SessionId so it can be propagated by Core for delayed retries, error or audit
         var receiveProperties = new ReceiveProperties(new Dictionary<string, string> { ["SessionId"] = message.SessionId });
 
@@ -263,6 +267,7 @@ sealed class SessionsEnabledMessagePump(
             var messageContext = new MessageContext(nativeMessageId, headers, body, receiveProperties, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
             await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
+            await sessionState.Flush(messageProcessingCancellationToken).ConfigureAwait(false);
 
             await processMessageEventArgs.SafeCompleteMessage(message,
                     TransactionMode,
