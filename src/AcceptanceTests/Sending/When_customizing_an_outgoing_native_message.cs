@@ -95,13 +95,20 @@ public class When_customizing_an_outgoing_native_message : NServiceBusAcceptance
 
             public class LogicalBehavior : Behavior<IIncomingLogicalMessageContext>
             {
+                bool sent;
+
                 public override async Task Invoke(IIncomingLogicalMessageContext context, Func<Task> next)
                 {
-                    var sendOptions = new SendOptions();
-                    sendOptions.RouteToThisEndpoint();
-                    sendOptions.CustomizeNativeMessage(m => m.Subject = "LogicalBehavior.Send");
+                    if (!sent)
+                    {
+                        var sendOptions = new SendOptions();
+                        sendOptions.RouteToThisEndpoint();
+                        sendOptions.CustomizeNativeMessage(m => m.Subject = "LogicalBehavior.Send");
 
-                    await context.Send(new LogicalBehaviorSentCommand(), sendOptions);
+                        await context.Send(new LogicalBehaviorSentCommand(), sendOptions);
+
+                        sent = true;
+                    }
 
                     await next();
                 }

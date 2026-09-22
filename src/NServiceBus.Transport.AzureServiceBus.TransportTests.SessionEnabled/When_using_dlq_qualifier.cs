@@ -54,7 +54,7 @@ public class When_using_dlq_qualifier
     }
 
     [TestCase(TransportTransactionMode.ReceiveOnly)]
-    //https://github.com/Particular/CloudPlatformExperience/blob/main/research/cloudxp-713/session-findings.md#consuming-from-azure-service-bus-dlq-masstransit
+    //[TestCase(TransportTransactionMode.None)] //HINT: This is a bug in the SDK
     public async Task Should_not_roll_back_send_if_DLQ_receive_is_rolled_back(TransportTransactionMode mode)
     {
         // Arrange

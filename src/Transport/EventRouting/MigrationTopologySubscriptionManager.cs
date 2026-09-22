@@ -177,4 +177,6 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
             Logger.Info($"Default subscription rule for topic {subscription.TopicName} is already in progress");
         }
     }
+
+    public override Task Shutdown(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
