@@ -2,10 +2,12 @@ namespace NServiceBus.Transport.AzureServiceBus.Receiving;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using Azure.Messaging.ServiceBus;
+using Diagnostics;
 using Logging;
 
 class OrderedSubscriptionForwarder : IAsyncDisposable
@@ -53,10 +55,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         sessionProcessor.ProcessErrorAsync += OnError;
         sessionProcessor.ProcessMessageAsync += OnMessage;
 
-        sender = forwardingClient.CreateSender(inputQueueAddress, new ServiceBusSenderOptions
-        {
-            Identifier = $"Forwarding-Sender-{topicName}-{subscriptionName}"
-        });
+        sender = forwardingClient.CreateSender(inputQueueAddress, new ServiceBusSenderOptions { Identifier = $"Forwarding-Sender-{topicName}-{subscriptionName}" });
 
         await sessionProcessor.StartProcessingAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -84,7 +83,21 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
     async Task OnMessage(ProcessSessionMessageEventArgs arg)
 #pragma warning restore PS0018
     {
+        using var activity = ActivitySources.activitySource.StartActivity(ActivitySources.SubscriptionForwarder, ActivityKind.Consumer);
         using var ts = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+
+        if (activity != null)
+        {
+            activity.DisplayName = $"subscription forwarder for {arg.EntityPath}";
+            if (activity.IsAllDataRequested)
+            {
+                activity.SetTag(ActivitySources.TagMessagingSystem, ActivitySources.TagMessagingSystemValue);
+                activity.SetTag(ActivitySources.TagDestinationName, arg.EntityPath);
+                activity.SetTag(ActivitySources.TagMessageId, arg.Message.MessageId);
+                activity.SetTag(ActivitySources.TagSessionId, arg.Message.SessionId);
+                activity.SetTag(ActivitySources.SessionEnabled, true);
+            }
+        }
 
         var serviceBusMessage = new ServiceBusMessage()
         {

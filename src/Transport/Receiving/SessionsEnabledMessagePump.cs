@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ using System.Transactions;
 using AdvancedExtensibility;
 using Azure.Messaging.ServiceBus;
 using BitFaster.Caching.Lru;
+using Diagnostics;
 using Extensibility;
 using Logging;
 
@@ -87,7 +89,7 @@ sealed class SessionsEnabledMessagePump(
             () => UpdateProcessingCapacity(limitations.MaxConcurrency));
 
         await sessionProcessor.StartProcessingAsync(cancellationToken)
-        .ConfigureAwait(false);
+            .ConfigureAwait(false);
     }
 
     TransportTransactionMode TransactionMode => transportSettings.TransportTransactionMode;
@@ -146,6 +148,21 @@ sealed class SessionsEnabledMessagePump(
         // need to catch OCE here because we are switching token
         try
         {
+            using var activity = ActivitySources.activitySource.StartActivity(ActivitySources.Receive, ActivityKind.Consumer);
+            if (activity != null)
+            {
+                activity.DisplayName = $"receive from {arg.EntityPath}";
+                if (activity.IsAllDataRequested)
+                {
+                    activity.SetTag(ActivitySources.TagMessagingSystem, ActivitySources.TagMessagingSystemValue);
+                    activity.SetTag(ActivitySources.TagDestinationName, arg.EntityPath);
+                    activity.SetTag(ActivitySources.TagOperationType, ActivitySources.OperationReceive);
+                    activity.SetTag(ActivitySources.TagMessageId, nativeMessageId);
+                    activity.SetTag(ActivitySources.TagSessionId, arg.Message.SessionId);
+                    activity.SetTag(ActivitySources.SessionEnabled, true);
+                }
+            }
+
             await ProcessMessage(message, arg, nativeMessageId, headers, body, messageProcessingCancellationTokenSource!.Token).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource!.Token))
@@ -174,6 +191,7 @@ sealed class SessionsEnabledMessagePump(
             Logger.Debug(message, processErrorEventArgs.Exception);
             return;
         }
+
         Logger.Warn(message, processErrorEventArgs.Exception);
         await circuitBreaker!.Failure(processErrorEventArgs.Exception, processErrorEventArgs.CancellationToken)
             .ConfigureAwait(false);
@@ -268,6 +286,7 @@ sealed class SessionsEnabledMessagePump(
 
             await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
+
             await processMessageEventArgs.SafeCompleteMessage(message,
                     TransactionMode,
                     azureServiceBusTransaction,
@@ -276,6 +295,13 @@ sealed class SessionsEnabledMessagePump(
                 .ConfigureAwait(false);
 
             azureServiceBusTransaction.Commit();
+
+            if (Activity.Current is not { } activity)
+            {
+                return;
+            }
+
+            activity.SetStatus(ActivityStatusCode.Ok, $"Processed message with message ID {nativeMessageId} and session ID {message.SessionId}.");
         }
         catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationToken))
         {
@@ -347,11 +373,7 @@ sealed class SessionsEnabledMessagePump(
     AzureServiceBusTransportTransaction CreateTransaction(string incomingQueuePartitionKey) =>
         TransactionMode == TransportTransactionMode.SendsAtomicWithReceive
             ? new AzureServiceBusTransportTransaction(receiveClient, incomingQueuePartitionKey,
-                new TransactionOptions
-                {
-                    IsolationLevel = IsolationLevel.Serializable,
-                    Timeout = TransactionManager.DefaultTimeout
-                })
+                new TransactionOptions { IsolationLevel = IsolationLevel.Serializable, Timeout = TransactionManager.DefaultTimeout })
             : new AzureServiceBusTransportTransaction();
 
     void WarnIfDeadLetteringWithoutForwarding(string nativeMessageId, int deliveryCount)
