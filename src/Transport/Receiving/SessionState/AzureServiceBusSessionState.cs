@@ -39,7 +39,6 @@ sealed class AzureServiceBusSessionState(ISessionStateStore store, string sessio
 
         current.UserState = new UserSessionState
         {
-            ContentType = "application/json",
             Type = typeof(T).FullName,
             Data = JsonSerializer.SerializeToElement(state, SerializationOptions)
         };

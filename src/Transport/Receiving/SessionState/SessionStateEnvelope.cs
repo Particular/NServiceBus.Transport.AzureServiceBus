@@ -36,9 +36,6 @@ sealed class TransportSessionState
 /// </summary>
 sealed class UserSessionState
 {
-    [JsonPropertyName("contentType")]
-    public string? ContentType { get; set; }
-
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
