@@ -54,7 +54,6 @@ public class AzureServiceBusSessionStateTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(root.GetProperty("version").GetInt32(), Is.EqualTo(SessionStateEnvelope.CurrentVersion));
-            Assert.That(root.GetProperty("user").GetProperty("contentType").GetString(), Is.EqualTo("application/json"));
             Assert.That(root.GetProperty("user").GetProperty("type").GetString(), Does.StartWith(typeof(CustomerState).FullName!));
             Assert.That(root.GetProperty("user").GetProperty("data").GetProperty("processedMessages").GetInt32(), Is.EqualTo(1));
             Assert.That(root.TryGetProperty("transport", out _), Is.False, "transport section should not be emitted when empty");
@@ -152,7 +151,6 @@ public class AzureServiceBusSessionStateTests
                 TransportState = new TransportSessionState(),
                 UserState = new UserSessionState
                 {
-                    ContentType = "application/json",
                     Type = typeof(CustomerState).FullName,
                     Data = JsonSerializer.SerializeToElement(new CustomerState { ProcessedMessages = 5 })
                 }
