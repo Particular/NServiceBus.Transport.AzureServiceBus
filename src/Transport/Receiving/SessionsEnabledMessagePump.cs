@@ -116,6 +116,8 @@ sealed class SessionsEnabledMessagePump(
         var nativeMessageId = message.GetMessageId();
 
         circuitBreaker!.Success();
+        using var activity = ActivitySources.activitySource.StartActivity(ActivitySources.Receive, ActivityKind.Consumer);
+        activity?.DisplayName = $"receive from {arg.EntityPath}";
 
         try
         {
@@ -123,6 +125,20 @@ sealed class SessionsEnabledMessagePump(
             // cancellation token is already set.
             if (await arg.TrySafeCompleteMessage(message, TransactionMode, messagesToBeCompleted, CancellationToken.None).ConfigureAwait(false))
             {
+                if (Activity.Current is { } currentActivity)
+                {
+                    var tags = new ActivityTagsCollection
+                    {
+                        { ActivitySources.TagMessageId, nativeMessageId },
+                        { ActivitySources.TagSessionId, message.SessionId },
+                        { ActivitySources.TagMessagingSystem, ActivitySources.TagMessagingSystemValue },
+                        { ActivitySources.TagDestinationName, arg.EntityPath },
+                        { ActivitySources.TagOperationType, ActivitySources.OperationReceive },
+                        { ActivitySources.SessionEnabled, true }
+                    };
+                    currentActivity.AddEvent(new ActivityEvent(ActivitySources.CompleteMessage, tags: tags));
+                }
+
                 return;
             }
 
@@ -130,6 +146,20 @@ sealed class SessionsEnabledMessagePump(
             // cancellation token is already set.
             if (await arg.TrySafeAbandonMessage(message, TransactionMode, CancellationToken.None).ConfigureAwait(false))
             {
+                if (Activity.Current is { } currentActivity)
+                {
+                    var tags = new ActivityTagsCollection
+                    {
+                        { ActivitySources.TagMessageId, nativeMessageId },
+                        { ActivitySources.TagSessionId, message.SessionId },
+                        { ActivitySources.TagMessagingSystem, ActivitySources.TagMessagingSystemValue },
+                        { ActivitySources.TagDestinationName, arg.EntityPath },
+                        { ActivitySources.TagOperationType, ActivitySources.OperationReceive },
+                        { ActivitySources.SessionEnabled, true }
+                    };
+                    currentActivity.AddEvent(new ActivityEvent(ActivitySources.AbandonMessage, tags: tags));
+                }
+
                 return;
             }
 
@@ -142,27 +172,26 @@ sealed class SessionsEnabledMessagePump(
             WarnIfDeadLetteringWithoutForwarding(nativeMessageId, message.DeliveryCount);
             await arg.SafeDeadLetterMessage(message, TransactionMode, new DeadLetterRequest(ex), CancellationToken.None).ConfigureAwait(false);
 
+            if (Activity.Current is { } currentActivity)
+            {
+                var tags = new ActivityTagsCollection
+                {
+                    { ActivitySources.TagMessageId, nativeMessageId },
+                    { ActivitySources.TagSessionId, message.SessionId },
+                    { ActivitySources.TagMessagingSystem, ActivitySources.TagMessagingSystemValue },
+                    { ActivitySources.TagDestinationName, arg.EntityPath },
+                    { ActivitySources.TagOperationType, ActivitySources.OperationReceive },
+                    { ActivitySources.SessionEnabled, true }
+                };
+                currentActivity.AddEvent(new ActivityEvent(ActivitySources.MoveToDLQ, tags: tags));
+            }
+
             return;
         }
 
         // need to catch OCE here because we are switching token
         try
         {
-            using var activity = ActivitySources.activitySource.StartActivity(ActivitySources.Receive, ActivityKind.Consumer);
-            if (activity != null)
-            {
-                activity.DisplayName = $"receive from {arg.EntityPath}";
-                if (activity.IsAllDataRequested)
-                {
-                    activity.SetTag(ActivitySources.TagMessagingSystem, ActivitySources.TagMessagingSystemValue);
-                    activity.SetTag(ActivitySources.TagDestinationName, arg.EntityPath);
-                    activity.SetTag(ActivitySources.TagOperationType, ActivitySources.OperationReceive);
-                    activity.SetTag(ActivitySources.TagMessageId, nativeMessageId);
-                    activity.SetTag(ActivitySources.TagSessionId, arg.Message.SessionId);
-                    activity.SetTag(ActivitySources.SessionEnabled, true);
-                }
-            }
-
             await ProcessMessage(message, arg, nativeMessageId, headers, body, messageProcessingCancellationTokenSource!.Token).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource!.Token))
@@ -286,7 +315,6 @@ sealed class SessionsEnabledMessagePump(
 
             await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
-
             await processMessageEventArgs.SafeCompleteMessage(message,
                     TransactionMode,
                     azureServiceBusTransaction,
@@ -296,12 +324,19 @@ sealed class SessionsEnabledMessagePump(
 
             azureServiceBusTransaction.Commit();
 
-            if (Activity.Current is not { } activity)
+            if (Activity.Current is { } currentActivity)
             {
-                return;
+                var tags = new ActivityTagsCollection
+                {
+                    { ActivitySources.TagMessageId, nativeMessageId },
+                    { ActivitySources.TagSessionId, message.SessionId },
+                    { ActivitySources.TagMessagingSystem, ActivitySources.TagMessagingSystemValue },
+                    { ActivitySources.TagDestinationName, processMessageEventArgs.EntityPath },
+                    { ActivitySources.TagOperationType, ActivitySources.OperationReceive },
+                    { ActivitySources.SessionEnabled, true }
+                };
+                currentActivity.AddEvent(new ActivityEvent(ActivitySources.ProcessSuccess, tags: tags));
             }
-
-            activity.SetStatus(ActivityStatusCode.Ok, $"Processed message with message ID {nativeMessageId} and session ID {message.SessionId}.");
         }
         catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationToken))
         {
@@ -314,6 +349,10 @@ sealed class SessionsEnabledMessagePump(
 
                 var result = await onError!(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
+                var currentActivity = Activity.Current;
+                var tags = new ActivityTagsCollection();
+                currentActivity?.AddEvent(new ActivityEvent(ActivitySources.ProcessError, tags: tags));
+
                 switch (result)
                 {
                     case ErrorHandleResult.RetryRequired:
@@ -321,6 +360,17 @@ sealed class SessionsEnabledMessagePump(
                                 TransactionMode,
                                 cancellationToken: messageProcessingCancellationToken)
                             .ConfigureAwait(false);
+
+                        tags.Add(ActivitySources.TagMessageId, nativeMessageId);
+                        tags.Add(ActivitySources.TagSessionId, message.SessionId);
+                        tags.Add(ActivitySources.TagMessagingSystem, ActivitySources.TagMessagingSystemValue);
+                        tags.Add(ActivitySources.TagDestinationName, processMessageEventArgs.EntityPath);
+                        tags.Add(ActivitySources.TagOperationType, ActivitySources.OperationReceive);
+                        tags.Add(ActivitySources.SessionEnabled, true);
+                        tags.Add(ActivitySources.RetryRequired, true);
+                        currentActivity?.AddEvent(new ActivityEvent(ActivitySources.AbandonMessage, tags: tags));
+
+
                         break;
                     case ErrorHandleResult.Handled:
                         if (azureServiceBusTransaction.TransportTransaction.TryGet<DeadLetterRequest>(out var deadLetterRequest))
@@ -331,6 +381,15 @@ sealed class SessionsEnabledMessagePump(
                                     deadLetterRequest,
                                     cancellationToken: messageProcessingCancellationToken)
                                 .ConfigureAwait(false);
+
+                            tags.Add(ActivitySources.TagMessageId, nativeMessageId);
+                            tags.Add(ActivitySources.TagSessionId, message.SessionId);
+                            tags.Add(ActivitySources.TagMessagingSystem, ActivitySources.TagMessagingSystemValue);
+                            tags.Add(ActivitySources.TagDestinationName, processMessageEventArgs.EntityPath);
+                            tags.Add(ActivitySources.TagOperationType, ActivitySources.OperationReceive);
+                            tags.Add(ActivitySources.SessionEnabled, true);
+                            tags.Add(ActivitySources.RetryRequired, true);
+                            currentActivity?.AddEvent(new ActivityEvent(ActivitySources.MoveToDLQ, tags: tags));
                         }
                         else
                         {
@@ -390,9 +449,18 @@ sealed class SessionsEnabledMessagePump(
                     "To suppress this warning, explicitly set 'AutoForwardDeadLetteredMessagesToErrorQueue = false'.");
     }
 
-    public ISubscriptionManager? Subscriptions { get; } = subscriptionManager;
+    public ISubscriptionManager? Subscriptions
+    {
+        get;
+    } = subscriptionManager;
 
-    public string Id { get; } = receiveSettings.Id;
+    public string Id
+    {
+        get;
+    } = receiveSettings.Id;
 
-    public string ReceiveAddress { get; } = receiveAddress;
+    public string ReceiveAddress
+    {
+        get;
+    } = receiveAddress;
 }

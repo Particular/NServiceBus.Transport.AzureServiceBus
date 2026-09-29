@@ -21,21 +21,30 @@ static class ActivitySources
     public const string TagBatchMessageCount = "messaging.batch.message_count";
     public const string TagSessionId = "messaging.session.id";
 
-    public const string SessionEnabled = "NServiceBus.Transport.AzureServiceBus.SessionEnabled";
+    public const string SessionEnabled = "NServiceBus.Transport.AzureServiceBus.session_enabled";
+    public const string RetryRequired = "NServiceBus.Transport.AzureServiceBus.retry_required";
 
     // OTel messaging operation types
     public const string OperationSend = "send";
     public const string OperationPublish = "publish";
     public const string OperationReceive = "receive";
+    public const string OperationForwardToInputQueue = "forward_to_input_queue";
 
     // Vendor-specific tags
     public const string TagTopicString = "nservicebus.transport.AzureServiceBus.topic_string";
     public const string TagFailureCount = "nservicebus.transport.AzureServiceBus.failure_count";
 
     // Activity event names
-    public const string CommitEvent = "AzureServiceBus.commit";
-
-
+    public const string CommitTransaction = "AzureServiceBus.commit_transaction";
+    public const string MoveToDLQ = "AzureServiceBus.move_to_dlq";
+    public static string CompleteMessage = "AzureServiceBus.complete_message";
+    public static string AbandonMessage = "AzureServiceBus.abandon_message";
+    public static string ProcessSuccess = "AzureServiceBus.process_success";
+    public static string ProcessError = "AzureServiceBus.process_error";
+    public static string SubscriptionForwarderCompleteMessage = "NServiceBus.Transport.AzureServiceBus.subscription_forwarder_complete_message";
+    public static string SubscriptionForwarderSendMessageToInputQueue = "NServiceBus.Transport.AzureServiceBus.subscription_session_forwarder_send_message_to_input_queue";
+    public static string SubscriptionForwarderError = "NServiceBus.Transport.AzureServiceBus.subscription_forwarder_error";
+    public static string SubscriptionForwarderCircuitBreakerArmed = "NServiceBus.Transport.AzureServiceBus.subscription_forwarder_circuit_breaker_armed";
     public static bool HasListeners() => activitySource.HasListeners();
 
     static readonly string Version = GetVersion();

@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using AdvancedExtensibility;
 using Azure.Messaging.ServiceBus;
 using Diagnostics;
 using Logging;
@@ -83,6 +84,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
     async Task OnMessage(ProcessSessionMessageEventArgs arg)
 #pragma warning restore PS0018
     {
+        var nativeMessageId = arg.Message.GetMessageId();
         using var activity = ActivitySources.activitySource.StartActivity(ActivitySources.SubscriptionForwarder, ActivityKind.Consumer);
         using var ts = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
 
@@ -93,7 +95,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
             {
                 activity.SetTag(ActivitySources.TagMessagingSystem, ActivitySources.TagMessagingSystemValue);
                 activity.SetTag(ActivitySources.TagDestinationName, arg.EntityPath);
-                activity.SetTag(ActivitySources.TagMessageId, arg.Message.MessageId);
+                activity.SetTag(ActivitySources.TagMessageId, nativeMessageId);
                 activity.SetTag(ActivitySources.TagSessionId, arg.Message.SessionId);
                 activity.SetTag(ActivitySources.SessionEnabled, true);
             }
@@ -121,7 +123,9 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         }
 
         await arg.CompleteMessageAsync(arg.Message, arg.CancellationToken).ConfigureAwait(false);
+        activity?.AddEvent(new ActivityEvent(ActivitySources.SubscriptionForwarderCompleteMessage, tags: new ActivityTagsCollection { { "messageId", nativeMessageId } }));
         await sender!.SendMessageAsync(serviceBusMessage, arg.CancellationToken).ConfigureAwait(false);
+        activity?.AddEvent(new ActivityEvent(ActivitySources.SubscriptionForwarderSendMessageToInputQueue, tags: new ActivityTagsCollection { { "messageId", nativeMessageId } }));
         ts.Complete();
         circuitBreaker.Success();
     }
@@ -131,6 +135,17 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
 #pragma warning restore PS0018
     {
         string message = $"Failed to receive a message on pump '{arg.Identifier}' listening on '{arg.EntityPath}' connected to '{arg.FullyQualifiedNamespace}' due to '{arg.ErrorSource}'. Exception: {arg.Exception}";
+        var currentActivity = Activity.Current;
+        var tags = new ActivityTagsCollection()
+        {
+            { "identifier", arg.Identifier },
+            { "entityPath", arg.EntityPath },
+            { "fullyQualifiedNamespace", arg.FullyQualifiedNamespace },
+            { "errorSource", arg.ErrorSource },
+            { "exception", arg.Exception.ToString() },
+        };
+        currentActivity?.AddEvent(new ActivityEvent(ActivitySources.SubscriptionForwarderError, tags: tags));
+
         // Making sure transient exceptions do not trigger the circuit breaker.
         if (arg.Exception is ServiceBusException { IsTransient: true })
         {
@@ -141,6 +156,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         Logger.Warn(message, arg.Exception);
         await circuitBreaker.Failure(arg.Exception, arg.CancellationToken)
             .ConfigureAwait(false);
+        currentActivity?.AddEvent(new ActivityEvent(ActivitySources.SubscriptionForwarderCircuitBreakerArmed));
     }
 
     public async ValueTask DisposeAsync()

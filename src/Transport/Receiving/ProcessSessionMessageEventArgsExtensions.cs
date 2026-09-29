@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using AdvancedExtensibility;
@@ -19,15 +20,22 @@ static class ProcessSessionMessageEventArgsExtensions
         args.ReleaseSession();
         if (transportTransactionMode == TransportTransactionMode.ReceiveOnly && messagesToBeCompleted.TryGet(message.GetMessageId(), out _))
         {
+            var nativeMessageId = message.GetMessageId();
             if (Logger.IsDebugEnabled)
             {
-                Logger.DebugFormat("Received message with id '{0}' from session '{1}' was marked as successfully completed. Trying to immediately acknowledge the message without invoking the pipeline.", message.GetMessageId(), args.SessionId);
+                Logger.DebugFormat("Received message with id '{0}' from session '{1}' was marked as successfully completed. Trying to immediately acknowledge the message without invoking the pipeline.", nativeMessageId, args.SessionId);
             }
 
             try
             {
                 await args.CompleteMessageAsync(message, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
+
+                if (Activity.Current is { } activity)
+                {
+                    activity.SetStatus(ActivityStatusCode.Ok, $"Completed message with message ID {nativeMessageId} and session ID {message.SessionId}.");
+                }
+
                 return true;
             }
             // Doing a more generous catch here to make sure we are not losing the ID and can mark it to be completed another time
@@ -119,7 +127,7 @@ static class ProcessSessionMessageEventArgsExtensions
                 scope.Complete();
             }
             catch (ServiceBusException e) when (transportTransactionMode == TransportTransactionMode.ReceiveOnly
-                && e.Reason is ServiceBusFailureReason.MessageLockLost or ServiceBusFailureReason.SessionLockLost)
+                                                && e.Reason is ServiceBusFailureReason.MessageLockLost or ServiceBusFailureReason.SessionLockLost)
             {
                 // We tried to complete the message because it was successfully either by the pipeline or recoverability, but the lock was lost.
                 // For session-enabled entities the message lock is tied to the session lock, so losing it surfaces as
