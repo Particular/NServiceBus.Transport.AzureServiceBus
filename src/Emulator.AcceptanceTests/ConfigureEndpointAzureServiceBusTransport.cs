@@ -1,10 +1,8 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 using NServiceBus;
 using NServiceBus.AcceptanceTesting.Customization;
 using NServiceBus.AcceptanceTesting.Support;
-using NServiceBus.MessageMutator;
 using NServiceBus.Transport.AzureServiceBus.AcceptanceTests;
 using NUnit.Framework;
 

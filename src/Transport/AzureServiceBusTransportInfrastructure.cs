@@ -16,6 +16,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     readonly MessageSenderRegistry messageSenderRegistry;
     readonly HostSettings hostSettings;
     readonly ServiceBusClient defaultClient;
+    readonly Func<ServiceBusClient> forwarderClientFactory;
     readonly ServiceBusAdministrationClient administrationClient;
     readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
     readonly DestinationManager destinationManager;
@@ -25,6 +26,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         HostSettings hostSettings,
         (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs,
         ServiceBusClient defaultClient,
+        Func<ServiceBusClient> forwarderClientFactory,
         ServiceBusAdministrationClient administrationClient,
         DestinationManager destinationManager
     )
@@ -33,6 +35,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
         this.hostSettings = hostSettings;
         this.defaultClient = defaultClient;
+        this.forwarderClientFactory = forwarderClientFactory;
         this.administrationClient = administrationClient;
         this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
         this.destinationManager = destinationManager;
@@ -47,6 +50,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             transportSettings.ThrowOnMissingTopicWhenPublishing,
             transportSettings.OutgoingNativeMessageCustomization
         );
+
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
         {
             var (receiveSettings, _) = settingsAndClient;
@@ -101,23 +105,32 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             {
                 throw new Exception("Cannot use a session-enabled receiver to receive from a dead-letter queue");
             }
+
+            SubscriptionManager? subscriptionManager = null;
+            if (receiveSettings.UsePublishSubscribe)
+            {
+                subscriptionManager = transportSettings.Topology.CreateSubscriptionManager(new SubscriptionManagerCreationOptions
+                {
+                    AdministrationClient = administrationClient,
+                    Client = defaultClient,
+                    RequiresSession = true,
+                    ForwarderClientFactory = forwarderClientFactory,
+                    EnablePartitioning = transportSettings.EnablePartitioning,
+                    EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
+                    MaxDeliveryCount = transportSettings.MaxDeliveryCount,
+                    SetupInfrastructure = hostSettings.SetupInfrastructure,
+                    SubscribingQueueName = receiveAddress,
+                    CriticalErrorAction = hostSettings.CriticalErrorAction,
+                    TimeBeforeTriggeringCircuitBreaker = transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker
+                }, hostSettings);
+            }
+
             return new SessionsEnabledMessagePump(receiveClient,
                 transportSettings,
                 receiveAddress,
                 receiveSettings,
                 hostSettings.CriticalErrorAction,
-                receiveSettings.UsePublishSubscribe
-                    ? transportSettings.Topology.CreateSubscriptionManager(new SubscriptionManagerCreationOptions
-                    {
-                        AdministrationClient = administrationClient,
-                        Client = defaultClient,
-                        EnablePartitioning = transportSettings.EnablePartitioning,
-                        EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
-                        MaxDeliveryCount = transportSettings.MaxDeliveryCount,
-                        SetupInfrastructure = hostSettings.SetupInfrastructure,
-                        SubscribingQueueName = receiveAddress
-                    }, hostSettings)
-                    : null);
+                subscriptionManager);
         }
 
         return new MessagePump(
@@ -131,11 +144,15 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                 {
                     AdministrationClient = administrationClient,
                     Client = defaultClient,
+                    RequiresSession = false,
+                    ForwarderClientFactory = forwarderClientFactory,
                     EnablePartitioning = transportSettings.EnablePartitioning,
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
                     MaxDeliveryCount = transportSettings.MaxDeliveryCount,
                     SetupInfrastructure = hostSettings.SetupInfrastructure,
-                    SubscribingQueueName = receiveAddress
+                    SubscribingQueueName = receiveAddress,
+                    CriticalErrorAction = hostSettings.CriticalErrorAction,
+                    TimeBeforeTriggeringCircuitBreaker = transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker
                 }, hostSettings)
                 : null,
             subQueue

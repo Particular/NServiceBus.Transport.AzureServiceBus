@@ -13,12 +13,12 @@ using Extensibility;
 using Logging;
 
 sealed class SessionsEnabledMessagePump(
-    ServiceBusClient serviceBusClient,
+    ServiceBusClient receiveClient,
     AzureServiceBusTransport transportSettings,
     string receiveAddress,
     ReceiveSettings receiveSettings,
     Action<string, Exception, CancellationToken> criticalErrorAction,
-    ISubscriptionManager? subscriptionManager)
+    SubscriptionManager? subscriptionManager)
     : IMessageReceiver, IAsyncDisposable
 {
     readonly FastConcurrentLru<string, bool> messagesToBeCompleted = new(1_000);
@@ -27,7 +27,6 @@ sealed class SessionsEnabledMessagePump(
     OnError? onError;
     RepeatedFailuresOverTimeCircuitBreaker? circuitBreaker;
 
-    // Start
     CancellationTokenSource? messageProcessingCancellationTokenSource;
     ServiceBusSessionProcessor? sessionProcessor;
 
@@ -66,14 +65,14 @@ sealed class SessionsEnabledMessagePump(
                 : ServiceBusReceiveMode.PeekLock,
             Identifier = $"Processor-{Id}-{ReceiveAddress}-{Guid.NewGuid()}",
             MaxConcurrentSessions = limitations.MaxConcurrency,
-            AutoCompleteMessages = false
+            AutoCompleteMessages = false,
         };
         if (transportSettings.MaxAutoLockRenewalDuration.HasValue)
         {
             sessionReceiveOptions.MaxAutoLockRenewalDuration = transportSettings.MaxAutoLockRenewalDuration.Value;
         }
 
-        sessionProcessor = serviceBusClient.CreateSessionProcessor(ReceiveAddress, sessionReceiveOptions);
+        sessionProcessor = receiveClient.CreateSessionProcessor(ReceiveAddress, sessionReceiveOptions);
         sessionProcessor.ProcessErrorAsync += OnProcessorError;
         sessionProcessor.ProcessMessageAsync += OnProcessMessage;
 
@@ -163,13 +162,18 @@ sealed class SessionsEnabledMessagePump(
 #pragma warning restore PS0018
     {
         string message = $"Failed to receive a message on pump '{processErrorEventArgs.Identifier}' listening on '{processErrorEventArgs.EntityPath}' connected to '{processErrorEventArgs.FullyQualifiedNamespace}' due to '{processErrorEventArgs.ErrorSource}'. Exception: {processErrorEventArgs.Exception}";
+
+        if (processErrorEventArgs.Exception is InvalidOperationException ex && ex.Message.Contains("Ensure RequiresSession is set to true", StringComparison.InvariantCultureIgnoreCase))
+        {
+            Logger.Error($"Endpoint is configured for session-based processing, but Azure Service Bus entity {processErrorEventArgs.EntityPath} is not session-enabled. Enable sessions on that entity or disable session processing in endpoint configuration.", processErrorEventArgs.Exception);
+        }
+
         // Making sure transient exceptions do not trigger the circuit breaker.
         if (processErrorEventArgs.Exception is ServiceBusException { IsTransient: true })
         {
             Logger.Debug(message, processErrorEventArgs.Exception);
             return;
         }
-
         Logger.Warn(message, processErrorEventArgs.Exception);
         await circuitBreaker!.Failure(processErrorEventArgs.Exception, processErrorEventArgs.CancellationToken)
             .ConfigureAwait(false);
@@ -342,7 +346,7 @@ sealed class SessionsEnabledMessagePump(
 
     AzureServiceBusTransportTransaction CreateTransaction(string incomingQueuePartitionKey) =>
         TransactionMode == TransportTransactionMode.SendsAtomicWithReceive
-            ? new AzureServiceBusTransportTransaction(serviceBusClient, incomingQueuePartitionKey,
+            ? new AzureServiceBusTransportTransaction(receiveClient, incomingQueuePartitionKey,
                 new TransactionOptions
                 {
                     IsolationLevel = IsolationLevel.Serializable,

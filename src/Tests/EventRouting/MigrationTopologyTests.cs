@@ -107,6 +107,7 @@ public class MigrationTopologyTests
             hostSettings,
             [(receiveSettings, client)],
             client,
+            null,
             administrationClient,
             destinationManager);
 
@@ -141,6 +142,7 @@ public class MigrationTopologyTests
             hostSettings,
             [(receiveSettings, client)],
             client,
+            null,
             administrationClient,
             destinationManager);
 

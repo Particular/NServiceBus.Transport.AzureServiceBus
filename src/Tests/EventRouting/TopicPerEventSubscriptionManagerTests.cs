@@ -33,7 +33,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
@@ -57,7 +58,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
@@ -88,7 +90,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = queueName,
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
@@ -117,7 +120,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -142,7 +146,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(new StringBuilder()),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder()),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         Assert.DoesNotThrowAsync(async () =>
@@ -165,7 +170,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(new StringBuilder()),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder()),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -190,7 +196,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(new StringBuilder()),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder()),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         Assert.DoesNotThrowAsync(async () =>
@@ -217,7 +224,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(new StringBuilder()),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder()),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         Assert.DoesNotThrowAsync(async () =>
@@ -244,7 +252,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
@@ -272,7 +281,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
@@ -296,7 +306,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(builder),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
@@ -329,7 +340,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = queueName,
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
@@ -358,7 +370,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "my-hierarchy/SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
@@ -387,7 +400,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "my-hierarchy/SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
@@ -407,7 +421,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(builder),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
@@ -432,7 +447,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(builder),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
@@ -457,7 +473,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(builder),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
@@ -477,7 +494,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(builder),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(VeryLongEventTypeNameThatShouldGenerateAHashedRuleNameForDeletionPath)), new ContextBag());
@@ -497,7 +515,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(builder),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
@@ -517,7 +536,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(builder),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(builder)
+            AdministrationClient = new RecordingServiceBusAdministrationClient(builder),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
@@ -547,7 +567,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "my-hierarchy/SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
@@ -575,7 +596,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
@@ -603,7 +625,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
@@ -633,7 +656,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
@@ -662,7 +686,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         Assert.DoesNotThrowAsync(async () =>
@@ -685,7 +710,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(new StringBuilder()),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder()),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         Assert.DoesNotThrowAsync(async () =>
@@ -718,7 +744,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = $"my-hierarchy/{endpointName}",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(IMyEvent))], new ContextBag());
@@ -748,7 +775,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "my-hierarchy/SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
@@ -781,7 +809,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent3))], new ContextBag());
@@ -809,7 +838,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new RecordingServiceBusClient(new StringBuilder()),
-            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder())
+            AdministrationClient = new RecordingServiceBusAdministrationClient(new StringBuilder()),
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         Assert.DoesNotThrowAsync(async () =>
@@ -845,7 +875,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = queueName,
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent3))], new ContextBag());
@@ -876,7 +907,8 @@ public class TopicPerEventSubscriptionManagerTests
         {
             SubscribingQueueName = "my-hierarchy/SubscribingQueue",
             Client = client,
-            AdministrationClient = administrationClient
+            AdministrationClient = administrationClient,
+            CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
