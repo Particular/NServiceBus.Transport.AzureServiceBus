@@ -86,7 +86,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
     {
         using var ts = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
 
-        var serviceBusMessage = new ServiceBusMessage()
+        var serviceBusMessage = new ServiceBusMessage
         {
             Body = arg.Message.Body,
             ContentType = arg.Message.ContentType,
@@ -109,6 +109,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
 
         await arg.CompleteMessageAsync(arg.Message, arg.CancellationToken).ConfigureAwait(false);
         await sender!.SendMessageAsync(serviceBusMessage, arg.CancellationToken).ConfigureAwait(false);
+        arg.ReleaseSession();
         ts.Complete();
         circuitBreaker.Success();
     }
