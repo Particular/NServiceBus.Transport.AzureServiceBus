@@ -86,21 +86,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
     {
         using var ts = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
 
-        var serviceBusMessage = new ServiceBusMessage
-        {
-            Body = arg.Message.Body,
-            ContentType = arg.Message.ContentType,
-            CorrelationId = arg.Message.CorrelationId,
-            MessageId = arg.Message.MessageId,
-            PartitionKey = arg.Message.PartitionKey,
-            ReplyTo = arg.Message.ReplyTo,
-            ReplyToSessionId = arg.Message.ReplyToSessionId,
-            ScheduledEnqueueTime = arg.Message.ScheduledEnqueueTime,
-            SessionId = arg.Message.SessionId,
-            Subject = arg.Message.Subject,
-            TimeToLive = arg.Message.TimeToLive,
-            To = arg.Message.To
-        };
+        var serviceBusMessage = new ServiceBusMessage(arg.Message);
 
         foreach (var messageApplicationProperty in arg.Message.ApplicationProperties)
         {
