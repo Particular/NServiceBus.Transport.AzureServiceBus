@@ -34,7 +34,7 @@ public class When_saga_timeout : NServiceBusAcceptanceTest
 
     public class TestContext : ScenarioContext
     {
-       public bool SagaCompleted { get; set; }
+        public bool SagaCompleted { get; set; }
         public string TimeOutSessionId { get; set; }
     }
 
