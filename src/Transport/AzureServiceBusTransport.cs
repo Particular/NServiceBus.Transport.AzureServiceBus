@@ -13,6 +13,7 @@ using Azure.Messaging.ServiceBus.Administration;
 using Transport;
 using Transport.AzureServiceBus;
 using Transport.AzureServiceBus.EventRouting;
+using Transport.AzureServiceBus.Sending;
 
 /// <summary>
 /// Transport definition for Azure Service Bus.
@@ -41,6 +42,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         Topology = topology;
 
         EnableEndpointFeature<NativeMessageCustomizationFeature>();
+        EnableEndpointFeature<AddSessionIdToSagaTimeOutFeature>();
     }
 
     /// <summary>
@@ -64,6 +66,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
         Topology = topology;
 
         EnableEndpointFeature<NativeMessageCustomizationFeature>();
+        EnableEndpointFeature<AddSessionIdToSagaTimeOutFeature>();
     }
 
     /// <inheritdoc />

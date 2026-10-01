@@ -18,6 +18,13 @@ public class GenerateRandomSessionIdForSends : Behavior<IOutgoingSendContext>
 {
     public override Task Invoke(IOutgoingSendContext context, Func<Task> next)
     {
+        if (context.Headers.TryGetValue(Headers.IsSagaTimeoutMessage, out var isSagaTimeoutMessage) &&
+            bool.TryParse(isSagaTimeoutMessage, out var isSagaTimeout) &&
+            isSagaTimeout)
+        {
+            return next();
+        }
+
         var dispatchProperties = context.Extensions.Get<DispatchProperties>();
         dispatchProperties.TryAdd("SessionId", Guid.NewGuid().ToString());
 
