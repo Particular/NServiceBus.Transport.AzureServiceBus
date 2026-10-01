@@ -88,11 +88,6 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
 
         var serviceBusMessage = new ServiceBusMessage(arg.Message);
 
-        foreach (var messageApplicationProperty in arg.Message.ApplicationProperties)
-        {
-            serviceBusMessage.ApplicationProperties.Add(messageApplicationProperty.Key, messageApplicationProperty.Value);
-        }
-
         await arg.CompleteMessageAsync(arg.Message, arg.CancellationToken).ConfigureAwait(false);
         await sender!.SendMessageAsync(serviceBusMessage, arg.CancellationToken).ConfigureAwait(false);
         arg.ReleaseSession();
