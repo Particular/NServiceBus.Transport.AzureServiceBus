@@ -69,8 +69,24 @@ namespace NServiceBus
     public interface IAzureServiceBusSessionState
     {
         System.Threading.Tasks.Task Clear(System.Threading.CancellationToken cancellationToken = default);
+        [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("JSON deserialization of the state type might require runtime code generation. Use" +
+            " the Get<T>(JsonSerializerOptions, CancellationToken) or Get<T>(JsonTypeInfo<T>," +
+            " CancellationToken) overload instead.")]
+        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("JSON deserialization of the state type might require types that cannot be statica" +
+            "lly analyzed. Use the Get<T>(JsonSerializerOptions, CancellationToken) or Get<T>" +
+            "(JsonTypeInfo<T>, CancellationToken) overload instead.")]
         System.Threading.Tasks.Task<T?> Get<T>(System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<T?> Get<T>(System.Text.Json.JsonSerializerOptions serializerOptions, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<T?> Get<T>(System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> jsonTypeInfo, System.Threading.CancellationToken cancellationToken = default);
+        [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("JSON serialization of the state type might require runtime code generation. Use t" +
+            "he Set<T>(T, JsonSerializerOptions, CancellationToken) or Set<T>(T, JsonTypeInfo" +
+            "<T>, CancellationToken) overload instead.")]
+        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("JSON serialization of the state type might require types that cannot be staticall" +
+            "y analyzed. Use the Set<T>(T, JsonSerializerOptions, CancellationToken) or Set<T" +
+            ">(T, JsonTypeInfo<T>, CancellationToken) overload instead.")]
         System.Threading.Tasks.Task Set<T>(T state, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task Set<T>(T state, System.Text.Json.JsonSerializerOptions serializerOptions, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task Set<T>(T state, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> jsonTypeInfo, System.Threading.CancellationToken cancellationToken = default);
     }
     public static class PubishOptionsExtensions
     {

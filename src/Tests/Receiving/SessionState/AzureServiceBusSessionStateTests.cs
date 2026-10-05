@@ -3,12 +3,13 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving.SessionState;
 
 using System;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 
 [TestFixture]
-public class AzureServiceBusSessionStateTests
+public partial class AzureServiceBusSessionStateTests
 {
     const string SessionId = "session-1";
 
@@ -239,6 +240,73 @@ public class AzureServiceBusSessionStateTests
         Assert.That(async () => await sessionState.Set<CustomerState>(null!), Throws.ArgumentNullException);
     }
 
+    [Test]
+    public async Task Set_Then_Get_round_trips_with_custom_JsonSerializerOptions()
+    {
+        var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+        var store = new FakeSessionStateStore();
+        var sessionState = new AzureServiceBusSessionState(store, SessionId);
+
+        await sessionState.Set(new CustomerState { ProcessedMessages = 2, LastProduct = "Grapes" }, options);
+        await sessionState.Flush();
+
+        using var doc = JsonDocument.Parse(store.Current!.ToMemory());
+        Assert.That(doc.RootElement.GetProperty("user").GetProperty("data").GetProperty("processed_messages").GetInt32(), Is.EqualTo(2),
+            "the supplied JsonSerializerOptions must drive serialization, not the default options");
+
+        var reread = await new AzureServiceBusSessionState(store, SessionId).Get<CustomerState>(options);
+        Assert.That(reread!.ProcessedMessages, Is.EqualTo(2));
+    }
+
+    [Test]
+    public async Task Set_Then_Get_round_trips_with_a_source_generated_JsonTypeInfo()
+    {
+        var store = new FakeSessionStateStore();
+        var sessionState = new AzureServiceBusSessionState(store, SessionId);
+
+        await sessionState.Set(new CustomerState { ProcessedMessages = 9, LastProduct = "Pears" }, CustomerStateJsonContext.Default.CustomerState);
+        await sessionState.Flush();
+
+        var reread = await new AzureServiceBusSessionState(store, SessionId).Get(CustomerStateJsonContext.Default.CustomerState);
+
+        Assert.That(reread!.ProcessedMessages, Is.EqualTo(9));
+        Assert.That(reread.LastProduct, Is.EqualTo("Pears"));
+    }
+
+    [Test]
+    public void Set_with_null_JsonSerializerOptions_throws()
+    {
+        var sessionState = new AzureServiceBusSessionState(new FakeSessionStateStore(), SessionId);
+
+        Assert.That(async () => await sessionState.Set(new CustomerState(), (JsonSerializerOptions)null!), Throws.ArgumentNullException);
+    }
+
+    [Test]
+    public void Get_with_null_JsonSerializerOptions_throws()
+    {
+        var sessionState = new AzureServiceBusSessionState(new FakeSessionStateStore(), SessionId);
+
+        Assert.That(async () => await sessionState.Get<CustomerState>((JsonSerializerOptions)null!), Throws.ArgumentNullException);
+    }
+
+    [Test]
+    public void Set_with_null_JsonTypeInfo_throws()
+    {
+        var sessionState = new AzureServiceBusSessionState(new FakeSessionStateStore(), SessionId);
+
+        Assert.That(async () => await sessionState.Set(new CustomerState(), (System.Text.Json.Serialization.Metadata.JsonTypeInfo<CustomerState>)null!),
+            Throws.ArgumentNullException);
+    }
+
+    [Test]
+    public void Get_with_null_JsonTypeInfo_throws()
+    {
+        var sessionState = new AzureServiceBusSessionState(new FakeSessionStateStore(), SessionId);
+
+        Assert.That(async () => await sessionState.Get((System.Text.Json.Serialization.Metadata.JsonTypeInfo<CustomerState>)null!),
+            Throws.ArgumentNullException);
+    }
+
     static async Task Seed(FakeSessionStateStore store, CustomerState state)
     {
         var seed = new AzureServiceBusSessionState(store, SessionId);
@@ -275,4 +343,7 @@ public class AzureServiceBusSessionStateTests
         public int ProcessedMessages { get; set; }
         public string? LastProduct { get; set; }
     }
+
+    [JsonSerializable(typeof(CustomerState))]
+    partial class CustomerStateJsonContext : JsonSerializerContext;
 }
