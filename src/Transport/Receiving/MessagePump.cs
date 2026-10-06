@@ -258,10 +258,12 @@ sealed class MessagePump(
         contextBag.Set(message);
         contextBag.Set(processMessageEventArgs);
 
+        var receiveProperties = message.GetReceiveProperties();
+
         try
         {
             using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
-            var messageContext = new MessageContext(nativeMessageId, headers, body, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
+            var messageContext = new MessageContext(nativeMessageId, headers, body, receiveProperties, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
             await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
 
@@ -281,7 +283,7 @@ sealed class MessagePump(
             {
                 using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
 
-                var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), nativeMessageId, body,
+                var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), nativeMessageId, body, receiveProperties,
                     azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
 
                 var result = await onError!(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
