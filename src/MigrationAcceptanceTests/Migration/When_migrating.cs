@@ -11,7 +11,7 @@
 
     public class When_migrating : NServiceBusAcceptanceTest
     {
-        const string bundleTopicName = "bundle-m";
+        static readonly string bundleTopicName = AcceptanceTestEntityNames.For("bundle-m");
 
         [SetUp]
         public async Task Setup()
@@ -22,7 +22,7 @@
             try
             {
                 // makes sure during local development the topic gets cleared before each test run
-                await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.For(bundleTopicName));
+                await adminClient.DeleteTopicAsync(bundleTopicName);
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
@@ -98,7 +98,7 @@
             try
             {
                 // makes sure during local development the topic gets cleared before each test run
-                await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.For(bundleTopicName));
+                await adminClient.DeleteTopicAsync(bundleTopicName);
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {

@@ -65,8 +65,8 @@ public class When_loading_from_options : NServiceBusAcceptanceTest
                         {
                             QueueNameToSubscriptionNameMap = { { Conventions.EndpointNamingConvention(typeof(Publisher)), TopicName } },
                             SubscribedEventToRuleNameMap = { { typeof(Event).FullName, typeof(Event).FullName.Shorten() } },
-                            TopicToPublishTo = TopicName,
-                            TopicToSubscribeOn = TopicName,
+                            TopicToPublishTo = AcceptanceTestEntityNames.For(TopicName),
+                            TopicToSubscribeOn = AcceptanceTestEntityNames.For(TopicName),
                             EventsToMigrateMap = [typeof(Event).FullName],
                         }, TopologyOptionsSerializationContext.Default.TopologyOptions);
 

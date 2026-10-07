@@ -20,7 +20,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         }
 
 #pragma warning disable CS0618 // Type or member is obsolete
-        var topology = TopicTopology.MigrateFromSingleDefaultTopic();
+        var topology = TopicTopology.MigrateFromNamedSingleTopic(AcceptanceTestEntityNames.For("bundle-1"));
 #pragma warning restore CS0618 // Type or member is obsolete
         topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
 

@@ -76,7 +76,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
 #pragma warning disable CS0618 // Type or member is obsolete
-                    MigrationTopology topology = TopicTopology.MigrateFromNamedSingleTopic("bundle-a");
+                    MigrationTopology topology = TopicTopology.MigrateFromNamedSingleTopic(AcceptanceTestEntityNames.For("bundle-a"));
 #pragma warning restore CS0618 // Type or member is obsolete
                     topology.EventToMigrate<MyEvent>();
                     transport.Topology = topology;
@@ -92,7 +92,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
 #pragma warning disable CS0618 // Type or member is obsolete
-                    MigrationTopology topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-b");
+                    MigrationTopology topology = TopicTopology.MigrateFromTopicHierarchy(AcceptanceTestEntityNames.For("bundle-a"), AcceptanceTestEntityNames.For("bundle-b"));
 #pragma warning restore CS0618 // Type or member is obsolete
                     string endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberOnTopicB));
                     topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
@@ -119,7 +119,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
 #pragma warning disable CS0618 // Type or member is obsolete
-                    MigrationTopology topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-c");
+                    MigrationTopology topology = TopicTopology.MigrateFromTopicHierarchy(AcceptanceTestEntityNames.For("bundle-a"), AcceptanceTestEntityNames.For("bundle-c"));
 #pragma warning restore CS0618 // Type or member is obsolete
                     string endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberOnTopicC));
                     topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
