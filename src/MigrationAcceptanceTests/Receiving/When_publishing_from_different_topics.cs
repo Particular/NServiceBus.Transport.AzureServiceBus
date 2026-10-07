@@ -10,8 +10,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
     using NUnit.Framework;
 
     // Makes sure we have enough forwarding hops available to support the hierarchy
-    // Hierarchical migration topics cannot carry a namespace (the forwarding subscription name would contain a '/'),
-    // so these tests opt out of the assembly prefix. Their entity names are unique to this assembly.
+    // The migration topology takes literal topic names and can't combine a topic hierarchy with a namespace,
+    // so these tests skip the assembly prefix. Their entity names are unique to this assembly.
     public class When_publishing_from_different_topics : NServiceBusAcceptanceTest
     {
         [SetUp]
