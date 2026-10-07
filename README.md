@@ -18,6 +18,8 @@ Follow these steps to run the acceptance tests locally:
 
 The acceptance and transport test assemblies share one namespace and isolate their entities with a per-assembly prefix. The acceptance test assemblies also run their fixtures in parallel (tests within a fixture stay sequential), so every fixture gets its own namespace segment below the assembly prefix. When a test touches an entity by name through the admin client, wrap the name in `AcceptanceTestEntityNames.For(...)` so it resolves to the running fixture's entity in every assembly the test is linked into.
 
+The `NoHierarchy.AcceptanceTests` assembly is the exception: it runs a small slice of the shared scenarios sequentially and without a hierarchy namespace, so the default entity paths stay covered. Add scenarios to its project file with a `Compile Include`.
+
 ### Unit Tests
 
 * Add a new environment variable `AzureServiceBus_ConnectionString` containing a connection string to your Azure Service Bus namespace (can be same as for acceptance tests).
