@@ -88,6 +88,22 @@ public class QueueCreatorTests
         Approver.Verify(output);
     }
 
+    [Test]
+    public async Task Should_prefix_session_enabled_receive_queue_and_keep_sending_queues_non_session_when_using_hierarchy_namespace()
+    {
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
+        {
+            EnableSessions = true,
+            HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" },
+            AutoForwardDeadLetteredMessagesToErrorQueue = true
+        };
+
+        var output = await CreateQueues(transport,
+            sendingAddresses: ["audit", "error", "some-destination-queue"]);
+
+        Approver.Verify(output);
+    }
+
     async Task<string> CreateQueues(AzureServiceBusTransport transport,
         string receiveAddress = "test-queue",
         string instanceSuffix = null,
