@@ -25,6 +25,7 @@
 </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\AcceptanceTests\AcceptanceTestEntityNames.cs" />
     <Compile Include="..\AcceptanceTests\AcceptanceTestExtensions.cs" />
     <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs" />
   </ItemGroup>
@@ -44,7 +45,8 @@
 
     <!-- Sending -->
     <!--Exluding When_sending_to_a_topic because it requires forwarding between entities which is not possible with sessions-->
-    <Compile Include="..\AcceptanceTests\Sending\*.cs" Exclude="..\AcceptanceTests\Sending\When_sending_to_a_topic.cs" >
+    <!--Excluding When_excluding_types_from_hierarchy because excluded types bypass the namespace prefix that isolates this assembly from the non-session acceptance tests-->
+    <Compile Include="..\AcceptanceTests\Sending\*.cs" Exclude="..\AcceptanceTests\Sending\When_sending_to_a_topic.cs;..\AcceptanceTests\Sending\When_excluding_types_from_hierarchy.cs" >
       <Link>Sending\%(Filename)%(Extension)</Link>
     </Compile>
 

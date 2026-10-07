@@ -22,9 +22,9 @@ public class When_using_auto_delete_on_idle : NServiceBusAcceptanceTest
         try
         {
             // makes sure during local development the topic gets cleared before each test run
-            await adminClient.DeleteQueueAsync(HasAutoDeleteOnIdleEndpointInstanceName);
-            await adminClient.DeleteQueueAsync(NoAutoDeleteOnIdleEndpointInstanceName);
-            await adminClient.DeleteQueueAsync(HasAutoDeleteOnIdleButNoInstancesEndpointName);
+            await adminClient.DeleteQueueAsync(AcceptanceTestEntityNames.For(HasAutoDeleteOnIdleEndpointInstanceName));
+            await adminClient.DeleteQueueAsync(AcceptanceTestEntityNames.For(NoAutoDeleteOnIdleEndpointInstanceName));
+            await adminClient.DeleteQueueAsync(AcceptanceTestEntityNames.For(HasAutoDeleteOnIdleButNoInstancesEndpointName));
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {
@@ -51,7 +51,7 @@ public class When_using_auto_delete_on_idle : NServiceBusAcceptanceTest
         // Verify that the queue was created with the correct AutoDeleteOnIdle setting
         var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
-        var queueProperties = await adminClient.GetQueueAsync(HasAutoDeleteOnIdleEndpointInstanceName);
+        var queueProperties = await adminClient.GetQueueAsync(AcceptanceTestEntityNames.For(HasAutoDeleteOnIdleEndpointInstanceName));
 
         Assert.That(queueProperties.Value.AutoDeleteOnIdle, Is.EqualTo(TimeSpan.FromMinutes(10)));
     }
@@ -73,7 +73,7 @@ public class When_using_auto_delete_on_idle : NServiceBusAcceptanceTest
         // Verify that the queue was created with the correct AutoDeleteOnIdle setting
         var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
-        var queueProperties = await adminClient.GetQueueAsync(NoAutoDeleteOnIdleEndpointInstanceName);
+        var queueProperties = await adminClient.GetQueueAsync(AcceptanceTestEntityNames.For(NoAutoDeleteOnIdleEndpointInstanceName));
 
         Assert.That(queueProperties.Value.AutoDeleteOnIdle, Is.EqualTo(TimeSpan.MaxValue));
     }
@@ -96,7 +96,7 @@ public class When_using_auto_delete_on_idle : NServiceBusAcceptanceTest
         // Verify that the queue was created with the correct AutoDeleteOnIdle setting
         var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
-        var queueProperties = await adminClient.GetQueueAsync(HasAutoDeleteOnIdleButNoInstancesEndpointName);
+        var queueProperties = await adminClient.GetQueueAsync(AcceptanceTestEntityNames.For(HasAutoDeleteOnIdleButNoInstancesEndpointName));
 
         Assert.That(queueProperties.Value.AutoDeleteOnIdle, Is.EqualTo(TimeSpan.MaxValue));
     }

@@ -21,7 +21,7 @@ public class When_operating_with_least_privilege : NServiceBusAcceptanceTest
         try
         {
             // makes sure during local development the topic gets cleared before each test run
-            await adminClient.DeleteTopicAsync(DedicatedTopic);
+            await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.For(DedicatedTopic));
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {

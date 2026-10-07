@@ -93,12 +93,6 @@ jobs:
               connection-string-name: AzureServiceBus_ConnectionString
               azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
               tag: ASBTransport
-          - name: Setup ordered Azure Service Bus
-            uses: Particular/setup-azureservicebus-action@v2.5.0
-            with:
-              connection-string-name: AzureServiceBus_OrderedConnectionString
-              azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
-              tag: ASBTransportOrdered
 
       - name: Wait for build
         wait: build

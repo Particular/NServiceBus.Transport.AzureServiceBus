@@ -58,16 +58,17 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
 {
     public Task Configure(string endpointName, EndpointConfiguration configuration, RunSettings settings, PublisherMetadata publisherMetadata)
     {
-        var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_OrderedConnectionString");
+        var connectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
         if (string.IsNullOrEmpty(connectionString))
         {
-            throw new InvalidOperationException("envvar AzureServiceBus_ConnectionStringOrdered not set");
+            throw new InvalidOperationException("envvar AzureServiceBus_ConnectionString not set");
         }
 
         var topology = TopicTopology.Default;
         topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
 
         var transport = new AzureServiceBusTransport(connectionString, topology);
+        AcceptanceTestEntityNames.Apply(transport);
 
         if (endpointName.Contains("AuditSpy")
             || endpointName.Contains("AuditSpyEndpoint")

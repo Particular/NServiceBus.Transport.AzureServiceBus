@@ -19,7 +19,7 @@ public class When_using_hierarchy_namespace : NServiceBusAcceptanceTest
                 endpoint.CustomConfig(cfg =>
                 {
                     var transport = cfg.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+                    transport.HierarchyNamespaceOptions = AcceptanceTestEntityNames.CreateHierarchyNamespaceOptions("my-hierarchy");
                 });
 
                 endpoint.When(async session => await session.Send(Conventions.EndpointNamingConvention(typeof(HierarchyReceiver)).Shorten(), new MyMessage()));
@@ -30,7 +30,7 @@ public class When_using_hierarchy_namespace : NServiceBusAcceptanceTest
                 endpoint.CustomConfig(cfg =>
                 {
                     var transport = cfg.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+                    transport.HierarchyNamespaceOptions = AcceptanceTestEntityNames.CreateHierarchyNamespaceOptions("my-hierarchy");
                 });
             })
             .Run();
@@ -52,7 +52,7 @@ public class When_using_hierarchy_namespace : NServiceBusAcceptanceTest
                 endpoint.CustomConfig(cfg =>
                 {
                     var transport = cfg.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+                    transport.HierarchyNamespaceOptions = AcceptanceTestEntityNames.CreateHierarchyNamespaceOptions("my-hierarchy");
                 });
                 endpoint.When(async session => await session.Publish(new MyEvent()));
             })
@@ -62,7 +62,7 @@ public class When_using_hierarchy_namespace : NServiceBusAcceptanceTest
                 endpoint.CustomConfig(cfg =>
                 {
                     var transport = cfg.ConfigureTransport<AzureServiceBusTransport>();
-                    transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+                    transport.HierarchyNamespaceOptions = AcceptanceTestEntityNames.CreateHierarchyNamespaceOptions("my-hierarchy");
                 });
             })
             .Run();

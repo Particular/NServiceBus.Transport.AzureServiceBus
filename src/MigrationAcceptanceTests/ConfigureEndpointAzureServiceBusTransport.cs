@@ -30,6 +30,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         }
 
         var transport = new AzureServiceBusTransport(connectionString, topology);
+        AcceptanceTestEntityNames.Apply(transport);
 
         configuration.UseTransport(transport);
 

@@ -22,7 +22,7 @@
             try
             {
                 // makes sure during local development the topic gets cleared before each test run
-                await adminClient.DeleteTopicAsync(bundleTopicName);
+                await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.For(bundleTopicName));
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
@@ -98,7 +98,7 @@
             try
             {
                 // makes sure during local development the topic gets cleared before each test run
-                await adminClient.DeleteTopicAsync(bundleTopicName);
+                await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.For(bundleTopicName));
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {

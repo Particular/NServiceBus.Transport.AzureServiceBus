@@ -21,7 +21,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
             try
             {
                 // makes sure during local development the topic gets cleared before each test run
-                await adminClient.DeleteTopicAsync("bundle-a");
+                await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.For("bundle-a"));
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
@@ -30,7 +30,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
             try
             {
                 // makes sure during local development the topic gets cleared before each test run
-                await adminClient.DeleteTopicAsync("bundle-b");
+                await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.For("bundle-b"));
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
@@ -39,7 +39,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
             try
             {
                 // makes sure during local development the topic gets cleared before each test run
-                await adminClient.DeleteTopicAsync("bundle-c");
+                await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.For("bundle-c"));
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {

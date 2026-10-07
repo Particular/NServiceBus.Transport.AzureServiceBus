@@ -16,6 +16,8 @@ Follow these steps to run the acceptance tests locally:
 * Add a new environment variable `AzureServiceBus_ConnectionString_Restricted` containing a connection string to the same namespace with [`Send` and `Listen` rights](https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-sas#shared-access-authorization-policies) only.
 * Some tests are using `Azure.Identity` with the `DefaultAzureCredential` and require one of the supported credentials to be present locally. For more information see the [troubleshooting guideline](https://aka.ms/azsdk/net/identity/defaultazurecredential/troubleshoot)
 
+The acceptance and transport test assemblies share one namespace and isolate their entities with a per-assembly prefix. When a test touches an entity by name through the admin client, wrap the name in `AcceptanceTestEntityNames.For(...)` so it works in every assembly the test is linked into.
+
 ### Unit Tests
 
 * Add a new environment variable `AzureServiceBus_ConnectionString` containing a connection string to your Azure Service Bus namespace (can be same as for acceptance tests).

@@ -24,7 +24,7 @@ public class When_loading_from_options : NServiceBusAcceptanceTest
         try
         {
             // makes sure during local development the topic gets cleared before each test run
-            await adminClient.DeleteTopicAsync(TopicName);
+            await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.For(TopicName));
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {

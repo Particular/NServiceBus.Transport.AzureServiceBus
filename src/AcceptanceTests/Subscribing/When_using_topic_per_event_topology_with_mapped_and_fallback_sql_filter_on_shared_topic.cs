@@ -18,9 +18,9 @@ public class When_using_topic_per_event_topology_with_mapped_and_fallback_sql_fi
     {
         var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
-        await CleanupEntity(adminClient, SharedTopicName);
+        await CleanupEntity(adminClient, AcceptanceTestEntityNames.For(SharedTopicName));
 
-        await adminClient.CreateTopicAsync(SharedTopicName);
+        await adminClient.CreateTopicAsync(AcceptanceTestEntityNames.For(SharedTopicName));
     }
 
     [TearDown]
@@ -28,7 +28,7 @@ public class When_using_topic_per_event_topology_with_mapped_and_fallback_sql_fi
     {
         var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
-        await CleanupEntity(adminClient, SharedTopicName);
+        await CleanupEntity(adminClient, AcceptanceTestEntityNames.For(SharedTopicName));
     }
 
     static async Task CleanupEntity(ServiceBusAdministrationClient adminClient, string topicName)
