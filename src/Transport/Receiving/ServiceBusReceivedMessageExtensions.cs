@@ -117,13 +117,11 @@ public static class ServiceBusReceivedMessageExtensions
         /// </summary>
         public ReceiveProperties GetReceiveProperties()
         {
-if(message.SessionId != null)
+            if(message.SessionId != null)
             {
                 var properties = new Dictionary<string, string> { ["SessionId"] = message.SessionId };
                 return new ReceiveProperties(properties);
             }
-
-            return ReceiveProperties.Empty;
 
             return ReceiveProperties.Empty;
         }
