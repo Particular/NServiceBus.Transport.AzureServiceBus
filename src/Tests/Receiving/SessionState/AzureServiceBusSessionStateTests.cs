@@ -42,13 +42,12 @@ public partial class AzureServiceBusSessionStateTests
     }
 
     [Test]
-    public async Task Flush_writes_a_versioned_envelope_with_a_user_section()
+    public async Task Set_writes_a_versioned_envelope_with_a_user_section()
     {
         var store = new FakeSessionStateStore();
         var sessionState = new AzureServiceBusSessionState(store, SessionId);
 
         await sessionState.Set(new CustomerState { ProcessedMessages = 1 });
-        await sessionState.Flush();
 
         using var doc = JsonDocument.Parse(store.Current!.ToMemory());
         var root = doc.RootElement;
@@ -62,22 +61,20 @@ public partial class AzureServiceBusSessionStateTests
     }
 
     [Test]
-    public async Task Set_does_not_write_to_the_broker_until_flushed()
+    public async Task Set_writes_to_the_broker_immediately()
     {
         var store = new FakeSessionStateStore();
         var sessionState = new AzureServiceBusSessionState(store, SessionId);
 
         await sessionState.Set(new CustomerState { ProcessedMessages = 1 });
 
-        Assert.That(store.Writes, Is.Zero, "Set must only mutate in memory; nothing is persisted until Flush.");
-
-        await sessionState.Flush();
-
-        Assert.That(store.Writes, Is.EqualTo(1));
+        Assert.That(store.Writes, Is.EqualTo(1),
+            "Set must write through immediately - a deferred write could never be flushed if the " +
+            "message is later retried through a path that does not re-invoke the handler.");
     }
 
     [Test]
-    public async Task Clear_does_not_write_to_the_broker_until_flushed()
+    public async Task Clear_writes_to_the_broker_immediately()
     {
         var store = new FakeSessionStateStore();
         await Seed(store, new CustomerState { ProcessedMessages = 1 });
@@ -85,48 +82,45 @@ public partial class AzureServiceBusSessionStateTests
         var sessionState = new AzureServiceBusSessionState(store, SessionId);
         await sessionState.Clear();
 
-        Assert.That(store.Writes, Is.EqualTo(1), "still just the seed write; Clear has not been flushed yet.");
-
-        await sessionState.Flush();
+        Assert.That(store.Writes, Is.EqualTo(2), "the seed write, plus the Clear's own immediate write.");
 
         using var doc = JsonDocument.Parse(store.Current!.ToMemory());
         Assert.That(doc.RootElement.TryGetProperty("user", out _), Is.False);
     }
 
     [Test]
-    public async Task An_unflushed_Set_leaves_the_previously_stored_state_intact()
+    public async Task A_subsequent_Set_on_a_fresh_instance_overwrites_the_previous_value()
     {
         var store = new FakeSessionStateStore();
         await Seed(store, new CustomerState { ProcessedMessages = 1, LastProduct = "Dates" });
 
-        var failedAttempt = new AzureServiceBusSessionState(store, SessionId);
-        _ = await failedAttempt.Get<CustomerState>();
-        await failedAttempt.Set(new CustomerState { ProcessedMessages = 2, LastProduct = "Apples" });
+        var secondAttempt = new AzureServiceBusSessionState(store, SessionId);
+        _ = await secondAttempt.Get<CustomerState>();
+        await secondAttempt.Set(new CustomerState { ProcessedMessages = 2, LastProduct = "Apples" });
 
-        var afterRetryLoad = await new AzureServiceBusSessionState(store, SessionId).Get<CustomerState>();
+        var afterSecondAttempt = await new AzureServiceBusSessionState(store, SessionId).Get<CustomerState>();
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(store.Writes, Is.EqualTo(1), "only the seed write happened");
-            Assert.That(afterRetryLoad!.ProcessedMessages, Is.EqualTo(1));
-            Assert.That(afterRetryLoad.LastProduct, Is.EqualTo("Dates"));
+            Assert.That(store.Writes, Is.EqualTo(2), "the seed write, plus the second attempt's own immediate write.");
+            Assert.That(afterSecondAttempt!.ProcessedMessages, Is.EqualTo(2));
+            Assert.That(afterSecondAttempt.LastProduct, Is.EqualTo("Apples"));
         }
     }
 
     [Test]
-    public async Task Flush_with_unchanged_state_has_no_side_effects()
+    public async Task Get_only_never_writes_to_the_broker()
     {
         var store = new FakeSessionStateStore();
         await Seed(store, new CustomerState { ProcessedMessages = 1 });
 
         var sessionState = new AzureServiceBusSessionState(store, SessionId);
         _ = await sessionState.Get<CustomerState>();
-        await sessionState.Flush();
 
         Assert.That(store.Writes, Is.EqualTo(1), "a read-only pass must not write session state back.");
     }
 
     [Test]
-    public async Task Flush_never_touches_an_existing_transport_section()
+    public async Task Set_never_touches_an_existing_transport_section()
     {
         var store = new FakeSessionStateStore
         {
@@ -135,15 +129,14 @@ public partial class AzureServiceBusSessionStateTests
         var sessionState = new AzureServiceBusSessionState(store, SessionId);
 
         await sessionState.Set(new CustomerState { ProcessedMessages = 7 });
-        await sessionState.Flush();
 
         using var doc = JsonDocument.Parse(store.Current!.ToMemory());
         Assert.That(doc.RootElement.TryGetProperty("transport", out _), Is.True,
-            "Flush only ever writes the user section; an already-present transport section must survive it untouched.");
+            "Set only ever writes the user section; an already-present transport section must survive it untouched.");
     }
 
     [Test]
-    public async Task Clearing_and_flushing_never_touches_an_existing_transport_section()
+    public async Task Clearing_never_touches_an_existing_transport_section()
     {
         var store = new FakeSessionStateStore
         {
@@ -160,7 +153,6 @@ public partial class AzureServiceBusSessionStateTests
         var sessionState = new AzureServiceBusSessionState(store, SessionId);
 
         await sessionState.Clear();
-        await sessionState.Flush();
 
         using var doc = JsonDocument.Parse(store.Current!.ToMemory());
         using (Assert.EnterMultipleScope())
@@ -248,7 +240,6 @@ public partial class AzureServiceBusSessionStateTests
         var sessionState = new AzureServiceBusSessionState(store, SessionId);
 
         await sessionState.Set(new CustomerState { ProcessedMessages = 2, LastProduct = "Grapes" }, options);
-        await sessionState.Flush();
 
         using var doc = JsonDocument.Parse(store.Current!.ToMemory());
         Assert.That(doc.RootElement.GetProperty("user").GetProperty("data").GetProperty("processed_messages").GetInt32(), Is.EqualTo(2),
@@ -265,7 +256,6 @@ public partial class AzureServiceBusSessionStateTests
         var sessionState = new AzureServiceBusSessionState(store, SessionId);
 
         await sessionState.Set(new CustomerState { ProcessedMessages = 9, LastProduct = "Pears" }, CustomerStateJsonContext.Default.CustomerState);
-        await sessionState.Flush();
 
         var reread = await new AzureServiceBusSessionState(store, SessionId).Get(CustomerStateJsonContext.Default.CustomerState);
 
@@ -311,7 +301,6 @@ public partial class AzureServiceBusSessionStateTests
     {
         var seed = new AzureServiceBusSessionState(store, SessionId);
         await seed.Set(state);
-        await seed.Flush();
     }
 
     sealed class FakeSessionStateStore : ISessionStateStore
