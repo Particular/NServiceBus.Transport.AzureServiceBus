@@ -11,6 +11,9 @@ using NServiceBus.AcceptanceTests;
 using NServiceBus.AcceptanceTests.EndpointTemplates;
 using NUnit.Framework;
 
+/// <summary>
+/// TransportTransactionMode.None is not included here as it's not supported for sessions
+/// </summary>
 public class When_a_handler_throws_after_setting_session_state : NServiceBusAcceptanceTest
 {
     [Test]
@@ -23,14 +26,13 @@ public class When_a_handler_throws_after_setting_session_state : NServiceBusAcce
             "- so it should have rolled back and not be durable in the session state.");
     }
 
-    [TestCase(TransportTransactionMode.None)]
-    [TestCase(TransportTransactionMode.ReceiveOnly)]
-    public async Task Keeps_the_change_set_before_the_throw(TransportTransactionMode transactionMode)
+    [Test]
+    public async Task Keeps_the_change_set_before_the_throw_with_ReceiveOnly()
     {
-        var persisted = await RunScenarioAndGetPersistedSum(transactionMode);
+        var persisted = await RunScenarioAndGetPersistedSum(TransportTransactionMode.ReceiveOnly);
 
         Assert.That(persisted, Is.EqualTo(15),
-            $"{transactionMode} has no transaction for the change to roll back with, so it should be persisted " +
+            "ReceiveOnly has no transaction for the change to roll back with, so it should be persisted " +
             "even though the handler that made it went on to throw.");
     }
 
