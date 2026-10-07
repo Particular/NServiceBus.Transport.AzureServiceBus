@@ -111,6 +111,20 @@ public static class ServiceBusReceivedMessageExtensions
             var bodyBytes = (byte[])Serialization.Deserializer.ReadObject(reader)!;
             return new BinaryData(bodyBytes);
         }
+
+        /// <summary>
+        /// Builds the receiver properties object based on native properties of the SDK message.
+        /// </summary>
+        public ReceiveProperties GetReceiveProperties()
+        {
+            if (message.SessionId != null)
+            {
+                var properties = new Dictionary<string, string> { ["SessionId"] = message.SessionId };
+                return new ReceiveProperties(properties);
+            }
+
+            return ReceiveProperties.Empty;
+        }
     }
 
     // To workaround a bug in extension blocks that would otherwise classify the field as not used.

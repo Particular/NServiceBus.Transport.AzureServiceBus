@@ -258,8 +258,7 @@ sealed class SessionsEnabledMessagePump(
         contextBag.Set(message);
         contextBag.Set(processMessageEventArgs);
 
-        // Pass on the SessionId so it can be propagated by Core for delayed retries, error or audit
-        var receiveProperties = new ReceiveProperties(new Dictionary<string, string> { ["SessionId"] = message.SessionId });
+        var receiveProperties = message.GetReceiveProperties();
 
         try
         {
