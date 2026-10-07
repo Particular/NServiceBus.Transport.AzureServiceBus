@@ -9,6 +9,7 @@ using Faults;
 using NServiceBus.AcceptanceTests;
 using NServiceBus.AcceptanceTests.EndpointTemplates;
 using NUnit.Framework;
+using AcceptanceTests;
 
 public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
 {
@@ -40,7 +41,7 @@ public class When_dlq_forwarding_is_enabled : NServiceBusAcceptanceTest
 
             // We need to lower case here since even if we provide a name with upper case letters the queue will be created all lower case.
             // This also happens when creating queues manually via the portal
-            Assert.That(nativeMessage.DeadLetterSource, Is.EqualTo(sourceEndpoint.ToLower()), "Message should have come via the dlq of the processing endpoint");
+            Assert.That(nativeMessage.DeadLetterSource, Is.EqualTo(AcceptanceTestEntityNames.For(sourceEndpoint.ToLower())), "Message should have come via the dlq of the processing endpoint");
             Assert.That(nativeMessage.ApplicationProperties["SomeProperty"], Is.EqualTo("Some value"), "Message properties should have been set");
             Assert.That(failedMessageHeaders[FaultsHeaderKeys.FailedQ], Is.EqualTo(nativeMessage.DeadLetterSource), $"{FaultsHeaderKeys.FailedQ} should be set to dlq source");
             Assert.That(failedMessageHeaders[FaultsHeaderKeys.ExceptionType], Is.EqualTo("Some reason"), $"{FaultsHeaderKeys.ExceptionType} should be set from dlq reason");
