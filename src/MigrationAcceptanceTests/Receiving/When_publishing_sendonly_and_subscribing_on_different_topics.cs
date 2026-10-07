@@ -11,7 +11,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
     using NUnit.Framework;
 
     // The migration topology takes literal topic names and can't combine a topic hierarchy with a namespace,
-    // so these tests skip the assembly prefix. Their entity names are unique to this assembly.
+    // so these tests skip the namespace and make their topic names unique per fixture instead.
     public class When_publishing_sendonly_and_subscribing_on_different_topics : NServiceBusAcceptanceTest
     {
         [SetUp]
@@ -23,7 +23,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
             try
             {
                 // makes sure during local development the topic gets cleared before each test run
-                await adminClient.DeleteTopicAsync("bundle-a");
+                await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.UniquePerFixture("bundle-a"));
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
@@ -32,7 +32,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
             try
             {
                 // makes sure during local development the topic gets cleared before each test run
-                await adminClient.DeleteTopicAsync("bundle-b");
+                await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.UniquePerFixture("bundle-b"));
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
@@ -41,7 +41,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
             try
             {
                 // makes sure during local development the topic gets cleared before each test run
-                await adminClient.DeleteTopicAsync("bundle-c");
+                await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.UniquePerFixture("bundle-c"));
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
@@ -79,7 +79,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     transport.HierarchyNamespaceOptions = HierarchyNamespaceOptions.None;
 #pragma warning disable CS0618 // Type or member is obsolete
-                    MigrationTopology topology = TopicTopology.MigrateFromNamedSingleTopic("bundle-a");
+                    MigrationTopology topology = TopicTopology.MigrateFromNamedSingleTopic(AcceptanceTestEntityNames.UniquePerFixture("bundle-a"));
 #pragma warning restore CS0618 // Type or member is obsolete
                     topology.EventToMigrate<MyEvent>();
                     transport.Topology = topology;
@@ -96,7 +96,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     transport.HierarchyNamespaceOptions = HierarchyNamespaceOptions.None;
 #pragma warning disable CS0618 // Type or member is obsolete
-                    MigrationTopology topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-b");
+                    MigrationTopology topology = TopicTopology.MigrateFromTopicHierarchy(AcceptanceTestEntityNames.UniquePerFixture("bundle-a"), AcceptanceTestEntityNames.UniquePerFixture("bundle-b"));
 #pragma warning restore CS0618 // Type or member is obsolete
                     string endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberOnTopicB));
                     topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());
@@ -124,7 +124,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
                     transport.HierarchyNamespaceOptions = HierarchyNamespaceOptions.None;
 #pragma warning disable CS0618 // Type or member is obsolete
-                    MigrationTopology topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-c");
+                    MigrationTopology topology = TopicTopology.MigrateFromTopicHierarchy(AcceptanceTestEntityNames.UniquePerFixture("bundle-a"), AcceptanceTestEntityNames.UniquePerFixture("bundle-c"));
 #pragma warning restore CS0618 // Type or member is obsolete
                     string endpointName = Conventions.EndpointNamingConvention(typeof(SubscriberOnTopicC));
                     topology.OverrideSubscriptionNameFor(endpointName, endpointName.Shorten());

@@ -34,6 +34,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         }
 
         var transport = new AzureServiceBusTransport(connectionString, topology);
+        AcceptanceTestEntityNames.Apply(transport);
 
         ApplyMappingsToSupportMultipleInheritance(endpointName, topology);
 

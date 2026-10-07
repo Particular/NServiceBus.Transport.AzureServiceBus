@@ -11,7 +11,7 @@
 
     public class When_migrating : NServiceBusAcceptanceTest
     {
-        static readonly string bundleTopicName = AcceptanceTestEntityNames.For("bundle-m");
+        static string BundleTopicName => AcceptanceTestEntityNames.For("bundle-m");
 
         [SetUp]
         public async Task Setup()
@@ -22,7 +22,7 @@
             try
             {
                 // makes sure during local development the topic gets cleared before each test run
-                await adminClient.DeleteTopicAsync(bundleTopicName);
+                await adminClient.DeleteTopicAsync(BundleTopicName);
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
@@ -39,7 +39,7 @@
                     b.CustomConfig(c =>
                     {
 #pragma warning disable CS0618 // Type or member is obsolete
-                        var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
+                        var topology = TopicTopology.MigrateFromNamedSingleTopic(BundleTopicName);
 #pragma warning restore CS0618 // Type or member is obsolete
                         topology.EventToMigrate<MyEvent>();
 
@@ -52,7 +52,7 @@
                     b.CustomConfig(c =>
                     {
 #pragma warning disable CS0618 // Type or member is obsolete
-                        var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
+                        var topology = TopicTopology.MigrateFromNamedSingleTopic(BundleTopicName);
 #pragma warning restore CS0618 // Type or member is obsolete
                         topology.EventToMigrate<MyEvent>(ruleNameOverride: typeof(MyEvent).FullName.Shorten());
 
@@ -71,7 +71,7 @@
                     b.CustomConfig(c =>
                     {
 #pragma warning disable CS0618 // Type or member is obsolete
-                        var topology = TopicTopology.MigrateFromNamedSingleTopic(bundleTopicName);
+                        var topology = TopicTopology.MigrateFromNamedSingleTopic(BundleTopicName);
 #pragma warning restore CS0618 // Type or member is obsolete
                         topology.EventToMigrate<MyEvent>();
 
@@ -98,7 +98,7 @@
             try
             {
                 // makes sure during local development the topic gets cleared before each test run
-                await adminClient.DeleteTopicAsync(bundleTopicName);
+                await adminClient.DeleteTopicAsync(BundleTopicName);
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
