@@ -23,7 +23,7 @@ public class When_using_dlq_qualifier
     public void SetUp()
     {
         var test = TestContext.CurrentContext.Test;
-        inputQueueName = $"{test.DisplayName}.{test.Name}";
+        inputQueueName = $"{ConfigureAzureServiceBusTransportInfrastructure.QueueNamePrefix}{test.DisplayName}.{test.Name}";
         // Remove empty segments so we don't get leading/trailing underscores when parentheses are at the ends
         inputQueueName = string.Join("_", inputQueueName.Split(new[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries));
     }

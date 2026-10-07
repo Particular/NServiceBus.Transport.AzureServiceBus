@@ -9,6 +9,13 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
 {
     public static readonly string ConnectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString");
 
+    // Keeps these queues apart from the acceptance tests that share the namespace
+    public string GetInputQueueName(string testName, TransportTransactionMode transactionMode) => $"{QueueNamePrefix}{testName}{transactionMode}";
+
+    public string GetErrorQueueName(string testName, TransportTransactionMode transactionMode) => $"{QueueNamePrefix}{testName}{transactionMode}.error";
+
+    public const string QueueNamePrefix = "tt.";
+
     public TransportDefinition CreateTransportDefinition()
     {
         if (string.IsNullOrEmpty(ConnectionString))
