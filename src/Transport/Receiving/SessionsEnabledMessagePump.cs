@@ -267,10 +267,10 @@ sealed class SessionsEnabledMessagePump(
         try
         {
             using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
+            sessionState.Transaction = azureServiceBusTransaction;
             var messageContext = new MessageContext(nativeMessageId, headers, body, receiveProperties, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
             await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
-            await sessionState.Flush(messageProcessingCancellationToken).ConfigureAwait(false);
 
             await processMessageEventArgs.SafeCompleteMessage(message,
                     TransactionMode,
@@ -286,6 +286,7 @@ sealed class SessionsEnabledMessagePump(
             try
             {
                 using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
+                sessionState.Transaction = azureServiceBusTransaction;
 
                 var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), nativeMessageId, body,
                     receiveProperties, azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);

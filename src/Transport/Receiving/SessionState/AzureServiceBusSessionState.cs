@@ -19,7 +19,12 @@ sealed class AzureServiceBusSessionState(ISessionStateStore store, string sessio
     // subsequent Get/Set/Clear call on this instance, the same way a message's saga data is loaded
     // once per message rather than re-fetched on every access.
     SessionStateEnvelope? envelope;
-    bool dirty;
+
+    /// <summary>
+    /// The transaction for the delivery attempt that is currently in progress, if any.
+    /// Set/Clear enlists the change in it, the same way Send and Complete already do
+    /// </summary>
+    internal AzureServiceBusTransportTransaction? Transaction { get; set; }
 
     [RequiresUnreferencedCode("JSON deserialization of the state type might require types that cannot be statically analyzed. Use the Get<T>(JsonSerializerOptions, CancellationToken) or Get<T>(JsonTypeInfo<T>, CancellationToken) overload instead.")]
     [RequiresDynamicCode("JSON deserialization of the state type might require runtime code generation. Use the Get<T>(JsonSerializerOptions, CancellationToken) or Get<T>(JsonTypeInfo<T>, CancellationToken) overload instead.")]
@@ -85,7 +90,7 @@ sealed class AzureServiceBusSessionState(ISessionStateStore store, string sessio
             Data = data
         };
 
-        dirty = true;
+        await Persist(current, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task Clear(CancellationToken cancellationToken = default)
@@ -97,21 +102,23 @@ sealed class AzureServiceBusSessionState(ISessionStateStore store, string sessio
         }
 
         current.UserState = null;
-        dirty = true;
+        await Persist(current, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Persists pending session-state changes, if any. Called by the session pump right before the message is completed.
-    /// </summary>
-    public async Task Flush(CancellationToken cancellationToken = default)
+    async Task Persist(SessionStateEnvelope current, CancellationToken cancellationToken)
     {
-        if (!dirty || envelope is null)
-        {
-            return;
-        }
+        var rawEnvelope = SessionStateEnvelopeSerializer.Write(current);
 
-        await store.SetSessionStateAsync(SessionStateEnvelopeSerializer.Write(envelope), cancellationToken).ConfigureAwait(false);
-        dirty = false;
+        if (Transaction is { } transaction)
+        {
+            using var scope = transaction.ToTransactionScope();
+            await store.SetSessionStateAsync(rawEnvelope, cancellationToken).ConfigureAwait(false);
+            scope.Complete();
+        }
+        else
+        {
+            await store.SetSessionStateAsync(rawEnvelope, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     async Task<SessionStateEnvelope> Load(CancellationToken cancellationToken)
