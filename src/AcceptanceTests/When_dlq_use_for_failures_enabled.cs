@@ -9,6 +9,7 @@ using Faults;
 using NServiceBus.AcceptanceTests;
 using NServiceBus.AcceptanceTests.EndpointTemplates;
 using NUnit.Framework;
+using AcceptanceTests;
 
 public class When_dlq_use_for_failures_enabled : NServiceBusAcceptanceTest
 {
@@ -38,10 +39,10 @@ public class When_dlq_use_for_failures_enabled : NServiceBusAcceptanceTest
         Assert.Multiple(() =>
         {
             Assert.That(nativeMessage, Is.Not.Null);
-            Assert.That(nativeMessage.DeadLetterSource, Is.EqualTo(sourceEndpoint.ToLower()), "Message should have come via the dlq of the processing endpoint");
+            Assert.That(nativeMessage.DeadLetterSource, Is.EqualTo(AcceptanceTestEntityNames.For(sourceEndpoint.ToLower())), "Message should have come via the dlq of the processing endpoint");
             Assert.That(nativeMessage.DeadLetterReason, Is.EqualTo("NServiceBus"), "Reason should be NServiceBus");
             Assert.That(nativeMessage.DeadLetterErrorDescription, Is.EqualTo("See application properties"), "Message should indicate that failure details are in application properties");
-            Assert.That(failedMessageHeaders[FaultsHeaderKeys.FailedQ], Is.EqualTo(sourceEndpoint), "Fault headers should be set");
+            Assert.That(failedMessageHeaders[FaultsHeaderKeys.FailedQ], Is.EqualTo(AcceptanceTestEntityNames.For(sourceEndpoint)), "Fault headers should be set");
         });
     }
 

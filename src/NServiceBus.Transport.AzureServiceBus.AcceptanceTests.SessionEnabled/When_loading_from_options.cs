@@ -24,7 +24,7 @@ public class When_loading_from_options : NServiceBusAcceptanceTest
         try
         {
             // makes sure during local development the topic gets cleared before each test run
-            await adminClient.DeleteTopicAsync(TopicName);
+            await adminClient.DeleteTopicAsync(AcceptanceTestEntityNames.For(TopicName));
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {
@@ -65,8 +65,8 @@ public class When_loading_from_options : NServiceBusAcceptanceTest
                         {
                             QueueNameToSubscriptionNameMap = { { Conventions.EndpointNamingConvention(typeof(Publisher)), TopicName } },
                             SubscribedEventToRuleNameMap = { { typeof(Event).FullName, typeof(Event).FullName.Shorten() } },
-                            TopicToPublishTo = TopicName,
-                            TopicToSubscribeOn = TopicName,
+                            TopicToPublishTo = AcceptanceTestEntityNames.For(TopicName),
+                            TopicToSubscribeOn = AcceptanceTestEntityNames.For(TopicName),
                             EventsToMigrateMap = [typeof(Event).FullName],
                         }, TopologyOptionsSerializationContext.Default.TopologyOptions);
 

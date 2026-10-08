@@ -18,9 +18,9 @@ public class When_using_topic_per_event_topology_with_hierarchy_and_correlation_
     {
         var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
-        await CleanupEntity(adminClient, "my-hierarchy/" + SharedTopicName);
+        await CleanupEntity(adminClient, AcceptanceTestEntityNames.For("my-hierarchy/" + SharedTopicName));
 
-        await adminClient.CreateTopicAsync("my-hierarchy/" + SharedTopicName);
+        await adminClient.CreateTopicAsync(AcceptanceTestEntityNames.For("my-hierarchy/" + SharedTopicName));
     }
 
     [TearDown]
@@ -28,7 +28,7 @@ public class When_using_topic_per_event_topology_with_hierarchy_and_correlation_
     {
         var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
-        await CleanupEntity(adminClient, "my-hierarchy/" + SharedTopicName);
+        await CleanupEntity(adminClient, AcceptanceTestEntityNames.For("my-hierarchy/" + SharedTopicName));
     }
 
     static async Task CleanupEntity(ServiceBusAdministrationClient adminClient, string topicName)
@@ -80,7 +80,7 @@ public class When_using_topic_per_event_topology_with_hierarchy_and_correlation_
             EndpointSetup<DefaultServer>(c =>
             {
                 var transport = c.ConfigureTransport<AzureServiceBusTransport>();
-                transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+                transport.HierarchyNamespaceOptions = AcceptanceTestEntityNames.CreateHierarchyNamespaceOptions("my-hierarchy");
 
                 var topology = TopicTopology.Default;
                 topology.PublishTo<MyEvent1>(SharedTopicName, opts =>
@@ -105,7 +105,7 @@ public class When_using_topic_per_event_topology_with_hierarchy_and_correlation_
             EndpointSetup<DefaultServer>(c =>
             {
                 var transport = c.ConfigureTransport<AzureServiceBusTransport>();
-                transport.HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+                transport.HierarchyNamespaceOptions = AcceptanceTestEntityNames.CreateHierarchyNamespaceOptions("my-hierarchy");
 
                 var topology = TopicTopology.Default;
                 var endpointName = Conventions.EndpointNamingConvention(typeof(Subscriber));

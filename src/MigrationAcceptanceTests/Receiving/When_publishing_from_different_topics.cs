@@ -10,6 +10,8 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
     using NUnit.Framework;
 
     // Makes sure we have enough forwarding hops available to support the hierarchy
+    // The migration topology takes literal topic names and can't combine a topic hierarchy with a namespace,
+    // so these tests skip the assembly prefix. Their entity names are unique to this assembly.
     public class When_publishing_from_different_topics : NServiceBusAcceptanceTest
     {
         [SetUp]
@@ -75,6 +77,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                 EndpointSetup<DefaultPublisher>(b =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
+                    transport.HierarchyNamespaceOptions = HierarchyNamespaceOptions.None;
 #pragma warning disable CS0618 // Type or member is obsolete
                     var topology = TopicTopology.MigrateFromNamedSingleTopic("bundle-a");
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -121,6 +124,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
+                    transport.HierarchyNamespaceOptions = HierarchyNamespaceOptions.None;
 #pragma warning disable CS0618 // Type or member is obsolete
                     var topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-b");
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -147,6 +151,7 @@ namespace NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Receiving
                     =>
                 {
                     var transport = b.ConfigureTransport<AzureServiceBusTransport>();
+                    transport.HierarchyNamespaceOptions = HierarchyNamespaceOptions.None;
 #pragma warning disable CS0618 // Type or member is obsolete
                     var topology = TopicTopology.MigrateFromTopicHierarchy("bundle-a", "bundle-c");
 #pragma warning restore CS0618 // Type or member is obsolete

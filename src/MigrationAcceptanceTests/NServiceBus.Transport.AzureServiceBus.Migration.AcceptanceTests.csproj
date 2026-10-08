@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs" />
+    <Compile Include="..\AcceptanceTests\AcceptanceTestEntityNames.cs" />
     <Compile Include="..\AcceptanceTests\AcceptanceTestExtensions.cs" />
   </ItemGroup>
 

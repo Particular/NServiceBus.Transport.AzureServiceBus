@@ -11,7 +11,7 @@
 
     public class When_migrating : NServiceBusAcceptanceTest
     {
-        const string bundleTopicName = "bundle-m";
+        static readonly string bundleTopicName = AcceptanceTestEntityNames.For("bundle-m");
 
         [SetUp]
         public async Task Setup()
