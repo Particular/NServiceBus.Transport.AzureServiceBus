@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Transport\NServiceBus.Transport.AzureServiceBus.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GitHubActionsTestLogger" Version="3.0.5" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Include="NUnit" Version="4.6.1" />
+    <PackageReference Include="NUnit.Analyzers" Version="4.15.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="6.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.21.0" />
+    <PackageReference Include="NServiceBus.AcceptanceTests.Sources" Version="10.2.9" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <!-- A small, sequential slice of the shared scenarios that runs without a hierarchy namespace, so the default entity paths stay covered. The other acceptance assemblies run every fixture inside a hierarchy namespace. -->
+  <ItemGroup Condition="'$(PkgNServiceBus_AcceptanceTests_Sources)' != ''">
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\**\*.cs" />
+
+    <!-- Infrastructure -->
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\EndpointTemplates\*.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\NServiceBusAcceptanceTest.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\ConfigureEndpointAcceptanceTestingPersistence.cs" />
+
+    <!-- Sending, replying and publishing -->
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Routing\When_publishing.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Routing\When_publishing_an_interface.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Routing\When_replying_to_message.cs" />
+
+    <!-- Native publish/subscribe -->
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Routing\NativePublishSubscribe\When_subscribing_to_a_derived_event.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Routing\NativePublishSubscribe\When_unsubscribing_from_event.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Routing\NativePublishSubscribe\When_publishing_to_scaled_out_subscribers.cs" />
+
+    <!-- Recoverability -->
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Recoverability\When_message_fails_retries.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Recoverability\When_immediate_retries_are_enabled.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Recoverability\When_custom_policy_always_moves_to_error.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Recoverability\When_retrying_message_from_error_queue.cs" />
+
+    <!-- Delayed delivery, transactions and auditing -->
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\DelayedDelivery\When_Deferring_a_message.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\DelayedDelivery\When_deferring_to_non_local.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Tx\When_receiving_with_native_multi_queue_transaction.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Audit\When_a_message_is_audited.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Audit\When_audit_is_overridden_in_code.cs" />
+
+    <!-- Sagas -->
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Sagas\When_replying_to_originator.cs" />
+    <Compile Include="$(PkgNServiceBus_AcceptanceTests_Sources)\**\Sagas\When_saga_exists_for_start_message.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\AcceptanceTests\AcceptanceTestExtensions.cs" Link="AcceptanceTestExtensions.cs" />
+    <Compile Include="..\AcceptanceTests\TestSuiteConstraints.cs" Link="TestSuiteConstraints.cs" />
+  </ItemGroup>
+
+</Project>

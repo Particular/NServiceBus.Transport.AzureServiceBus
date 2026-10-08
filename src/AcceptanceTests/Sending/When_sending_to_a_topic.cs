@@ -26,21 +26,23 @@ public class When_sending_to_a_topic : NServiceBusAcceptanceTest
 
         var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
 
-        if (await adminClient.TopicExistsAsync(TopicName))
+        var topicPath = AcceptanceTestEntityNames.For(TopicName);
+        if (await adminClient.TopicExistsAsync(topicPath))
         {
             // makes sure during local development the topic gets cleared before each test run
-            await adminClient.DeleteTopicAsync(TopicName);
+            await adminClient.DeleteTopicAsync(topicPath);
         }
 
-        await adminClient.CreateTopicAsync(TopicName);
+        await adminClient.CreateTopicAsync(topicPath);
         string endpointName = Conventions.EndpointNamingConvention(typeof(Receiver)).Shorten();
-        if (!await adminClient.QueueExistsAsync(endpointName))
+        var queuePath = AcceptanceTestEntityNames.For(endpointName);
+        if (!await adminClient.QueueExistsAsync(queuePath))
         {
-            await adminClient.CreateQueueAsync(endpointName);
+            await adminClient.CreateQueueAsync(queuePath);
         }
-        await adminClient.CreateSubscriptionAsync(new CreateSubscriptionOptions(TopicName, endpointName)
+        await adminClient.CreateSubscriptionAsync(new CreateSubscriptionOptions(topicPath, endpointName)
         {
-            ForwardTo = endpointName,
+            ForwardTo = queuePath,
         });
     }
 

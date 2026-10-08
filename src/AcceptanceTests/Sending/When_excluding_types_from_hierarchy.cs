@@ -95,8 +95,9 @@ public class When_excluding_types_from_hierarchy : NServiceBusAcceptanceTest
 
     public class ExternalReceiver : EndpointConfigurationBuilder
     {
+        // Excluded types skip the hierarchy, so this receiver has to listen outside the per-fixture namespace too.
         public ExternalReceiver() => EndpointSetup<DefaultServer>(
-            _ => { },
+            c => c.ConfigureTransport<AzureServiceBusTransport>().HierarchyNamespaceOptions = HierarchyNamespaceOptions.None,
             publishMetadata => publishMetadata.RegisterPublisherFor<MyEvent, Sender>()
         );
 
