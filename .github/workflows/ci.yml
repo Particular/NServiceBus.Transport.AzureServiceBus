@@ -108,4 +108,4 @@ jobs:
       - name: Run tests
         uses: Particular/run-tests-action@v1.9.0
         with:
-          max-parallel: 4
+          max-parallel: 6
