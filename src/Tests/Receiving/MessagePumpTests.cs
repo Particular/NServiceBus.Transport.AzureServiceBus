@@ -454,4 +454,125 @@ public class MessagePumpTests
         Assert.That(fakeClient.Processors["receiveAddress"].MaxConcurrentCalls, Is.EqualTo(maxConcurrency));
         return pump;
     }
+
+    [Test]
+    public async Task Should_cancel_pipeline_and_abandon_message_when_processor_cancels_handler()
+    {
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
+        var handlerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var onErrorCalled = false;
+
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
+
+        await pump.Initialize(new PushRuntimeSettings(1), async (_, token) =>
+            {
+                handlerStarted.SetResult();
+                await Task.Delay(Timeout.Infinite, token);
+            },
+            (_, _) =>
+            {
+                onErrorCalled = true;
+                return Task.FromResult(ErrorHandleResult.Handled);
+            }, CancellationToken.None);
+        await pump.StartReceive();
+
+        using var processorCancellationTokenSource = new CancellationTokenSource();
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+        var processing = fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver, processorCancellationTokenSource.Token);
+
+        await handlerStarted.Task;
+        await processorCancellationTokenSource.CancelAsync();
+        await processing.WaitAsync(TimeSpan.FromSeconds(10));
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(fakeReceiver.AbandonedMessages, Has.Exactly(1)
+                .Matches<(ServiceBusReceivedMessage Message, IDictionary<string, object> Props)>(abandoned => abandoned.Message.MessageId == "SomeId"));
+            Assert.That(fakeReceiver.CompletedMessages, Is.Empty);
+            Assert.That(onErrorCalled, Is.False);
+        }
+    }
+
+    [Test]
+    public async Task Should_not_cancel_pipeline_when_processor_cancels_handler_while_stopping()
+    {
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
+        var handlerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseHandler = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pipelineCanceled = false;
+
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
+
+        await pump.Initialize(new PushRuntimeSettings(1), async (_, token) =>
+            {
+                using var registration = token.Register(() => pipelineCanceled = true);
+                handlerStarted.SetResult();
+                await releaseHandler.Task;
+            },
+            (_, _) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
+        await pump.StartReceive();
+
+        using var processorCancellationTokenSource = new CancellationTokenSource();
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+        var processing = fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver, processorCancellationTokenSource.Token);
+
+        await handlerStarted.Task;
+        await pump.StopReceive();
+        // ServiceBusProcessor.StopProcessingAsync cancels args.CancellationToken; the fake doesn't, so simulate it
+        await processorCancellationTokenSource.CancelAsync();
+        releaseHandler.SetResult();
+        await processing.WaitAsync(TimeSpan.FromSeconds(10));
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(pipelineCanceled, Is.False);
+            Assert.That(fakeReceiver.CompletedMessages, Has.Exactly(1)
+                .Matches<ServiceBusReceivedMessage>(message => message.MessageId == "SomeId"));
+        }
+    }
+
+    [Test]
+    public async Task Should_not_cancel_pipeline_when_processor_cancels_handler_in_receive_and_delete_mode()
+    {
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
+        var handlerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseHandler = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pipelineCanceled = false;
+        var handlerCompleted = false;
+
+        var pump = new MessagePump(fakeClient,
+            new AzureServiceBusTransport("connection-string", TopicTopology.Default) { TransportTransactionMode = TransportTransactionMode.None },
+            "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
+
+        await pump.Initialize(new PushRuntimeSettings(1), async (_, token) =>
+            {
+                using var registration = token.Register(() => pipelineCanceled = true);
+                handlerStarted.SetResult();
+                await releaseHandler.Task;
+                handlerCompleted = true;
+            },
+            (_, _) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
+        await pump.StartReceive();
+
+        using var processorCancellationTokenSource = new CancellationTokenSource();
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+        var processing = fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver, processorCancellationTokenSource.Token);
+
+        await handlerStarted.Task;
+        await processorCancellationTokenSource.CancelAsync();
+        releaseHandler.SetResult();
+        await processing.WaitAsync(TimeSpan.FromSeconds(10));
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(pipelineCanceled, Is.False);
+            Assert.That(handlerCompleted, Is.True);
+        }
+    }
 }
