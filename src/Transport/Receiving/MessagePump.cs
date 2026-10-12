@@ -161,9 +161,20 @@ sealed class MessagePump(
             : arg.CancellationToken.Register(static state =>
             {
                 var (pump, cancellationTokenSource) = ((MessagePump, CancellationTokenSource))state!;
-                if (!pump.stopping)
+                if (pump.stopping)
+                {
+                    return;
+                }
+
+                try
                 {
                     cancellationTokenSource.Cancel();
+                }
+                catch (Exception ex)
+                {
+                    // This runs inside the processor's own Cancel() call, which doesn't guard against exceptions
+                    // from registrations; letting a pipeline callback's exception escape would fault the receive loop.
+                    pump.Logger.Warn("A cancellation callback in the message processing pipeline threw an exception.", ex);
                 }
             }, (this, messageCancellationTokenSource))).ConfigureAwait(false);
 

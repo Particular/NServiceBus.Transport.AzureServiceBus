@@ -575,4 +575,36 @@ public class MessagePumpTests
             Assert.That(handlerCompleted, Is.True);
         }
     }
+
+    [Test]
+    public async Task Should_not_throw_to_processor_when_pipeline_cancellation_callback_throws()
+    {
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
+        var handlerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
+
+        await pump.Initialize(new PushRuntimeSettings(1), async (_, token) =>
+            {
+                using var registration = token.Register(() => throw new InvalidOperationException("callback failure"));
+                handlerStarted.SetResult();
+                await Task.Delay(Timeout.Infinite, token);
+            },
+            (_, _) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
+        await pump.StartReceive();
+
+        using var processorCancellationTokenSource = new CancellationTokenSource();
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+        var processing = fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver, processorCancellationTokenSource.Token);
+
+        await handlerStarted.Task;
+        // ServiceBusProcessor.ReconcileConcurrencyAsync cancels synchronously and doesn't catch exceptions from registrations
+        Assert.DoesNotThrow(() => processorCancellationTokenSource.Cancel());
+        await processing.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.That(fakeReceiver.AbandonedMessages, Has.Exactly(1)
+            .Matches<(ServiceBusReceivedMessage Message, IDictionary<string, object> Props)>(abandoned => abandoned.Message.MessageId == "SomeId"));
+    }
 }
