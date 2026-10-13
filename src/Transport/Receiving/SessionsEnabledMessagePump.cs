@@ -258,16 +258,12 @@ sealed class SessionsEnabledMessagePump(
         contextBag.Set(message);
         contextBag.Set(processMessageEventArgs);
 
-        var sessionStateStore = new SessionStateStoreThroughProcessingArgs(processMessageEventArgs);
-        var sessionState = new AzureServiceBusSessionState(sessionStateStore, message.SessionId);
-        contextBag.Set<IAzureServiceBusSessionState>(sessionState);
-
         var receiveProperties = message.GetReceiveProperties();
 
         try
         {
             using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
-            sessionState.Transaction = azureServiceBusTransaction;
+            contextBag.Set<IAzureServiceBusSessionState>(new AzureServiceBusSessionState(new SessionStateStoreThroughProcessingArgs(processMessageEventArgs), message.SessionId, azureServiceBusTransaction));
             var messageContext = new MessageContext(nativeMessageId, headers, body, receiveProperties, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
             await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
@@ -286,7 +282,8 @@ sealed class SessionsEnabledMessagePump(
             try
             {
                 using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
-                sessionState.Transaction = azureServiceBusTransaction;
+                // Session state is only available to the message pipeline
+                contextBag.Remove<IAzureServiceBusSessionState>();
 
                 var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), nativeMessageId, body,
                     receiveProperties, azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);

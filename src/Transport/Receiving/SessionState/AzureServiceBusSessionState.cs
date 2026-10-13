@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 /// <summary>
 /// Default <see cref="IAzureServiceBusSessionState"/> implementation. One instance is created per
-/// message being processed and shared between the message and error pipelines through the context bag.
+/// message pipeline invocation and flows through the context bag. 
 /// </summary>
-sealed class AzureServiceBusSessionState(ISessionStateStore store, string sessionId) : IAzureServiceBusSessionState
+sealed class AzureServiceBusSessionState(ISessionStateStore store, string sessionId, AzureServiceBusTransportTransaction? transaction = null) : IAzureServiceBusSessionState
 {
     static readonly JsonSerializerOptions DefaultSerializerOptions = new(JsonSerializerDefaults.Web);
 
@@ -19,12 +19,6 @@ sealed class AzureServiceBusSessionState(ISessionStateStore store, string sessio
     // subsequent Get/Set/Clear call on this instance, the same way a message's saga data is loaded
     // once per message rather than re-fetched on every access.
     SessionStateEnvelope? envelope;
-
-    /// <summary>
-    /// The transaction for the delivery attempt that is currently in progress, if any.
-    /// Set/Clear enlists the change in it, the same way Send and Complete already do
-    /// </summary>
-    internal AzureServiceBusTransportTransaction? Transaction { get; set; }
 
     [RequiresUnreferencedCode("JSON deserialization of the state type might require types that cannot be statically analyzed. Use the Get<T>(JsonSerializerOptions, CancellationToken) or Get<T>(JsonTypeInfo<T>, CancellationToken) overload instead.")]
     [RequiresDynamicCode("JSON deserialization of the state type might require runtime code generation. Use the Get<T>(JsonSerializerOptions, CancellationToken) or Get<T>(JsonTypeInfo<T>, CancellationToken) overload instead.")]
@@ -109,7 +103,7 @@ sealed class AzureServiceBusSessionState(ISessionStateStore store, string sessio
     {
         var rawEnvelope = SessionStateEnvelopeSerializer.Write(current);
 
-        if (Transaction is { } transaction)
+        if (transaction is not null)
         {
             using var scope = transaction.ToTransactionScope();
             await store.SetSessionStateAsync(rawEnvelope, cancellationToken).ConfigureAwait(false);
