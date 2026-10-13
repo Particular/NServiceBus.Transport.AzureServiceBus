@@ -81,7 +81,7 @@ public class When_a_handler_throws_after_setting_session_state : NServiceBusAcce
 
     static async Task<int?> ReadPersistedSum(string sessionId)
     {
-        var queueName = Conventions.EndpointNamingConvention(typeof(Receiver));
+        var queueName = AcceptanceTestEntityNames.For(Conventions.EndpointNamingConvention(typeof(Receiver)));
 
         await using var client = new ServiceBusClient(AcceptanceTestConnectionString.Get());
         ServiceBusSessionReceiver receiver = await client.AcceptSessionAsync(queueName, sessionId);
