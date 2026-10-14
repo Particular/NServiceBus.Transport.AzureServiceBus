@@ -65,7 +65,7 @@ sealed class SessionsEnabledMessagePump(
                 : ServiceBusReceiveMode.PeekLock,
             Identifier = $"Processor-{Id}-{ReceiveAddress}-{Guid.NewGuid()}",
             MaxConcurrentSessions = limitations.MaxConcurrency,
-            AutoCompleteMessages = false,
+            AutoCompleteMessages = false
         };
         if (transportSettings.MaxAutoLockRenewalDuration.HasValue)
         {
@@ -263,6 +263,7 @@ sealed class SessionsEnabledMessagePump(
         try
         {
             using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
+            contextBag.Set<IAzureServiceBusSessionState>(new AzureServiceBusSessionState(new SessionStateStoreThroughProcessingArgs(processMessageEventArgs), message.SessionId, azureServiceBusTransaction));
             var messageContext = new MessageContext(nativeMessageId, headers, body, receiveProperties, azureServiceBusTransaction.TransportTransaction, ReceiveAddress, contextBag);
 
             await onMessage!(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
@@ -281,6 +282,8 @@ sealed class SessionsEnabledMessagePump(
             try
             {
                 using var azureServiceBusTransaction = CreateTransaction(message.PartitionKey);
+                // Session state is only available to the message pipeline
+                contextBag.Remove<IAzureServiceBusSessionState>();
 
                 var errorContext = new ErrorContext(ex, message.GetNServiceBusHeaders(), nativeMessageId, body,
                     receiveProperties, azureServiceBusTransaction.TransportTransaction, message.DeliveryCount, ReceiveAddress, contextBag);
