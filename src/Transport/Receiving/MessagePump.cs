@@ -35,7 +35,6 @@ sealed class MessagePump(
     readonly ILog Logger = LogManager.GetLogger<MessagePump>();
 
     int autoForwardWarningLogged;
-    volatile bool stopping;
 
     PushRuntimeSettings? limitations;
 
@@ -83,7 +82,6 @@ sealed class MessagePump(
         processor.ProcessMessageAsync += OnProcessMessage;
 
         messageProcessingCancellationTokenSource = new CancellationTokenSource();
-        stopping = false;
 
         circuitBreaker = new RepeatedFailuresOverTimeCircuitBreaker($"'{receiveSettings.ReceiveAddress}'",
             transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker, ex =>
@@ -150,56 +148,17 @@ sealed class MessagePump(
             return;
         }
 
-        var stopCancellationToken = messageProcessingCancellationTokenSource!.Token;
-        using var messageCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(stopCancellationToken);
-
-        // The processor cancels args.CancellationToken when it lowers concurrency and when it stops. Only the first is
-        // forwarded: stopping keeps flipping the pipeline token only when the StopReceive token is canceled.
-        // In ReceiveAndDelete mode the message is already gone, so canceling the handler would lose it.
-        await using var processorCancellationRegistration = (TransactionMode == TransportTransactionMode.None
-            ? default
-            : arg.CancellationToken.Register(static state =>
-            {
-                var (pump, cancellationTokenSource) = ((MessagePump, CancellationTokenSource))state!;
-                if (pump.stopping)
-                {
-                    return;
-                }
-
-                try
-                {
-                    cancellationTokenSource.Cancel();
-                }
-                catch (Exception ex)
-                {
-                    // This runs inside the processor's own Cancel() call, which doesn't guard against exceptions
-                    // from registrations; letting a pipeline callback's exception escape would fault the receive loop.
-                    pump.Logger.Warn("A cancellation callback in the message processing pipeline threw an exception.", ex);
-                }
-            }, (this, messageCancellationTokenSource))).ConfigureAwait(false);
-
         // need to catch OCE here because we are switching token
         try
         {
-            await ProcessMessage(message, arg, nativeMessageId, headers, body, messageCancellationTokenSource.Token).ConfigureAwait(false);
+            await ProcessMessage(message, arg, nativeMessageId, headers, body, messageProcessingCancellationTokenSource!.Token).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex.IsCausedBy(messageCancellationTokenSource.Token))
+        catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationTokenSource!.Token))
         {
-            if (stopCancellationToken.IsCancellationRequested)
+            if (Logger.IsDebugEnabled)
             {
-                if (Logger.IsDebugEnabled)
-                {
-                    Logger.Debug("Message processing canceled.", ex);
-                }
-
-                return;
+                Logger.Debug("Message processing canceled.", ex);
             }
-
-            Logger.Info($"Processing of message '{nativeMessageId}' was canceled by the processor, which is lowering its concurrency. The message will be abandoned and retried.", ex);
-
-            // Deliberately not using the cancellation token to make sure we abandon the message even when the
-            // cancellation token is already set.
-            await arg.SafeAbandonMessage(message, nativeMessageId, TransactionMode, CancellationToken.None).ConfigureAwait(false);
         }
     }
 
@@ -248,8 +207,6 @@ sealed class MessagePump(
             // Receiver hasn't been started or is already stopped
             return;
         }
-
-        stopping = true;
 
         // Wiring up the stop token to trigger the cancellation token that is being
         // used inside the message handling pipeline
@@ -301,8 +258,8 @@ sealed class MessagePump(
         string nativeMessageId, Dictionary<string, string?> headers, BinaryData body,
         CancellationToken messageProcessingCancellationToken)
     {
-        // messageProcessingCancellationToken is canceled when the StopReceive token is canceled, or when the processor
-        // cancels args.CancellationToken to lower its concurrency. See OnProcessMessage.
+        // args.CancellationToken is currently not used because the v8 version that supports cancellation was designed
+        // to not flip the cancellation token until the very last moment in time when the stop token is flipped.
         var contextBag = new ContextBag();
         contextBag.Set(message);
         contextBag.Set(processMessageEventArgs);
