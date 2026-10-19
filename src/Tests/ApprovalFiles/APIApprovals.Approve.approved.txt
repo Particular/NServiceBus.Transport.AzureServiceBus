@@ -128,7 +128,6 @@ namespace NServiceBus.Transport.AzureServiceBus.AdvancedExtensibility
             public System.Collections.Generic.Dictionary<string, string?> GetNServiceBusHeaders() { }
             public string GetMessageId() { }
             public System.BinaryData GetBody() { }
-            public NServiceBus.Transport.ReceiveProperties GetReceiveProperties() { }
         }
     }
 }
