@@ -11,6 +11,7 @@ using System.Transactions;
 using Azure.Messaging.ServiceBus;
 using EventRouting;
 using Logging;
+using NServiceBus.Outbox;
 
 class MessageDispatcher(
     ServiceBusClient defaultClient,
@@ -45,18 +46,11 @@ class MessageDispatcher(
         var numberOfDefaultOperations = 0;
         var numberOfIsolatedOperations = 0;
 
-        var orderedOperations = transportOperations.OrderBy(x =>
-        {
-            //TODO: Would it be more efficient to use strings and lexicographic order?
-            var dispatchProps = x.Properties;
-            var seq = dispatchProps.TryGetValue("NServiceBus.Transport.AzureServiceBus.Sequence", out var seqString) 
-                ? int.Parse(seqString)
-                : 0;
-            return seq;
-        });
+        var orderingRequired = false;
 
-        foreach (var operation in orderedOperations)
+        foreach (var operation in transportOperations)
         {
+            orderingRequired |= operation.Properties.ContainsKey("NServiceBus.Transport.AzureServiceBus.Sequence");
             var (destination, _, _) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
             switch (operation.RequiredDispatchConsistency)
             {
@@ -103,7 +97,7 @@ class MessageDispatcher(
         Task[] dispatchTasks =
         [
             DispatchIsolatedOperations(isolatedOperationsPerDestination ?? emptyDestinationAndOperations, numberOfIsolatedOperations, transaction, azureServiceBusTransaction, cancellationToken),
-            DispatchBatchedOperations(defaultOperationsPerDestination ?? emptyDestinationAndOperations, numberOfDefaultOperations, transaction, azureServiceBusTransaction, cancellationToken)
+            DispatchBatchedOperations(defaultOperationsPerDestination ?? emptyDestinationAndOperations, numberOfDefaultOperations, transaction, azureServiceBusTransaction, orderingRequired, cancellationToken)
         ];
 
         try
@@ -119,13 +113,12 @@ class MessageDispatcher(
 
     // The parameters of this method are deliberately mutable and of the original collection type to make sure
     // no boxing occurs
-    Task DispatchBatchedOperations(
-        Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> transportOperationsPerDestination,
+    Task DispatchBatchedOperations(Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> transportOperationsPerDestination,
         int numberOfTransportOperations,
         TransportTransaction transportTransaction,
         AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
-        CancellationToken cancellationToken
-    )
+        bool orderingRequired,
+        CancellationToken cancellationToken)
     {
         if (numberOfTransportOperations == 0)
         {
@@ -139,7 +132,8 @@ class MessageDispatcher(
             var (isTopic, operations) = destinationAndOperations.Value;
 
             var messagesToSend = new Queue<(ServiceBusMessage Message, TopicRoutingMode RoutingMode)>(operations.Count);
-            foreach (var operation in operations)
+
+            foreach (var operation in GetOperationsForDispatch(operations, orderingRequired))
             {
                 ServiceBusMessage message = operation.ToAzureServiceBusMessage(
                     azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
@@ -164,6 +158,24 @@ class MessageDispatcher(
         }
 
         return Task.WhenAll(dispatchTasks);
+    }
+
+    static IEnumerable<IOutgoingTransportOperation> GetOperationsForDispatch(List<IOutgoingTransportOperation> operations, bool orderingRequired)
+    {
+        if (!orderingRequired)
+        {
+            return operations;
+        }
+
+        var orderedOperations = operations.OrderBy(x =>
+        {
+            var dispatchProps = x.Properties;
+            var seq = dispatchProps.TryGetValue("NServiceBus.Transport.AzureServiceBus.Sequence", out var seqString)
+                ? int.Parse(seqString)
+                : 0;
+            return seq;
+        });
+        return orderedOperations;
     }
 
     static readonly ConcurrentDictionary<string, string[]> NormalizedEnclosedMessageTypesCache = new(StringComparer.OrdinalIgnoreCase);

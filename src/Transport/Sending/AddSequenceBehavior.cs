@@ -8,8 +8,10 @@ sealed class AddSequenceBehavior : IBehavior<IOutgoingLogicalMessageContext, IOu
 {
     public Task Invoke(IOutgoingLogicalMessageContext context, Func<IOutgoingLogicalMessageContext, Task> next)
     {
+        //HINT: We are only interested in ordering messages with session ID
         if (context.Extensions.TryGet(out SessionOrderingProvider? orderingProvider)
-            && context.Extensions.TryGet(out DispatchProperties? dispatchProperties))
+            && context.Extensions.TryGet(out DispatchProperties? dispatchProperties)
+            && dispatchProperties.ContainsKey("SessionId"))
         {
             dispatchProperties["NServiceBus.Transport.AzureServiceBus.Sequence"] = orderingProvider.NextSequence();
         }
