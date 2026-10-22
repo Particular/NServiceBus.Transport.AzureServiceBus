@@ -1,6 +1,5 @@
 ﻿namespace NServiceBus.Transport.AzureServiceBus.Sending;
 
-using System;
 using Features;
 
 sealed class EnforceOutgoingMessageOrderFeature : Feature

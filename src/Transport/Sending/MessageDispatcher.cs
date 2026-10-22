@@ -11,7 +11,6 @@ using System.Transactions;
 using Azure.Messaging.ServiceBus;
 using EventRouting;
 using Logging;
-using NServiceBus.Outbox;
 
 class MessageDispatcher(
     ServiceBusClient defaultClient,
