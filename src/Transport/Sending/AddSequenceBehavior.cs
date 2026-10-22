@@ -11,7 +11,7 @@ sealed class AddSequenceBehavior : IBehavior<IOutgoingLogicalMessageContext, IOu
         if (context.Extensions.TryGet(out SessionOrderingProvider? orderingProvider)
             && context.Extensions.TryGet(out DispatchProperties? dispatchProperties))
         {
-            dispatchProperties["Sequence"] = orderingProvider.NextSequence();
+            dispatchProperties["NServiceBus.Transport.AzureServiceBus.Sequence"] = orderingProvider.NextSequence();
         }
 
         return next(context);

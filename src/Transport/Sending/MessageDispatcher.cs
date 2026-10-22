@@ -49,7 +49,7 @@ class MessageDispatcher(
         {
             //TODO: Would it be more efficient to use strings and lexicographic order?
             var dispatchProps = x.Properties;
-            var seq = dispatchProps.TryGetValue("Sequence", out var seqString) 
+            var seq = dispatchProps.TryGetValue("NServiceBus.Transport.AzureServiceBus.Sequence", out var seqString) 
                 ? int.Parse(seqString)
                 : 0;
             return seq;
