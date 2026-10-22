@@ -3,6 +3,7 @@ namespace NServiceBus.Transport.AzureServiceBus;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,7 +45,17 @@ class MessageDispatcher(
         var numberOfDefaultOperations = 0;
         var numberOfIsolatedOperations = 0;
 
-        foreach (var operation in transportOperations)
+        var orderedOperations = transportOperations.OrderBy(x =>
+        {
+            //TODO: Would it be more efficient to use strings and lexicographic order?
+            var dispatchProps = x.Properties;
+            var seq = dispatchProps.TryGetValue("Sequence", out var seqString) 
+                ? int.Parse(seqString)
+                : 0;
+            return seq;
+        });
+
+        foreach (var operation in orderedOperations)
         {
             var (destination, _, _) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
             switch (operation.RequiredDispatchConsistency)
