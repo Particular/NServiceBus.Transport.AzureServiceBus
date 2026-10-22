@@ -53,7 +53,7 @@ public class When_multiple_messages_sent_to_same_session_from_a_handler : NServi
         }
 
         [Handler]
-        public class TriggerMessageHandler(Context testContext) : IHandleMessages<TriggerMessage>
+        public class TriggerMessageHandler : IHandleMessages<TriggerMessage>
         {
             public async Task Handle(TriggerMessage message, IMessageHandlerContext context)
             {
