@@ -257,6 +257,12 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         }
         catch (UnauthorizedAccessException unauthorizedAccessException)
         {
+            if (await SubscriptionExists(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false))
+            {
+                Logger.InfoFormat("Subscription {0} could not be created, but it already exists. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
+                return;
+            }
+
             Logger.ErrorFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
             throw;
         }
@@ -325,8 +331,48 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         }
         catch (UnauthorizedAccessException unauthorizedAccessException)
         {
+            if (await SubscriptionExists(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false))
+            {
+                Logger.InfoFormat("Subscription {0} could not be created, but it already exists. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
+                return;
+            }
+
             Logger.ErrorFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
             throw;
+        }
+    }
+
+    // Creating a subscription requires Manage rights even when it exists, reading its rules only needs Listen.
+    static async Task<bool> SubscriptionExists(string topicName, string subscriptionName,
+        SubscriptionManagerCreationOptions creationOptions,
+        CancellationToken cancellationToken)
+    {
+        var ruleManager = creationOptions.Client.CreateRuleManager(topicName, subscriptionName);
+        await using (ruleManager.ConfigureAwait(false))
+        {
+            try
+            {
+                await foreach (var _ in ruleManager.GetRulesAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    break;
+                }
+
+                return true;
+            }
+            // A missing subscription surfaces as a timeout rather than as not found.
+            catch (ServiceBusException)
+            {
+                return false;
+            }
+            // Rules can't be browsed on a forwarding subscription, which also proves it exists.
+            catch (InvalidOperationException ex) when (ex.Message.Contains("auto-forwarding", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
         }
     }
 
