@@ -100,20 +100,28 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         if (hasCatchAll || filteredEntries.Length == 0)
         {
             await CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            await CreateSubscriptionWithFalseDefaultRule(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
+            await AddFilterRules(topicName, subscriptionName, filteredEntries, creationOptions, cancellationToken).ConfigureAwait(false);
+            return;
         }
 
-        if (filteredEntries.Length > 0)
+        // Rules first, because creating a subscription requires Manage rights even when it exists while managing rules doesn't.
+        try
         {
-            await Task.WhenAll([.. filteredEntries.Select(async e =>
-            {
-                await AddFilterRule(topicName, subscriptionName, e.EventTypeFullName, e.Entry.RoutingMode!.Value, creationOptions, cancellationToken).ConfigureAwait(false);
-            })]).ConfigureAwait(false);
+            await AddFilterRules(topicName, subscriptionName, filteredEntries, creationOptions, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+        {
+            await CreateSubscriptionWithFalseDefaultRule(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
+            await AddFilterRules(topicName, subscriptionName, filteredEntries, creationOptions, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    static Task AddFilterRules(string topicName, string subscriptionName,
+        (string EventTypeFullName, SubscriptionEntry Entry)[] filteredEntries,
+        SubscriptionManagerCreationOptions creationOptions,
+        CancellationToken cancellationToken) =>
+        Task.WhenAll([.. filteredEntries.Select(e =>
+            AddFilterRule(topicName, subscriptionName, e.EventTypeFullName, e.Entry.RoutingMode!.Value, creationOptions, cancellationToken))]);
 
     string? ValidateSubscriptionConfiguration(MessageMetadata[] eventTypes)
     {
@@ -331,12 +339,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         }
         catch (UnauthorizedAccessException unauthorizedAccessException)
         {
-            if (await SubscriptionExists(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false))
-            {
-                Logger.InfoFormat("Subscription {0} could not be created, but it already exists. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
-                return;
-            }
-
             Logger.ErrorFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
             throw;
         }
