@@ -58,6 +58,23 @@ public class When_subscribing_with_least_privilege : NServiceBusAcceptanceTest
         }
     }
 
+    [Test]
+    public async Task Should_report_failure_without_manage_rights_when_subscription_is_missing()
+    {
+        Requires.NativePubSubSupport();
+
+        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
+        await adminClient.CreateTopicAsync(AcceptanceTestEntityNames.For(typeof(MyEvent).ToTopicName()));
+
+        var context = await Scenario.Define<Context>()
+            .WithEndpoint<Subscriber>(b => b.CustomConfig(UseLeastPrivilege))
+            .Done(c => c.EndpointsStarted)
+            .Run();
+
+        Assert.That(context.Logs.Where(l => l.Level == LogLevel.Error).Select(l => l.Message),
+            Has.Some.Contains("could not be created"));
+    }
+
     static void UseLeastPrivilege(EndpointConfiguration c)
     {
         c.GetSettings().Set("Installers.Enable", false);
