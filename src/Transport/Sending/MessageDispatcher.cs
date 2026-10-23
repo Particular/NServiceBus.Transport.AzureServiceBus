@@ -3,7 +3,6 @@ namespace NServiceBus.Transport.AzureServiceBus;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +10,7 @@ using System.Transactions;
 using Azure.Messaging.ServiceBus;
 using EventRouting;
 using Logging;
+using Sending;
 
 class MessageDispatcher(
     ServiceBusClient defaultClient,
@@ -49,7 +49,7 @@ class MessageDispatcher(
 
         foreach (var operation in transportOperations)
         {
-            orderingRequired |= operation.Properties.ContainsKey("NServiceBus.Transport.AzureServiceBus.Sequence");
+            orderingRequired |= operation.Properties.ContainsKey(AddSequenceBehavior.SequenceDispatchProperty);
             var (destination, _, _) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
             switch (operation.RequiredDispatchConsistency)
             {
@@ -132,7 +132,12 @@ class MessageDispatcher(
 
             var messagesToSend = new Queue<(ServiceBusMessage Message, TopicRoutingMode RoutingMode)>(operations.Count);
 
-            foreach (var operation in GetOperationsForDispatch(operations, orderingRequired))
+            if (orderingRequired)
+            {
+                operations.Sort(CompareSequence);
+            }
+
+            foreach (var operation in operations)
             {
                 ServiceBusMessage message = operation.ToAzureServiceBusMessage(
                     azureServiceBusTransportTransaction?.IncomingQueuePartitionKey);
@@ -159,22 +164,16 @@ class MessageDispatcher(
         return Task.WhenAll(dispatchTasks);
     }
 
-    static IEnumerable<IOutgoingTransportOperation> GetOperationsForDispatch(List<IOutgoingTransportOperation> operations, bool orderingRequired)
+    static int CompareSequence(IOutgoingTransportOperation left, IOutgoingTransportOperation right)
     {
-        if (!orderingRequired)
+        if (!left.Properties.TryGetValue(AddSequenceBehavior.SequenceDispatchProperty, out var x)
+            || !right.Properties.TryGetValue(AddSequenceBehavior.SequenceDispatchProperty, out var y))
         {
-            return operations;
+            return 0;
         }
 
-        var orderedOperations = operations.OrderBy(x =>
-        {
-            var dispatchProps = x.Properties;
-            var seq = dispatchProps.TryGetValue("NServiceBus.Transport.AzureServiceBus.Sequence", out var seqString)
-                ? int.Parse(seqString)
-                : 0;
-            return seq;
-        });
-        return orderedOperations;
+        var result = x.Length.CompareTo(y.Length);
+        return result != 0 ? result : string.CompareOrdinal(x, y);
     }
 
     static readonly ConcurrentDictionary<string, string[]> NormalizedEnclosedMessageTypesCache = new(StringComparer.OrdinalIgnoreCase);
