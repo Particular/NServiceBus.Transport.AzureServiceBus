@@ -175,6 +175,12 @@ sealed class MessagePump(
         }
 
         Logger.Warn(message, processErrorEventArgs.Exception);
+
+        if (!processErrorEventArgs.ShouldArmCircuitBreaker())
+        {
+            return;
+        }
+
         await circuitBreaker!.Failure(processErrorEventArgs.Exception, processErrorEventArgs.CancellationToken)
             .ConfigureAwait(false);
     }
