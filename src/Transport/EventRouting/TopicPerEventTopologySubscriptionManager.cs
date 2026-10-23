@@ -366,8 +366,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             {
                 return false;
             }
-            // Rules can't be browsed on a forwarding subscription, which also proves it exists.
-            catch (InvalidOperationException ex) when (ex.Message.Contains("auto-forwarding", StringComparison.OrdinalIgnoreCase))
+            // The SDK maps the service's "not allowed" (browsing a forwarding subscription) to this, which only happens for existing entities.
+            catch (InvalidOperationException)
             {
                 return true;
             }
