@@ -43,6 +43,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
         EnableEndpointFeature<NativeMessageCustomizationFeature>();
         EnableEndpointFeature<AddSessionIdToSagaTimeOutFeature>();
+        EnableEndpointFeature<EnforceOutgoingMessageOrderFeature>();
     }
 
     /// <summary>
@@ -67,6 +68,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
 
         EnableEndpointFeature<NativeMessageCustomizationFeature>();
         EnableEndpointFeature<AddSessionIdToSagaTimeOutFeature>();
+        EnableEndpointFeature<EnforceOutgoingMessageOrderFeature>();
     }
 
     /// <inheritdoc />

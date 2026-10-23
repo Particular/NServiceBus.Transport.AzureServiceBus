@@ -10,6 +10,7 @@ using System.Transactions;
 using Azure.Messaging.ServiceBus;
 using EventRouting;
 using Logging;
+using Sending;
 
 class MessageDispatcher(
     ServiceBusClient defaultClient,
@@ -44,8 +45,11 @@ class MessageDispatcher(
         var numberOfDefaultOperations = 0;
         var numberOfIsolatedOperations = 0;
 
+        var orderingRequired = false;
+
         foreach (var operation in transportOperations)
         {
+            orderingRequired |= operation.Properties.ContainsKey(AddSequenceBehavior.SequenceDispatchProperty);
             var (destination, _, _) = operation.ExtractDestinationAndMultiplexingOptions(topology, destinationManager);
             switch (operation.RequiredDispatchConsistency)
             {
@@ -92,7 +96,7 @@ class MessageDispatcher(
         Task[] dispatchTasks =
         [
             DispatchIsolatedOperations(isolatedOperationsPerDestination ?? emptyDestinationAndOperations, numberOfIsolatedOperations, transaction, azureServiceBusTransaction, cancellationToken),
-            DispatchBatchedOperations(defaultOperationsPerDestination ?? emptyDestinationAndOperations, numberOfDefaultOperations, transaction, azureServiceBusTransaction, cancellationToken)
+            DispatchBatchedOperations(defaultOperationsPerDestination ?? emptyDestinationAndOperations, numberOfDefaultOperations, transaction, azureServiceBusTransaction, orderingRequired, cancellationToken)
         ];
 
         try
@@ -108,13 +112,12 @@ class MessageDispatcher(
 
     // The parameters of this method are deliberately mutable and of the original collection type to make sure
     // no boxing occurs
-    Task DispatchBatchedOperations(
-        Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> transportOperationsPerDestination,
+    Task DispatchBatchedOperations(Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> transportOperationsPerDestination,
         int numberOfTransportOperations,
         TransportTransaction transportTransaction,
         AzureServiceBusTransportTransaction? azureServiceBusTransportTransaction,
-        CancellationToken cancellationToken
-    )
+        bool orderingRequired,
+        CancellationToken cancellationToken)
     {
         if (numberOfTransportOperations == 0)
         {
@@ -128,6 +131,12 @@ class MessageDispatcher(
             var (isTopic, operations) = destinationAndOperations.Value;
 
             var messagesToSend = new Queue<(ServiceBusMessage Message, TopicRoutingMode RoutingMode)>(operations.Count);
+
+            if (orderingRequired)
+            {
+                operations.Sort(CompareSequence);
+            }
+
             foreach (var operation in operations)
             {
                 ServiceBusMessage message = operation.ToAzureServiceBusMessage(
@@ -153,6 +162,18 @@ class MessageDispatcher(
         }
 
         return Task.WhenAll(dispatchTasks);
+    }
+
+    static int CompareSequence(IOutgoingTransportOperation left, IOutgoingTransportOperation right)
+    {
+        if (!left.Properties.TryGetValue(AddSequenceBehavior.SequenceDispatchProperty, out var x)
+            || !right.Properties.TryGetValue(AddSequenceBehavior.SequenceDispatchProperty, out var y))
+        {
+            return 0;
+        }
+
+        var result = x.Length.CompareTo(y.Length);
+        return result != 0 ? result : string.CompareOrdinal(x, y);
     }
 
     static readonly ConcurrentDictionary<string, string[]> NormalizedEnclosedMessageTypesCache = new(StringComparer.OrdinalIgnoreCase);
