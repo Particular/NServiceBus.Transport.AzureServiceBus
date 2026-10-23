@@ -361,7 +361,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
                 return true;
             }
-            // A missing subscription surfaces as a timeout rather than as not found.
+            // A missing subscription currently surfaces as a timeout, see Azure/azure-sdk-for-net#64167. A fixed SDK would report it as not found.
             catch (ServiceBusException)
             {
                 return false;
