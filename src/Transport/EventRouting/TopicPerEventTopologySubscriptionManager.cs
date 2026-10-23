@@ -100,20 +100,28 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         if (hasCatchAll || filteredEntries.Length == 0)
         {
             await CreateCatchAllSubscription(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            await CreateSubscriptionWithFalseDefaultRule(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
+            await AddFilterRules(topicName, subscriptionName, filteredEntries, creationOptions, cancellationToken).ConfigureAwait(false);
+            return;
         }
 
-        if (filteredEntries.Length > 0)
+        // Rules first, because creating a subscription requires Manage rights even when it exists while managing rules doesn't.
+        try
         {
-            await Task.WhenAll([.. filteredEntries.Select(async e =>
-            {
-                await AddFilterRule(topicName, subscriptionName, e.EventTypeFullName, e.Entry.RoutingMode!.Value, creationOptions, cancellationToken).ConfigureAwait(false);
-            })]).ConfigureAwait(false);
+            await AddFilterRules(topicName, subscriptionName, filteredEntries, creationOptions, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+        {
+            await CreateSubscriptionWithFalseDefaultRule(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false);
+            await AddFilterRules(topicName, subscriptionName, filteredEntries, creationOptions, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    static Task AddFilterRules(string topicName, string subscriptionName,
+        (string EventTypeFullName, SubscriptionEntry Entry)[] filteredEntries,
+        SubscriptionManagerCreationOptions creationOptions,
+        CancellationToken cancellationToken) =>
+        Task.WhenAll([.. filteredEntries.Select(e =>
+            AddFilterRule(topicName, subscriptionName, e.EventTypeFullName, e.Entry.RoutingMode!.Value, creationOptions, cancellationToken))]);
 
     string? ValidateSubscriptionConfiguration(MessageMetadata[] eventTypes)
     {
@@ -257,6 +265,12 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         }
         catch (UnauthorizedAccessException unauthorizedAccessException)
         {
+            if (await SubscriptionExists(topicName, subscriptionName, creationOptions, cancellationToken).ConfigureAwait(false))
+            {
+                Logger.InfoFormat("Subscription {0} could not be created, but it already exists. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
+                return;
+            }
+
             Logger.ErrorFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
             throw;
         }
@@ -327,6 +341,40 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         {
             Logger.ErrorFormat("Subscription {0} could not be created. Reason: {1}", subscriptionName, unauthorizedAccessException.Message);
             throw;
+        }
+    }
+
+    // The administration client (SubscriptionExistsAsync) needs Manage rights, which is what we lack here. The rule manager only needs Listen.
+    static async Task<bool> SubscriptionExists(string topicName, string subscriptionName,
+        SubscriptionManagerCreationOptions creationOptions,
+        CancellationToken cancellationToken)
+    {
+        var ruleManager = creationOptions.Client.CreateRuleManager(topicName, subscriptionName);
+        await using (ruleManager.ConfigureAwait(false))
+        {
+            try
+            {
+                await foreach (var _ in ruleManager.GetRulesAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    break;
+                }
+
+                return true;
+            }
+            // A missing subscription currently surfaces as a timeout, see Azure/azure-sdk-for-net#64167. A fixed SDK would report it as not found.
+            catch (ServiceBusException)
+            {
+                return false;
+            }
+            // The SDK maps the service's "not allowed" (browsing a forwarding subscription) to this, which only happens for existing entities.
+            catch (InvalidOperationException)
+            {
+                return true;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
         }
     }
 
