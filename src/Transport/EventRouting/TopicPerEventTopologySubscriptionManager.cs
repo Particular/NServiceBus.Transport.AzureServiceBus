@@ -344,7 +344,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         }
     }
 
-    // Creating a subscription requires Manage rights even when it exists, reading its rules only needs Listen.
+    // The administration client (SubscriptionExistsAsync) needs Manage rights, which is what we lack here. The rule manager only needs Listen.
     static async Task<bool> SubscriptionExists(string topicName, string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken)
