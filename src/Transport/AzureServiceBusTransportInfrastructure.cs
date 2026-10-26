@@ -166,6 +166,12 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             await Task.WhenAll(Receivers.Values.Select(r => r.StopReceive(cancellationToken)))
                 .ConfigureAwait(false);
 
+            await Task.WhenAll(Receivers.Values
+                    .Select(r => r.Subscriptions is SubscriptionManager subscriptionManager
+                        ? subscriptionManager.Shutdown(cancellationToken)
+                        : Task.CompletedTask))
+                .ConfigureAwait(false);
+
             await messageSenderRegistry.Close(cancellationToken).ConfigureAwait(false);
         }
         finally
