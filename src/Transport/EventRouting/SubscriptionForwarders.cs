@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
+using Logging;
 using Receiving;
 
 sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string inputQueue, TimeSpan timeBeforeTriggeringCircuitBreaker, Action<string, Exception, CancellationToken> criticalErrorAction) : ISubscriptionForwarders
@@ -70,10 +71,29 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
     public async Task Shutdown(CancellationToken cancellationToken = default)
     {
         //HINT: No need to lock because we are shutting down the endpoint and noone can subscribe or unsubscribe now
-        foreach (var forwarder in forwarders)
+        foreach (var forwarder in forwarders.Values)
         {
-            await forwarder.Value.Stop(cancellationToken).ConfigureAwait(false);
-            await forwarder.Value.DisposeAsync().ConfigureAwait(false);
+            try
+            {
+                await forwarder.Stop(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
+            {
+                if (Logger.IsDebugEnabled)
+                {
+                    Logger.Debug("Operation canceled while stopping a subscription forwarder.", ex);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn("Failed to stop a subscription forwarder.", ex);
+            }
+            finally
+            {
+                await forwarder.DisposeAsync().ConfigureAwait(false);
+            }
         }
     }
+
+    static readonly ILog Logger = LogManager.GetLogger<SubscriptionForwarders>();
 }
