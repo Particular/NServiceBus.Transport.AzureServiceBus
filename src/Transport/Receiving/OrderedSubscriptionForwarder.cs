@@ -129,6 +129,8 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
             sender = null;
         }
 
+        await forwardingClient.DisposeAsync().ConfigureAwait(false);
+
         circuitBreaker.Dispose();
     }
 
