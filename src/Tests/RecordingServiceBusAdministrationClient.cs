@@ -14,6 +14,7 @@ public class RecordingServiceBusAdministrationClient(StringBuilder builder = nul
     public override Task<Response<SubscriptionProperties>> CreateSubscriptionAsync(CreateSubscriptionOptions options, CreateRuleOptions rule,
         CancellationToken cancellationToken = default)
     {
+        RecordingServiceBusClient.RecordSubscriptionCreated(builder, options.TopicName, options.SubscriptionName);
         builder.AppendLine($"CreateSubscriptionOptions: {JsonSerializer.Serialize(options, SkdJsonSerializerContext.PolymorphicOptions)}");
         builder.AppendLine($"CreateRuleOptions: {JsonSerializer.Serialize(rule, SkdJsonSerializerContext.PolymorphicOptions)}");
         return Task.FromResult<Response<SubscriptionProperties>>(null);
