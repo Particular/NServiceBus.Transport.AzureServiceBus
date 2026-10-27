@@ -49,9 +49,14 @@
                 Description = "Enable partitioning"
             };
 
+            var sessions = new CommandOption("-se|--sessions", CommandOptionType.NoValue)
+            {
+                Description = "Enable sessions, required for endpoints that set AzureServiceBusTransport.EnableSessions"
+            };
+
             app.HelpOption(inherited: true);
 
-            void SubscribeTopicPerEventType(CommandLineApplication subscribeCommand)
+            void SubscribeTopicPerEventType(CommandLineApplication subscribeCommand, bool supportsSessions)
             {
                 subscribeCommand.Description = "Subscribes an endpoint to an event using topic-per-event topology.";
                 var name = subscribeCommand.Argument("name", "Name of the endpoint (required)").IsRequired();
@@ -62,6 +67,10 @@
                 subscribeCommand.AddOption(size);
                 subscribeCommand.AddOption(partitioning);
                 subscribeCommand.AddOption(hierarchyNamespace);
+                if (supportsSessions)
+                {
+                    subscribeCommand.AddOption(sessions);
+                }
                 var subscriptionName = subscribeCommand.Option("-b|--subscription", "Subscription name (defaults to endpoint name) ", CommandOptionType.SingleValue);
                 var routingMode = subscribeCommand.Option("--routing-mode", "Routing mode: 'correlation-filter' or 'sql-filter'", CommandOptionType.SingleValue);
                 var eventTypes = subscribeCommand.Option("--event-type", "Event type full name to add a filtered rule for (can be specified multiple times)", CommandOptionType.MultipleValue);
@@ -74,13 +83,13 @@
                     {
                         var useCorrelation = ParseRoutingMode(routingMode);
                         var types = new List<string>(eventTypes.Values);
-                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.SubscribeWithFilter(client, name, topicName, subscriptionName, size, partitioning, hierarchyNamespace, types, useCorrelation));
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.SubscribeWithFilter(client, name, topicName, subscriptionName, size, partitioning, hierarchyNamespace, types, useCorrelation, sessions.HasValue()));
 
                         Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{topicName.Value}' with routing mode '{(useCorrelation ? "correlation-filter" : "sql-filter")}'.");
                     }
                     else
                     {
-                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, size, partitioning, hierarchyNamespace));
+                        await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => TopicPerEventTopologyEndpoint.Subscribe(client, name, topicName, subscriptionName, size, partitioning, hierarchyNamespace, sessions.HasValue()));
 
                         Console.WriteLine($"Endpoint '{name.Value}' subscribed to '{topicName.Value}'.");
                     }
@@ -137,19 +146,20 @@
                     createCommand.AddOption(deliveryCount);
                     createCommand.AddOption(partitioning);
                     createCommand.AddOption(hierarchyNamespace);
+                    createCommand.AddOption(sessions);
 
                     var forwardDlqTo = CreateForwardDlqToOption(createCommand, name, hierarchyNamespace);
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
                         await CommandRunner.Run(connectionString, fullyQualifiedNamespace,
-                            client => TopicPerEventTopologyEndpoint.Create(client, name, size, deliveryCount, partitioning, hierarchyNamespace, forwardDlqTo));
+                            client => TopicPerEventTopologyEndpoint.Create(client, name, size, deliveryCount, partitioning, hierarchyNamespace, forwardDlqTo, sessions.HasValue()));
 
                         Console.WriteLine($"Endpoint '{name.Value}' is ready.");
                     });
                 });
 
-                endpointCommand.Command("subscribe", SubscribeTopicPerEventType);
+                endpointCommand.Command("subscribe", subscribeCommand => SubscribeTopicPerEventType(subscribeCommand, supportsSessions: true));
                 endpointCommand.Command("unsubscribe", UnsubscribeTopicPerEventType);
             });
 
@@ -282,7 +292,8 @@
                         });
                     });
 
-                    endpointCommand.Command("subscribe-migrated", SubscribeTopicPerEventType);
+                    // The transport does not support sessions in combination with the migration topology
+                    endpointCommand.Command("subscribe-migrated", subscribeCommand => SubscribeTopicPerEventType(subscribeCommand, supportsSessions: false));
                     endpointCommand.Command("unsubscribe-migrated", UnsubscribeTopicPerEventType);
                 });
             });
@@ -307,13 +318,14 @@
                     createCommand.AddOption(deliveryCount);
                     createCommand.AddOption(partitioning);
                     createCommand.AddOption(hierarchyNamespace);
+                    createCommand.AddOption(sessions);
                     var forwardDlqTo = CreateForwardDlqToOption(createCommand, name, hierarchyNamespace);
 
                     createCommand.OnExecuteAsync(async ct =>
                     {
                         try
                         {
-                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Create(client, name, size, deliveryCount, partitioning, hierarchyNamespace, forwardDlqTo));
+                            await CommandRunner.Run(connectionString, fullyQualifiedNamespace, client => Queue.Create(client, name, size, deliveryCount, partitioning, hierarchyNamespace, forwardDlqTo, sessions.HasValue()));
                             Console.WriteLine($"Queue name '{name.Value}', size '{(size.HasValue() ? size.ParsedValue : 5)}GB', partitioned '{partitioning.HasValue()}' created");
                         }
                         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)

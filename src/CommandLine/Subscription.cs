@@ -28,21 +28,13 @@
             return client.CreateSubscriptionAsync(options, new CreateRuleOptions("$default", new FalseRuleFilter()));
         }
 
-        public static Task CreateWithMatchAll(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandArgument topicName, CommandOption subscriptionName, CommandOption hierarchyNamespace)
+        public static Task CreateWithMatchAll(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandArgument topicName, CommandOption subscriptionName, CommandOption hierarchyNamespace, bool requiresSession)
         {
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
 
             var topicNameToUse = topicName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
 
-            var options = new CreateSubscriptionOptions(topicNameToUse, subscriptionNameToUse)
-            {
-                LockDuration = TimeSpan.FromMinutes(5),
-                ForwardTo = endpointName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace),
-                EnableDeadLetteringOnFilterEvaluationExceptions = false,
-                MaxDeliveryCount = int.MaxValue,
-                EnableBatchedOperations = true,
-                UserMetadata = endpointName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace)
-            };
+            var options = BuildTopicPerEventSubscriptionOptions(topicNameToUse, subscriptionNameToUse, endpointName, hierarchyNamespace, requiresSession);
 
             return client.CreateSubscriptionAsync(options, new CreateRuleOptions("$default", new TrueRuleFilter()));
         }
@@ -72,21 +64,13 @@
             return client.DeleteSubscriptionAsync(topicNameToUse, subscriptionNameToUse);
         }
 
-        public static async Task CreateWithFilteredRules(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandArgument topicName, CommandOption subscriptionName, CommandOption hierarchyNamespace, List<string> eventTypes, bool useCorrelationFilter)
+        public static async Task CreateWithFilteredRules(ServiceBusAdministrationClient client, CommandArgument endpointName, CommandArgument topicName, CommandOption subscriptionName, CommandOption hierarchyNamespace, List<string> eventTypes, bool useCorrelationFilter, bool requiresSession)
         {
             var subscriptionNameToUse = subscriptionName.HasValue() ? subscriptionName.Value() : endpointName.Value;
 
             var topicNameToUse = topicName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
 
-            var options = new CreateSubscriptionOptions(topicNameToUse, subscriptionNameToUse)
-            {
-                LockDuration = TimeSpan.FromMinutes(5),
-                ForwardTo = endpointName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace),
-                EnableDeadLetteringOnFilterEvaluationExceptions = false,
-                MaxDeliveryCount = int.MaxValue,
-                EnableBatchedOperations = true,
-                UserMetadata = endpointName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace)
-            };
+            var options = BuildTopicPerEventSubscriptionOptions(topicNameToUse, subscriptionNameToUse, endpointName, hierarchyNamespace, requiresSession);
 
             try
             {
@@ -149,6 +133,27 @@
                 await client.DeleteSubscriptionAsync(topicNameToUse, subscriptionNameToUse).ConfigureAwait(false);
                 Console.WriteLine($"Subscription '{subscriptionNameToUse}' deleted (no rules remain).");
             }
+        }
+
+        static CreateSubscriptionOptions BuildTopicPerEventSubscriptionOptions(string topicName, string subscriptionName, CommandArgument endpointName, CommandOption hierarchyNamespace, bool requiresSession)
+        {
+            var options = new CreateSubscriptionOptions(topicName, subscriptionName)
+            {
+                LockDuration = TimeSpan.FromMinutes(5),
+                EnableDeadLetteringOnFilterEvaluationExceptions = false,
+                MaxDeliveryCount = int.MaxValue,
+                EnableBatchedOperations = true,
+                UserMetadata = endpointName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace),
+                RequiresSession = requiresSession
+            };
+
+            // Session-enabled subscriptions are drained into the endpoint queue by the transport's subscription forwarder instead of broker auto-forwarding.
+            if (!requiresSession)
+            {
+                options.ForwardTo = endpointName.ToHierarchyNamespaceAwareDestination(hierarchyNamespace);
+            }
+
+            return options;
         }
 
         static string GetRuleName(string eventTypeFullName)
