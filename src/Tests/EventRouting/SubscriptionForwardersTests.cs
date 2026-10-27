@@ -149,6 +149,44 @@ public class SubscriptionForwardersTests
         Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/Subscription" }));
     }
 
+    [Test, CancelAfter(10_000)]
+    public async Task Should_dispose_all_forwarders_when_shutdown_is_canceled(CancellationToken cancellationToken = default)
+    {
+        var releaseStopProcessing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var clientFactory = new FakeForwardingClientFactory { StopProcessing = () => releaseStopProcessing.Task };
+        var forwarders = CreateForwarders(clientFactory);
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Register("Topic2", "Subscription", "Event2", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Start(cancellationToken).WaitAsync(cancellationToken);
+
+        var shuttingDown = forwarders.Shutdown(new CancellationToken(true));
+        releaseStopProcessing.SetResult();
+        await shuttingDown.WaitAsync(cancellationToken);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(clientFactory.Processors.Select(processor => processor.IsActive), Is.All.False);
+            Assert.That(clientFactory.Clients.Select(client => client.DisposeCount), Is.All.EqualTo(1));
+            Assert.That(clientFactory.Clients.SelectMany(client => client.Senders).Select(sender => sender.WasDisposed), Is.All.True);
+        }
+    }
+
+    [Test, CancelAfter(10_000)]
+    public async Task Should_start_processing_when_registered_again_after_a_failed_start(CancellationToken cancellationToken = default)
+    {
+        var clientFactory = new FakeForwardingClientFactory();
+        var forwarders = CreateForwarders(clientFactory);
+        await forwarders.Start(cancellationToken).WaitAsync(cancellationToken);
+
+        clientFactory.StartProcessing = () => throw new InvalidOperationException("start failed");
+        Assert.That(() => forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken), Throws.InvalidOperationException);
+        clientFactory.StartProcessing = () => Task.CompletedTask;
+
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+
+        Assert.That(clientFactory.Processors.Last().IsActive, Is.True);
+    }
+
     static async Task GoDormant(FakeForwardingClientFactory clientFactory, CancellationToken cancellationToken)
     {
         var client = clientFactory.Clients.Last();

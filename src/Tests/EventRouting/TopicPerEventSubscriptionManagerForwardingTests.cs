@@ -64,6 +64,28 @@ public class TopicPerEventSubscriptionManagerForwardingTests
     }
 
     [Test]
+    public async Task Should_also_forward_from_the_unprefixed_fallback_topic_when_types_are_excluded_from_the_hierarchy()
+    {
+        var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+        hierarchyOptions.ExcludeMessageType<MyEvent2>();
+        var topologyOptions = new TopologyOptions
+        {
+            HierarchyOptions = hierarchyOptions,
+            FallbackTopic = new FallbackTopicOptions { TopicName = "FallbackTopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
+        };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, subscribingQueueName: "my-hierarchy/SubscribingQueue");
+
+        await subscriptionManager.StartForwarders();
+
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[]
+        {
+            "my-hierarchy/FallbackTopic/SubscribingQueue",
+            "FallbackTopic/SubscribingQueue"
+        }));
+    }
+
+    [Test]
     public async Task Should_not_start_forwarders_without_mapped_events_or_fallback_topic()
     {
         var clientFactory = new FakeForwardingClientFactory();
