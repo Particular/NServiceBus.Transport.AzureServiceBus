@@ -53,11 +53,11 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     // and keeps the fallback forwarder running until shutdown. The $ prefix cannot clash with a type full name.
     const string FallbackTopicForwardingRegistration = "$fallback-topic";
 
-    // Core calls SubscribeAll before StartReceive unless auto-subscribe is disabled or the endpoint handles no events.
-    // Without it, the static topology mapping is the only source of the subscriptions to forward from.
+    // Without auto-subscribe the topology mapping is the only source of subscriptions to forward from.
+    // With it, SubscribeAll not being called means the endpoint handles no events.
     public override async Task StartForwarders(CancellationToken cancellationToken = default)
     {
-        if (CreationOptions.RequiresSession && !subscribeAllCalled)
+        if (CreationOptions.RequiresSession && !CreationOptions.AutoSubscribeActive && !subscribeAllCalled)
         {
             await RegisterForwardersFromTopologyMapping(cancellationToken).ConfigureAwait(false);
         }
@@ -78,7 +78,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         if (registrations.Count == 0)
         {
-            Logger.InfoFormat("No events were subscribed at startup, because auto-subscribe is disabled or the endpoint handles no events, and neither subscribed event mappings nor a fallback topic are configured. Events relying on the default topic convention will only be forwarded from subscription '{0}' to '{1}' after explicit Subscribe calls.", subscriptionName, CreationOptions.SubscribingQueueName);
+            Logger.InfoFormat("Auto-subscribe is disabled and neither subscribed event mappings nor a fallback topic are configured. Events relying on the default topic convention will only be forwarded from subscription '{0}' to '{1}' after explicit Subscribe calls.", subscriptionName, CreationOptions.SubscribingQueueName);
             return;
         }
 
