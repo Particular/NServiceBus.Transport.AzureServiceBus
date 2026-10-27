@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Extensibility;
+using NServiceBus.Transport.AzureServiceBus.EventRouting;
 using NUnit.Framework;
 using Unicast.Messages;
 
@@ -52,6 +53,28 @@ public class SessionsEnabledMessagePumpTests
         await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.CompletedTask,
             (_, _) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
         Assert.ThrowsAsync<ServiceBusException>(() => subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag()));
+        await pump.StartReceive();
+
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/receiveAddress" }));
+    }
+
+    [Test]
+    public async Task Should_start_forwarders_from_topology_mapping_in_raw_mode()
+    {
+        var topology = TopicTopology.Default;
+        topology.SubscribeTo<MyEvent1>("Topic1");
+        var transport = new AzureServiceBusTransport("connection-string", topology) { EnableSessions = true };
+        var hostSettings = new HostSettings("endpoint", "host", new StartupDiagnosticEntries(), (_, _, _) => { }, false);
+        var client = new FakeSessionProcessorClient();
+        var clientFactory = new FakeForwardingClientFactory();
+        var receiveSettings = new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), true, false, "error");
+
+        var infrastructure = new AzureServiceBusTransportInfrastructure(transport, hostSettings, [(receiveSettings, client)], client,
+            clientFactory.Create, new RecordingServiceBusAdministrationClient(), new DestinationManager(HierarchyNamespaceOptions.None));
+        var pump = infrastructure.Receivers["TestReceiver"];
+
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.CompletedTask,
+            (_, _) => Task.FromResult(ErrorHandleResult.Handled), CancellationToken.None);
         await pump.StartReceive();
 
         Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/receiveAddress" }));

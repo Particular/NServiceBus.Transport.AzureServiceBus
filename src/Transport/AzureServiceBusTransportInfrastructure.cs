@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using EventRouting;
+using Features;
 
 sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 {
@@ -114,6 +115,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     AdministrationClient = administrationClient,
                     Client = defaultClient,
                     RequiresSession = true,
+                    AutoSubscribeActive = IsAutoSubscribeActive(hostSettings),
                     ForwarderClientFactory = forwarderClientFactory,
                     EnablePartitioning = transportSettings.EnablePartitioning,
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
@@ -158,6 +160,9 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             subQueue
         );
     }
+
+    // Raw mode has no core settings and no auto-subscribe
+    internal static bool IsAutoSubscribeActive(HostSettings hostSettings) => hostSettings.CoreSettings?.IsFeatureActive<AutoSubscribe>() ?? false;
 
     public override async Task Shutdown(CancellationToken cancellationToken = default)
     {
