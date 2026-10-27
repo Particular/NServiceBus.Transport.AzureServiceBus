@@ -95,6 +95,60 @@
         }
 
         [Test]
+        public async Task Create_endpoint_with_sessions()
+        {
+            await DeleteQueue(QueueName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --sessions");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
+                Assert.That(output, Does.Not.Contain("skipping"));
+            }
+
+            await VerifyQueue(QueueName, requiresSession: true);
+        }
+
+        [Test]
+        public async Task Create_hierarchy_namespace_endpoint_with_sessions()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            await DeleteQueue(queueName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace} --sessions");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
+                Assert.That(output, Does.Not.Contain("skipping"));
+            }
+
+            await VerifyQueue(queueName, requiresSession: true);
+        }
+
+        [Test]
+        public async Task Create_endpoint_with_sessions_and_dlq_forwarding_does_not_enable_sessions_on_error_queue()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteQueue(ErrorQueueName);
+
+            var (output, error, exitCode) = await Execute($"endpoint create {EndpointName} --forward-dlq-to {ErrorQueueName} --sessions");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
+                Assert.That(output, Does.Not.Contain("skipping"));
+            }
+
+            await VerifyQueue(QueueName, forwardDeadLetteredMessagesTo: ErrorQueueName, requiresSession: true);
+            await VerifyQueue(ErrorQueueName);
+        }
+
+        [Test]
         public async Task Create_endpoint_with_dlq_forwarding_validates_target_is_not_self()
         {
             var (_, error, exitCode) = await Execute($"endpoint create {EndpointName} --forward-dlq-to {EndpointName}");
@@ -127,6 +181,18 @@
             {
                 Assert.That(exitCode, Is.EqualTo(1));
                 Assert.That(error, Does.Contain("Unrecognized option '--topic-to-publish-to'"));
+            }
+        }
+
+        [Test]
+        public async Task Create_migration_endpoint_rejects_sessions_option()
+        {
+            var (_, error, exitCode) = await Execute($"migration endpoint create {EndpointName} --sessions");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("Unrecognized option '--sessions'"));
             }
         }
 
@@ -400,6 +466,94 @@
             await VerifyTopic("MyMessage1");
             await VerifyTopicPerEventTypeSubscription("MyMessage1", SubscriptionName, QueueName);
             await VerifySubscriptionContainsOnlyDefaultMatchAllRule("MyMessage1", SubscriptionName);
+        }
+
+        [Test]
+        public async Task Subscribe_endpoint_with_sessions()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic("MyMessage1");
+
+            await Execute($"endpoint create {EndpointName} --sessions");
+            var (output, error, exitCode) = await Execute($"endpoint subscribe {EndpointName} MyMessage1 --sessions");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
+                Assert.That(output, Does.Not.Contain("skipping"));
+            }
+
+            await VerifyQueue(QueueName, requiresSession: true);
+            await VerifyTopic("MyMessage1", supportOrdering: true);
+            await VerifyTopicPerEventTypeSubscription("MyMessage1", SubscriptionName, QueueName, requiresSession: true);
+            await VerifySubscriptionContainsOnlyDefaultMatchAllRule("MyMessage1", SubscriptionName);
+        }
+
+        [Test]
+        public async Task Subscribe_hierarchy_namespace_endpoint_with_sessions()
+        {
+            var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+            var topicName = "MyMessage1".ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
+
+            await DeleteQueue(queueName);
+            await DeleteTopic(topicName);
+
+            await Execute($"endpoint create {EndpointName} --hierarchy-namespace {HierarchyNamespace} --sessions");
+            await Execute($"endpoint subscribe {EndpointName} MyMessage1 --hierarchy-namespace {HierarchyNamespace} --sessions");
+
+            await VerifyQueue(queueName, requiresSession: true);
+            await VerifyTopic(topicName, supportOrdering: true);
+            await VerifyTopicPerEventTypeSubscription(topicName, SubscriptionName, queueName, requiresSession: true);
+            await VerifySubscriptionContainsOnlyDefaultMatchAllRule(topicName, SubscriptionName);
+        }
+
+        [Test]
+        public async Task Subscribe_endpoint_with_sessions_and_correlation_filter()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            await Execute($"endpoint create {EndpointName} --sessions");
+            await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode correlation-filter --event-type MyNamespace.MyMessage1 --event-type MyNamespace.MyMessage2 --sessions");
+
+            await VerifyQueue(QueueName, requiresSession: true);
+            await VerifyTopic(TopicName, supportOrdering: true);
+            await VerifyFilteredSubscriptionWithCorrelationRules(TopicName, SubscriptionName, QueueName,
+            [
+                "MyNamespace.MyMessage1",
+                "MyNamespace.MyMessage2"
+            ], requiresSession: true);
+        }
+
+        [Test]
+        public async Task Subscribe_endpoint_with_sessions_and_sql_filter()
+        {
+            await DeleteQueue(QueueName);
+            await DeleteTopic(TopicName);
+
+            await Execute($"endpoint create {EndpointName} --sessions");
+            await Execute($"endpoint subscribe {EndpointName} {TopicName} --routing-mode sql-filter --event-type MyNamespace.MyMessage1 --event-type MyNamespace.MyMessage2 --sessions");
+
+            await VerifyQueue(QueueName, requiresSession: true);
+            await VerifyTopic(TopicName, supportOrdering: true);
+            await VerifyFilteredSubscriptionWithSqlRules(TopicName, SubscriptionName, QueueName,
+            [
+                "MyNamespace.MyMessage1",
+                "MyNamespace.MyMessage2"
+            ], requiresSession: true);
+        }
+
+        [Test]
+        public async Task Subscribe_migrated_endpoint_rejects_sessions_option()
+        {
+            var (_, error, exitCode) = await Execute($"migration endpoint subscribe-migrated {EndpointName} MyMessage1 --sessions");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.EqualTo(1));
+                Assert.That(error, Does.Contain("Unrecognized option '--sessions'"));
+            }
         }
 
         [Test]
@@ -851,6 +1005,23 @@
         }
 
         [Test]
+        public async Task Create_queue_with_sessions()
+        {
+            await DeleteQueue(QueueName);
+
+            var (output, error, exitCode) = await Execute($"queue create {QueueName} --sessions");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exitCode, Is.Zero);
+                Assert.That(error, Is.Empty);
+                Assert.That(output, Does.Not.Contain("skipping"));
+            }
+
+            await VerifyQueue(QueueName, requiresSession: true);
+        }
+
+        [Test]
         public async Task Create_hierarchy_namespace_queue_when_it_does_not_exist()
         {
             var queueName = QueueName.ToHierarchyNamespaceAwareDestination(HierarchyNamespace);
@@ -1044,7 +1215,7 @@
         public void Setup()
             => client = new ServiceBusAdministrationClient(Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
 
-        async Task VerifyQueue(string queueName, bool enablePartitioning = false, int size = 5 * 1024, int maxDeliveryCount = int.MaxValue, string forwardDeadLetteredMessagesTo = null)
+        async Task VerifyQueue(string queueName, bool enablePartitioning = false, int size = 5 * 1024, int maxDeliveryCount = int.MaxValue, string forwardDeadLetteredMessagesTo = null, bool requiresSession = false)
         {
             var actual = (await client.GetQueueAsync(queueName)).Value;
 
@@ -1055,6 +1226,7 @@
                 Assert.That(actual.EnableBatchedOperations, Is.True);
                 Assert.That(actual.EnablePartitioning, Is.EqualTo(enablePartitioning));
                 Assert.That(actual.MaxSizeInMegabytes, Is.EqualTo(size));
+                Assert.That(actual.RequiresSession, Is.EqualTo(requiresSession));
                 AssertDlqForwardingDestination(actual.ForwardDeadLetteredMessagesTo, forwardDeadLetteredMessagesTo);
             }
         }
@@ -1073,7 +1245,7 @@
                 $"Expected forwarding destination '{expectedForwardingDestination}' but got '{actualForwardingDestination}'.");
         }
 
-        async Task VerifyTopic(string topicName, bool enablePartitioning = false, int size = 5 * 1024)
+        async Task VerifyTopic(string topicName, bool enablePartitioning = false, int size = 5 * 1024, bool supportOrdering = false)
         {
             var actual = (await client.GetTopicAsync(topicName)).Value;
 
@@ -1082,22 +1254,36 @@
                 Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
                 Assert.That(actual.EnablePartitioning, Is.EqualTo(enablePartitioning));
                 Assert.That(actual.MaxSizeInMegabytes, Is.EqualTo(size));
+                Assert.That(actual.SupportOrdering, Is.EqualTo(supportOrdering));
             }
         }
 
-        async Task VerifyTopicPerEventTypeSubscription(string topicName, string subscriptionName, string queueName)
+        async Task VerifyTopicPerEventTypeSubscription(string topicName, string subscriptionName, string queueName, bool requiresSession = false)
         {
             var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
 
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
-                Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
+                AssertTopicPerEventSubscriptionForwarding(actual, queueName, requiresSession);
                 Assert.That(actual.EnableDeadLetteringOnFilterEvaluationExceptions, Is.EqualTo(false));
                 Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
                 Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
                 Assert.That(actual.UserMetadata, Is.EqualTo(queueName));
             }
+        }
+
+        static void AssertTopicPerEventSubscriptionForwarding(SubscriptionProperties actual, string queueName, bool requiresSession)
+        {
+            Assert.That(actual.RequiresSession, Is.EqualTo(requiresSession));
+
+            if (requiresSession)
+            {
+                Assert.That(actual.ForwardTo, Is.Null.Or.Empty);
+                return;
+            }
+
+            Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
         }
 
         async Task VerifySubscriptionDoesNotExist(string topicName, string subscriptionName)
@@ -1197,14 +1383,14 @@
             }
         }
 
-        async Task VerifyFilteredSubscriptionWithCorrelationRules(string topicName, string subscriptionName, string queueName, string[] expectedEventTypes)
+        async Task VerifyFilteredSubscriptionWithCorrelationRules(string topicName, string subscriptionName, string queueName, string[] expectedEventTypes, bool requiresSession = false)
         {
             var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
 
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
-                Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
+                AssertTopicPerEventSubscriptionForwarding(actual, queueName, requiresSession);
                 Assert.That(actual.EnableDeadLetteringOnFilterEvaluationExceptions, Is.EqualTo(false));
                 Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
                 Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
@@ -1234,14 +1420,14 @@
             }
         }
 
-        async Task VerifyFilteredSubscriptionWithSqlRules(string topicName, string subscriptionName, string queueName, string[] expectedEventTypes)
+        async Task VerifyFilteredSubscriptionWithSqlRules(string topicName, string subscriptionName, string queueName, string[] expectedEventTypes, bool requiresSession = false)
         {
             var actual = (await client.GetSubscriptionAsync(topicName, subscriptionName)).Value;
 
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(actual.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(5)));
-                Assert.That(actual.ForwardTo.EndsWith($"/{queueName}", StringComparison.Ordinal), Is.True);
+                AssertTopicPerEventSubscriptionForwarding(actual, queueName, requiresSession);
                 Assert.That(actual.EnableDeadLetteringOnFilterEvaluationExceptions, Is.EqualTo(false));
                 Assert.That(actual.MaxDeliveryCount, Is.EqualTo(int.MaxValue));
                 Assert.That(actual.EnableBatchedOperations, Is.EqualTo(true));
