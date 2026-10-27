@@ -1,13 +1,16 @@
 namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Extensibility;
+using Logging;
 using NServiceBus.Transport.AzureServiceBus.EventRouting;
+using NServiceBus.Testing;
 using NUnit.Framework;
 using Unicast.Messages;
 
@@ -69,6 +72,81 @@ public class TopicPerEventSubscriptionManagerForwardingTests
         await subscriptionManager.StartForwarders();
 
         Assert.That(clientFactory.Processors, Is.Empty);
+    }
+
+    [Test]
+    public async Task Should_not_start_forwarders_from_topology_mapping_when_auto_subscribe_is_active()
+    {
+        var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Info);
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap = { { typeof(MyEvent1).FullName, ["Topic1"] } },
+            FallbackTopic = new FallbackTopicOptions { TopicName = "FallbackTopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
+        };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, autoSubscribeActive: true);
+
+        await subscriptionManager.StartForwarders();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(clientFactory.Processors, Is.Empty);
+            Assert.That(logOutput.ToString(), Is.Empty);
+        }
+    }
+
+    [Test]
+    public async Task Should_not_log_missing_mapping_when_auto_subscribe_is_active()
+    {
+        var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Info);
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), new FakeForwardingClientFactory(), autoSubscribeActive: true);
+
+        await subscriptionManager.StartForwarders();
+
+        Assert.That(logOutput.ToString(), Is.Empty);
+    }
+
+    [Test]
+    public async Task Should_log_missing_mapping_when_auto_subscribe_is_disabled()
+    {
+        var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Info);
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), new FakeForwardingClientFactory());
+
+        await subscriptionManager.StartForwarders();
+
+        Assert.That(logOutput.ToString(), Does.Contain("Auto-subscribe is disabled and neither subscribed event mappings nor a fallback topic are configured"));
+    }
+
+    [Test]
+    public async Task Should_start_forwarders_for_explicit_subscriptions_when_auto_subscribe_is_active()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, ["Topic1"] },
+                { typeof(MyEvent2).FullName, ["Topic2"] }
+            }
+        };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, autoSubscribeActive: true);
+
+        await subscriptionManager.StartForwarders();
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue" }));
     }
 
     [Test]
@@ -234,13 +312,15 @@ public class TopicPerEventSubscriptionManagerForwardingTests
         FakeForwardingClientFactory clientFactory,
         ServiceBusAdministrationClient administrationClient = null,
         string subscribingQueueName = "SubscribingQueue",
-        bool requiresSession = true) =>
+        bool requiresSession = true,
+        bool autoSubscribeActive = false) =>
         new(new SubscriptionManagerCreationOptions
         {
             SubscribingQueueName = subscribingQueueName,
             Client = new RecordingServiceBusClient(),
             AdministrationClient = administrationClient ?? new RecordingServiceBusAdministrationClient(),
             RequiresSession = requiresSession,
+            AutoSubscribeActive = autoSubscribeActive,
             ForwarderClientFactory = clientFactory.Create,
             CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
