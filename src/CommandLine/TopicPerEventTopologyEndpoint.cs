@@ -9,11 +9,11 @@ using McMaster.Extensions.CommandLineUtils;
 
 static class TopicPerEventTopologyEndpoint
 {
-    public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption<int> size, CommandOption<int> deliveryCount, CommandOption partitioning, CommandOption hierarchyNamespace, CommandOption forwardDlqTo)
+    public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption<int> size, CommandOption<int> deliveryCount, CommandOption partitioning, CommandOption hierarchyNamespace, CommandOption forwardDlqTo, bool requiresSession)
     {
         try
         {
-            await Queue.Create(client, name, size, deliveryCount, partitioning, hierarchyNamespace, forwardDlqTo);
+            await Queue.Create(client, name, size, deliveryCount, partitioning, hierarchyNamespace, forwardDlqTo, requiresSession);
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
@@ -21,11 +21,11 @@ static class TopicPerEventTopologyEndpoint
         }
     }
 
-    public static async Task Subscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandArgument topicName, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning, CommandOption hierarchyNamespace)
+    public static async Task Subscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandArgument topicName, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning, CommandOption hierarchyNamespace, bool requiresSession)
     {
         try
         {
-            await Topic.Create(client, topicName, size, partitioning, hierarchyNamespace);
+            await Topic.Create(client, topicName, size, partitioning, hierarchyNamespace, supportOrdering: requiresSession);
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
@@ -34,7 +34,7 @@ static class TopicPerEventTopologyEndpoint
 
         try
         {
-            await Subscription.CreateWithMatchAll(client, name, topicName, subscriptionName, hierarchyNamespace);
+            await Subscription.CreateWithMatchAll(client, name, topicName, subscriptionName, hierarchyNamespace, requiresSession);
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
@@ -42,18 +42,18 @@ static class TopicPerEventTopologyEndpoint
         }
     }
 
-    public static async Task SubscribeWithFilter(ServiceBusAdministrationClient client, CommandArgument name, CommandArgument topicName, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning, CommandOption hierarchyNamespace, List<string> eventTypes, bool useCorrelationFilter)
+    public static async Task SubscribeWithFilter(ServiceBusAdministrationClient client, CommandArgument name, CommandArgument topicName, CommandOption subscriptionName, CommandOption<int> size, CommandOption partitioning, CommandOption hierarchyNamespace, List<string> eventTypes, bool useCorrelationFilter, bool requiresSession)
     {
         try
         {
-            await Topic.Create(client, topicName, size, partitioning, hierarchyNamespace);
+            await Topic.Create(client, topicName, size, partitioning, hierarchyNamespace, supportOrdering: requiresSession);
         }
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
             Console.WriteLine($"Topic '{topicName.Value}' already exists, skipping creation");
         }
 
-        await Subscription.CreateWithFilteredRules(client, name, topicName, subscriptionName, hierarchyNamespace, eventTypes, useCorrelationFilter);
+        await Subscription.CreateWithFilteredRules(client, name, topicName, subscriptionName, hierarchyNamespace, eventTypes, useCorrelationFilter, requiresSession);
     }
 
     public static async Task Unsubscribe(ServiceBusAdministrationClient client, CommandArgument name, CommandArgument topicName, CommandOption subscriptionName, CommandOption hierarchyNamespace)

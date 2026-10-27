@@ -8,9 +8,10 @@
 
     static class Queue
     {
-        public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption<int> size, CommandOption<int> deliverCount, CommandOption partitioning, CommandOption hierarchyNamespace, CommandOption forwardDeadLetteredMessagesTo)
+        public static async Task Create(ServiceBusAdministrationClient client, CommandArgument name, CommandOption<int> size, CommandOption<int> deliverCount, CommandOption partitioning, CommandOption hierarchyNamespace, CommandOption forwardDeadLetteredMessagesTo, bool requiresSession)
         {
             var queueDescription = BuildDefaultCreateQueueOptions(name.ToHierarchyNamespaceAwareDestination(hierarchyNamespace));
+            queueDescription.RequiresSession = requiresSession;
 
             if (forwardDeadLetteredMessagesTo.HasValue())
             {
