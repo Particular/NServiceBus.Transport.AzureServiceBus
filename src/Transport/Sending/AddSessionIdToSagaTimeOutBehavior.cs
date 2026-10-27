@@ -16,7 +16,7 @@ sealed class AddSessionIdToSagaTimeOutBehavior : Behavior<IOutgoingSendContext>
         {
             var sessionId = incomingMessage.ReceiveProperties.GetValueOrDefault("SessionId");
 
-            if (!string.IsNullOrWhiteSpace(sessionId) && context.Extensions.Get<DispatchProperties>() is { } dispatchProperties)
+            if (!string.IsNullOrWhiteSpace(sessionId) && context.Extensions.TryGet<DispatchProperties>(out var dispatchProperties))
             {
                 dispatchProperties.TryAdd("SessionId", sessionId);
             }
