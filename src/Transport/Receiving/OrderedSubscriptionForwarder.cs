@@ -38,6 +38,11 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
 
     public async Task Start(CancellationToken cancellationToken = default)
     {
+        if (sessionProcessor != null)
+        {
+            return;
+        }
+
         var sessionReceiveOptions = new ServiceBusSessionProcessorOptions
         {
             //HINT: We intentionally use conservative values here to not overwhelm the broker
@@ -64,7 +69,12 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
 
     public async Task Stop(CancellationToken cancellationToken = default)
     {
-        await sessionProcessor!.StopProcessingAsync(cancellationToken).ConfigureAwait(false);
+        if (sessionProcessor == null)
+        {
+            return;
+        }
+
+        await sessionProcessor.StopProcessingAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
