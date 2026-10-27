@@ -26,7 +26,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -51,7 +51,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -83,7 +83,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -113,7 +113,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -245,7 +245,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -274,7 +274,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -333,7 +333,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -363,7 +363,7 @@ public class TopicPerEventSubscriptionManagerTests
         topology.SubscribeTo<MyEvent1>("MyTopic", options => options.Mode = TopicRoutingMode.CorrelationFilter);
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -393,7 +393,7 @@ public class TopicPerEventSubscriptionManagerTests
         topology.SubscribeTo<MyEvent1>("MyTopic", options => options.Mode = TopicRoutingMode.CorrelationFilter);
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -560,7 +560,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -589,7 +589,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -618,7 +618,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -649,7 +649,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -737,7 +737,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -768,7 +768,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -802,7 +802,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -868,7 +868,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
@@ -900,7 +900,7 @@ public class TopicPerEventSubscriptionManagerTests
         };
 
         var builder = new StringBuilder();
-        var client = new RecordingServiceBusClient(builder);
+        var client = new RecordingServiceBusClient(builder, subscriptionsMustExist: true);
         var administrationClient = new RecordingServiceBusAdministrationClient(builder);
 
         var subscriptionManager = new TopicPerEventTopologySubscriptionManager(new SubscriptionManagerCreationOptions
