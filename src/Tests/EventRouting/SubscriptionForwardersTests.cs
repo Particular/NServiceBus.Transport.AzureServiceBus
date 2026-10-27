@@ -132,6 +132,23 @@ public class SubscriptionForwardersTests
         }
     }
 
+    [Test, CancelAfter(10_000)]
+    public async Task Should_keep_forwarding_when_a_stale_not_found_arrives_after_subscribing(CancellationToken cancellationToken = default)
+    {
+        var clientFactory = new FakeForwardingClientFactory();
+        var forwarders = CreateForwarders(clientFactory);
+        // Started from the topology mapping before the subscription exists
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Start(cancellationToken).WaitAsync(cancellationToken);
+
+        // An explicit Subscribe provisions the subscription and registers the event again
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await clientFactory.Clients.Single().SubscriptionProcessors.Single().RaiseError(new ServiceBusException("not found", ServiceBusFailureReason.MessagingEntityNotFound), ServiceBusErrorSource.AcceptSession, cancellationToken).WaitAsync(cancellationToken);
+
+        Assert.That(() => clientFactory.Processors.Count(processor => processor.WasStarted), Is.EqualTo(2).After(5).Seconds.PollEvery(10).MilliSeconds);
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/Subscription" }));
+    }
+
     static async Task GoDormant(FakeForwardingClientFactory clientFactory, CancellationToken cancellationToken)
     {
         var client = clientFactory.Clients.Last();

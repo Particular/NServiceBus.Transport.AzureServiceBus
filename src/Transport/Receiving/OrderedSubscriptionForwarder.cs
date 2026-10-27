@@ -26,6 +26,9 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
     readonly object stateLock = new();
     bool running;
     bool stopRequested;
+    // Set when the forwarder is registered again while running, e.g. by a Subscribe that provisioned the subscription.
+    // A not-found after that can stem from accepts issued before the subscription existed.
+    bool subscriptionConfirmed;
     TaskCompletionSource? startCompletion;
     Task releasingResources = Task.CompletedTask;
 
@@ -44,22 +47,40 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
             });
     }
 
-    public async Task Start(CancellationToken cancellationToken = default)
+    public Task Start(CancellationToken cancellationToken = default)
     {
-        Task pendingRelease;
         TaskCompletionSource completion;
+        Task pendingRelease;
         lock (stateLock)
         {
-            if (running || startCompletion != null)
+            if (running)
             {
-                return;
+                subscriptionConfirmed = true;
+                return Task.CompletedTask;
             }
 
-            stopRequested = false;
-            completion = startCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (startCompletion != null)
+            {
+                return Task.CompletedTask;
+            }
+
+            completion = BeginStarting();
             pendingRelease = releasingResources;
         }
 
+        return StartAfterRelease(completion, pendingRelease, cancellationToken);
+    }
+
+    // Must be called while holding stateLock
+    TaskCompletionSource BeginStarting()
+    {
+        stopRequested = false;
+        startCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        return startCompletion;
+    }
+
+    async Task StartAfterRelease(TaskCompletionSource completion, Task pendingRelease, CancellationToken cancellationToken)
+    {
         try
         {
             await pendingRelease.ConfigureAwait(false);
@@ -91,6 +112,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
                 sessionProcessor = processor;
                 sender = processorSender;
                 running = true;
+                subscriptionConfirmed = false;
 
                 if (stopRequested)
                 {
@@ -214,6 +236,20 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         }
     }
 
+#pragma warning disable PS0018 // Only Stop ends a restart, through stopRequested
+    async Task Restart(TaskCompletionSource completion, Task pendingRelease)
+#pragma warning restore PS0018
+    {
+        try
+        {
+            await StartAfterRelease(completion, pendingRelease, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Failed to restart the forwarder for subscription '{subscriptionName}' on topic '{topicName}'. Forwarding resumes after the endpoint is restarted or subscribes to the event again.", ex);
+        }
+    }
+
 #pragma warning disable PS0018
     async Task OnMessage(ProcessSessionMessageEventArgs arg)
 #pragma warning restore PS0018
@@ -239,12 +275,30 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
             && arg.ErrorSource is ServiceBusErrorSource.AcceptSession or ServiceBusErrorSource.Receive)
         {
             bool goingDormant;
+            TaskCompletionSource? restartCompletion = null;
+            Task pendingRelease = Task.CompletedTask;
             lock (stateLock)
             {
                 goingDormant = BeginReleasingResources(CancellationToken.None);
+
+                if (goingDormant && subscriptionConfirmed)
+                {
+                    goingDormant = false;
+                    restartCompletion = BeginStarting();
+                    pendingRelease = releasingResources;
+                }
             }
 
-            if (goingDormant)
+            if (restartCompletion != null)
+            {
+                if (Logger.IsDebugEnabled)
+                {
+                    Logger.DebugFormat("Restarting the forwarder for subscription '{0}' on topic '{1}' because it was not found before it was confirmed to exist.", subscriptionName, topicName);
+                }
+
+                _ = Task.Run(() => Restart(restartCompletion, pendingRelease), CancellationToken.None);
+            }
+            else if (goingDormant)
             {
                 Logger.WarnFormat("Subscription '{0}' on topic '{1}' does not exist, so its events cannot be forwarded to '{2}'. Provision the subscription or remove the topology mapping. Forwarding resumes after the subscription is provisioned and the endpoint is restarted or subscribes to the event again.", subscriptionName, topicName, inputQueueAddress);
             }
