@@ -1,46 +1,49 @@
 namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
 using System;
+using System.Threading;
+using System.Linq;
 using System.Threading.Tasks;
+using Azure.Messaging.ServiceBus;
 using NUnit.Framework;
 
 [TestFixture]
 public class SubscriptionForwardersTests
 {
-    [Test]
-    public async Task Should_only_record_forwarders_until_started()
+    [Test, CancelAfter(10_000)]
+    public async Task Should_only_record_forwarders_until_started(CancellationToken cancellationToken = default)
     {
         var clientFactory = new FakeForwardingClientFactory();
         var forwarders = CreateForwarders(clientFactory);
 
-        await forwarders.Register("Topic1", "Subscription", "Event1");
-        await forwarders.Register("Topic2", "Subscription", "Event2");
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Register("Topic2", "Subscription", "Event2", cancellationToken).WaitAsync(cancellationToken);
 
         Assert.That(clientFactory.RunningForwarders, Is.Empty);
 
-        await forwarders.Start();
+        await forwarders.Start(cancellationToken).WaitAsync(cancellationToken);
 
         Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/Subscription", "Topic2/Subscription" }));
     }
 
-    [Test]
-    public async Task Should_start_forwarder_immediately_when_registered_after_started()
+    [Test, CancelAfter(10_000)]
+    public async Task Should_start_forwarder_immediately_when_registered_after_started(CancellationToken cancellationToken = default)
     {
         var clientFactory = new FakeForwardingClientFactory();
         var forwarders = CreateForwarders(clientFactory);
 
-        await forwarders.Start();
-        await forwarders.Register("Topic1", "Subscription", "Event1");
+        await forwarders.Start(cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
 
         Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/Subscription" }));
     }
 
-    [Test]
-    public async Task Should_start_forwarder_registered_while_starting()
+    [Test, CancelAfter(10_000)]
+    public async Task Should_start_forwarder_registered_while_starting(CancellationToken cancellationToken = default)
     {
         var clientFactory = new FakeForwardingClientFactory();
         var forwarders = CreateForwarders(clientFactory);
-        await forwarders.Register("Topic1", "Subscription", "Event1");
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
 
         var startProcessingEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseStartProcessing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -50,30 +53,90 @@ public class SubscriptionForwardersTests
             return releaseStartProcessing.Task;
         };
 
-        var starting = forwarders.Start();
-        await startProcessingEntered.Task;
-        var registering = forwarders.Register("Topic2", "Subscription", "Event2");
+        var starting = forwarders.Start(cancellationToken);
+        await startProcessingEntered.Task.WaitAsync(cancellationToken);
+        var registering = forwarders.Register("Topic2", "Subscription", "Event2", cancellationToken);
 
         Assert.That(registering.IsCompleted, Is.False);
 
         clientFactory.StartProcessing = () => Task.CompletedTask;
         releaseStartProcessing.SetResult();
-        await Task.WhenAll(starting, registering);
+        await Task.WhenAll(starting, registering).WaitAsync(cancellationToken);
 
         Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/Subscription", "Topic2/Subscription" }));
     }
 
-    [Test]
-    public async Task Should_not_start_forwarder_unregistered_before_started()
+    [Test, CancelAfter(10_000)]
+    public async Task Should_not_start_forwarder_unregistered_before_started(CancellationToken cancellationToken = default)
     {
         var clientFactory = new FakeForwardingClientFactory();
         var forwarders = CreateForwarders(clientFactory);
 
-        await forwarders.Register("Topic1", "Subscription", "Event1");
-        await forwarders.Unregister("Topic1", "Subscription", "Event1");
-        await forwarders.Start();
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Unregister("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Start(cancellationToken).WaitAsync(cancellationToken);
 
         Assert.That(clientFactory.Processors, Is.Empty);
+    }
+
+    [Test, CancelAfter(10_000)]
+    public async Task Should_restart_forwarder_registered_again_after_its_subscription_did_not_exist(CancellationToken cancellationToken = default)
+    {
+        var clientFactory = new FakeForwardingClientFactory();
+        var forwarders = CreateForwarders(clientFactory);
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Start(cancellationToken).WaitAsync(cancellationToken);
+        await GoDormant(clientFactory, cancellationToken);
+
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/Subscription" }));
+    }
+
+    [Test, CancelAfter(10_000)]
+    public async Task Should_restart_forwarder_when_started_again_after_its_subscription_did_not_exist(CancellationToken cancellationToken = default)
+    {
+        var clientFactory = new FakeForwardingClientFactory();
+        var forwarders = CreateForwarders(clientFactory);
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Start(cancellationToken).WaitAsync(cancellationToken);
+        await GoDormant(clientFactory, cancellationToken);
+
+        await forwarders.Start(cancellationToken).WaitAsync(cancellationToken);
+
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/Subscription" }));
+    }
+
+    [Test, CancelAfter(10_000)]
+    public async Task Should_keep_registrations_of_forwarder_whose_subscription_did_not_exist(CancellationToken cancellationToken = default)
+    {
+        var clientFactory = new FakeForwardingClientFactory();
+        var forwarders = CreateForwarders(clientFactory);
+        await forwarders.Register("SharedTopic", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Register("SharedTopic", "Subscription", "Event2", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Start(cancellationToken).WaitAsync(cancellationToken);
+        await GoDormant(clientFactory, cancellationToken);
+
+        await forwarders.Unregister("SharedTopic", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Register("SharedTopic", "Subscription", "Event3", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Unregister("SharedTopic", "Subscription", "Event3", cancellationToken).WaitAsync(cancellationToken);
+
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "SharedTopic/Subscription" }));
+
+        await forwarders.Unregister("SharedTopic", "Subscription", "Event2", cancellationToken).WaitAsync(cancellationToken);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(clientFactory.RunningForwarders, Is.Empty);
+            Assert.That(clientFactory.Clients.Select(client => client.DisposeCount), Is.All.EqualTo(1));
+        }
+    }
+
+    static async Task GoDormant(FakeForwardingClientFactory clientFactory, CancellationToken cancellationToken)
+    {
+        var client = clientFactory.Clients.Last();
+        await client.SubscriptionProcessors.Single().RaiseError(new ServiceBusException("not found", ServiceBusFailureReason.MessagingEntityNotFound), ServiceBusErrorSource.AcceptSession, cancellationToken).WaitAsync(cancellationToken);
+        Assert.That(() => client.DisposeCount, Is.EqualTo(1).After(5).Seconds.PollEvery(10).MilliSeconds);
     }
 
     static SubscriptionForwarders CreateForwarders(FakeForwardingClientFactory clientFactory) =>

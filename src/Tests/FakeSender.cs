@@ -23,6 +23,14 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
 
         public override string FullyQualifiedNamespace { get; } = "FullyQualifiedNamespace";
 
+        public bool WasDisposed { get; private set; }
+
+        public override ValueTask DisposeAsync()
+        {
+            WasDisposed = true;
+            return default;
+        }
+
         public IReadOnlyCollection<ServiceBusMessage> this[ServiceBusMessageBatch batch]
         {
             get => batchToBackingStore.TryGetValue(batch, out var store) ? store : Array.Empty<ServiceBusMessage>();
