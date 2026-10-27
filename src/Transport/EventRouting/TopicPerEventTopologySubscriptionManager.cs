@@ -73,7 +73,14 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         if (topologyOptions.FallbackTopic?.TopicName is { Length: > 0 } fallbackTopicName)
         {
-            registrations.Add((destinationManager.GetDestination(fallbackTopicName), FallbackTopicForwardingRegistration));
+            var fallbackDestination = destinationManager.GetDestination(fallbackTopicName);
+            registrations.Add((fallbackDestination, FallbackTopicForwardingRegistration));
+
+            // Event types excluded from the hierarchy are published to the unprefixed fallback topic
+            if (topologyOptions.HierarchyOptions.MessageTypeFullNamesToExclude.Count > 0 && fallbackDestination != fallbackTopicName)
+            {
+                registrations.Add((fallbackTopicName, FallbackTopicForwardingRegistration));
+            }
         }
 
         if (registrations.Count == 0)

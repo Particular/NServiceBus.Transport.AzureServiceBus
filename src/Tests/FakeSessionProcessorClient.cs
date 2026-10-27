@@ -2,6 +2,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
@@ -68,23 +69,43 @@ public class FakeSessionProcessorClient() : ServiceBusClient("Endpoint=sb://fake
         public bool WasStopped { get; private set; }
         public bool WasClosed { get; private set; }
 
-        public override Task StartProcessingAsync(CancellationToken cancellationToken = default)
+        // Like the SDK, adding or removing handlers throws while the inner processor has an active receive task
+        public bool IsActive
         {
+            get => ActiveReceiveTask.GetValue(InnerProcessor) != null;
+            private set => ActiveReceiveTask.SetValue(InnerProcessor, value ? new TaskCompletionSource().Task : null);
+        }
+
+        public override async Task StartProcessingAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             WasStarted = true;
-            return client.StartProcessing();
+            await client.StartProcessing();
+            IsActive = true;
         }
 
-        public override Task StopProcessingAsync(CancellationToken cancellationToken = default)
+        // Like the SDK, a canceled stop throws and leaves the processor running
+        public override async Task StopProcessingAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             WasStopped = true;
-            return client.StopProcessing();
+            await client.StopProcessing();
+            IsActive = false;
         }
 
-        public override Task CloseAsync(CancellationToken cancellationToken = default)
+        public override async Task CloseAsync(CancellationToken cancellationToken = default)
         {
             WasClosed = true;
-            return client.CloseProcessor();
+            await client.CloseProcessor();
+
+            if (IsActive)
+            {
+                await StopProcessingAsync(cancellationToken);
+            }
         }
+
+        static readonly PropertyInfo ActiveReceiveTask = typeof(ServiceBusProcessor).GetProperty("ActiveReceiveTask", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("ServiceBusProcessor.ActiveReceiveTask not found");
 
         public Task ProcessMessage(ServiceBusReceivedMessage message, CancellationToken cancellationToken = default) =>
             OnProcessSessionMessageAsync(new ProcessSessionMessageEventArgs(message, new FakeSessionReceiver(), cancellationToken));
