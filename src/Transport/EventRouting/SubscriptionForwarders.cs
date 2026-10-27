@@ -24,7 +24,7 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
             // ReSharper disable InconsistentlySynchronizedField
             if (!forwarders.TryGetValue((topic, subscription), out var forwarder))
             {
-                forwarder = new OrderedSubscriptionForwarder(clientFactory(), topic, subscription, inputQueue, timeBeforeTriggeringCircuitBreaker, criticalErrorAction);
+                forwarder = new OrderedSubscriptionForwarder(clientFactory, topic, subscription, inputQueue, timeBeforeTriggeringCircuitBreaker, criticalErrorAction);
                 forwarders[(topic, subscription)] = forwarder;
             }
 

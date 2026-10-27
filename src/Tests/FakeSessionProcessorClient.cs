@@ -14,6 +14,20 @@ public class FakeSessionProcessorClient() : ServiceBusClient("Endpoint=sb://fake
 
     public Func<Task> StartProcessing { get; init; } = () => Task.CompletedTask;
 
+    public Func<Task> StopProcessing { get; init; } = () => Task.CompletedTask;
+
+    public Func<Task> CloseProcessor { get; init; } = () => Task.CompletedTask;
+
+    public List<FakeSender> Senders { get; } = [];
+
+    public int DisposeCount { get; private set; }
+
+    public override ValueTask DisposeAsync()
+    {
+        DisposeCount++;
+        return default;
+    }
+
     public override ServiceBusSessionProcessor CreateSessionProcessor(string queueName, ServiceBusSessionProcessorOptions options = null) =>
         new FakeSessionProcessor(this, queueName, options);
 
@@ -24,7 +38,12 @@ public class FakeSessionProcessorClient() : ServiceBusClient("Endpoint=sb://fake
         return processor;
     }
 
-    public override ServiceBusSender CreateSender(string queueOrTopicName, ServiceBusSenderOptions options) => new FakeSender();
+    public override ServiceBusSender CreateSender(string queueOrTopicName, ServiceBusSenderOptions options)
+    {
+        var sender = new FakeSender();
+        Senders.Add(sender);
+        return sender;
+    }
 
     public class FakeSessionProcessor : ServiceBusSessionProcessor
     {
@@ -47,6 +66,7 @@ public class FakeSessionProcessorClient() : ServiceBusClient("Endpoint=sb://fake
         public override string EntityPath { get; }
         public bool WasStarted { get; private set; }
         public bool WasStopped { get; private set; }
+        public bool WasClosed { get; private set; }
 
         public override Task StartProcessingAsync(CancellationToken cancellationToken = default)
         {
@@ -57,16 +77,20 @@ public class FakeSessionProcessorClient() : ServiceBusClient("Endpoint=sb://fake
         public override Task StopProcessingAsync(CancellationToken cancellationToken = default)
         {
             WasStopped = true;
-            return Task.CompletedTask;
+            return client.StopProcessing();
         }
 
-        public override Task CloseAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public override Task CloseAsync(CancellationToken cancellationToken = default)
+        {
+            WasClosed = true;
+            return client.CloseProcessor();
+        }
 
         public Task ProcessMessage(ServiceBusReceivedMessage message, CancellationToken cancellationToken = default) =>
             OnProcessSessionMessageAsync(new ProcessSessionMessageEventArgs(message, new FakeSessionReceiver(), cancellationToken));
 
-        public Task RaiseError(Exception exception, CancellationToken cancellationToken = default) =>
-            OnProcessErrorAsync(new ProcessErrorEventArgs(exception, ServiceBusErrorSource.Receive, "fake.servicebus.windows.net", EntityPath, Identifier, cancellationToken));
+        public Task RaiseError(Exception exception, ServiceBusErrorSource errorSource, CancellationToken cancellationToken = default) =>
+            OnProcessErrorAsync(new ProcessErrorEventArgs(exception, errorSource, "fake.servicebus.windows.net", EntityPath, Identifier, cancellationToken));
     }
 
     class FakeSessionReceiver : ServiceBusSessionReceiver

@@ -13,6 +13,10 @@ public class FakeForwardingClientFactory
 
     public Func<Task> StartProcessing { get; set; } = () => Task.CompletedTask;
 
+    public Func<Task> StopProcessing { get; set; } = () => Task.CompletedTask;
+
+    public Func<Task> CloseProcessor { get; set; } = () => Task.CompletedTask;
+
     public IEnumerable<FakeSessionProcessorClient.FakeSessionProcessor> Processors => Clients.SelectMany(client => client.SubscriptionProcessors);
 
     public IEnumerable<string> RunningForwarders =>
@@ -20,7 +24,7 @@ public class FakeForwardingClientFactory
 
     public ServiceBusClient Create()
     {
-        var client = new FakeSessionProcessorClient { StartProcessing = () => StartProcessing() };
+        var client = new FakeSessionProcessorClient { StartProcessing = () => StartProcessing(), StopProcessing = () => StopProcessing(), CloseProcessor = () => CloseProcessor() };
         Clients.Add(client);
         return client;
     }
