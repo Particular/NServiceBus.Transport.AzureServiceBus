@@ -470,11 +470,11 @@ public class OrderedSubscriptionForwarderTests
     }
 
     [Test, CancelAfter(10_000)]
-    public async Task Should_not_restart_when_not_found_arrives_after_stop_was_requested(CancellationToken cancellationToken = default)
+    public async Task Should_ignore_a_late_not_found_from_a_run_that_is_being_stopped(CancellationToken cancellationToken = default)
     {
         var logOutput = new StringWriter();
 #pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
-        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Debug);
 #pragma warning restore CS0618 // Type or member is obsolete
 
         var releaseStopProcessing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -483,20 +483,87 @@ public class OrderedSubscriptionForwarderTests
         await forwarder.Start(cancellationToken).WaitAsync(cancellationToken);
         await forwarder.Start(cancellationToken).WaitAsync(cancellationToken);
 
-        // The processor keeps reporting errors until it has stopped
+        // The processor keeps reporting errors until it has stopped. The restart decision is taken inside the error handler,
+        // so once it has returned, a wrongly scheduled restart is already visible in the log.
         var stopping = forwarder.Stop(cancellationToken);
         await clientFactory.Processors.Single().RaiseError(SubscriptionNotFound(), ServiceBusErrorSource.AcceptSession, cancellationToken).WaitAsync(cancellationToken);
-        releaseStopProcessing.SetResult();
-        await stopping.WaitAsync(cancellationToken);
-        // A wrongly scheduled restart runs in the background, give it time to show up
-        await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(clientFactory.Clients, Has.Count.EqualTo(1), "No restart should be scheduled after a stop request");
-            Assert.That(clientFactory.Clients.Single().DisposeCount, Is.EqualTo(1));
+            Assert.That(logOutput.ToString(), Does.Not.Contain("Restarting the forwarder"));
             Assert.That(logOutput.ToString(), Does.Not.Contain("does not exist"));
         }
+
+        releaseStopProcessing.SetResult();
+        await stopping.WaitAsync(cancellationToken);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(clientFactory.Clients, Has.Count.EqualTo(1));
+            Assert.That(clientFactory.Clients.Single().DisposeCount, Is.EqualTo(1));
+        }
+    }
+
+    [Test, CancelAfter(10_000)]
+    public async Task Should_restart_when_confirmed_while_the_processor_is_starting([Values] bool restarting, CancellationToken cancellationToken = default)
+    {
+        var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var clientFactory = new FakeForwardingClientFactory();
+        var forwarder = CreateForwarder(clientFactory);
+        var startProcessingEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseStartProcessing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Func<Task> gatedStartProcessing = () =>
+        {
+            startProcessingEntered.TrySetResult();
+            return releaseStartProcessing.Task;
+        };
+
+        Task starting = Task.CompletedTask;
+        if (restarting)
+        {
+            await forwarder.Start(cancellationToken).WaitAsync(cancellationToken);
+            await forwarder.Start(cancellationToken).WaitAsync(cancellationToken);
+            clientFactory.StartProcessing = gatedStartProcessing;
+            await clientFactory.Processors.Single().RaiseError(SubscriptionNotFound(), ServiceBusErrorSource.AcceptSession, cancellationToken).WaitAsync(cancellationToken);
+        }
+        else
+        {
+            clientFactory.StartProcessing = gatedStartProcessing;
+            starting = forwarder.Start(cancellationToken);
+        }
+
+        // The SDK issues accepts before StartProcessingAsync returns, so a confirmation can arrive in between
+        await startProcessingEntered.Task.WaitAsync(cancellationToken);
+        var startingProcessor = clientFactory.Processors.Last();
+        await forwarder.Start(cancellationToken).WaitAsync(cancellationToken);
+        clientFactory.StartProcessing = () => Task.CompletedTask;
+        releaseStartProcessing.SetResult();
+        await starting.WaitAsync(cancellationToken);
+        Assert.That(() => startingProcessor.IsActive, Is.True.After(5).Seconds.PollEvery(10).MilliSeconds);
+
+        // A stale not-found from accepts issued before the subscription existed
+        await startingProcessor.RaiseError(SubscriptionNotFound(), ServiceBusErrorSource.AcceptSession, cancellationToken).WaitAsync(cancellationToken);
+
+        Assert.That(() => clientFactory.Processors.Last() != startingProcessor && clientFactory.Processors.Last().IsActive, Is.True.After(5).Seconds.PollEvery(10).MilliSeconds, "The confirmed run should restart instead of going dormant");
+        Assert.That(logOutput.ToString(), Does.Not.Contain("does not exist"));
+
+        // The restarted run has no confirmation of its own yet
+        var restartedProcessor = clientFactory.Processors.Last();
+        await restartedProcessor.RaiseError(SubscriptionNotFound(), ServiceBusErrorSource.AcceptSession, cancellationToken).WaitAsync(cancellationToken);
+
+        Assert.That(() => clientFactory.Clients.Select(client => client.DisposeCount), Is.All.EqualTo(1).After(5).Seconds.PollEvery(10).MilliSeconds);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(clientFactory.Processors.Last(), Is.SameAs(restartedProcessor));
+            Assert.That(clientFactory.RunningForwarders, Is.Empty);
+            Assert.That(Regex.Matches(logOutput.ToString(), "Subscription 'Subscription1' on topic 'Topic1' does not exist"), Has.Count.EqualTo(1));
+        }
+
+        await forwarder.DisposeAsync().AsTask().WaitAsync(cancellationToken);
     }
 
     [Test, CancelAfter(10_000)]
