@@ -52,8 +52,9 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
 
             if (activeRun != null)
             {
-                // Registering a running forwarder again means the subscription may exist by now
-                activeRun.SubscriptionConfirmed |= activeRun.Processing;
+                // Registering again means the subscription may exist by now; the starting processor may already have issued accepts.
+                // Stop clears activeRun when requesting the stop, so the confirmation always belongs to a run that may still restart.
+                activeRun.SubscriptionConfirmed = true;
                 return Task.CompletedTask;
             }
 
