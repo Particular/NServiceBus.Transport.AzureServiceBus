@@ -21,6 +21,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     readonly string subscriptionName;
     readonly DestinationManager destinationManager;
     readonly ISubscriptionForwarders subscriptionForwarders;
+    volatile bool subscribeAllCalled;
 
     public TopicPerEventTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
         TopologyOptions topologyOptions,
@@ -48,9 +49,51 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
     static readonly ILog Logger = LogManager.GetLogger<TopicPerEventTopologySubscriptionManager>();
 
+    // The event types arriving through the fallback topic are unknown, so this registration is never unsubscribed
+    // and keeps the fallback forwarder running until shutdown. The $ prefix cannot clash with a type full name.
+    const string FallbackTopicForwardingRegistration = "$fallback-topic";
+
+    // Core calls SubscribeAll before StartReceive unless auto-subscribe is disabled or the endpoint handles no events.
+    // Without it, the static topology mapping is the only source of the subscriptions to forward from.
+    public override async Task StartForwarders(CancellationToken cancellationToken = default)
+    {
+        if (CreationOptions.RequiresSession && !subscribeAllCalled)
+        {
+            await RegisterForwardersFromTopologyMapping(cancellationToken).ConfigureAwait(false);
+        }
+
+        await subscriptionForwarders.Start(cancellationToken).ConfigureAwait(false);
+    }
+
+    async Task RegisterForwardersFromTopologyMapping(CancellationToken cancellationToken)
+    {
+        var registrations = (from eventTypeFullName in topologyOptions.SubscribedEventToTopicsMap.Keys
+                             from entry in MapEventToSubscriptionEntries(eventTypeFullName)
+                             select (entry.Topic, Registration: eventTypeFullName)).ToList();
+
+        if (topologyOptions.FallbackTopic?.TopicName is { Length: > 0 } fallbackTopicName)
+        {
+            registrations.Add((destinationManager.GetDestination(fallbackTopicName), FallbackTopicForwardingRegistration));
+        }
+
+        if (registrations.Count == 0)
+        {
+            Logger.InfoFormat("No events were subscribed at startup, because auto-subscribe is disabled or the endpoint handles no events, and neither subscribed event mappings nor a fallback topic are configured. Events relying on the default topic convention will only be forwarded from subscription '{0}' to '{1}' after explicit Subscribe calls.", subscriptionName, CreationOptions.SubscribingQueueName);
+            return;
+        }
+
+        foreach (var (topic, registration) in registrations)
+        {
+            await subscriptionForwarders.Register(topic, subscriptionName, registration, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     public override async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
         CancellationToken cancellationToken = default)
     {
+        // Set before provisioning so that a failed auto-subscribe still counts as subscribed
+        subscribeAllCalled = true;
+
         var invalidConfig = ValidateSubscriptionConfiguration(eventTypes);
         if (invalidConfig != null)
         {
@@ -70,15 +113,21 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                                  group (eventTypeFullName, entry) by entry.Topic into g
                                  select g).ToArray();
 
-        await Task.WhenAll([.. allEntriesByTopic.Select(group =>
-            ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, cancellationToken))])
-            .ConfigureAwait(false);
-
-        foreach (var group in allEntriesByTopic)
+        try
         {
-            foreach ((string eventTypeFullName, SubscriptionEntry entry) entry in group)
+            await Task.WhenAll([.. allEntriesByTopic.Select(group =>
+                ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, cancellationToken))])
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            // Also after a failure, so that the subscriptions that already exist are forwarded from
+            foreach (var group in allEntriesByTopic)
             {
-                await subscriptionForwarders.StartForwarding(group.Key, subscriptionName, entry.eventTypeFullName, cancellationToken).ConfigureAwait(false);
+                foreach ((string eventTypeFullName, SubscriptionEntry entry) entry in group)
+                {
+                    await subscriptionForwarders.Register(group.Key, subscriptionName, entry.eventTypeFullName, cancellationToken).ConfigureAwait(false);
+                }
             }
         }
     }
@@ -225,7 +274,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         foreach (var entry in entries)
         {
-            await subscriptionForwarders.StopForwarding(entry.Topic, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
+            await subscriptionForwarders.Unregister(entry.Topic, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
         }
 
         await DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken).ConfigureAwait(false);
