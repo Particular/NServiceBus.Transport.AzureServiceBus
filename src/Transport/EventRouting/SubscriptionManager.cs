@@ -22,5 +22,7 @@ abstract class SubscriptionManager(
 
     protected virtual ValueTask SetupInfrastructureCore(CancellationToken cancellationToken = default) => default;
 
+    public virtual Task StartForwarders(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
     public abstract Task Shutdown(CancellationToken cancellationToken = default);
 }

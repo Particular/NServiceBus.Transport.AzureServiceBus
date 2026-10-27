@@ -11,8 +11,10 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
 {
     readonly Dictionary<(string Topic, string Subscription), OrderedSubscriptionForwarder> forwarders = [];
     readonly SemaphoreSlim lockSemaphore = new(1, 1);
+    bool started;
 
-    public async Task StartForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default)
+    // Until Start is called forwarders are only recorded, because whether SubscribeAll ran is only known when receiving starts
+    public async Task Register(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default)
     {
         await lockSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
@@ -23,13 +25,16 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
             if (!forwarders.TryGetValue((topic, subscription), out var forwarder))
             {
                 forwarder = new OrderedSubscriptionForwarder(clientFactory(), topic, subscription, inputQueue, timeBeforeTriggeringCircuitBreaker, criticalErrorAction);
-                await forwarder.Start(cancellationToken).ConfigureAwait(false);
                 forwarders[(topic, subscription)] = forwarder;
-
             }
-            // ReSharper restore InconsistentlySynchronizedField
 
             forwarder.RegisterType(eventTypeFullName);
+
+            if (started)
+            {
+                await forwarder.Start(cancellationToken).ConfigureAwait(false);
+            }
+            // ReSharper restore InconsistentlySynchronizedField
         }
         finally
         {
@@ -37,7 +42,26 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
         }
     }
 
-    public async Task StopForwarding(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default)
+    public async Task Start(CancellationToken cancellationToken = default)
+    {
+        await lockSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            started = true;
+
+            foreach (var forwarder in forwarders.Values)
+            {
+                await forwarder.Start(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            lockSemaphore.Release();
+        }
+    }
+
+    public async Task Unregister(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default)
     {
         await lockSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 

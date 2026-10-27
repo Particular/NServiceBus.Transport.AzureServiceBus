@@ -57,6 +57,11 @@ sealed class SessionsEnabledMessagePump(
 
     public async Task StartReceive(CancellationToken cancellationToken = default)
     {
+        if (subscriptionManager != null)
+        {
+            await subscriptionManager.StartForwarders(cancellationToken).ConfigureAwait(false);
+        }
+
         var sessionReceiveOptions = new ServiceBusSessionProcessorOptions
         {
             PrefetchCount = CalculatePrefetchCount(limitations!.MaxConcurrency),
