@@ -257,7 +257,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            Logger.Warn($"Failed to restart the forwarder for subscription '{subscriptionName}' on topic '{topicName}'. Forwarding resumes after the endpoint is restarted or subscribes to the event again.", ex);
+            Logger.Error($"Failed to restart the forwarder for subscription '{subscriptionName}' on topic '{topicName}'. Forwarding resumes after the endpoint is restarted or subscribes to the event again.", ex);
         }
     }
 
@@ -326,7 +326,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
             }
             else
             {
-                Logger.WarnFormat("Subscription '{0}' on topic '{1}' does not exist, so its events cannot be forwarded to '{2}'. Provision the subscription or remove the topology mapping. Forwarding resumes after the subscription is provisioned and the endpoint is restarted or subscribes to the event again.", subscriptionName, topicName, inputQueueAddress);
+                Logger.ErrorFormat("Subscription '{0}' on topic '{1}' does not exist, so its events cannot be forwarded to '{2}'. Provision the subscription or remove the topology mapping. Forwarding resumes after the subscription is provisioned and the endpoint is restarted or subscribes to the event again.", subscriptionName, topicName, inputQueueAddress);
             }
 
             return;
