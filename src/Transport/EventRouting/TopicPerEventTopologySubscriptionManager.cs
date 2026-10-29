@@ -3,6 +3,7 @@ namespace NServiceBus.Transport.AzureServiceBus;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -120,23 +121,40 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                                  group (eventTypeFullName, entry) by entry.Topic into g
                                  select g).ToArray();
 
+        ExceptionDispatchInfo? provisioningFailure = null;
         try
         {
             await Task.WhenAll([.. allEntriesByTopic.Select(group =>
                 ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, cancellationToken))])
                 .ConfigureAwait(false);
         }
-        finally
+        catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
         {
-            // Also after a failure, so that the subscriptions that already exist are forwarded from
-            foreach (var group in allEntriesByTopic)
+            provisioningFailure = ExceptionDispatchInfo.Capture(ex);
+        }
+
+        // Also after a provisioning failure, so that the subscriptions that already exist are forwarded from.
+        // Registering only starts forwarders once receiving has started; the first forwarder that fails to start ends the subscribe.
+        foreach (var group in allEntriesByTopic)
+        {
+            foreach ((string eventTypeFullName, SubscriptionEntry entry) entry in group)
             {
-                foreach ((string eventTypeFullName, SubscriptionEntry entry) entry in group)
+                try
                 {
                     await subscriptionForwarders.Register(group.Key, subscriptionName, entry.eventTypeFullName, cancellationToken).ConfigureAwait(false);
                 }
+                catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
+                {
+                    Logger.Error($"Failed to start forwarding '{entry.eventTypeFullName}' from subscription '{subscriptionName}' on topic '{group.Key}' to '{CreationOptions.SubscribingQueueName}'.", ex);
+
+                    // The provisioning failure is the root cause, so it takes precedence over the logged start failure
+                    provisioningFailure?.Throw();
+                    throw;
+                }
             }
         }
+
+        provisioningFailure?.Throw();
     }
 
     static async Task ProvisionSubscriptionForTopic(string topicName,
