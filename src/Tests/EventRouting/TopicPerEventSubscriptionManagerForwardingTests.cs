@@ -2,6 +2,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure;
@@ -232,6 +233,67 @@ public class TopicPerEventSubscriptionManagerForwardingTests
             "Topic1/SubscribingQueue",
             "Topic2/SubscribingQueue"
         }));
+    }
+
+    [Test]
+    public async Task Should_keep_provisioning_exception_and_stop_subscribing_when_a_forwarder_fails_to_start()
+    {
+        var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Error);
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, ["FailingTopic", "Topic1"] },
+                { typeof(MyEvent2).FullName, ["Topic2"] }
+            }
+        };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, new FailingAdministrationClient("FailingTopic"), autoSubscribeActive: true);
+        await subscriptionManager.StartForwarders();
+
+        var starts = 0;
+        clientFactory.StartProcessing = () => ++starts == 2 ? throw new InvalidOperationException("start failed") : Task.CompletedTask;
+
+        Assert.ThrowsAsync<ServiceBusException>(() => subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "FailingTopic/SubscribingQueue" }));
+            Assert.That(clientFactory.Processors.Select(processor => processor.EntityPath), Does.Not.Contain("Topic2/SubscribingQueue"));
+            Assert.That(logOutput.ToString(), Does.Contain($"Failed to start forwarding '{typeof(MyEvent1).FullName}' from subscription 'SubscribingQueue' on topic 'Topic1'"));
+        }
+    }
+
+    [Test]
+    public async Task Should_throw_and_stop_subscribing_when_a_forwarder_fails_to_start_after_provisioning()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, ["Topic1"] },
+                { typeof(MyEvent2).FullName, ["Topic2"] },
+                { typeof(MyEvent3).FullName, ["Topic3"] }
+            }
+        };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, autoSubscribeActive: true);
+        await subscriptionManager.StartForwarders();
+
+        var starts = 0;
+        clientFactory.StartProcessing = () => ++starts == 2 ? throw new InvalidOperationException("start failed") : Task.CompletedTask;
+
+        Assert.ThrowsAsync<InvalidOperationException>(() => subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2)), new MessageMetadata(typeof(MyEvent3))], new ContextBag()));
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue" }));
+            Assert.That(clientFactory.Processors.Select(processor => processor.EntityPath), Does.Not.Contain("Topic3/SubscribingQueue"));
+        }
     }
 
     [Test]
