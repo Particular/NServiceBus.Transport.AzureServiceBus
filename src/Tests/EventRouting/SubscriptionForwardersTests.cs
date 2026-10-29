@@ -187,6 +187,34 @@ public class SubscriptionForwardersTests
         Assert.That(clientFactory.Processors.Last().IsActive, Is.True);
     }
 
+    [Test, CancelAfter(10_000)]
+    public async Task Should_stop_started_forwarders_when_a_forwarder_fails_to_start(CancellationToken cancellationToken = default)
+    {
+        var clientFactory = new FakeForwardingClientFactory();
+        var forwarders = CreateForwarders(clientFactory);
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Register("Topic2", "Subscription", "Event2", cancellationToken).WaitAsync(cancellationToken);
+
+        var starts = 0;
+        clientFactory.StartProcessing = () => ++starts == 2 ? throw new InvalidOperationException("start failed") : Task.CompletedTask;
+
+        Assert.That(() => forwarders.Start(cancellationToken), Throws.InvalidOperationException);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(clientFactory.RunningForwarders, Is.Empty);
+            Assert.That(clientFactory.Clients.Select(client => client.DisposeCount), Is.All.EqualTo(1));
+        }
+
+        // Not started anymore, so a registration is only recorded again
+        await forwarders.Register("Topic3", "Subscription", "Event3", cancellationToken).WaitAsync(cancellationToken);
+        Assert.That(clientFactory.RunningForwarders, Is.Empty);
+
+        clientFactory.StartProcessing = () => Task.CompletedTask;
+        await forwarders.Start(cancellationToken).WaitAsync(cancellationToken);
+
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/Subscription", "Topic2/Subscription", "Topic3/Subscription" }));
+    }
+
     static async Task GoDormant(FakeForwardingClientFactory clientFactory, CancellationToken cancellationToken)
     {
         var client = clientFactory.Clients.Last();
