@@ -222,6 +222,26 @@ public class SubscriptionForwardersTests
         Assert.That(() => client.DisposeCount, Is.EqualTo(1).After(5).Seconds.PollEvery(10).MilliSeconds);
     }
 
+    [Test, CancelAfter(10_000)]
+    public async Task Should_not_trigger_the_circuit_breaker_of_an_unregistered_forwarder(CancellationToken cancellationToken = default)
+    {
+        var criticalErrors = 0;
+        var clientFactory = new FakeForwardingClientFactory();
+        var forwarders = new SubscriptionForwarders(clientFactory.Create, "InputQueue", TimeSpan.FromMilliseconds(100), (_, _, _) => Interlocked.Increment(ref criticalErrors));
+        await forwarders.Register("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await forwarders.Start(cancellationToken).WaitAsync(cancellationToken);
+
+        // Arms the circuit breaker, which then delays the error handler
+        var raisingError = clientFactory.Processors.Single().RaiseError(new ServiceBusException("failed", ServiceBusFailureReason.GeneralError), ServiceBusErrorSource.Receive, cancellationToken);
+
+        await forwarders.Unregister("Topic1", "Subscription", "Event1", cancellationToken).WaitAsync(cancellationToken);
+        await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+
+        Assert.That(Volatile.Read(ref criticalErrors), Is.Zero);
+
+        await raisingError.WaitAsync(cancellationToken);
+    }
+
     static SubscriptionForwarders CreateForwarders(FakeForwardingClientFactory clientFactory) =>
         new(clientFactory.Create, "InputQueue", TimeSpan.FromMinutes(2), (_, _, _) => { });
 }

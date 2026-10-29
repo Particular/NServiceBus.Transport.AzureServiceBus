@@ -97,7 +97,15 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
                 && forwarder.UnregisterType(eventTypeFullName))
             {
                 forwarders.Remove((topic, subscription));
-                await forwarder.Stop(cancellationToken).ConfigureAwait(false);
+
+                try
+                {
+                    await forwarder.Stop(cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    await forwarder.DisposeAsync().ConfigureAwait(false);
+                }
             }
             // ReSharper restore InconsistentlySynchronizedField
         }
