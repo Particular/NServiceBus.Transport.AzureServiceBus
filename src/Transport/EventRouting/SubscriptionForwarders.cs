@@ -51,9 +51,32 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
         {
             started = true;
 
-            foreach (var forwarder in forwarders.Values)
+            var startedForwarders = new List<OrderedSubscriptionForwarder>(forwarders.Count);
+            var allStarted = false;
+            try
             {
-                await forwarder.Start(cancellationToken).ConfigureAwait(false);
+                foreach (var forwarder in forwarders.Values)
+                {
+                    await forwarder.Start(cancellationToken).ConfigureAwait(false);
+                    startedForwarders.Add(forwarder);
+                }
+
+                allStarted = true;
+            }
+            finally
+            {
+                if (!allStarted)
+                {
+                    // Roll back so that a failed start leaves nothing running and starting again starts all forwarders.
+                    // The failing forwarder already rolled back its own start, and failures to stop are logged by the forwarder.
+                    started = false;
+
+                    foreach (var forwarder in startedForwarders)
+                    {
+                        // Not canceled, so that the rollback also completes when the start was canceled
+                        await forwarder.Stop(CancellationToken.None).ConfigureAwait(false);
+                    }
+                }
             }
         }
         finally
