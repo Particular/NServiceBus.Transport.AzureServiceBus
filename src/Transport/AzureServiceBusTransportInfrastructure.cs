@@ -175,6 +175,14 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         }
         finally
         {
+            // Also when stopping the receivers failed, so that no forwarder keeps forwarding to a queue that is no longer received from.
+            // Shutting down the forwarders handles their failures, so the receivers and clients below are always disposed.
+            await Task.WhenAll(Receivers.Values
+                    .Select(receiver => receiver.Subscriptions is SubscriptionManager subscriptionManager
+                        ? subscriptionManager.ShutdownForwarders(cancellationToken)
+                        : Task.CompletedTask))
+                .ConfigureAwait(false);
+
             foreach (var messageReceiver in Receivers.Values)
             {
                 if (messageReceiver is IAsyncDisposable disposableReceiver)

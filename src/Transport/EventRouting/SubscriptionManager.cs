@@ -24,5 +24,5 @@ abstract class SubscriptionManager(
 
     public virtual Task StartForwarders(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-    public abstract Task Shutdown(CancellationToken cancellationToken = default);
+    public abstract Task ShutdownForwarders(CancellationToken cancellationToken = default);
 }
