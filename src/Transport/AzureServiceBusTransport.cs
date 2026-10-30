@@ -459,7 +459,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     }
 
     /// <summary>
-    /// Overrides the default time to wait before triggering a circuit breaker that initiates the endpoint shutdown procedure when the message pump cannot successfully receive a message.
+    /// Overrides the default time to wait before triggering a circuit breaker that initiates the critical error action when the message pump cannot successfully receive a message.
     /// </summary>
     public TimeSpan TimeToWaitBeforeTriggeringCircuitBreaker
     {
