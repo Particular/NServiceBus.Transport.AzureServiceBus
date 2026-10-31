@@ -18,6 +18,7 @@ class MessageDispatcher(
     TopicTopology topology,
     DestinationManager destinationManager,
     bool throwOnMissingTopic,
+    MissingTopicTracker missingTopicTracker,
     OutgoingNativeMessageCustomizationAction? customizerCallback = null)
     : IMessageDispatcher
 {
@@ -200,6 +201,13 @@ class MessageDispatcher(
         int batchCount = 0;
         List<ServiceBusMessage>? messagesTooLargeToBeBatched = null;
         client ??= defaultClient;
+
+        // Skipped publishes aren't logged one by one; the tracker logs when the topic goes missing and when it exists again
+        if (isMulticast && !throwOnMissingTopic && missingTopicTracker.IsMissing(destination))
+        {
+            return;
+        }
+
         var sender = messageSenderRegistry.GetMessageSender(destination, client);
         while (messagesToSend.Count > 0)
         {
@@ -265,6 +273,11 @@ class MessageDispatcher(
                 //committable tx will not be committed because this scope is not the owner
                 scope.Complete();
 
+                if (isMulticast)
+                {
+                    missingTopicTracker.MarkPresent(destination);
+                }
+
 
                 if (Log.IsDebugEnabled)
                 {
@@ -275,16 +288,17 @@ class MessageDispatcher(
             // when it tries to establish a link to a non-existing entity.
             catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
-                if (Log.IsWarnEnabled)
-                {
-                    Log.Warn($"Skipping publishing messages to topic {destination} because the destination does not exist.");
-                }
-
                 if (throwOnMissingTopic)
                 {
+                    if (Log.IsWarnEnabled)
+                    {
+                        Log.Warn($"Skipping publishing messages to topic {destination} because the destination does not exist.");
+                    }
+
                     throw;
                 }
 
+                missingTopicTracker.MarkMissing(destination);
                 return;
             }
             catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.ServiceCommunicationProblem)
@@ -397,18 +411,25 @@ class MessageDispatcher(
             using var scope = transaction.ToScope();
             await sender.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
             scope.Complete();
+
+            if (isMulticast)
+            {
+                missingTopicTracker.MarkPresent(destination);
+            }
         }
         catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {
-            if (Log.IsWarnEnabled)
-            {
-                Log.Warn($"Publishing message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
-            }
-
             if (throwOnMissingTopic)
             {
+                if (Log.IsWarnEnabled)
+                {
+                    Log.Warn($"Publishing message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
+                }
+
                 throw;
             }
+
+            missingTopicTracker.MarkMissing(destination);
         }
         catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.ServiceCommunicationProblem)
         {
