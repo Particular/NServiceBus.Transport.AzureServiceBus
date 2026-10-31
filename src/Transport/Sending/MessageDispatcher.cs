@@ -30,7 +30,6 @@ class MessageDispatcher(
     readonly OutgoingNativeMessageCustomizationAction
         customizerCallback = customizerCallback ?? (static (_, _) => { }); // Noop callback to not require a null check
 
-
     public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
     {
         _ = transaction.TryGet<AzureServiceBusTransportTransaction>(out var azureServiceBusTransaction);
@@ -410,26 +409,10 @@ class MessageDispatcher(
             return;
         }
 
-        if (missingTopicTracker.MarkMissing(destination))
-        {
-            if (Log.IsWarnEnabled)
-            {
-                Log.Warn($"Skipping publishing messages to topic {destination} because the destination does not exist. Messages published to this topic are discarded until a check, every {missingTopicTracker.ProbeInterval.TotalSeconds:0} seconds, finds the topic. This warning is logged again only after the topic has existed.");
-            }
-        }
-        else if (Log.IsDebugEnabled)
-        {
-            Log.Debug($"Topic {destination} still does not exist.");
-        }
+        missingTopicTracker.MarkMissing(destination);
     }
 
-    void MarkTopicPresent(string destination)
-    {
-        if (missingTopicTracker?.MarkPresent(destination) == true && Log.IsInfoEnabled)
-        {
-            Log.Info($"Topic {destination} exists now. Publishing to it is no longer skipped.");
-        }
-    }
+    void MarkTopicPresent(string destination) => missingTopicTracker?.MarkPresent(destination);
 
     void SetSessionIdIfNeeded(IOutgoingTransportOperation operation, ServiceBusMessage message)
     {
