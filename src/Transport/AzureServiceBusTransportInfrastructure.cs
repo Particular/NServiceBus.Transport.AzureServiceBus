@@ -20,8 +20,8 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     readonly ServiceBusAdministrationClient administrationClient;
     readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
     readonly DestinationManager destinationManager;
-    readonly Lazy<ServiceBusClient>? probeClient;
-    readonly MissingTopicTracker? missingTopicTracker;
+    readonly Lazy<ServiceBusClient> probeClient;
+    readonly MissingTopicTracker missingTopicTracker;
 
     public AzureServiceBusTransportInfrastructure(
         AzureServiceBusTransport transportSettings,
@@ -31,7 +31,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         Func<ServiceBusClient> forwarderClientFactory,
         ServiceBusAdministrationClient administrationClient,
         DestinationManager destinationManager,
-        Func<ServiceBusClient>? probeClientFactory = null
+        Func<ServiceBusClient> probeClientFactory
     )
     {
         this.transportSettings = transportSettings;
@@ -45,12 +45,9 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
         messageSenderRegistry = new MessageSenderRegistry();
 
-        if (probeClientFactory is not null)
-        {
-            // The client and its connection are only created when a topic turns out to be missing
-            probeClient = new Lazy<ServiceBusClient>(probeClientFactory, LazyThreadSafetyMode.ExecutionAndPublication);
-            missingTopicTracker = new MissingTopicTracker(MissingTopicTracker.UsingSendLink(() => probeClient.Value), MissingTopicTracker.DefaultProbeInterval);
-        }
+        // The client and its connection are only created when a topic turns out to be missing
+        probeClient = new Lazy<ServiceBusClient>(probeClientFactory, LazyThreadSafetyMode.ExecutionAndPublication);
+        missingTopicTracker = new MissingTopicTracker(MissingTopicTracker.UsingSendLink(() => probeClient.Value), MissingTopicTracker.DefaultProbeInterval);
 
         Dispatcher = new MessageDispatcher(
             defaultClient,
@@ -58,8 +55,8 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             transportSettings.Topology,
             destinationManager,
             transportSettings.ThrowOnMissingTopicWhenPublishing,
-            transportSettings.OutgoingNativeMessageCustomization,
-            missingTopicTracker
+            missingTopicTracker,
+            transportSettings.OutgoingNativeMessageCustomization
         );
 
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
@@ -194,12 +191,9 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                 await serviceBusClient.DisposeAsync().ConfigureAwait(false);
             }
 
-            if (missingTopicTracker is not null)
-            {
-                await missingTopicTracker.DisposeAsync().ConfigureAwait(false);
-            }
+            await missingTopicTracker.DisposeAsync().ConfigureAwait(false);
 
-            if (probeClient is { IsValueCreated: true })
+            if (probeClient.IsValueCreated)
             {
                 await probeClient.Value.DisposeAsync().ConfigureAwait(false);
             }

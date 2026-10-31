@@ -3,7 +3,6 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Threading.Tasks;
-using EventRouting;
 using NServiceBus.Transport.AzureServiceBus.EventRouting;
 using NUnit.Framework;
 using Particular.Approvals;
@@ -109,7 +108,8 @@ public class MigrationTopologyTests
             client,
             null,
             administrationClient,
-            destinationManager);
+            destinationManager,
+            () => client);
 
         var messagePump = (MessagePump)infrastructure.Receivers["TestReceiver"];
         var subscriptionManager = (SubscriptionManager)messagePump.Subscriptions!;
@@ -144,7 +144,8 @@ public class MigrationTopologyTests
             client,
             null,
             administrationClient,
-            destinationManager);
+            destinationManager,
+            () => client);
 
         var messagePump = (MessagePump)infrastructure.Receivers["TestReceiver"];
         var subscriptionManager = (SubscriptionManager)messagePump.Subscriptions!;

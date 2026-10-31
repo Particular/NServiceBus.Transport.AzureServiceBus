@@ -27,7 +27,8 @@ public class MessageDispatcherTests
             new MessageSenderRegistry(),
             topology,
             destinationManager ?? new DestinationManager(HierarchyNamespaceOptions.None),
-            throwOnMissingTopic);
+            throwOnMissingTopic,
+            new MissingTopicTracker(static (_, _) => Task.FromResult(false), TimeSpan.FromDays(1)));
 
     [Test]
     public async Task Should_batch_unicast_isolated_dispatches_to_same_destination()

@@ -18,8 +18,8 @@ class MessageDispatcher(
     TopicTopology topology,
     DestinationManager destinationManager,
     bool throwOnMissingTopic,
-    OutgoingNativeMessageCustomizationAction? customizerCallback = null,
-    MissingTopicTracker? missingTopicTracker = null)
+    MissingTopicTracker missingTopicTracker,
+    OutgoingNativeMessageCustomizationAction? customizerCallback = null)
     : IMessageDispatcher
 {
     const int MaxMessageThresholdForTransaction = 100;
@@ -203,7 +203,7 @@ class MessageDispatcher(
         client ??= defaultClient;
 
         // Skipped publishes aren't logged one by one; the tracker logs when the topic goes missing and when it exists again
-        if (isMulticast && !throwOnMissingTopic && missingTopicTracker?.IsMissing(destination) == true)
+        if (isMulticast && !throwOnMissingTopic && missingTopicTracker.IsMissing(destination))
         {
             return;
         }
@@ -275,7 +275,7 @@ class MessageDispatcher(
 
                 if (isMulticast)
                 {
-                    MarkTopicPresent(destination);
+                    missingTopicTracker.MarkPresent(destination);
                 }
 
 
@@ -298,7 +298,7 @@ class MessageDispatcher(
                     throw;
                 }
 
-                MarkTopicMissing(destination);
+                missingTopicTracker.MarkMissing(destination);
                 return;
             }
             catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.ServiceCommunicationProblem)
@@ -391,25 +391,6 @@ class MessageDispatcher(
         return Task.WhenAll(dispatchTasks);
     }
 
-    void MarkTopicMissing(string destination, string? messageId = null)
-    {
-        if (missingTopicTracker is null)
-        {
-            if (Log.IsWarnEnabled)
-            {
-                Log.Warn(messageId is null
-                    ? $"Skipping publishing messages to topic {destination} because the destination does not exist."
-                    : $"Publishing message with message ID '{messageId}' to topic {destination} failed because the destination does not exist.");
-            }
-
-            return;
-        }
-
-        missingTopicTracker.MarkMissing(destination);
-    }
-
-    void MarkTopicPresent(string destination) => missingTopicTracker?.MarkPresent(destination);
-
     void SetSessionIdIfNeeded(IOutgoingTransportOperation operation, ServiceBusMessage message)
     {
         var sessionId = ExtractSessionId(operation);
@@ -433,7 +414,7 @@ class MessageDispatcher(
 
             if (isMulticast)
             {
-                MarkTopicPresent(destination);
+                missingTopicTracker.MarkPresent(destination);
             }
         }
         catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
@@ -448,7 +429,7 @@ class MessageDispatcher(
                 throw;
             }
 
-            MarkTopicMissing(destination, message.MessageId);
+            missingTopicTracker.MarkMissing(destination);
         }
         catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.ServiceCommunicationProblem)
         {

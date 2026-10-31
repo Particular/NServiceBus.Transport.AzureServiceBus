@@ -182,17 +182,6 @@ public class MissingTopicTrackerTests
         }
     }
 
-    [Test]
-    public async Task Should_attempt_every_publish_without_tracker()
-    {
-        var (dispatcher, sender) = CreateDispatcherWithMissingTopic(null);
-
-        await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
-        await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
-
-        Assert.That(sender.Attempts, Is.EqualTo(2));
-    }
-
     static (MessageDispatcher Dispatcher, MissingTopicSender Sender) CreateDispatcherWithMissingTopic(MissingTopicTracker tracker, bool throwOnMissingTopic = false)
     {
         var client = new FakeServiceBusClient();
@@ -205,7 +194,7 @@ public class MissingTopicTrackerTests
             TopicTopology.FromOptions(new TopologyOptions { PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } } }),
             new DestinationManager(HierarchyNamespaceOptions.None),
             throwOnMissingTopic,
-            missingTopicTracker: tracker);
+            tracker);
 
         return (dispatcher, sender);
     }
