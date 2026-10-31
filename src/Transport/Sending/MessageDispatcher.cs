@@ -202,13 +202,9 @@ class MessageDispatcher(
         List<ServiceBusMessage>? messagesTooLargeToBeBatched = null;
         client ??= defaultClient;
 
+        // Skipped publishes aren't logged one by one; the tracker logs when the topic goes missing and when it exists again
         if (isMulticast && !throwOnMissingTopic && missingTopicTracker?.IsMissing(destination) == true)
         {
-            if (Log.IsDebugEnabled)
-            {
-                Log.Debug($"Skipping publishing '{messagesToSend.Count}' messages to topic {destination} because the topic did not exist when last checked.");
-            }
-
             return;
         }
 
