@@ -4,8 +4,10 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Extensibility;
 using NServiceBus.Transport.AzureServiceBus.EventRouting;
 using NUnit.Framework;
+using Unicast.Messages;
 
 [TestFixture]
 public class AzureServiceBusTransportInfrastructureTests
@@ -44,7 +46,6 @@ public class AzureServiceBusTransportInfrastructureTests
         }
     }
 
-    // Raw mode, so the forwarders are started from the topology mapping
     static async Task<AzureServiceBusTransportInfrastructure> CreateStartedInfrastructure(FakeSessionProcessorClient receiveClient, FakeForwardingClientFactory clientFactory, CancellationToken cancellationToken)
     {
         var topology = TopicTopology.Default;
@@ -60,6 +61,7 @@ public class AzureServiceBusTransportInfrastructureTests
 
         await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.CompletedTask,
             (_, _) => Task.FromResult(ErrorHandleResult.Handled), cancellationToken);
+        await pump.Subscriptions!.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag(), cancellationToken);
         await pump.StartReceive(cancellationToken);
 
         return infrastructure;
