@@ -35,7 +35,6 @@
     <Compile Include="..\AcceptanceTests\When_dlq_forwarding_is_enabled.cs" />
     <Compile Include="..\AcceptanceTests\When_dlq_use_for_failures_enabled.cs" />
     <Compile Include="..\AcceptanceTests\When_using_auto_delete_on_idle.cs" />
-    <Compile Include="..\AcceptanceTests\When_operating_with_least_privilege.cs" />
     <Compile Include="..\AcceptanceTests\When_using_token_credential_with_fully_qualified_namespace.cs" />
 
     <!-- Receiving -->
@@ -64,6 +63,5 @@
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_immediate_retries_fail.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_saga_message_goes_through_delayed_retries.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_from_sendonly.cs" />
-    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_operating_with_least_privilege.cs" />
   </ItemGroup>
   </Project>
