@@ -178,5 +178,5 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
         }
     }
 
-    public override Task Shutdown(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public override Task ShutdownForwarders(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
