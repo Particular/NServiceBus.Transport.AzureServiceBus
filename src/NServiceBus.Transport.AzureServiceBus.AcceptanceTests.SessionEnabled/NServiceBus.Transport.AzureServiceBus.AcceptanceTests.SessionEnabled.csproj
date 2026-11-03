@@ -64,5 +64,6 @@
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_immediate_retries_fail.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_saga_message_goes_through_delayed_retries.cs" />
     <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_publishing_from_sendonly.cs" />
+    <Compile Remove="$(PkgNServiceBus_AcceptanceTests_Sources)\**\When_operating_with_least_privilege.cs" />
   </ItemGroup>
   </Project>
