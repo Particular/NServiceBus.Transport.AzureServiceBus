@@ -98,7 +98,7 @@ public class When_using_dlq_qualifier
         var c = new ConfigureAzureServiceBusTransportInfrastructure();
         var transportDefinition = (AzureServiceBusTransport)c.CreateTransportDefinition();
         transportDefinition.TransportTransactionMode = mode;
-        transportDefinition.EnableSessions = false;
+        transportDefinition.EnableSessions = SessionOptions.Enabled();
 
         var hostSettings = new HostSettings(
             inputQueueName,
@@ -204,7 +204,7 @@ public class When_using_dlq_qualifier
         var c = new ConfigureAzureServiceBusTransportInfrastructure();
         var transportDefinition = (AzureServiceBusTransport)c.CreateTransportDefinition();
         //HINT: The DLQ for a session-enabled queue is not session-enabled
-        transportDefinition.EnableSessions = false;
+        transportDefinition.EnableSessions = SessionOptions.Disabled;
 
         var hostSettings = new HostSettings(
             inputQueueName,

@@ -51,6 +51,7 @@ public class When_operating_with_least_privilege : NServiceBusAcceptanceTest
 
                     var transport = c.ConfigureTransport<AzureServiceBusTransport>();
                     transport.ConnectionString = AcceptanceTestConnectionString.RestrictedConnectionString;
+                    transport.EnableSessions = SessionOptions.Enabled(SessionForwardingMode.AllMappedEvents);
                 });
                 b.When(session => session.SendLocal(new MyCommand()));
             })

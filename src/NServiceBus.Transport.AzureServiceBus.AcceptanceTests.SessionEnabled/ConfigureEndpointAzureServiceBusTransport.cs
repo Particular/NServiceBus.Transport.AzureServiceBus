@@ -83,7 +83,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         }
         else
         {
-            transport.EnableSessions = true;
+            transport.EnableSessions = SessionOptions.Enabled();
         }
 
         //Use default topology mapping if not overriden by specific test configuration

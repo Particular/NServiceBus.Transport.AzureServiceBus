@@ -80,7 +80,7 @@ public class QueueCreatorTests
     [Test]
     public async Task Should_set_RequiresSession_to_true_when_setting_enable_session()
     {
-        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default) { EnableSessions = true };
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default) { EnableSessions = SessionOptions.Enabled() };
 
         var output = await CreateQueues(transport,
             sendingAddresses: ["audit", "error", "some-destination-queue"]);
@@ -93,7 +93,7 @@ public class QueueCreatorTests
     {
         var transport = new AzureServiceBusTransport("connectionString", TopicTopology.Default)
         {
-            EnableSessions = true,
+            EnableSessions = SessionOptions.Enabled(),
             HierarchyNamespaceOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" },
             AutoForwardDeadLetteredMessagesToErrorQueue = true
         };
