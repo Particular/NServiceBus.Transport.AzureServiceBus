@@ -12,7 +12,7 @@
         {
             try
             {
-                await Queue.Create(client, name, size, deliveryCount, partitioning, hierarchyNamespace, forwardDlqTo);
+                await Queue.Create(client, name, size, deliveryCount, partitioning, hierarchyNamespace, forwardDlqTo, requiresSession: false);
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
             {
