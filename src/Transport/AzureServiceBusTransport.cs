@@ -113,7 +113,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, defaultClientOptions)
             : new ServiceBusClient(ConnectionString, defaultClientOptions);
 
-        if (EnableSessions)
+        if (EnableSessions.IsEnabled)
         {
             if (TransportTransactionMode == TransportTransactionMode.None)
             {
@@ -261,7 +261,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
                 receiveQueue.ForwardDeadLetteredMessagesTo = errorQueueName;
             }
 
-            receiveQueue.RequiresSession = EnableSessions;
+            receiveQueue.RequiresSession = EnableSessions.IsEnabled;
 
             queuesToCreate.Add(receiveQueueName, receiveQueue);
         }
@@ -282,7 +282,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// <inheritdoc />
     public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes()
     {
-        if (EnableSessions)
+        if (EnableSessions.IsEnabled)
         {
             return
             [
@@ -326,6 +326,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
     }
 
     TopicTopology topology;
+    SessionOptions enableSessions = SessionOptions.Disabled;
 
     /// <summary>
     /// Configures hierarchy namespace support
@@ -403,7 +404,20 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// <summary>
     /// Enables sessions on the queue or topic
     /// </summary>
-    public bool EnableSessions { get; set; }
+    [MemberNotNull(nameof(enableSessions))]
+    public SessionOptions EnableSessions
+    {
+        get
+        {
+            ArgumentNullException.ThrowIfNull(enableSessions);
+            return enableSessions;
+        }
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            enableSessions = value;
+        }
+    }
 
     /// <summary>
     /// Controls whether dead-lettered messages are automatically forwarded to the configured error queue.

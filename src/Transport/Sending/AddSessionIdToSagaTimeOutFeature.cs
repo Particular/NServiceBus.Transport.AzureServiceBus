@@ -13,7 +13,7 @@ sealed class AddSessionIdToSagaTimeOutFeature : Feature
             throw new ArgumentException("Azure Service Bus transport must be enabled to use this feature");
         }
 
-        if (azureServiceBusTransport.EnableSessions)
+        if (azureServiceBusTransport.EnableSessions.IsEnabled)
         {
             context.Pipeline.Register(
                 new AddSessionIdToSagaTimeOutBehavior(),

@@ -23,7 +23,7 @@ public class ConfigureAzureServiceBusTransportInfrastructure : IConfigureTranspo
             throw new InvalidOperationException("Environment variable AzureServiceBus_ConnectionString not set");
         }
 
-        var transport = new AzureServiceBusTransport(ConnectionString, TopicTopology.Default) { EnableSessions = true };
+        var transport = new AzureServiceBusTransport(ConnectionString, TopicTopology.Default) { EnableSessions = SessionOptions.Enabled() };
         return transport;
     }
 
