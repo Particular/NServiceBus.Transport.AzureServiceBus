@@ -26,14 +26,21 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
             if (!forwarders.TryGetValue((topic, subscription), out var forwarder))
             {
                 forwarder = new OrderedSubscriptionForwarder(clientFactory, topic, subscription, inputQueue, timeBeforeTriggeringCircuitBreaker, criticalErrorAction);
+                forwarder.RegisterType(eventTypeFullName);
+                if (started)
+                {
+                    await forwarder.Start(cancellationToken).ConfigureAwait(false);
+                }
+                // We do not add the forwarder to the collection until we know it completed its Start
                 forwarders[(topic, subscription)] = forwarder;
             }
-
-            forwarder.RegisterType(eventTypeFullName);
-
-            if (started)
+            else
             {
-                await forwarder.Start(cancellationToken).ConfigureAwait(false);
+                forwarder.RegisterType(eventTypeFullName);
+                if (started)
+                {
+                    await forwarder.Start(cancellationToken).ConfigureAwait(false);
+                }
             }
             // ReSharper restore InconsistentlySynchronizedField
         }
@@ -73,8 +80,17 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
 
                     foreach (var forwarder in startedForwarders)
                     {
-                        // Not canceled, so that the rollback also completes when the start was canceled
-                        await forwarder.Stop(CancellationToken.None).ConfigureAwait(false);
+                        try
+                        {
+                            // Best effort
+                            // Not canceled, so that the rollback also completes when the start was canceled
+                            await forwarder.Stop(CancellationToken.None).ConfigureAwait(false);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
+                            throw;
+                        }
                     }
                 }
             }

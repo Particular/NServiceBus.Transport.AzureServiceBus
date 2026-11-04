@@ -19,10 +19,10 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
     readonly string subscriptionName;
     readonly string inputQueueAddress;
 
-    // All lifecycle decisions are made under stateLock; each run owns its client, processor and sender
-    readonly object stateLock = new();
-    ForwardingRun? activeRun;
-    ForwardingRun? lastRun;
+    // Not thread-safe: Start, Stop and DisposeAsync must not be called concurrently, which SubscriptionForwarders guarantees.
+    // Only running is read concurrently, by the error handler of the processor.
+    Resources? running;
+    Task released = Task.CompletedTask;
     bool disposed;
 
     public OrderedSubscriptionForwarder(Func<ServiceBusClient> clientFactory, string topicName, string subscriptionName, string inputQueueAddress, TimeSpan timeBeforeTriggeringCircuitBreaker, Action<string, Exception, CancellationToken> criticalErrorAction)
@@ -40,197 +40,85 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
             });
     }
 
-    public Task Start(CancellationToken cancellationToken = default)
+    public async Task Start(CancellationToken cancellationToken = default)
     {
-        ForwardingRun run;
-        lock (stateLock)
+        if (disposed || running != null)
         {
-            if (disposed)
-            {
-                return Task.CompletedTask;
-            }
-
-            if (activeRun != null)
-            {
-                // Registering again means the subscription may exist by now; the starting processor may already have issued accepts.
-                // Stop clears activeRun when requesting the stop, so the confirmation always belongs to a run that may still restart.
-                activeRun.SubscriptionConfirmed = true;
-                return Task.CompletedTask;
-            }
-
-            run = BeginRun();
+            return;
         }
 
-        return StartRun(run, cancellationToken);
-    }
+        // A canceled stop might still be releasing the previous processor
+        await released.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-    // Must be called while holding stateLock
-    ForwardingRun BeginRun()
-    {
-        var run = new ForwardingRun(lastRun?.Released.Task ?? Task.CompletedTask);
-        activeRun = run;
-        lastRun = run;
-        return run;
-    }
+        var client = clientFactory();
+        var processor = client.CreateSessionProcessor(topicName, subscriptionName, new ServiceBusSessionProcessorOptions
+        {
+            //HINT: We intentionally use conservative values here to not overwhelm the broker
+            //      There is no evidence yet that these values need to be configurable
+            PrefetchCount = 10,
+            MaxConcurrentSessions = 16,
+            ReceiveMode = ServiceBusReceiveMode.PeekLock,
+            Identifier = $"Forwarding-Processor-{topicName}-{subscriptionName}-{inputQueueAddress}",
+            AutoCompleteMessages = false,
+        });
+        var sender = client.CreateSender(inputQueueAddress, new ServiceBusSenderOptions
+        {
+            Identifier = $"Forwarding-Sender-{topicName}-{subscriptionName}"
+        });
+        var resources = new Resources(client, processor, sender);
 
-    async Task StartRun(ForwardingRun run, CancellationToken cancellationToken)
-    {
-        var startedOrStopped = false;
+        processor.ProcessErrorAsync += args => OnError(resources, args);
+        processor.ProcessMessageAsync += args => OnMessage(sender, args);
+
+        // Assigned before starting, so that errors reported while starting are not mistaken for errors of a stopped processor
+        Volatile.Write(ref running, resources);
+        var started = false;
         try
         {
-            await run.PreviousReleased.ConfigureAwait(false);
-
-            lock (stateLock)
-            {
-                if (run.StopRequested)
-                {
-                    BeginRelease(run);
-                    startedOrStopped = true;
-                    return;
-                }
-            }
-
-            var sessionReceiveOptions = new ServiceBusSessionProcessorOptions
-            {
-                //HINT: We intentionally use conservative values here to not overwhelm the broker
-                //      There is no evidence yet that these values need to be configurable
-                PrefetchCount = 10,
-                MaxConcurrentSessions = 16,
-                ReceiveMode = ServiceBusReceiveMode.PeekLock,
-                Identifier = $"Forwarding-Processor-{topicName}-{subscriptionName}-{inputQueueAddress}",
-                AutoCompleteMessages = false,
-            };
-
-            var client = clientFactory();
-            lock (stateLock)
-            {
-                run.Client = client;
-            }
-
-            var processor = client.CreateSessionProcessor(topicName, subscriptionName, sessionReceiveOptions);
-            processor.ProcessErrorAsync += args => OnError(run, args);
-            processor.ProcessMessageAsync += args => OnMessage(run, args);
-            var processorSender = client.CreateSender(inputQueueAddress, new ServiceBusSenderOptions
-            {
-                Identifier = $"Forwarding-Sender-{topicName}-{subscriptionName}"
-            });
-
-            lock (stateLock)
-            {
-                run.Processor = processor;
-                run.Sender = processorSender;
-
-                if (run.StopRequested)
-                {
-                    BeginRelease(run);
-                    startedOrStopped = true;
-                    return;
-                }
-            }
-
             await processor.StartProcessingAsync(cancellationToken).ConfigureAwait(false);
-
-            lock (stateLock)
-            {
-                run.Processing = true;
-                startedOrStopped = true;
-
-                if (run.StopRequested)
-                {
-                    BeginRelease(run);
-                }
-            }
+            started = true;
         }
         finally
         {
-            if (!startedOrStopped)
+            if (!started)
             {
-                // Roll back a failed start so that a later registration can start the forwarder again
-                lock (stateLock)
-                {
-                    if (activeRun == run)
-                    {
-                        activeRun = null;
-                    }
-
-                    BeginRelease(run);
-                }
-
-                await run.Released.Task.ConfigureAwait(false);
+                // Roll back so that nothing is left running and a later start creates everything again
+                Volatile.Write(ref running, null);
+                await Release(resources).ConfigureAwait(false);
             }
         }
     }
 
-    // The caller's token only bounds how long Stop waits; releasing always completes so nothing is left running
-    public async Task Stop(CancellationToken cancellationToken = default)
+    // The caller's token only bounds how long Stop waits; once started, releasing always completes so nothing is left running
+    public Task Stop(CancellationToken cancellationToken = default)
     {
-        Task released;
-        lock (stateLock)
+        if (running is { } resources)
         {
-            if (activeRun is { } run)
-            {
-                activeRun = null;
-                run.StopRequested = true;
-
-                // A run that is still starting is released by its start once it sees the stop request
-                if (run.Processing)
-                {
-                    BeginRelease(run);
-                }
-            }
-
-            released = lastRun?.Released.Task ?? Task.CompletedTask;
+            // Cleared first, so that late errors of the stopping processor are ignored
+            Volatile.Write(ref running, null);
+            released = Release(resources);
         }
 
-        await released.WaitAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    // Must be called while holding stateLock
-    void BeginRelease(ForwardingRun run)
-    {
-        if (!run.ReleaseStarted)
-        {
-            run.ReleaseStarted = true;
-            // Stopping the processor waits for its running handlers, which might include the caller
-            _ = Task.Run(() => Release(run), CancellationToken.None);
-        }
+        return released.WaitAsync(cancellationToken);
     }
 
 #pragma warning disable PS0018 // Releasing cannot be canceled, see Stop
-    async Task Release(ForwardingRun run)
+    async Task Release(Resources resources)
 #pragma warning restore PS0018
     {
         try
         {
-            if (run.Processor != null)
-            {
-                try
-                {
-                    // A canceled stop would leave the processor running
-                    await run.Processor.StopProcessingAsync(CancellationToken.None).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    Logger.Warn($"Failed to stop the forwarder for subscription '{subscriptionName}' on topic '{topicName}'.", ex);
-                }
-
-                await DisposeLoggingFailure(run.Processor, "session processor").ConfigureAwait(false);
-            }
-
-            if (run.Sender != null)
-            {
-                await DisposeLoggingFailure(run.Sender, "sender").ConfigureAwait(false);
-            }
-
-            if (run.Client != null)
-            {
-                await DisposeLoggingFailure(run.Client, "client").ConfigureAwait(false);
-            }
+            // A canceled stop would leave the processor running
+            await resources.Processor.StopProcessingAsync(CancellationToken.None).ConfigureAwait(false);
         }
-        finally
+        catch (Exception ex)
         {
-            run.Released.TrySetResult();
+            Logger.Warn($"Failed to stop the forwarder for subscription '{subscriptionName}' on topic '{topicName}'.", ex);
         }
+
+        await DisposeLoggingFailure(resources.Processor, "session processor").ConfigureAwait(false);
+        await DisposeLoggingFailure(resources.Sender, "sender").ConfigureAwait(false);
+        await DisposeLoggingFailure(resources.Client, "client").ConfigureAwait(false);
     }
 
 #pragma warning disable PS0018 // Disposing cannot be canceled
@@ -247,22 +135,8 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         }
     }
 
-#pragma warning disable PS0018 // Only Stop ends a restart, through its stop request
-    async Task Restart(ForwardingRun run)
-#pragma warning restore PS0018
-    {
-        try
-        {
-            await StartRun(run, CancellationToken.None).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Failed to restart the forwarder for subscription '{subscriptionName}' on topic '{topicName}'. Forwarding resumes after the endpoint is restarted or subscribes to the event again.", ex);
-        }
-    }
-
 #pragma warning disable PS0018
-    async Task OnMessage(ForwardingRun run, ProcessSessionMessageEventArgs arg)
+    async Task OnMessage(ServiceBusSender sender, ProcessSessionMessageEventArgs arg)
 #pragma warning restore PS0018
     {
         using var ts = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
@@ -270,65 +144,22 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         var serviceBusMessage = new ServiceBusMessage(arg.Message);
 
         await arg.CompleteMessageAsync(arg.Message, arg.CancellationToken).ConfigureAwait(false);
-        await run.Sender!.SendMessageAsync(serviceBusMessage, arg.CancellationToken).ConfigureAwait(false);
+        await sender.SendMessageAsync(serviceBusMessage, arg.CancellationToken).ConfigureAwait(false);
         arg.ReleaseSession();
         ts.Complete();
         circuitBreaker.Success();
     }
 
 #pragma warning disable PS0018
-    async Task OnError(ForwardingRun run, ProcessErrorEventArgs arg)
+    async Task OnError(Resources resources, ProcessErrorEventArgs arg)
 #pragma warning restore PS0018
     {
         string message = $"Failed to receive a message on pump '{arg.Identifier}' listening on '{arg.EntityPath}' connected to '{arg.FullyQualifiedNamespace}' due to '{arg.ErrorSource}'. Exception: {arg.Exception}";
 
-        lock (stateLock)
+        // Errors of a processor that is being stopped must not affect the forwarder
+        if (Volatile.Read(ref running) != resources)
         {
-            if (activeRun != run)
-            {
-                // Late errors from a stopped or replaced run must not affect the current one
-                Logger.Debug(message, arg.Exception);
-                return;
-            }
-        }
-
-        // Releasing the processor, sender and client keeps a missing subscription from holding a connection and polling it forever.
-        // Only receive-side errors mean the subscription is missing; a not-found from forwarding the message concerns the input queue.
-        if (arg.Exception is ServiceBusException { Reason: ServiceBusFailureReason.MessagingEntityNotFound }
-            && arg.ErrorSource is ServiceBusErrorSource.AcceptSession or ServiceBusErrorSource.Receive)
-        {
-            ForwardingRun? restart = null;
-            lock (stateLock)
-            {
-                // Stop clears the active run under the same lock, so no restart is scheduled after a stop request
-                if (activeRun != run)
-                {
-                    return;
-                }
-
-                activeRun = null;
-                BeginRelease(run);
-
-                if (run.SubscriptionConfirmed)
-                {
-                    restart = BeginRun();
-                }
-            }
-
-            if (restart != null)
-            {
-                if (Logger.IsDebugEnabled)
-                {
-                    Logger.DebugFormat("Restarting the forwarder for subscription '{0}' on topic '{1}' because it was not found before it was confirmed to exist.", subscriptionName, topicName);
-                }
-
-                _ = Task.Run(() => Restart(restart), CancellationToken.None);
-            }
-            else
-            {
-                Logger.ErrorFormat("Subscription '{0}' on topic '{1}' does not exist, so its events cannot be forwarded to '{2}'. Provision the subscription or remove the topology mapping. Forwarding resumes after the subscription is provisioned and the endpoint is restarted or subscribes to the event again.", subscriptionName, topicName, inputQueueAddress);
-            }
-
+            Logger.Debug(message, arg.Exception);
             return;
         }
 
@@ -339,6 +170,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
             return;
         }
 
+        // Everything else, including a subscription that was deleted after the forwarder started, is handled by the circuit breaker
         Logger.Warn(message, arg.Exception);
         await circuitBreaker.Failure(arg.Exception, arg.CancellationToken)
             .ConfigureAwait(false);
@@ -346,10 +178,7 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        lock (stateLock)
-        {
-            disposed = true;
-        }
+        disposed = true;
 
         await Stop(CancellationToken.None).ConfigureAwait(false);
 
@@ -367,17 +196,10 @@ class OrderedSubscriptionForwarder : IAsyncDisposable
         return eventTypes.Count == 0;
     }
 
-    // Guarded by stateLock of the forwarder
-    sealed class ForwardingRun(Task previousReleased)
+    sealed class Resources(ServiceBusClient client, ServiceBusSessionProcessor processor, ServiceBusSender sender)
     {
-        public Task PreviousReleased { get; } = previousReleased;
-        public TaskCompletionSource Released { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public ServiceBusClient? Client { get; set; }
-        public ServiceBusSessionProcessor? Processor { get; set; }
-        public ServiceBusSender? Sender { get; set; }
-        public bool Processing { get; set; }
-        public bool SubscriptionConfirmed { get; set; }
-        public bool StopRequested { get; set; }
-        public bool ReleaseStarted { get; set; }
+        public ServiceBusClient Client { get; } = client;
+        public ServiceBusSessionProcessor Processor { get; } = processor;
+        public ServiceBusSender Sender { get; } = sender;
     }
 }
