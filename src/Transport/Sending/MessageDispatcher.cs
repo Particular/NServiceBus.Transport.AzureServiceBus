@@ -25,6 +25,7 @@ class MessageDispatcher(
     const int MaxMessageThresholdForTransaction = 100;
 
     static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
+    readonly ConcurrentDictionary<string, byte> warnedMissingTopics = new(StringComparer.OrdinalIgnoreCase);
     static readonly Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> emptyDestinationAndOperations = [];
 
     readonly OutgoingNativeMessageCustomizationAction
@@ -287,7 +288,7 @@ class MessageDispatcher(
                     return;
                 }
 
-                if (Log.IsWarnEnabled)
+                if (Log.IsWarnEnabled && (throwOnMissingTopic || warnedMissingTopics.TryAdd(destination, 0)))
                 {
                     Log.Warn($"Skipping publishing messages to topic {destination} because the destination does not exist.");
                 }
@@ -417,7 +418,7 @@ class MessageDispatcher(
                 return;
             }
 
-            if (Log.IsWarnEnabled)
+            if (Log.IsWarnEnabled && (throwOnMissingTopic || warnedMissingTopics.TryAdd(destination, 0)))
             {
                 Log.Warn($"Publishing message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
             }

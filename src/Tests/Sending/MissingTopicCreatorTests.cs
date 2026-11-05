@@ -111,7 +111,7 @@ public class MissingTopicCreatorTests
     }
 
     [Test]
-    public async Task Should_warn_once_and_fall_back_to_warning_per_publish_when_creation_fails()
+    public async Task Should_warn_once_per_topic_when_creation_failed()
     {
         var logOutput = new StringWriter();
 #pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
@@ -135,12 +135,13 @@ public class MissingTopicCreatorTests
             Assert.That(fake.Calls, Is.EqualTo(1));
             Assert.That(sender.Attempts, Is.EqualTo(4));
             Assert.That(entries.Count(e => e.Level == "WARN" && e.Message.Contains("Creating topic sometopic")), Is.EqualTo(1));
-            Assert.That(entries.Count(e => e.Level == "WARN" && e.Message.Contains("does not exist")), Is.EqualTo(3));
+            Assert.That(entries.Count(e => e.Level == "WARN" && e.Message.Contains("does not exist")), Is.EqualTo(1));
         }
     }
 
-    [Test]
-    public async Task Should_not_create_topic_when_disabled()
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task Should_warn_once_per_topic_without_creating_when_disabled(bool sendIndividually)
     {
         var logOutput = new StringWriter();
 #pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
@@ -149,10 +150,38 @@ public class MissingTopicCreatorTests
 
         var fake = new FakeTopicCreation();
         await using var creator = new MissingTopicCreator(fake.Create, enabled: false);
-        var (dispatcher, _) = CreateDispatcherWithMissingTopic(creator);
+        var (dispatcher, sender) = CreateDispatcherWithMissingTopic(creator);
+        sender.TryAdd = _ => !sendIndividually;
 
         await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
         await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
+        await dispatcher.Dispatch(PublishOperations(typeof(SomeOtherEvent)), new TransportTransaction());
+        await dispatcher.Dispatch(PublishOperations(typeof(SomeOtherEvent)), new TransportTransaction());
+
+        var entries = DispatcherEntries(logOutput);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(fake.Calls, Is.Zero);
+            Assert.That(sender.Attempts, Is.EqualTo(4), "Only the warning is deduplicated; each publish is still attempted");
+            Assert.That(entries.Count(e => e.Level == "WARN" && e.Message.Contains("topic sometopic ")), Is.EqualTo(1));
+            Assert.That(entries.Count(e => e.Level == "WARN" && e.Message.Contains("topic othertopic ")), Is.EqualTo(1));
+        }
+    }
+
+    [Test]
+    public async Task Should_not_create_topic_when_throwing_on_missing_topic()
+    {
+        var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Info);
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var fake = new FakeTopicCreation();
+        await using var creator = new MissingTopicCreator(fake.Create, enabled: true);
+        var (dispatcher, _) = CreateDispatcherWithMissingTopic(creator, throwOnMissingTopic: true);
+
+        Assert.That(async () => await dispatcher.Dispatch(PublishOperations(), new TransportTransaction()), Throws.InstanceOf<ServiceBusException>());
+        Assert.That(async () => await dispatcher.Dispatch(PublishOperations(), new TransportTransaction()), Throws.InstanceOf<ServiceBusException>());
 
         using (Assert.EnterMultipleScope())
         {
@@ -162,16 +191,25 @@ public class MissingTopicCreatorTests
     }
 
     [Test]
-    public async Task Should_not_create_topic_when_throwing_on_missing_topic()
+    public async Task Should_warn_again_for_same_topic_in_new_endpoint_run()
     {
+        var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Info);
+#pragma warning restore CS0618 // Type or member is obsolete
+
         var fake = new FakeTopicCreation();
-        await using var creator = new MissingTopicCreator(fake.Create, enabled: true);
-        var (dispatcher, _) = CreateDispatcherWithMissingTopic(creator, throwOnMissingTopic: true);
+        await using var creator = new MissingTopicCreator(fake.Create, enabled: false);
+        var (firstDispatcher, _) = CreateDispatcherWithMissingTopic(creator);
+        var (secondDispatcher, _) = CreateDispatcherWithMissingTopic(creator);
 
-        Assert.That(async () => await dispatcher.Dispatch(PublishOperations(), new TransportTransaction()), Throws.InstanceOf<ServiceBusException>());
-        Assert.That(async () => await dispatcher.Dispatch(PublishOperations(), new TransportTransaction()), Throws.InstanceOf<ServiceBusException>());
+        await firstDispatcher.Dispatch(PublishOperations(), new TransportTransaction());
+        await firstDispatcher.Dispatch(PublishOperations(), new TransportTransaction());
+        Assert.That(DispatcherEntries(logOutput).Count(e => e.Level == "WARN"), Is.EqualTo(1));
 
-        Assert.That(fake.Calls, Is.Zero);
+        await secondDispatcher.Dispatch(PublishOperations(), new TransportTransaction());
+        await secondDispatcher.Dispatch(PublishOperations(), new TransportTransaction());
+        Assert.That(DispatcherEntries(logOutput).Count(e => e.Level == "WARN"), Is.EqualTo(2));
     }
 
     [Test]
@@ -196,11 +234,19 @@ public class MissingTopicCreatorTests
         var client = new FakeServiceBusClient();
         var sender = new MissingTopicSender();
         client.Senders["sometopic"] = sender;
+        client.Senders["othertopic"] = sender;
 
         var dispatcher = new MessageDispatcher(
             client,
             new MessageSenderRegistry(),
-            TopicTopology.FromOptions(new TopologyOptions { PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } } }),
+            TopicTopology.FromOptions(new TopologyOptions
+            {
+                PublishedEventToTopicsMap =
+                {
+                    { typeof(SomeEvent).FullName, "sometopic" },
+                    { typeof(SomeOtherEvent).FullName, "othertopic" }
+                }
+            }),
             new DestinationManager(HierarchyNamespaceOptions.None),
             throwOnMissingTopic,
             creator);
@@ -208,9 +254,9 @@ public class MissingTopicCreatorTests
         return (dispatcher, sender);
     }
 
-    static TransportOperations PublishOperations() =>
+    static TransportOperations PublishOperations(Type eventType = null) =>
         new(new TransportOperation(new OutgoingMessage(Guid.NewGuid().ToString(), [], ReadOnlyMemory<byte>.Empty),
-            new MulticastAddressTag(typeof(SomeEvent)),
+            new MulticastAddressTag(eventType ?? typeof(SomeEvent)),
             [],
             DispatchConsistency.Default));
 
@@ -289,15 +335,22 @@ public class MissingTopicCreatorTests
     {
         int attempts;
 
-        public MissingTopicSender() =>
-            SendMessageBatchAction = _ =>
-            {
-                Interlocked.Increment(ref attempts);
-                throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound);
-            };
+        public MissingTopicSender()
+        {
+            SendMessageBatchAction = _ => FailSend();
+            SendMessageAction = _ => FailSend();
+        }
+
+        void FailSend()
+        {
+            Interlocked.Increment(ref attempts);
+            throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound);
+        }
 
         public int Attempts => Volatile.Read(ref attempts);
     }
 
     class SomeEvent;
+
+    class SomeOtherEvent;
 }
