@@ -174,7 +174,14 @@ sealed class SessionsEnabledMessagePump(
             Logger.Debug(message, processErrorEventArgs.Exception);
             return;
         }
+
         Logger.Warn(message, processErrorEventArgs.Exception);
+
+        if (!processErrorEventArgs.ShouldArmCircuitBreaker())
+        {
+            return;
+        }
+
         await circuitBreaker!.Failure(processErrorEventArgs.Exception, processErrorEventArgs.CancellationToken)
             .ConfigureAwait(false);
     }

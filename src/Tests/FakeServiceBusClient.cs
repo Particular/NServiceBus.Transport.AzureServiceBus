@@ -7,6 +7,7 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
     {
         public Dictionary<string, FakeSender> Senders { get; } = [];
         public Dictionary<string, FakeProcessor> Processors { get; } = [];
+        public Dictionary<string, FakeSessionProcessor> SessionProcessors { get; } = [];
 
         public override ServiceBusSender CreateSender(string queueOrTopicName)
         {
@@ -37,5 +38,19 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             }
             return fakeProcessor;
         }
+
+        public override ServiceBusSessionProcessor CreateSessionProcessor(string queueName, ServiceBusSessionProcessorOptions options)
+        {
+            if (!SessionProcessors.TryGetValue(queueName, out var fakeSessionProcessor))
+            {
+                fakeSessionProcessor = new FakeSessionProcessor(sessionProcessorClient, queueName, options);
+                SessionProcessors.Add(queueName, fakeSessionProcessor);
+            }
+            return fakeSessionProcessor;
+        }
+
+        // ServiceBusSessionProcessor needs a client with a connection. Creating one doesn't connect to anything,
+        // and FakeSessionProcessor never starts processing.
+        readonly ServiceBusClient sessionProcessorClient = new("Endpoint=sb://fake.servicebus.windows.net/;SharedAccessKeyName=fake;SharedAccessKey=fake");
     }
 }

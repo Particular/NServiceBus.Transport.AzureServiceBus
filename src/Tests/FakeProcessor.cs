@@ -31,6 +31,8 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             return OnProcessMessageAsync(eventArgs);
         }
 
+        public Task RaiseError(ProcessErrorEventArgs args) => OnProcessErrorAsync(args);
+
         readonly ConditionalWeakTable<ServiceBusReceivedMessage, CustomProcessMessageEventArgs>
             receivedMessageToEventArgs = [];
 
