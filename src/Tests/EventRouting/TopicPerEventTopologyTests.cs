@@ -332,7 +332,8 @@ public class TopicPerEventTopologyTests
             client,
             null,
             administrationClient,
-            destinationManager);
+            destinationManager,
+            () => client);
 
         var messagePump = (MessagePump)infrastructure.Receivers["TestReceiver"];
         var subscriptionManager = messagePump.Subscriptions!;
@@ -364,7 +365,8 @@ public class TopicPerEventTopologyTests
             client,
             null,
             administrationClient,
-            destinationManager);
+            destinationManager,
+            () => client);
 
         var messagePump = (MessagePump)infrastructure.Receivers["TestReceiver"];
         var subscriptionManager = messagePump.Subscriptions!;

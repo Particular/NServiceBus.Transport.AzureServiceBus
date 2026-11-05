@@ -155,7 +155,7 @@ public partial class AzureServiceBusTransport : TransportDefinition
             ? new ServiceBusAdministrationClient(FullyQualifiedNamespace, TokenCredential)
             : new ServiceBusAdministrationClient(administrationConnectionString);
 
-        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, () => CreateForwardingClient(receivers, defaultClientOptions, clientId), administrationClient, DestinationManager);
+        var infrastructure = new AzureServiceBusTransportInfrastructure(this, hostSettings, receiveSettingsAndClientPairs, defaultClient, () => CreateForwardingClient(receivers, defaultClientOptions, clientId), administrationClient, DestinationManager, () => CreateTopicProbeClient(hostSettings, defaultClientOptions, clientId));
 
         if (hostSettings.SetupInfrastructure)
         {
@@ -191,6 +191,17 @@ public partial class AzureServiceBusTransport : TransportDefinition
             ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, forwardingClientOptions)
             : new ServiceBusClient(ConnectionString, forwardingClientOptions);
         return forwardingClient;
+    }
+
+    // A separate connection, because the service delays every new link on a connection after a failed one
+    ServiceBusClient CreateTopicProbeClient(HostSettings hostSettings, ServiceBusClientOptions defaultClientOptions, Guid clientId)
+    {
+        var probeClientOptions = new ServiceBusClientOptions { TransportType = defaultClientOptions.TransportType, EnableCrossEntityTransactions = false, Identifier = $"Client-TopicProbe-{HierarchyNamespaceClientIdentifier}{hostSettings.Name}-{clientId}" };
+        ApplyRetryPolicyOptionsIfNeeded(probeClientOptions);
+        ApplyWebProxyIfNeeded(probeClientOptions);
+        return TokenCredential != null
+            ? new ServiceBusClient(FullyQualifiedNamespace, TokenCredential, probeClientOptions)
+            : new ServiceBusClient(ConnectionString, probeClientOptions);
     }
 
     internal static string InjectEmulatorAdminPort(string connectionString)
