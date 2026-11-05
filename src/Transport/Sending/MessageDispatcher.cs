@@ -201,6 +201,12 @@ class MessageDispatcher(
         int batchCount = 0;
         List<ServiceBusMessage>? messagesTooLargeToBeBatched = null;
         client ??= defaultClient;
+
+        if (isMulticast && !throwOnMissingTopic && missingTopicCreator.ShouldSkip(destination))
+        {
+            return;
+        }
+
         var sender = messageSenderRegistry.GetMessageSender(destination, client);
         while (messagesToSend.Count > 0)
         {

@@ -18,7 +18,7 @@ using Routing;
 public class MissingTopicCreatorTests
 {
     [Test]
-    public async Task Should_create_missing_topic_once_while_creation_is_in_progress()
+    public async Task Should_skip_publishes_while_creating_and_create_once()
     {
         var logOutput = new StringWriter();
 #pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
@@ -29,14 +29,17 @@ public class MissingTopicCreatorTests
         await using var creator = new MissingTopicCreator(fake.Create, enabled: true);
         var (dispatcher, sender) = CreateDispatcherWithMissingTopic(creator);
 
-        await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => dispatcher.Dispatch(PublishOperations(), new TransportTransaction())));
+        for (var i = 0; i < 5; i++)
+        {
+            await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
+        }
         fake.Gate.SetResult();
         await WaitUntil(() => DispatcherEntries(logOutput).Any(e => e.Level == "INFO"));
 
         var entries = DispatcherEntries(logOutput);
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(sender.Attempts, Is.EqualTo(5));
+            Assert.That(sender.Attempts, Is.EqualTo(1));
             Assert.That(fake.Calls, Is.EqualTo(1));
             Assert.That(entries.Count(e => e.Level == "WARN"), Is.Zero);
             Assert.That(entries.Count(e => e.Level == "INFO" && e.Message.Contains("Created topic sometopic")), Is.EqualTo(1));
@@ -44,16 +47,44 @@ public class MissingTopicCreatorTests
     }
 
     [Test]
-    public async Task Should_create_topic_again_when_it_goes_missing_after_being_created()
+    public async Task Should_skip_publishes_during_grace_period_after_creating_topic()
     {
+        var time = new ManualTimeProvider();
         var fake = new FakeTopicCreation();
-        await using var creator = new MissingTopicCreator(fake.Create, enabled: true);
-        var (dispatcher, _) = CreateDispatcherWithMissingTopic(creator);
+        await using var creator = new MissingTopicCreator(fake.Create, enabled: true, TimeSpan.FromSeconds(15), time);
+        var (dispatcher, sender) = CreateDispatcherWithMissingTopic(creator);
 
         await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
-        await PublishUntil(dispatcher, () => fake.Calls == 2);
+        await WaitUntil(() => creator.IsInGracePeriod("sometopic"));
+        for (var i = 0; i < 3; i++)
+        {
+            await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
+        }
+        time.Advance(TimeSpan.FromSeconds(14));
+        await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
 
-        Assert.That(fake.Calls, Is.EqualTo(2));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(sender.Attempts, Is.EqualTo(1));
+            Assert.That(fake.Calls, Is.EqualTo(1));
+        }
+    }
+
+    [Test]
+    public async Task Should_create_topic_again_when_it_is_missing_after_grace_period()
+    {
+        var time = new ManualTimeProvider();
+        var fake = new FakeTopicCreation();
+        await using var creator = new MissingTopicCreator(fake.Create, enabled: true, TimeSpan.FromSeconds(15), time);
+        var (dispatcher, sender) = CreateDispatcherWithMissingTopic(creator);
+
+        await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
+        await WaitUntil(() => creator.IsInGracePeriod("sometopic"));
+        time.Advance(TimeSpan.FromSeconds(16));
+        await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
+        await WaitUntil(() => fake.Calls == 2);
+
+        Assert.That(sender.Attempts, Is.EqualTo(2));
     }
 
     [Test]
@@ -66,12 +97,17 @@ public class MissingTopicCreatorTests
 
         var fake = new FakeTopicCreation { Failure = new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityAlreadyExists) };
         await using var creator = new MissingTopicCreator(fake.Create, enabled: true);
-        var (dispatcher, _) = CreateDispatcherWithMissingTopic(creator);
+        var (dispatcher, sender) = CreateDispatcherWithMissingTopic(creator);
 
         await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
-        await PublishUntil(dispatcher, () => fake.Calls == 2);
+        await WaitUntil(() => creator.IsInGracePeriod("sometopic"));
+        await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
 
-        Assert.That(DispatcherEntries(logOutput).Count(e => e.Level == "WARN"), Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(sender.Attempts, Is.EqualTo(1));
+            Assert.That(DispatcherEntries(logOutput).Count(e => e.Level == "WARN"), Is.Zero);
+        }
     }
 
     [Test]
@@ -196,18 +232,6 @@ public class MissingTopicCreatorTests
         }
     }
 
-    // Publishes that find the topic missing while its creation is still running don't start another one
-    static async Task PublishUntil(MessageDispatcher dispatcher, Func<bool> condition)
-    {
-        var timeout = Stopwatch.StartNew();
-        while (!condition())
-        {
-            Assert.That(timeout.Elapsed, Is.LessThan(TimeSpan.FromSeconds(10)), "Condition not met in time");
-            await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
-            await Task.Delay(5);
-        }
-    }
-
     const string DispatcherLoggerName = "NServiceBus.Transport.AzureServiceBus.MessageDispatcher";
 
     class FakeTopicCreation
@@ -250,6 +274,15 @@ public class MissingTopicCreatorTests
                 throw Failure;
             }
         }
+    }
+
+    class ManualTimeProvider : TimeProvider
+    {
+        DateTimeOffset now = new(2026, 11, 5, 0, 0, 0, TimeSpan.Zero);
+
+        public override DateTimeOffset GetUtcNow() => now;
+
+        public void Advance(TimeSpan by) => now += by;
     }
 
     class MissingTopicSender : FakeSender
