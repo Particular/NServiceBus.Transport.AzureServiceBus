@@ -50,7 +50,10 @@ public class AzureServiceBusTransportInfrastructureTests
         var topology = TopicTopology.Default;
         topology.SubscribeTo<MyEvent1>("Topic1");
         topology.SubscribeTo<MyEvent2>("Topic2");
-        var transport = new AzureServiceBusTransport("connection-string", topology) { EnableSessions = SessionOptions.Enabled() };
+        var transport = new AzureServiceBusTransport("connection-string", topology)
+        {
+            EnableSessions = SessionOptions.Enabled(SessionForwardingMode.AllMappedEvents)
+        };
         var hostSettings = new HostSettings("endpoint", "host", new StartupDiagnosticEntries(), (_, _, _) => { }, false);
         var receiveSettings = new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), true, false, "error");
 

@@ -111,7 +111,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
             FallbackTopic = new FallbackTopicOptions { TopicName = "FallbackTopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
         };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, autoSubscribeActive: true);
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, forwardAllMappedEvents: false);
 
         await subscriptionManager.StartForwarders();
 
@@ -123,14 +123,14 @@ public class TopicPerEventSubscriptionManagerForwardingTests
     }
 
     [Test]
-    public async Task Should_not_log_missing_mapping_when_auto_subscribe_is_active()
+    public async Task Should_not_log_missing_mapping_when_forwarding_subscribed_events_only()
     {
         var logOutput = new StringWriter();
 #pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
         using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Info);
 #pragma warning restore CS0618 // Type or member is obsolete
 
-        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), new FakeForwardingClientFactory(), autoSubscribeActive: true);
+        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), new FakeForwardingClientFactory(), forwardAllMappedEvents: false);
 
         await subscriptionManager.StartForwarders();
 
@@ -138,14 +138,14 @@ public class TopicPerEventSubscriptionManagerForwardingTests
     }
 
     [Test]
-    public async Task Should_log_missing_mapping_when_auto_subscribe_is_disabled()
+    public async Task Should_log_missing_mapping_when_forwarding_all_mapped_events()
     {
         var logOutput = new StringWriter();
 #pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
         using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Info);
 #pragma warning restore CS0618 // Type or member is obsolete
 
-        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), new FakeForwardingClientFactory());
+        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), new FakeForwardingClientFactory(), forwardAllMappedEvents: true);
 
         await subscriptionManager.StartForwarders();
 
@@ -153,7 +153,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
     }
 
     [Test]
-    public async Task Should_start_forwarders_for_explicit_subscriptions_when_auto_subscribe_is_active()
+    public async Task Should_start_forwarders_for_explicit_subscriptions_when_forwarding_subscribed_events_only()
     {
         var topologyOptions = new TopologyOptions
         {
@@ -164,7 +164,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
             }
         };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, autoSubscribeActive: true);
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, forwardAllMappedEvents: false);
 
         await subscriptionManager.StartForwarders();
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
@@ -198,7 +198,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
             FallbackTopic = new FallbackTopicOptions { TopicName = "FallbackTopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
         };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, forwardAllMappedEvents: false);
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
 
@@ -222,7 +222,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
             }
         };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, new FailingAdministrationClient("FailingTopic"));
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, new FailingAdministrationClient("FailingTopic"), forwardAllMappedEvents: true);
 
         Assert.ThrowsAsync<ServiceBusException>(() => subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
         await subscriptionManager.StartForwarders();
@@ -231,7 +231,8 @@ public class TopicPerEventSubscriptionManagerForwardingTests
         {
             "FailingTopic/SubscribingQueue",
             "Topic1/SubscribingQueue",
-            "Topic2/SubscribingQueue"
+            "Topic2/SubscribingQueue",
+            "Topic3/SubscribingQueue"
         }));
     }
 
@@ -252,7 +253,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
             }
         };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, new FailingAdministrationClient("FailingTopic"), autoSubscribeActive: true);
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, new FailingAdministrationClient("FailingTopic"), forwardAllMappedEvents: false);
         await subscriptionManager.StartForwarders();
 
         var starts = 0;
@@ -281,7 +282,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
             }
         };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, autoSubscribeActive: true);
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, forwardAllMappedEvents: false);
         await subscriptionManager.StartForwarders();
 
         var starts = 0;
@@ -301,7 +302,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
     {
         var topologyOptions = new TopologyOptions { SubscribedEventToTopicsMap = { { typeof(MyEvent1).FullName, ["Topic1"] } } };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, forwardAllMappedEvents: true);
 
         await subscriptionManager.StartForwarders();
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent2))], new ContextBag());
@@ -321,7 +322,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
             }
         };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, forwardAllMappedEvents: false);
 
         await subscriptionManager.StartForwarders();
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
@@ -342,7 +343,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
             }
         };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, forwardAllMappedEvents: false);
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
         await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent2)), new ContextBag());
@@ -363,7 +364,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
             }
         };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, forwardAllMappedEvents: true);
 
         await subscriptionManager.StartForwarders();
         await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
@@ -376,14 +377,14 @@ public class TopicPerEventSubscriptionManagerForwardingTests
     }
 
     [Test]
-    public async Task Should_keep_fallback_forwarder_when_unsubscribing_an_event_routed_through_the_fallback_topic()
+    public async Task Should_keep_fallback_forwarder_when_unsubscribing_an_event_routed_through_the_fallback_topic_when_all_forwarding_all_mapped_events()
     {
         var topologyOptions = new TopologyOptions
         {
             FallbackTopic = new FallbackTopicOptions { TopicName = "FallbackTopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
         };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, forwardAllMappedEvents: true);
 
         await subscriptionManager.StartForwarders();
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
@@ -397,14 +398,14 @@ public class TopicPerEventSubscriptionManagerForwardingTests
         ServiceBusAdministrationClient administrationClient = null,
         string subscribingQueueName = "SubscribingQueue",
         bool requiresSession = true,
-        bool autoSubscribeActive = false) =>
+        bool forwardAllMappedEvents = true) =>
         new(new SubscriptionManagerCreationOptions
         {
             SubscribingQueueName = subscribingQueueName,
             Client = new RecordingServiceBusClient(),
             AdministrationClient = administrationClient ?? new RecordingServiceBusAdministrationClient(),
             RequiresSession = requiresSession,
-            ForwardAllMappedEvents = autoSubscribeActive,
+            ForwardAllMappedEvents = forwardAllMappedEvents,
             ForwarderClientFactory = clientFactory.Create,
             CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
