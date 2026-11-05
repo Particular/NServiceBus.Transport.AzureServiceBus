@@ -18,6 +18,7 @@ class MessageDispatcher(
     TopicTopology topology,
     DestinationManager destinationManager,
     bool throwOnMissingTopic,
+    MissingTopicCreator missingTopicCreator,
     OutgoingNativeMessageCustomizationAction? customizerCallback = null)
     : IMessageDispatcher
 {
@@ -275,6 +276,11 @@ class MessageDispatcher(
             // when it tries to establish a link to a non-existing entity.
             catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
+                if (!throwOnMissingTopic && missingTopicCreator.TryCreate(destination))
+                {
+                    return;
+                }
+
                 if (Log.IsWarnEnabled)
                 {
                     Log.Warn($"Skipping publishing messages to topic {destination} because the destination does not exist.");
@@ -400,6 +406,11 @@ class MessageDispatcher(
         }
         catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {
+            if (!throwOnMissingTopic && missingTopicCreator.TryCreate(destination))
+            {
+                return;
+            }
+
             if (Log.IsWarnEnabled)
             {
                 Log.Warn($"Publishing message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");

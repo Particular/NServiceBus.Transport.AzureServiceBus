@@ -20,6 +20,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     readonly ServiceBusAdministrationClient administrationClient;
     readonly (ReceiveSettings receiveSettings, ServiceBusClient client)[] receiveSettingsAndClientPairs;
     readonly DestinationManager destinationManager;
+    readonly MissingTopicCreator missingTopicCreator;
 
     public AzureServiceBusTransportInfrastructure(
         AzureServiceBusTransport transportSettings,
@@ -42,12 +43,18 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
         messageSenderRegistry = new MessageSenderRegistry();
 
+        // Publishers create missing topics only when installers are enabled, which also requires Manage rights.
+        // With ThrowOnMissingTopicWhenPublishing a missing topic is an error to surface, not to fix.
+        missingTopicCreator = new MissingTopicCreator(CreateTopic,
+            hostSettings.SetupInfrastructure && !transportSettings.ThrowOnMissingTopicWhenPublishing);
+
         Dispatcher = new MessageDispatcher(
             defaultClient,
             messageSenderRegistry,
             transportSettings.Topology,
             destinationManager,
             transportSettings.ThrowOnMissingTopicWhenPublishing,
+            missingTopicCreator,
             transportSettings.OutgoingNativeMessageCustomization
         );
 
@@ -159,6 +166,15 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         );
     }
 
+    // Same settings as the subscriber side, except SupportOrdering, which depends on whether a subscriber requires sessions
+    Task CreateTopic(string topic, CancellationToken cancellationToken) =>
+        administrationClient.CreateTopicAsync(new CreateTopicOptions(topic)
+        {
+            EnableBatchedOperations = true,
+            EnablePartitioning = transportSettings.EnablePartitioning,
+            MaxSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
+        }, cancellationToken);
+
     public override async Task Shutdown(CancellationToken cancellationToken = default)
     {
         try
@@ -183,6 +199,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                 await serviceBusClient.DisposeAsync().ConfigureAwait(false);
             }
 
+            await missingTopicCreator.DisposeAsync().ConfigureAwait(false);
             await defaultClient.DisposeAsync().ConfigureAwait(false);
         }
     }
