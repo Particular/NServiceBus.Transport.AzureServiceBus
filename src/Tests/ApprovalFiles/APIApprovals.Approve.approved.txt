@@ -15,7 +15,10 @@ namespace NServiceBus
         public System.TimeSpan? AutoDeleteOnIdle { get; set; }
         public bool? AutoForwardDeadLetteredMessagesToErrorQueue { get; set; }
         public bool EnablePartitioning { get; set; }
-        public bool EnableSessions { get; set; }
+        [System.Diagnostics.CodeAnalysis.MemberNotNull("enableSessions")]
+        [get: System.Diagnostics.CodeAnalysis.MemberNotNull("enableSessions")]
+        [set: System.Diagnostics.CodeAnalysis.MemberNotNull("enableSessions")]
+        public NServiceBus.Transport.AzureServiceBus.SessionOptions EnableSessions { get; set; }
         public int EntityMaximumSize { get; set; }
         public NServiceBus.Transport.AzureServiceBus.HierarchyNamespaceOptions HierarchyNamespaceOptions { get; set; }
         public System.TimeSpan? MaxAutoLockRenewalDuration { get; set; }
@@ -290,6 +293,18 @@ namespace NServiceBus.Transport.AzureServiceBus
     {
         public RoutingOptions() { }
         public NServiceBus.Transport.AzureServiceBus.TopicRoutingMode? Mode { get; set; }
+    }
+    public enum SessionForwardingMode
+    {
+        SubscribedEventsOnly = 0,
+        AllMappedEvents = 1,
+    }
+    public sealed class SessionOptions
+    {
+        public NServiceBus.Transport.AzureServiceBus.SessionForwardingMode ForwardingMode { get; }
+        public bool IsEnabled { get; }
+        public static NServiceBus.Transport.AzureServiceBus.SessionOptions Disabled { get; }
+        public static NServiceBus.Transport.AzureServiceBus.SessionOptions Enabled(NServiceBus.Transport.AzureServiceBus.SessionForwardingMode forwardingMode = 0) { }
     }
     [System.ComponentModel.TypeConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscriptionEntryTypeConverter))]
     [System.Text.Json.Serialization.JsonConverter(typeof(NServiceBus.Transport.AzureServiceBus.SubscriptionEntryConverter))]
