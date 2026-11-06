@@ -203,18 +203,14 @@ class MessageDispatcher(
         List<ServiceBusMessage>? messagesTooLargeToBeBatched = null;
         client ??= defaultClient;
 
-        if (isMulticast && !throwOnMissingTopic && missingTopicCreator.ShouldSkip(destination))
-        {
-            return;
-        }
-
         var sender = messageSenderRegistry.GetMessageSender(destination, client);
         while (messagesToSend.Count > 0)
         {
             try
             {
-                using ServiceBusMessageBatch messageBatch = await sender.CreateMessageBatchAsync(cancellationToken)
-                    .ConfigureAwait(false);
+                using ServiceBusMessageBatch messageBatch = isMulticast && !throwOnMissingTopic
+                    ? await missingTopicCreator.ExecuteAsync(destination, token => sender.CreateMessageBatchAsync(token).AsTask(), cancellationToken).ConfigureAwait(false)
+                    : await sender.CreateMessageBatchAsync(cancellationToken).ConfigureAwait(false);
 
                 StringBuilder? logBuilder = null;
                 if (Log.IsDebugEnabled)
@@ -269,7 +265,15 @@ class MessageDispatcher(
 
 
                 using var scope = transaction.ToScope();
-                await sender.SendMessagesAsync(messageBatch, cancellationToken).ConfigureAwait(false);
+                if (isMulticast && !throwOnMissingTopic)
+                {
+                    // Retry this same batch, rather than rebuilding it after its messages have been dequeued.
+                    await missingTopicCreator.ExecuteAsync(destination, token => sender.SendMessagesAsync(messageBatch, token), cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await sender.SendMessagesAsync(messageBatch, cancellationToken).ConfigureAwait(false);
+                }
                 //committable tx will not be committed because this scope is not the owner
                 scope.Complete();
 
@@ -283,11 +287,6 @@ class MessageDispatcher(
             // when it tries to establish a link to a non-existing entity.
             catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
-                if (!throwOnMissingTopic && missingTopicCreator.TryCreate(destination))
-                {
-                    return;
-                }
-
                 if (Log.IsWarnEnabled && (throwOnMissingTopic || warnedMissingTopics.TryAdd(destination, 0)))
                 {
                     Log.Warn($"Skipping publishing messages to topic {destination} because the destination does not exist.");
@@ -408,16 +407,18 @@ class MessageDispatcher(
         {
             // Making sure we have a suppress scope around the sending
             using var scope = transaction.ToScope();
-            await sender.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
+            if (isMulticast && !throwOnMissingTopic)
+            {
+                await missingTopicCreator.ExecuteAsync(destination, token => sender.SendMessageAsync(message, token), cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await sender.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
+            }
             scope.Complete();
         }
         catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {
-            if (!throwOnMissingTopic && missingTopicCreator.TryCreate(destination))
-            {
-                return;
-            }
-
             if (Log.IsWarnEnabled && (throwOnMissingTopic || warnedMissingTopics.TryAdd(destination, 0)))
             {
                 Log.Warn($"Publishing message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
