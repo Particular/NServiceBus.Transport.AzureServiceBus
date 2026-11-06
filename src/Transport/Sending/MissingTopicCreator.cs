@@ -8,27 +8,16 @@ using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Logging;
 
-// Creates a topic in the background when a publish finds it missing. Every failed link open makes the service
-// delay the next authorization on the same connection, so once the topic exists publishing to it is fast again.
-// A topic that was just created has no subscriptions, so the publish that found it missing isn't retried.
-sealed class MissingTopicCreator(Func<string, CancellationToken, Task> createTopic, bool enabled, TimeSpan? gracePeriod = null, TimeProvider? timeProvider = null) : IAsyncDisposable
+// Creates a topic in the background when a publish finds it missing. The publish that failed isn't retried.
+// A successful create doesn't guarantee that the publisher's existing connection immediately sees the topic.
+sealed class MissingTopicCreator(Func<string, CancellationToken, Task> createTopic, bool enabled) : IAsyncDisposable
 {
-    // After a 404, Azure Service Bus keeps reporting the topic missing on the same connection for several seconds
-    // after it's created. Publishing in that period would only add failures, and with them more delay, to the connection.
-    public static readonly TimeSpan DefaultGracePeriod = TimeSpan.FromSeconds(15);
+    // Resume attempting publishes as soon as creation completes, so that a subscriber that has become ready can receive them.
+    public bool ShouldSkip(string topic) => enabled && !creations.IsEmpty && IsCreating(topic);
 
-    public TimeSpan GracePeriod { get; } = gracePeriod ?? DefaultGracePeriod;
+    public bool IsCreating(string topic) => creations.TryGetValue(topic, out var creation) && !creation.IsCompleted;
 
-    // Publishes are skipped while the topic is being created and during the grace period after it was created.
-    // Events published then have nowhere to go anyway, because the new topic has no subscriptions yet.
-    public bool ShouldSkip(string topic) => enabled && !creations.IsEmpty && (IsCreating(topic) || IsInGracePeriod(topic));
-
-    public bool IsCreating(string topic) => creations.TryGetValue(topic, out var creation) && creation.CreatedAt is null && !creation.Task.IsCompleted;
-
-    public bool IsInGracePeriod(string topic) =>
-        creations.TryGetValue(topic, out var creation) && creation.CreatedAt is { } createdAt && time.GetUtcNow() < createdAt + GracePeriod;
-
-    // Returns true when the topic is being created or was created, so that the caller doesn't need to warn.
+    // Returns true when creation is underway or was started, so that the caller doesn't need to warn.
     public bool TryCreate(string topic)
     {
         if (!enabled || stopping.IsCancellationRequested || failed.ContainsKey(topic))
@@ -36,10 +25,10 @@ sealed class MissingTopicCreator(Func<string, CancellationToken, Task> createTop
             return false;
         }
 
-        // One creation per topic at a time. A topic that is missing again after its grace period was deleted since, so it's created again.
+        // A later 404 starts another creation attempt. It may indicate deletion or a stale service-side not-found result.
         _ = creations.AddOrUpdate(topic,
-            static (key, creator) => creator.Start(key),
-            static (key, existing, creator) => existing.CreatedAt is not null && !creator.IsInGracePeriod(key) ? creator.Start(key) : existing,
+            static (key, creator) => creator.Start(key, creator.stopping.Token),
+            static (key, existing, creator) => existing.IsCompletedSuccessfully ? creator.Start(key, creator.stopping.Token) : existing,
             this);
         return true;
     }
@@ -47,41 +36,33 @@ sealed class MissingTopicCreator(Func<string, CancellationToken, Task> createTop
     public async ValueTask DisposeAsync()
     {
         await stopping.CancelAsync().ConfigureAwait(false);
-        await Task.WhenAll(creations.Values.Select(c => c.Task).ToArray()).ConfigureAwait(false);
+        await Task.WhenAll(creations.Values.ToArray()).ConfigureAwait(false);
         stopping.Dispose();
     }
 
-    Creation Start(string topic)
-    {
-        var creation = new Creation();
-        var cancellationToken = stopping.Token;
-        creation.Task = Task.Run(() => CreateTopic(topic, creation, cancellationToken), CancellationToken.None);
-        return creation;
-    }
+    Task Start(string topic, CancellationToken cancellationToken) =>
+        Task.Run(() => CreateTopic(topic, cancellationToken), CancellationToken.None);
 
-    async Task CreateTopic(string topic, Creation creation, CancellationToken cancellationToken)
+    async Task CreateTopic(string topic, CancellationToken cancellationToken)
     {
         try
         {
-            try
-            {
-                await createTopic(topic, cancellationToken).ConfigureAwait(false);
-            }
-            catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
-            {
-                creation.CreatedAt = time.GetUtcNow();
-                return;
-            }
-
-            creation.CreatedAt = time.GetUtcNow();
+            await createTopic(topic, cancellationToken).ConfigureAwait(false);
 
             if (Log.IsInfoEnabled)
             {
-                Log.Info($"Created topic {topic} because publishing to it found it missing. Publishes to it are skipped for the next {GracePeriod.TotalSeconds:0} seconds, while Azure Service Bus may still report it missing. Events published to it before a subscriber adds a subscription are not delivered.");
+                Log.Info($"Created topic {topic} because publishing to it found it missing. Events published before a subscription exists are not delivered.");
             }
+        }
+        catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+        {
+            // Another publisher or subscriber has already provisioned the topic.
+            return;
         }
         catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
         {
+            // Shutdown cancels the background creation.
+            return;
         }
         catch (Exception ex)
         {
@@ -95,25 +76,7 @@ sealed class MissingTopicCreator(Func<string, CancellationToken, Task> createTop
         }
     }
 
-    sealed class Creation
-    {
-        public Task Task = Task.CompletedTask;
-
-        public DateTimeOffset? CreatedAt
-        {
-            get
-            {
-                var ticks = Volatile.Read(ref createdAtTicks);
-                return ticks == 0 ? null : new DateTimeOffset(ticks, TimeSpan.Zero);
-            }
-            set => Volatile.Write(ref createdAtTicks, value?.UtcTicks ?? 0);
-        }
-
-        long createdAtTicks;
-    }
-
-    readonly TimeProvider time = timeProvider ?? TimeProvider.System;
-    readonly ConcurrentDictionary<string, Creation> creations = new(StringComparer.OrdinalIgnoreCase);
+    readonly ConcurrentDictionary<string, Task> creations = new(StringComparer.OrdinalIgnoreCase);
     readonly ConcurrentDictionary<string, bool> failed = new(StringComparer.OrdinalIgnoreCase);
     readonly CancellationTokenSource stopping = new();
 

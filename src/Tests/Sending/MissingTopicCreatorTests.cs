@@ -47,40 +47,37 @@ public class MissingTopicCreatorTests
     }
 
     [Test]
-    public async Task Should_skip_publishes_during_grace_period_after_creating_topic()
+    public async Task Should_resume_publishing_immediately_after_creation_completes()
     {
-        var time = new ManualTimeProvider();
         var fake = new FakeTopicCreation();
-        await using var creator = new MissingTopicCreator(fake.Create, enabled: true, TimeSpan.FromSeconds(15), time);
+        await using var creator = new MissingTopicCreator(fake.Create, enabled: true);
         var (dispatcher, sender) = CreateDispatcherWithMissingTopic(creator);
 
         await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
-        await WaitUntil(() => creator.IsInGracePeriod("sometopic"));
+        await WaitUntil(() => !creator.IsCreating("sometopic"));
+        sender.TopicExists = true;
         for (var i = 0; i < 3; i++)
         {
             await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
         }
-        time.Advance(TimeSpan.FromSeconds(14));
-        await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(sender.Attempts, Is.EqualTo(1));
+            Assert.That(sender.Attempts, Is.EqualTo(4));
+            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(3));
             Assert.That(fake.Calls, Is.EqualTo(1));
         }
     }
 
     [Test]
-    public async Task Should_create_topic_again_when_it_is_missing_after_grace_period()
+    public async Task Should_attempt_creation_again_when_publish_still_reports_missing()
     {
-        var time = new ManualTimeProvider();
         var fake = new FakeTopicCreation();
-        await using var creator = new MissingTopicCreator(fake.Create, enabled: true, TimeSpan.FromSeconds(15), time);
+        await using var creator = new MissingTopicCreator(fake.Create, enabled: true);
         var (dispatcher, sender) = CreateDispatcherWithMissingTopic(creator);
 
         await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
-        await WaitUntil(() => creator.IsInGracePeriod("sometopic"));
-        time.Advance(TimeSpan.FromSeconds(16));
+        await WaitUntil(() => !creator.IsCreating("sometopic"));
         await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
         await WaitUntil(() => fake.Calls == 2);
 
@@ -100,12 +97,12 @@ public class MissingTopicCreatorTests
         var (dispatcher, sender) = CreateDispatcherWithMissingTopic(creator);
 
         await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
-        await WaitUntil(() => creator.IsInGracePeriod("sometopic"));
+        await WaitUntil(() => !creator.IsCreating("sometopic"));
         await dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(sender.Attempts, Is.EqualTo(1));
+            Assert.That(sender.Attempts, Is.EqualTo(2));
             Assert.That(DispatcherEntries(logOutput).Count(e => e.Level == "WARN"), Is.Zero);
         }
     }
@@ -322,15 +319,6 @@ public class MissingTopicCreatorTests
         }
     }
 
-    class ManualTimeProvider : TimeProvider
-    {
-        DateTimeOffset now = new(2026, 11, 5, 0, 0, 0, TimeSpan.Zero);
-
-        public override DateTimeOffset GetUtcNow() => now;
-
-        public void Advance(TimeSpan by) => now += by;
-    }
-
     class MissingTopicSender : FakeSender
     {
         int attempts;
@@ -344,8 +332,13 @@ public class MissingTopicCreatorTests
         void FailSend()
         {
             Interlocked.Increment(ref attempts);
-            throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound);
+            if (!TopicExists)
+            {
+                throw new ServiceBusException("Some exception", ServiceBusFailureReason.MessagingEntityNotFound);
+            }
         }
+
+        public bool TopicExists { get; set; }
 
         public int Attempts => Volatile.Read(ref attempts);
     }
