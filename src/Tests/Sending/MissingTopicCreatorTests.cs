@@ -116,6 +116,10 @@ public class MissingTopicCreatorTests
     [TestCase(true)]
     public async Task Should_throw_when_post_creation_delivery_attempts_are_exhausted(bool sendIndividually)
     {
+        var output = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var scope = LogManager.Use<TestingLoggerFactory>().BeginScope(output, LogLevel.Info);
+#pragma warning restore CS0618 // Type or member is obsolete
         var sender = new MissingTopicSender { TryAdd = _ => !sendIndividually };
         var calls = 0;
         await using var creator = CreateCreator((_, _) => { calls++; return Task.CompletedTask; });
@@ -129,6 +133,7 @@ public class MissingTopicCreatorTests
             Assert.That(sender.Attempts, Is.EqualTo(1 + MissingTopicCreator.MaxDeliveryAttemptsAfterCreation));
             Assert.That(sender.BatchSentMessages, Is.Empty);
             Assert.That(sender.IndividuallySentMessages, Is.Empty);
+            Assert.That(DispatcherEntries(output).Count(e => e.Level is "WARN" or "ERROR"), Is.Zero);
         }
     }
 
@@ -212,6 +217,10 @@ public class MissingTopicCreatorTests
     [Test]
     public async Task Should_propagate_creation_failure_and_allow_a_later_publish_to_retry_it()
     {
+        var output = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var scope = LogManager.Use<TestingLoggerFactory>().BeginScope(output, LogLevel.Info);
+#pragma warning restore CS0618 // Type or member is obsolete
         var sender = new MissingTopicSender();
         var calls = 0;
         await using var creator = CreateCreator((_, _) =>
@@ -232,6 +241,7 @@ public class MissingTopicCreatorTests
         {
             Assert.That(calls, Is.EqualTo(2));
             Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+            Assert.That(DispatcherEntries(output).Count(e => e.Level is "WARN" or "ERROR"), Is.Zero);
         }
     }
 
@@ -264,6 +274,10 @@ public class MissingTopicCreatorTests
     [Test]
     public async Task Should_not_retry_a_different_delivery_failure()
     {
+        var output = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var scope = LogManager.Use<TestingLoggerFactory>().BeginScope(output, LogLevel.Info);
+#pragma warning restore CS0618 // Type or member is obsolete
         var sender = new MissingTopicSender();
         await using var creator = CreateCreator((_, _) =>
         {
@@ -278,6 +292,7 @@ public class MissingTopicCreatorTests
         {
             Assert.That(exception.Reason, Is.EqualTo(ServiceBusFailureReason.MessageSizeExceeded));
             Assert.That(sender.Attempts, Is.EqualTo(2));
+            Assert.That(DispatcherEntries(output).Count(e => e.Level is "WARN" or "ERROR"), Is.Zero);
         }
     }
 
@@ -355,8 +370,10 @@ public class MissingTopicCreatorTests
         Assert.That(DispatcherEntries(output).Count(e => e.Level == "WARN"), Is.EqualTo(2));
     }
 
-    [Test]
-    public async Task Should_warn_and_throw_without_creating_when_throw_mode_is_enabled()
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(2)]
+    public async Task Should_throw_without_logging_or_creating_when_throw_mode_is_enabled(int failurePath)
     {
         var output = new StringWriter();
 #pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
@@ -364,14 +381,21 @@ public class MissingTopicCreatorTests
 #pragma warning restore CS0618 // Type or member is obsolete
         var calls = 0;
         await using var creator = CreateCreator((_, _) => { calls++; return Task.CompletedTask; });
-        var dispatcher = CreateDispatcher(creator, new MissingTopicSender(), throwOnMissingTopic: true);
+        var sender = new MissingTopicSender
+        {
+            TryAdd = _ => failurePath != 1,
+            BatchCreationFailures = failurePath == 2 ? int.MaxValue : 0
+        };
+        var dispatcher = CreateDispatcher(creator, sender, throwOnMissingTopic: true);
 
-        Assert.ThrowsAsync<ServiceBusException>(() => dispatcher.Dispatch(PublishOperations(), new TransportTransaction()));
-        Assert.ThrowsAsync<ServiceBusException>(() => dispatcher.Dispatch(PublishOperations(), new TransportTransaction()));
+        var first = Assert.ThrowsAsync<ServiceBusException>(() => dispatcher.Dispatch(PublishOperations(), new TransportTransaction()));
+        var second = Assert.ThrowsAsync<ServiceBusException>(() => dispatcher.Dispatch(PublishOperations(), new TransportTransaction()));
         using (Assert.EnterMultipleScope())
         {
+            Assert.That(first.Reason, Is.EqualTo(ServiceBusFailureReason.MessagingEntityNotFound));
+            Assert.That(second.Reason, Is.EqualTo(ServiceBusFailureReason.MessagingEntityNotFound));
             Assert.That(calls, Is.Zero);
-            Assert.That(DispatcherEntries(output).Count(e => e.Level == "WARN"), Is.EqualTo(2));
+            Assert.That(DispatcherEntries(output).Count(e => e.Level is "WARN" or "ERROR"), Is.Zero);
         }
     }
 
