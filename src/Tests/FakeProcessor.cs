@@ -2,6 +2,7 @@
 
 namespace NServiceBus.Transport.AzureServiceBus.Tests
 {
+    using System;
     using System.Runtime.CompilerServices;
     using System.Threading;
     using System.Threading.Tasks;
@@ -30,6 +31,9 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests
             receivedMessageToEventArgs.Add(message, eventArgs);
             return OnProcessMessageAsync(eventArgs);
         }
+
+        public Task RaiseError(Exception exception, ServiceBusErrorSource errorSource, CancellationToken cancellationToken = default) =>
+            OnProcessErrorAsync(new ProcessErrorEventArgs(exception, errorSource, "namespace", EntityPath, "identifier", cancellationToken));
 
         readonly ConditionalWeakTable<ServiceBusReceivedMessage, CustomProcessMessageEventArgs>
             receivedMessageToEventArgs = [];

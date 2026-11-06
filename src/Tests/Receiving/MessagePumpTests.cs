@@ -253,5 +253,43 @@ namespace NServiceBus.Transport.AzureServiceBus.Tests.Receiving
                 Assert.That(fakeReceiver.AbandonedMessages, Is.Empty);
             });
         }
+
+        [Test]
+        public async Task Should_not_arm_circuit_breaker_when_lock_renewal_fails()
+        {
+            var fakeClient = new FakeServiceBusClient();
+            await StartPumpWithConcurrency(fakeClient, 4, CancellationToken.None);
+            var processor = fakeClient.Processors["receiveAddress"];
+
+            await processor.RaiseError(new ServiceBusException("lock lost", ServiceBusFailureReason.MessageLockLost), ServiceBusErrorSource.RenewLock);
+
+            Assert.That(processor.MaxConcurrentCalls, Is.EqualTo(4));
+        }
+
+        [Test]
+        public async Task Should_arm_circuit_breaker_when_receive_fails()
+        {
+            var fakeClient = new FakeServiceBusClient();
+            await StartPumpWithConcurrency(fakeClient, 4, CancellationToken.None);
+            var processor = fakeClient.Processors["receiveAddress"];
+
+            await processor.RaiseError(new ServiceBusException("not found", ServiceBusFailureReason.MessagingEntityNotFound), ServiceBusErrorSource.Receive);
+
+            Assert.That(processor.MaxConcurrentCalls, Is.EqualTo(1));
+        }
+
+        static async Task<MessagePump> StartPumpWithConcurrency(FakeServiceBusClient fakeClient, int maxConcurrency, CancellationToken cancellationToken)
+        {
+            var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+                new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => { }, null);
+
+            await pump.Initialize(new PushRuntimeSettings(maxConcurrency), (_, _) => Task.CompletedTask,
+                (_, _) => Task.FromResult(ErrorHandleResult.Handled), cancellationToken);
+            await pump.StartReceive(cancellationToken);
+            // The fake processor ignores the options passed to CreateProcessor
+            await pump.ChangeConcurrency(new PushRuntimeSettings(maxConcurrency), cancellationToken);
+            Assert.That(fakeClient.Processors["receiveAddress"].MaxConcurrentCalls, Is.EqualTo(maxConcurrency));
+            return pump;
+        }
     }
 }
