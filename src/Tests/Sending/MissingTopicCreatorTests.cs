@@ -147,8 +147,12 @@ public class MissingTopicCreatorTests
 
         var publish = dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.ThrowsAsync<TimeoutException>(async () => await publish.WaitAsync(TimeSpan.FromSeconds(5)));
-        Assert.That(sender.Attempts, Is.EqualTo(1));
+        var exception = Assert.ThrowsAsync<TimeoutException>(async () => await publish.WaitAsync(TimeSpan.FromSeconds(5)));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(exception.Message, Does.Contain($"did not recover within {0.1:0.###} seconds"));
+            Assert.That(sender.Attempts, Is.EqualTo(1));
+        }
         release.TrySetResult();
     }
 
@@ -166,8 +170,12 @@ public class MissingTopicCreatorTests
 
         try
         {
-            Assert.ThrowsAsync<TimeoutException>(async () => await creator.ExecuteAsync("sometopic", Operation).WaitAsync(TimeSpan.FromSeconds(5)));
-            Assert.That(attempts, Is.EqualTo(2), "A timed-out operation must not start another retry");
+            var exception = Assert.ThrowsAsync<TimeoutException>(async () => await creator.ExecuteAsync("sometopic", Operation).WaitAsync(TimeSpan.FromSeconds(5)));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exception.Message, Does.Contain($"did not recover within {0.1:0.###} seconds"));
+                Assert.That(attempts, Is.EqualTo(2), "A timed-out operation must not start another retry");
+            }
         }
         finally
         {
