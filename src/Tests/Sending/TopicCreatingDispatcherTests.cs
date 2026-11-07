@@ -21,162 +21,122 @@ using Routing;
 public class TopicCreatingDispatcherTests
 {
     [Test]
-    public async Task Should_let_one_dispatch_at_a_time_publish_to_an_unconfirmed_topic()
+    public async Task Should_dispatch_the_original_operations_once_after_setting_up_every_topic()
     {
         var inner = new ControlledDispatcher();
-        var dispatcher = CreateGatedDispatcher(inner);
-
-        var dispatches = Enumerable.Range(0, 3).Select(_ => dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction())).ToArray();
-        await inner.WaitForStarted(1);
-        using (Assert.EnterMultipleScope())
+        var checks = new ConcurrentQueue<string>();
+        var dispatcher = CreateControlledDispatcher(inner, (topic, _) =>
         {
-            Assert.That(inner.Started, Is.EqualTo(1));
-            Assert.That(dispatches.Count(d => d.IsCompleted), Is.Zero);
-        }
-
-        inner.Complete(0);
-        await inner.WaitForStarted(3);
-        Assert.That(inner.MaxConcurrent, Is.EqualTo(2), "Dispatches queued before confirmation run concurrently once the topic is confirmed");
-
-        inner.CompleteAll();
-        await Task.WhenAll(dispatches);
-    }
-
-    [Test]
-    public async Task Should_keep_serializing_after_a_failed_dispatch()
-    {
-        var inner = new ControlledDispatcher();
-        var dispatcher = CreateGatedDispatcher(inner);
-
-        var first = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
-        var second = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
-        var third = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
-        await inner.WaitForStarted(1);
-
-        inner.Fail(0);
-        Assert.That(async () => await first, Throws.InstanceOf<InvalidOperationException>());
-        await inner.WaitForStarted(2);
-        Assert.That(inner.Started, Is.EqualTo(2), "A failure must not confirm the topic");
-
-        inner.Complete(1);
-        await inner.WaitForStarted(3);
-        inner.CompleteAll();
-        await Task.WhenAll(second, third);
-        Assert.That(inner.MaxConcurrent, Is.EqualTo(1));
-    }
-
-    [Test]
-    public async Task Should_not_gate_or_split_dispatches_once_topics_are_confirmed()
-    {
-        var inner = new ControlledDispatcher();
-        var dispatcher = CreateGatedDispatcher(inner);
-        var first = dispatcher.Dispatch(Publish(typeof(EventA), typeof(EventB)), new TransportTransaction());
-        await inner.WaitForStarted(2);
-        inner.CompleteAll();
-        await first;
-
-        var dispatches = Enumerable.Range(0, 3).Select(_ => dispatcher.Dispatch(Publish(typeof(EventA), typeof(EventB)), new TransportTransaction())).ToArray();
-        await inner.WaitForStarted(5);
-
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(inner.MaxConcurrent, Is.EqualTo(3));
-            Assert.That(inner.Operations.Skip(2).All(o => o.MulticastTransportOperations.Count == 2), Is.True, "Confirmed topics go out in one dispatch");
-        }
-        inner.CompleteAll();
-        await Task.WhenAll(dispatches);
-    }
-
-    [Test]
-    public async Task Should_dispatch_each_unconfirmed_topic_separately_from_the_rest()
-    {
-        var inner = new ControlledDispatcher();
-        var dispatcher = CreateGatedDispatcher(inner);
+            checks.Enqueue(topic);
+            return Task.FromResult(true);
+        });
         var operations = Publish(typeof(EventA), typeof(EventA), typeof(EventB));
         operations.UnicastTransportOperations.Add(new UnicastTransportOperation(new OutgoingMessage("send", [], ReadOnlyMemory<byte>.Empty), "somequeue", []));
 
         var dispatch = dispatcher.Dispatch(operations, new TransportTransaction());
-        await inner.WaitForStarted(3);
+        await inner.WaitForStarted(1);
         inner.CompleteAll();
         await dispatch;
 
-        var dispatched = inner.Operations.ToArray();
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(dispatched, Has.Length.EqualTo(3));
-            Assert.That(dispatched.Count(o => o.UnicastTransportOperations.Count == 1 && o.MulticastTransportOperations.Count == 0), Is.EqualTo(1));
-            Assert.That(dispatched.Count(o => o.MulticastTransportOperations.Count == 2 && o.MulticastTransportOperations.All(m => m.MessageType == typeof(EventA))), Is.EqualTo(1));
-            Assert.That(dispatched.Count(o => o.MulticastTransportOperations.Count == 1 && o.MulticastTransportOperations[0].MessageType == typeof(EventB)), Is.EqualTo(1));
-            Assert.That(dispatched.SelectMany(o => o.MulticastTransportOperations), Is.SubsetOf(operations.MulticastTransportOperations), "The original operations are dispatched, not copies");
+            Assert.That(inner.Operations.Single(), Is.SameAs(operations));
+            Assert.That(checks, Is.EquivalentTo(new[] { "topic-a", "topic-b" }));
         }
     }
 
     [Test]
-    public async Task Should_not_hold_back_other_operations_while_a_topic_is_gated()
+    public void Should_not_send_anything_when_setting_up_a_topic_fails()
     {
         var inner = new ControlledDispatcher();
-        var dispatcher = CreateGatedDispatcher(inner);
-        var holdsTopic = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
-        await inner.WaitForStarted(1);
-
-        var operations = Publish(typeof(EventA));
+        var failure = new ServiceBusException("Check failed", ServiceBusFailureReason.ServiceBusy);
+        var dispatcher = CreateControlledDispatcher(inner, (topic, _) => topic == "topic-b" ? Task.FromException<bool>(failure) : Task.FromResult(true));
+        var operations = Publish(typeof(EventA), typeof(EventB));
         operations.UnicastTransportOperations.Add(new UnicastTransportOperation(new OutgoingMessage("send", [], ReadOnlyMemory<byte>.Empty), "somequeue", []));
-        var mixed = dispatcher.Dispatch(operations, new TransportTransaction());
-        await inner.WaitForStarted(2);
 
+        var exception = Assert.ThrowsAsync<ServiceBusException>(() => dispatcher.Dispatch(operations, new TransportTransaction()));
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(inner.Operations.ElementAt(1).UnicastTransportOperations, Has.Count.EqualTo(1));
-            Assert.That(inner.Operations.ElementAt(1).MulticastTransportOperations, Is.Empty);
-            Assert.That(mixed.IsCompleted, Is.False);
+            Assert.That(exception, Is.SameAs(failure));
+            Assert.That(inner.Started, Is.Zero, "Queue sends and set-up topics must not go out ahead of a failed setup");
+        }
+    }
+
+    [Test]
+    public async Task Should_share_one_setup_between_concurrent_first_publishes()
+    {
+        var inner = new ControlledDispatcher();
+        var check = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var checks = 0;
+        var dispatcher = CreateControlledDispatcher(inner, (_, _) =>
+        {
+            Interlocked.Increment(ref checks);
+            return check.Task;
+        });
+
+        var dispatches = Enumerable.Range(0, 3).Select(_ => dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction())).ToArray();
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(checks, Is.EqualTo(1));
+            Assert.That(inner.Started, Is.Zero);
         }
 
-        inner.CompleteAll();
+        check.SetResult(true);
         await inner.WaitForStarted(3);
+        Assert.That(inner.MaxConcurrent, Is.EqualTo(3), "Publishes waiting for the same setup dispatch together once it completes");
+
         inner.CompleteAll();
-        await Task.WhenAll(holdsTopic, mixed);
+        await Task.WhenAll(dispatches);
     }
 
     [Test]
-    public async Task Should_not_split_a_transactional_dispatch_over_the_transaction_limit()
+    public async Task Should_stop_waiting_for_a_shared_setup_when_cancelled_without_cancelling_it_for_others()
     {
         var inner = new ControlledDispatcher();
-        var dispatcher = CreateGatedDispatcher(inner);
-        var transportTransaction = new TransportTransaction();
-        using var _ = new AzureServiceBusTransportTransaction(new FakeServiceBusClient(), "partition",
-            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted, Timeout = TimeSpan.FromMinutes(1) }, transportTransaction);
-
-        // Split per topic, each part would stay under the limit and the inner dispatcher wouldn't report it
-        var half = (MessageDispatcher.MaxMessageThresholdForTransaction / 2) + 1;
-        var operations = Publish([.. Enumerable.Repeat(typeof(EventA), half).Concat(Enumerable.Repeat(typeof(EventB), half))]);
-
-        var dispatch = dispatcher.Dispatch(operations, transportTransaction);
-        await inner.WaitForStarted(1);
-        inner.CompleteAll();
-        await dispatch;
-
-        Assert.That(inner.Operations.Single().MulticastTransportOperations, Has.Count.EqualTo(half * 2));
-    }
-
-    [Test]
-    public async Task Should_stop_waiting_when_cancelled_and_let_others_proceed()
-    {
-        var inner = new ControlledDispatcher();
-        var dispatcher = CreateGatedDispatcher(inner);
-        var first = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
-        await inner.WaitForStarted(1);
-
+        var check = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var checks = 0;
+        var dispatcher = CreateControlledDispatcher(inner, (_, _) =>
+        {
+            Interlocked.Increment(ref checks);
+            return check.Task;
+        });
         using var cancellation = new CancellationTokenSource();
         var cancelled = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction(), cancellation.Token);
         var waiting = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
+
         await cancellation.CancelAsync();
         Assert.That(async () => await cancelled, Throws.InstanceOf<OperationCanceledException>());
 
-        inner.Complete(0);
-        await inner.WaitForStarted(2);
+        check.SetResult(true);
+        await inner.WaitForStarted(1);
         inner.CompleteAll();
-        await Task.WhenAll(first, waiting);
-        Assert.That(inner.Started, Is.EqualTo(2), "The cancelled dispatch must not reach the inner dispatcher");
+        await waiting;
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(checks, Is.EqualTo(1));
+            Assert.That(inner.Started, Is.EqualTo(1), "The cancelled dispatch must not reach the inner dispatcher");
+        }
+    }
+
+    [Test]
+    public void Should_let_the_inner_dispatcher_enforce_the_transaction_limit_across_topics()
+    {
+        var client = new FakeServiceBusClient();
+        client.Senders["topic-a"] = new MissingTopicSender { TopicExists = true };
+        client.Senders["topic-b"] = new MissingTopicSender { TopicExists = true };
+        var topology = Topology();
+        var destinationManager = new DestinationManager(HierarchyNamespaceOptions.None);
+        var dispatcher = new TopicCreatingDispatcher(
+            new MessageDispatcher(client, new MessageSenderRegistry(), topology, destinationManager, throwOnMissingTopic: true),
+            topology, destinationManager, static (_, _) => Task.FromResult(true), static (_, _) => Task.CompletedTask,
+            new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System));
+        var transportTransaction = new TransportTransaction();
+        using var _ = new AzureServiceBusTransportTransaction(client, "partition",
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted, Timeout = TimeSpan.FromMinutes(1) }, transportTransaction);
+        var operations = Publish([.. Enumerable.Repeat(typeof(EventA), 51).Concat(Enumerable.Repeat(typeof(EventB), 51))]);
+
+        var exception = Assert.ThrowsAsync<Exception>(() => dispatcher.Dispatch(operations, transportTransaction));
+        Assert.That(exception.Message, Does.Contain("exceeds the limits"));
     }
 
     [Test]
@@ -246,49 +206,6 @@ public class TopicCreatingDispatcherTests
             Assert.That(creation.Calls, Is.EqualTo(1));
             Assert.That(sender.BatchCreationAttempts, Is.EqualTo(2));
             Assert.That(sender[sender.BatchSentMessages.Single()], Has.Count.EqualTo(3));
-        }
-    }
-
-    [Test]
-    public async Task Should_bound_the_wait_for_creation()
-    {
-        var entered = Signal();
-        var release = Signal();
-        var dispatcher = CreateDispatcher(new MissingTopicSender(), async (_, token) =>
-        {
-            entered.TrySetResult();
-            await release.Task.WaitAsync(token);
-        }, TimeSpan.FromMilliseconds(100));
-
-        var publish = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        var exception = Assert.ThrowsAsync<TimeoutException>(async () => await publish.WaitAsync(TimeSpan.FromSeconds(5)));
-        Assert.That(exception.Message, Does.Contain($"did not recover within {0.1:0.###} seconds"));
-        release.TrySetResult();
-    }
-
-    [Test]
-    public async Task Should_bound_the_wait_for_an_unresponsive_delivery()
-    {
-        var blocked = Signal();
-        var inner = new DelegateDispatcher(_ => blocked.Task);
-        var dispatcher = new TopicCreatingDispatcher(inner, Topology(), new DestinationManager(HierarchyNamespaceOptions.None),
-            static (_, _) => Task.FromResult(true), static (_, _) => Task.CompletedTask,
-            new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System),
-            TimeSpan.FromMilliseconds(100), TimeProvider.System);
-
-        try
-        {
-            var exception = Assert.ThrowsAsync<TimeoutException>(async () => await dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction()).WaitAsync(TimeSpan.FromSeconds(5)));
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(exception.Message, Does.Contain($"did not recover within {0.1:0.###} seconds"));
-                Assert.That(inner.Attempts, Is.EqualTo(1), "A timed-out dispatch must not start another delivery attempt");
-            }
-        }
-        finally
-        {
-            blocked.TrySetResult();
         }
     }
 
@@ -423,7 +340,7 @@ public class TopicCreatingDispatcherTests
     }
 
     [Test]
-    public async Task Should_cancel_a_pending_creation_with_the_caller()
+    public async Task Should_stop_waiting_for_a_pending_creation_when_cancelled()
     {
         var entered = Signal();
         var never = Signal();
@@ -476,14 +393,12 @@ public class TopicCreatingDispatcherTests
         }
     }
 
-    static TopicCreatingDispatcher CreateGatedDispatcher(IMessageDispatcher inner) =>
+    static TopicCreatingDispatcher CreateControlledDispatcher(IMessageDispatcher inner, Func<string, CancellationToken, Task<bool>> topicExists) =>
         new(inner, Topology(), new DestinationManager(HierarchyNamespaceOptions.None),
-            static (_, _) => Task.FromResult(true), static (_, _) => Task.CompletedTask,
-            new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System),
-            TimeSpan.FromSeconds(30), TimeProvider.System);
+            topicExists, static (_, _) => Task.CompletedTask,
+            new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System));
 
-    static TopicCreatingDispatcher CreateDispatcher(MissingTopicSender sender, Func<string, CancellationToken, Task> createTopic,
-        TimeSpan? recoveryTimeout = null, string queue = null)
+    static TopicCreatingDispatcher CreateDispatcher(MissingTopicSender sender, Func<string, CancellationToken, Task> createTopic, string queue = null)
     {
         var client = new FakeServiceBusClient();
         client.Senders["topic-a"] = sender;
@@ -497,8 +412,7 @@ public class TopicCreatingDispatcherTests
         var inner = new MessageDispatcher(client, new MessageSenderRegistry(), topology, destinationManager, throwOnMissingTopic: true);
         return new TopicCreatingDispatcher(inner, topology, destinationManager,
             (_, _) => Task.FromResult(sender.TopicExists), createTopic,
-            new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System),
-            recoveryTimeout ?? TimeSpan.FromSeconds(5), TimeProvider.System);
+            new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System));
     }
 
     static TopicTopology Topology() => TopicTopology.FromOptions(new TopologyOptions
@@ -560,16 +474,6 @@ public class TopicCreatingDispatcherTests
         };
     }
 
-    class DelegateDispatcher(Func<int, Task> onAttempt) : IMessageDispatcher
-    {
-        int attempts;
-
-        public int Attempts => Volatile.Read(ref attempts);
-
-        public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default) =>
-            onAttempt(Interlocked.Increment(ref attempts));
-    }
-
     // Each Dispatch call blocks until the test completes or fails it, in the order the calls started
     class ControlledDispatcher : IMessageDispatcher
     {
@@ -601,10 +505,6 @@ public class TopicCreatingDispatcherTests
         }
 
         public Task WaitForStarted(int count) => WaitUntil(() => Started >= count);
-
-        public void Complete(int index) => calls.ElementAt(index).TrySetResult();
-
-        public void Fail(int index) => calls.ElementAt(index).TrySetException(new InvalidOperationException("Dispatch failed"));
 
         public void CompleteAll()
         {

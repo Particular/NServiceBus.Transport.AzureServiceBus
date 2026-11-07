@@ -80,6 +80,45 @@ public class TopicCreatingDispatcherPreflightTests
     }
 
     [Test]
+    public async Task Should_check_again_when_a_setup_fails_after_its_callers_stopped_waiting()
+    {
+        var firstCheck = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reads = 0;
+        var inner = new RecordingDispatcher();
+        var dispatcher = Create(inner,
+            (_, _) => Interlocked.Increment(ref reads) == 1 ? firstCheck.Task : Task.FromResult(true),
+            static (_, _) => Task.CompletedTask);
+        using var cancellation = new CancellationTokenSource();
+        var abandoned = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction(), cancellation.Token);
+        await cancellation.CancelAsync();
+        Assert.That(async () => await abandoned, Throws.InstanceOf<OperationCanceledException>());
+
+        firstCheck.SetException(new ServiceBusException("Check failed", ServiceBusFailureReason.ServiceBusy));
+
+        // Until the failed setup has removed itself, a new caller can still join it and get its failure
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        while (true)
+        {
+            try
+            {
+                await dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
+                break;
+            }
+            catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.ServiceBusy)
+            {
+                await Task.Yield();
+                timeout.Token.ThrowIfCancellationRequested();
+            }
+        }
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(reads, Is.EqualTo(2), "A failed setup must not be cached");
+            Assert.That(inner.Calls, Is.EqualTo(1));
+        }
+    }
+
+    [Test]
     public async Task Should_leave_deletion_race_recovery_to_the_next_caller_attempt()
     {
         var calls = new List<string>();
@@ -143,20 +182,24 @@ public class TopicCreatingDispatcherPreflightTests
         var reads = 0;
         var inner = new RecordingDispatcher();
         var dispatcher = Create(inner,
-            (_, _) => { reads++; return Task.FromResult(true); }, static (_, _) => Task.CompletedTask, time, limiter);
+            (_, _) => { reads++; return Task.FromResult(true); }, static (_, _) => Task.CompletedTask, limiter);
 
         var dispatch = dispatcher.Dispatch(Publish(typeof(EventA), typeof(EventB)), new TransportTransaction());
         using (Assert.EnterMultipleScope())
         {
             Assert.That(reads, Is.EqualTo(1));
-            Assert.That(inner.Calls, Is.EqualTo(1));
+            Assert.That(inner.Calls, Is.Zero);
             Assert.That(dispatch.IsCompleted, Is.False);
         }
         time.Advance(TimeSpan.FromMilliseconds(199));
         Assert.That(reads, Is.EqualTo(1));
         time.Advance(TimeSpan.FromMilliseconds(1));
         await dispatch;
-        Assert.That(reads, Is.EqualTo(2));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(reads, Is.EqualTo(2));
+            Assert.That(inner.Calls, Is.EqualTo(1));
+        }
     }
 
     [Test]
@@ -169,7 +212,7 @@ public class TopicCreatingDispatcherPreflightTests
         var inner = new RecordingDispatcher();
         var dispatcher = Create(inner,
             (_, _) => { reads++; return Task.FromResult(false); },
-            (_, _) => { creates++; return Task.CompletedTask; }, time, limiter);
+            (_, _) => { creates++; return Task.CompletedTask; }, limiter);
 
         var dispatch = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
         using (Assert.EnterMultipleScope())
@@ -184,89 +227,6 @@ public class TopicCreatingDispatcherPreflightTests
         {
             Assert.That(creates, Is.EqualTo(1));
             Assert.That(inner.Calls, Is.EqualTo(1));
-        }
-    }
-
-    [Test]
-    public async Task Should_include_topic_gate_waiting_in_the_deadline()
-    {
-        var time = new FakeTimeProvider();
-        var release = Signal();
-        var inner = new RecordingDispatcher(_ => release.Task);
-        var dispatcher = Create(inner, static (_, _) => Task.FromResult(true), static (_, _) => Task.CompletedTask, time);
-        var first = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
-        var second = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
-        Assert.That(inner.Calls, Is.EqualTo(1));
-
-        time.Advance(TimeSpan.FromSeconds(30));
-        try
-        {
-            var firstError = Assert.ThrowsAsync<TimeoutException>(async () => await first.WaitAsync(TimeSpan.FromSeconds(5)));
-            var secondError = Assert.ThrowsAsync<TimeoutException>(async () => await second.WaitAsync(TimeSpan.FromSeconds(5)));
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(firstError.Message, Does.Contain("did not recover within 30 seconds"));
-                Assert.That(secondError.Message, Does.Contain("did not recover within 30 seconds"));
-                Assert.That(inner.Calls, Is.EqualTo(1));
-            }
-        }
-        finally
-        {
-            release.TrySetResult();
-        }
-    }
-
-    [Test]
-    public async Task Should_bound_admin_queue_waiting_without_starting_another_sdk_call()
-    {
-        var time = new FakeTimeProvider();
-        var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var reads = 0;
-        var creates = 0;
-        var inner = new RecordingDispatcher();
-        var dispatcher = Create(inner,
-            (_, _) => { reads++; return release.Task; },
-            (_, _) => { creates++; return Task.CompletedTask; }, time);
-        var first = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
-        var second = dispatcher.Dispatch(Publish(typeof(EventB)), new TransportTransaction());
-        Assert.That(reads, Is.EqualTo(1));
-
-        time.Advance(TimeSpan.FromSeconds(30));
-        try
-        {
-            Assert.ThrowsAsync<TimeoutException>(async () => await first.WaitAsync(TimeSpan.FromSeconds(5)));
-            var exception = Assert.ThrowsAsync<TimeoutException>(async () => await second.WaitAsync(TimeSpan.FromSeconds(5)));
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(exception.Message, Does.Contain("did not recover within 30 seconds"));
-                Assert.That(reads, Is.EqualTo(1));
-                Assert.That(creates, Is.Zero);
-                Assert.That(inner.Calls, Is.Zero);
-            }
-        }
-        finally
-        {
-            release.TrySetResult(true);
-        }
-    }
-
-    [Test]
-    public async Task Should_count_startup_jitter_against_the_deadline()
-    {
-        var time = new FakeTimeProvider();
-        var limiter = new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.FromSeconds(40), time);
-        var reads = 0;
-        var inner = new RecordingDispatcher();
-        var dispatcher = Create(inner,
-            (_, _) => { reads++; return Task.FromResult(true); }, static (_, _) => Task.CompletedTask, time, limiter);
-        var dispatch = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
-        time.Advance(TimeSpan.FromSeconds(30));
-        var exception = Assert.ThrowsAsync<TimeoutException>(async () => await dispatch.WaitAsync(TimeSpan.FromSeconds(5)));
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(exception.Message, Does.Contain("did not recover within 30 seconds"));
-            Assert.That(reads, Is.Zero);
-            Assert.That(inner.Calls, Is.Zero);
         }
     }
 
@@ -299,9 +259,8 @@ public class TopicCreatingDispatcherPreflightTests
 
     static TopicCreatingDispatcher Create(RecordingDispatcher inner,
         Func<string, CancellationToken, Task<bool>> check, Func<string, CancellationToken, Task> create,
-        TimeProvider time = null, TopicAdministrationLimiter limiter = null)
+        TopicAdministrationLimiter limiter = null)
     {
-        time ??= TimeProvider.System;
         var topology = TopicTopology.FromOptions(new TopologyOptions
         {
             PublishedEventToTopicsMap =
@@ -311,7 +270,7 @@ public class TopicCreatingDispatcherPreflightTests
             }
         });
         return new TopicCreatingDispatcher(inner, topology, new DestinationManager(HierarchyNamespaceOptions.None), check, create,
-            limiter ?? new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, time), TimeSpan.FromSeconds(30), time);
+            limiter ?? new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System));
     }
 
     static TransportOperations Publish(params Type[] types) =>
@@ -319,7 +278,6 @@ public class TopicCreatingDispatcherPreflightTests
             new MulticastAddressTag(type), [], DispatchConsistency.Default))]);
 
     static ServiceBusException Missing() => new("Missing", ServiceBusFailureReason.MessagingEntityNotFound);
-    static TaskCompletionSource Signal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     class RecordingDispatcher(Func<int, Task> onDispatch = null) : IMessageDispatcher
     {
