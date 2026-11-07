@@ -5,13 +5,12 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Transactions;
 using Azure.Messaging.ServiceBus;
 using EventRouting;
 using Logging;
 
 // Checks and provisions unconfirmed topics before the first AMQP attempt. The inner dispatcher must throw on missing topics.
-// Splitting isolates retries from other destinations; replay within a topic still has at-least-once delivery semantics.
+// Unconfirmed topics are set up separately so other destinations can dispatch while their setup is pending.
 sealed class TopicCreatingDispatcher(
     IMessageDispatcher inner,
     TopicTopology topology,
@@ -20,19 +19,15 @@ sealed class TopicCreatingDispatcher(
     Func<string, CancellationToken, Task> createTopic,
     TopicAdministrationLimiter administrationLimiter,
     TimeSpan recoveryTimeout,
-    TimeSpan retryDelay,
     TimeProvider timeProvider) : IMessageDispatcher
 {
     public static readonly TimeSpan DefaultRecoveryTimeout = TimeSpan.FromSeconds(30);
-    public static readonly TimeSpan DefaultRetryDelay = TimeSpan.FromMilliseconds(250);
-    public const int MaxDeliveryAttempts = 5;
-
     public TopicCreatingDispatcher(IMessageDispatcher inner, TopicTopology topology, DestinationManager destinationManager,
         Func<string, CancellationToken, Task<bool>> topicExists, Func<string, CancellationToken, Task> createTopic)
         : this(inner, topology, destinationManager, topicExists, createTopic,
             new TopicAdministrationLimiter(TopicAdministrationLimiter.DefaultMinimumInterval,
                 TimeSpan.FromMilliseconds(Random.Shared.NextDouble() * TopicAdministrationLimiter.MaximumStartupDelay.TotalMilliseconds), TimeProvider.System),
-            DefaultRecoveryTimeout, DefaultRetryDelay, TimeProvider.System)
+            DefaultRecoveryTimeout, TimeProvider.System)
     {
     }
 
@@ -112,7 +107,6 @@ sealed class TopicCreatingDispatcher(
         using var deadline = new CancellationTokenSource(recoveryTimeout, timeProvider);
         using var recovery = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
         var recoveryToken = recovery.Token;
-        ServiceBusException? lastFailure = null;
         var held = false;
         try
         {
@@ -130,12 +124,13 @@ sealed class TopicCreatingDispatcher(
                 return;
             }
 
-            await DispatchWithTopicSetup(topic, operations, transaction, e => lastFailure = e, recoveryToken).ConfigureAwait(false);
+            await EnsureTopicExists(topic, recoveryToken).ConfigureAwait(false);
+            await inner.Dispatch(operations, transaction, recoveryToken).WaitAsync(recoveryToken).ConfigureAwait(false);
             gate.Confirmed = true;
         }
         catch (Exception ex) when (ex.IsCausedBy(recoveryToken) && !cancellationToken.IsCancellationRequested)
         {
-            throw RecoveryTimedOut(topic, lastFailure ?? ex);
+            throw RecoveryTimedOut(topic, ex);
         }
         finally
         {
@@ -146,61 +141,15 @@ sealed class TopicCreatingDispatcher(
         }
     }
 
-    async Task DispatchWithTopicSetup(string topic, TransportOperations operations, TransportTransaction transaction,
-        Action<ServiceBusException> onMissing, CancellationToken cancellationToken)
-    {
-        ServiceBusException? lastFailure = null;
-        var created = await EnsureTopicExists(topic, cancellationToken).ConfigureAwait(false);
-        var repairedAfterFailure = created;
-        for (var attempt = 1; attempt <= MaxDeliveryAttempts; attempt++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            try
-            {
-                await inner.Dispatch(operations, transaction, cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);
-                return;
-            }
-            catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
-            {
-                lastFailure = e;
-                onMissing(e);
-                if (operations.MulticastTransportOperations.Exists(o => o.RequiredDispatchConsistency == DispatchConsistency.Default)
-                    && transaction.TryGet<AzureServiceBusTransportTransaction>(out var nativeTransaction)
-                    && nativeTransaction.HasTransaction
-                    && nativeTransaction.Transaction?.TransactionInformation.Status != TransactionStatus.Active)
-                {
-                    // A failure inside the send scope aborts the receive transaction; recoverability must start a new attempt.
-                    throw;
-                }
-            }
-
-            if (attempt < MaxDeliveryAttempts)
-            {
-                if (!repairedAfterFailure)
-                {
-                    // The topic may have disappeared between the check and the send. Otherwise this can be a stale 404.
-                    await EnsureTopicExists(topic, cancellationToken).ConfigureAwait(false);
-                    repairedAfterFailure = true;
-                }
-                await Task.Delay(retryDelay, timeProvider, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        throw new TimeoutException($"Publishing to topic {topic} still failed after {MaxDeliveryAttempts} delivery attempts following topic setup.", lastFailure);
-    }
-
-    async Task<bool> EnsureTopicExists(string topic, CancellationToken cancellationToken)
+    async Task EnsureTopicExists(string topic, CancellationToken cancellationToken)
     {
         // Exceptions from the check are failures, not a negative existence result.
         var exists = await administrationLimiter.ExecuteAsync(_ => topicExists(topic, cancellationToken), cancellationToken)
             .WaitAsync(cancellationToken).ConfigureAwait(false);
-        if (exists)
+        if (!exists)
         {
-            return false;
+            await CreateTopic(topic, cancellationToken).ConfigureAwait(false);
         }
-
-        await CreateTopic(topic, cancellationToken).ConfigureAwait(false);
-        return true;
     }
 
     async Task CreateTopic(string topic, CancellationToken cancellationToken)
