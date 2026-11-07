@@ -11,6 +11,7 @@ using Logging;
 
 // Checks and provisions unconfirmed topics before the first AMQP attempt. The inner dispatcher must throw on missing topics.
 // Unconfirmed topics are set up separately so other destinations can dispatch while their setup is pending.
+// Topics stay confirmed for the lifetime of the endpoint, so topics deleted while it runs are not recreated.
 sealed class TopicCreatingDispatcher(
     IMessageDispatcher inner,
     TopicTopology topology,
@@ -79,26 +80,8 @@ sealed class TopicCreatingDispatcher(
         return Task.WhenAll(dispatches);
     }
 
-    async Task DispatchToConfirmedTopics(TransportOperations operations, TransportTransaction transaction, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await inner.Dispatch(operations, transaction, cancellationToken).ConfigureAwait(false);
-        }
-        catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
-        {
-            // The SDK doesn't identify the missing entity. Recheck the topics next time without replaying other completed destinations.
-            foreach (var operation in operations.MulticastTransportOperations)
-            {
-                if (gates.TryGetValue(operation.ExtractDestination(topology, destinationManager), out var gate))
-                {
-                    gate.Confirmed = false;
-                }
-            }
-
-            throw;
-        }
-    }
+    Task DispatchToConfirmedTopics(TransportOperations operations, TransportTransaction transaction, CancellationToken cancellationToken) =>
+        inner.Dispatch(operations, transaction, cancellationToken);
 
     async Task DispatchToUnconfirmedTopic(string topic, TransportOperations operations, TransportTransaction transaction, CancellationToken cancellationToken)
     {

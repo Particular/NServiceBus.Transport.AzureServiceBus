@@ -391,7 +391,7 @@ public class TopicCreatingDispatcherTests
     }
 
     [Test]
-    public async Task Should_throw_when_a_confirmed_topic_goes_missing_and_create_it_on_the_next_publish()
+    public async Task Should_not_recreate_a_confirmed_topic_that_was_deleted_during_the_run()
     {
         var sender = new MissingTopicSender();
         var creation = new TopicCreation(sender);
@@ -399,14 +399,15 @@ public class TopicCreatingDispatcherTests
         await dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
 
         sender.TopicExists = false;
-        var exception = Assert.ThrowsAsync<ServiceBusException>(() => dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction()));
-        await dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
+        var first = Assert.ThrowsAsync<ServiceBusException>(() => dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction()));
+        var second = Assert.ThrowsAsync<ServiceBusException>(() => dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction()));
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(exception.Reason, Is.EqualTo(ServiceBusFailureReason.MessagingEntityNotFound));
-            Assert.That(creation.Calls, Is.EqualTo(2));
-            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(2));
+            Assert.That(first.Reason, Is.EqualTo(ServiceBusFailureReason.MessagingEntityNotFound));
+            Assert.That(second.Reason, Is.EqualTo(ServiceBusFailureReason.MessagingEntityNotFound));
+            Assert.That(creation.Calls, Is.EqualTo(1));
+            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
         }
     }
 
