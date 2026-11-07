@@ -42,14 +42,24 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
         messageSenderRegistry = new MessageSenderRegistry();
 
-        Dispatcher = new MessageDispatcher(
+        // Publishers create missing topics only when installers are enabled, which also requires Manage rights.
+        // With ThrowOnMissingTopicWhenPublishing a missing topic is an error to surface, not to fix.
+        var createMissingTopics = hostSettings.SetupInfrastructure && !transportSettings.ThrowOnMissingTopicWhenPublishing;
+
+        // When topics are created, the inner dispatcher throws on a missing topic so that the wrapper can create it and retry
+        var dispatcher = new MessageDispatcher(
             defaultClient,
             messageSenderRegistry,
             transportSettings.Topology,
             destinationManager,
-            transportSettings.ThrowOnMissingTopicWhenPublishing,
+            transportSettings.ThrowOnMissingTopicWhenPublishing || createMissingTopics,
             transportSettings.OutgoingNativeMessageCustomization
         );
+
+        Dispatcher = createMissingTopics
+            ? new TopicCreatingDispatcher(dispatcher, transportSettings.Topology, destinationManager,
+                async (topic, token) => (await administrationClient.TopicExistsAsync(topic, token).ConfigureAwait(false)).Value, CreateTopic)
+            : dispatcher;
 
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
         {
@@ -158,6 +168,16 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             subQueue
         );
     }
+
+    // Same settings as the subscriber side. Endpoints that share topics must agree on whether sessions are enabled.
+    Task CreateTopic(string topic, CancellationToken cancellationToken) =>
+        administrationClient.CreateTopicAsync(new CreateTopicOptions(topic)
+        {
+            EnableBatchedOperations = true,
+            EnablePartitioning = transportSettings.EnablePartitioning,
+            SupportOrdering = transportSettings.EnableSessions,
+            MaxSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
+        }, cancellationToken);
 
     public override async Task Shutdown(CancellationToken cancellationToken = default)
     {

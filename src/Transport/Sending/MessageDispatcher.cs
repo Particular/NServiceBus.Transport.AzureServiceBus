@@ -21,7 +21,7 @@ class MessageDispatcher(
     OutgoingNativeMessageCustomizationAction? customizerCallback = null)
     : IMessageDispatcher
 {
-    const int MaxMessageThresholdForTransaction = 100;
+    public const int MaxMessageThresholdForTransaction = 100;
 
     static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
     readonly ConcurrentDictionary<string, byte> warnedMissingTopics = new(StringComparer.OrdinalIgnoreCase);
