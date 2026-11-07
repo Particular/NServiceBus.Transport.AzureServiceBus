@@ -203,58 +203,49 @@ public class TopicCreatingDispatcherTests
 
     [TestCase(false)]
     [TestCase(true)]
-    public async Task Should_retry_stale_404s_after_creation(bool sendIndividually)
+    public void Should_propagate_post_setup_404_without_retrying_or_logging(bool sendIndividually)
     {
+        var output = CaptureLogs(out var scope);
+        using var _ = scope;
         var sender = new MissingTopicSender { FailuresRemaining = 4, TryAdd = _ => !sendIndividually };
         var creation = new TopicCreation(sender);
         var dispatcher = CreateDispatcher(sender, creation.Create);
 
-        await dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
+        var exception = Assert.ThrowsAsync<ServiceBusException>(() => dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction()));
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(creation.Calls, Is.EqualTo(1), "Post-creation 404s must not create the topic again");
-            Assert.That(sender.Attempts, Is.EqualTo(5));
-            Assert.That(sendIndividually ? sender.IndividuallySentMessages.Count : sender.BatchSentMessages.Count, Is.EqualTo(1));
+            Assert.That(exception.Reason, Is.EqualTo(ServiceBusFailureReason.MessagingEntityNotFound));
+            Assert.That(creation.Calls, Is.EqualTo(1));
+            Assert.That(sender.Attempts, Is.EqualTo(1));
+            Assert.That(sender.BatchSentMessages, Is.Empty);
+            Assert.That(sender.IndividuallySentMessages, Is.Empty);
+            Assert.That(DispatcherEntries(output).Count(e => e.Level is "WARN" or "ERROR"), Is.Zero);
         }
     }
 
     [Test]
-    public async Task Should_recover_a_failed_batch_creation_without_losing_messages()
+    public async Task Should_leave_queued_messages_intact_for_a_caller_retry_after_batch_creation_fails()
     {
-        var sender = new MissingTopicSender { BatchCreationFailures = 3 };
+        var sender = new MissingTopicSender { BatchCreationFailures = 1 };
         var creation = new TopicCreation(sender);
         var dispatcher = CreateDispatcher(sender, creation.Create);
+        var operations = Publish(typeof(EventA), typeof(EventA), typeof(EventA));
 
-        await dispatcher.Dispatch(Publish(typeof(EventA), typeof(EventA), typeof(EventA)), new TransportTransaction());
+        var exception = Assert.ThrowsAsync<ServiceBusException>(() => dispatcher.Dispatch(operations, new TransportTransaction()));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(exception.Reason, Is.EqualTo(ServiceBusFailureReason.MessagingEntityNotFound));
+            Assert.That(sender.BatchCreationAttempts, Is.EqualTo(1));
+            Assert.That(sender.Attempts, Is.Zero);
+        }
 
+        await dispatcher.Dispatch(operations, new TransportTransaction());
         using (Assert.EnterMultipleScope())
         {
             Assert.That(creation.Calls, Is.EqualTo(1));
-            Assert.That(sender.BatchCreationAttempts, Is.EqualTo(4));
+            Assert.That(sender.BatchCreationAttempts, Is.EqualTo(2));
             Assert.That(sender[sender.BatchSentMessages.Single()], Has.Count.EqualTo(3));
-        }
-    }
-
-    [TestCase(false)]
-    [TestCase(true)]
-    public void Should_throw_without_logging_when_delivery_attempts_are_exhausted(bool sendIndividually)
-    {
-        var output = CaptureLogs(out var scope);
-        using var _ = scope;
-        var sender = new MissingTopicSender { TryAdd = _ => !sendIndividually };
-        var calls = 0;
-        var dispatcher = CreateDispatcher(sender, (_, _) => { calls++; return Task.CompletedTask; });
-
-        var exception = Assert.ThrowsAsync<TimeoutException>(() => dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction()));
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(exception.InnerException, Is.InstanceOf<ServiceBusException>());
-            Assert.That(calls, Is.EqualTo(1));
-            Assert.That(sender.Attempts, Is.EqualTo(TopicCreatingDispatcher.MaxDeliveryAttempts));
-            Assert.That(sender.BatchSentMessages, Is.Empty);
-            Assert.That(sender.IndividuallySentMessages, Is.Empty);
-            Assert.That(DispatcherEntries(output).Count(e => e.Level is "WARN" or "ERROR"), Is.Zero);
         }
     }
 
@@ -280,11 +271,11 @@ public class TopicCreatingDispatcherTests
     public async Task Should_bound_the_wait_for_an_unresponsive_delivery()
     {
         var blocked = Signal();
-        var inner = new DelegateDispatcher(attempt => attempt == 1 ? Task.FromException(MissingTopic()) : blocked.Task);
+        var inner = new DelegateDispatcher(_ => blocked.Task);
         var dispatcher = new TopicCreatingDispatcher(inner, Topology(), new DestinationManager(HierarchyNamespaceOptions.None),
             static (_, _) => Task.FromResult(true), static (_, _) => Task.CompletedTask,
             new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System),
-            TimeSpan.FromMilliseconds(100), TimeSpan.Zero, TimeProvider.System);
+            TimeSpan.FromMilliseconds(100), TimeProvider.System);
 
         try
         {
@@ -292,7 +283,7 @@ public class TopicCreatingDispatcherTests
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(exception.Message, Does.Contain($"did not recover within {0.1:0.###} seconds"));
-                Assert.That(inner.Attempts, Is.EqualTo(2), "A timed-out dispatch must not start another retry");
+                Assert.That(inner.Attempts, Is.EqualTo(1), "A timed-out dispatch must not start another delivery attempt");
             }
         }
         finally
@@ -374,13 +365,11 @@ public class TopicCreatingDispatcherTests
         }
     }
 
-    // The SDK opens the link in CreateMessageBatchAsync, before the dispatcher enters the transaction scope, so a missing
-    // topic fails there. A failure inside the scope would abort the transaction and is not retried.
     [Test]
-    public async Task Should_keep_transactional_retries_on_the_receivers_client()
+    public async Task Should_keep_the_single_delivery_attempt_on_the_receivers_client()
     {
         var receiverClient = new FakeServiceBusClient();
-        var sender = new MissingTopicSender { BatchCreationFailures = 2 };
+        var sender = new MissingTopicSender();
         receiverClient.Senders["topic-a"] = sender;
         var defaultSender = new MissingTopicSender();
         var dispatcher = CreateDispatcher(defaultSender, (_, _) => { sender.TopicExists = true; return Task.CompletedTask; });
@@ -395,7 +384,7 @@ public class TopicCreatingDispatcherTests
         {
             Assert.That(defaultSender.Attempts, Is.Zero);
             Assert.That(defaultSender.BatchCreationAttempts, Is.Zero);
-            Assert.That(sender.BatchCreationAttempts, Is.EqualTo(3));
+            Assert.That(sender.BatchCreationAttempts, Is.EqualTo(1));
             Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
             Assert.That(sender.Transactions.Single(), Is.Not.Null.And.Not.Empty, "The send ran in the receive transaction");
         }
@@ -470,7 +459,7 @@ public class TopicCreatingDispatcherTests
     {
         var recorded = new StringBuilder();
         var client = new FakeServiceBusClient();
-        var sender = new MissingTopicSender { TopicExists = true, FailuresRemaining = 1 };
+        var sender = new MissingTopicSender { TopicExists = true };
         client.Senders["topic-a"] = sender;
         var transport = new AzureServiceBusTransport("connectionString", Topology()) { EnableSessions = enableSessions };
         var hostSettings = new HostSettings("endpoint", "host", new StartupDiagnosticEntries(), (_, _, _) => { }, true);
@@ -490,7 +479,7 @@ public class TopicCreatingDispatcherTests
         new(inner, Topology(), new DestinationManager(HierarchyNamespaceOptions.None),
             static (_, _) => Task.FromResult(true), static (_, _) => Task.CompletedTask,
             new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System),
-            TimeSpan.FromSeconds(30), TimeSpan.Zero, TimeProvider.System);
+            TimeSpan.FromSeconds(30), TimeProvider.System);
 
     static TopicCreatingDispatcher CreateDispatcher(MissingTopicSender sender, Func<string, CancellationToken, Task> createTopic,
         TimeSpan? recoveryTimeout = null, string queue = null)
@@ -508,7 +497,7 @@ public class TopicCreatingDispatcherTests
         return new TopicCreatingDispatcher(inner, topology, destinationManager,
             (_, _) => Task.FromResult(sender.TopicExists), createTopic,
             new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System),
-            recoveryTimeout ?? TimeSpan.FromSeconds(5), TimeSpan.Zero, TimeProvider.System);
+            recoveryTimeout ?? TimeSpan.FromSeconds(5), TimeProvider.System);
     }
 
     static TopicTopology Topology() => TopicTopology.FromOptions(new TopologyOptions

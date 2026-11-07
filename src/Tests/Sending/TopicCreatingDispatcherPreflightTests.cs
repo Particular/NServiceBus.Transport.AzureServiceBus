@@ -80,7 +80,7 @@ public class TopicCreatingDispatcherPreflightTests
     }
 
     [Test]
-    public async Task Should_recheck_and_create_if_the_topic_disappears_between_check_and_send()
+    public async Task Should_leave_deletion_race_recovery_to_the_next_caller_attempt()
     {
         var calls = new List<string>();
         var reads = 0;
@@ -93,13 +93,19 @@ public class TopicCreatingDispatcherPreflightTests
             (_, _) => { calls.Add("check"); return Task.FromResult(++reads == 1); },
             (_, _) => { calls.Add("create"); return Task.CompletedTask; });
 
-        await dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
+        var exception = Assert.ThrowsAsync<ServiceBusException>(() => dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction()));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(exception.Reason, Is.EqualTo(ServiceBusFailureReason.MessagingEntityNotFound));
+            Assert.That(calls, Is.EqualTo(new[] { "check", "dispatch" }));
+        }
 
+        await dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
         Assert.That(calls, Is.EqualTo(new[] { "check", "dispatch", "check", "create", "dispatch" }));
     }
 
     [Test]
-    public async Task Should_retry_stale_404s_without_repeated_admin_calls_when_the_topic_still_exists()
+    public async Task Should_attempt_a_stale_404_once_per_caller_attempt_and_confirm_on_success()
     {
         var reads = 0;
         var creates = 0;
@@ -108,13 +114,24 @@ public class TopicCreatingDispatcherPreflightTests
             (_, _) => { reads++; return Task.FromResult(true); },
             (_, _) => { creates++; return Task.CompletedTask; });
 
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            var exception = Assert.ThrowsAsync<ServiceBusException>(() => dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction()));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(exception.Reason, Is.EqualTo(ServiceBusFailureReason.MessagingEntityNotFound));
+                Assert.That(reads, Is.EqualTo(attempt));
+                Assert.That(inner.Calls, Is.EqualTo(attempt));
+            }
+        }
+        await dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
         await dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(reads, Is.EqualTo(2), "One initial check and one recheck after the first 404");
+            Assert.That(reads, Is.EqualTo(4), "Confirmation avoids another check after successful delivery");
             Assert.That(creates, Is.Zero);
-            Assert.That(inner.Calls, Is.EqualTo(4));
+            Assert.That(inner.Calls, Is.EqualTo(5));
         }
     }
 
@@ -294,7 +311,7 @@ public class TopicCreatingDispatcherPreflightTests
             }
         });
         return new TopicCreatingDispatcher(inner, topology, new DestinationManager(HierarchyNamespaceOptions.None), check, create,
-            limiter ?? new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, time), TimeSpan.FromSeconds(30), TimeSpan.Zero, time);
+            limiter ?? new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, time), TimeSpan.FromSeconds(30), time);
     }
 
     static TransportOperations Publish(params Type[] types) =>
