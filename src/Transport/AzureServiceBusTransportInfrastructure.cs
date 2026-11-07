@@ -166,12 +166,13 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         );
     }
 
-    // Same settings as the subscriber side, except SupportOrdering, which depends on whether a subscriber requires sessions
+    // Same settings as the subscriber side. Endpoints that share topics must agree on whether sessions are enabled.
     Task CreateTopic(string topic, CancellationToken cancellationToken) =>
         administrationClient.CreateTopicAsync(new CreateTopicOptions(topic)
         {
             EnableBatchedOperations = true,
             EnablePartitioning = transportSettings.EnablePartitioning,
+            SupportOrdering = transportSettings.EnableSessions,
             MaxSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
         }, cancellationToken);
 

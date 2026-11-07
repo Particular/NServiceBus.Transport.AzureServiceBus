@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -427,6 +428,34 @@ public class MissingTopicCreatorTests
 
         await creator.DisposeAsync();
         Assert.That(async () => await publish, Throws.InstanceOf<OperationCanceledException>());
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task Should_create_topic_with_ordering_matching_the_publishers_session_setting(bool enableSessions)
+    {
+        var recorded = new StringBuilder();
+        var client = new FakeServiceBusClient();
+        var sender = new MissingTopicSender { TopicExists = true, FailuresRemaining = 1 };
+        client.Senders["sometopic"] = sender;
+        var transport = new AzureServiceBusTransport("connectionString", TopicTopology.FromOptions(new TopologyOptions
+        {
+            PublishedEventToTopicsMap = { { typeof(SomeEvent).FullName, "sometopic" } }
+        }))
+        {
+            EnableSessions = enableSessions
+        };
+        var hostSettings = new HostSettings("endpoint", "host", new StartupDiagnosticEntries(), (_, _, _) => { }, true);
+        var infrastructure = new AzureServiceBusTransportInfrastructure(transport, hostSettings, [], client, null,
+            new RecordingServiceBusAdministrationClient(recorded), new DestinationManager(HierarchyNamespaceOptions.None));
+
+        await infrastructure.Dispatcher.Dispatch(PublishOperations(), new TransportTransaction());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(recorded.ToString(), Does.Contain($"\"SupportOrdering\": {(enableSessions ? "true" : "false")}"));
+            Assert.That(sender.BatchSentMessages, Has.Count.EqualTo(1));
+        }
     }
 
     static MissingTopicCreator CreateCreator(Func<string, CancellationToken, Task> action, bool enabled = true) =>
