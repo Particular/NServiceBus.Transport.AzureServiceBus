@@ -24,6 +24,7 @@ class MessageDispatcher(
     const int MaxMessageThresholdForTransaction = 100;
 
     static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
+    readonly ConcurrentDictionary<string, byte> warnedMissingTopics = new(StringComparer.OrdinalIgnoreCase);
     static readonly Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)> emptyDestinationAndOperations = [];
 
     readonly OutgoingNativeMessageCustomizationAction
@@ -99,15 +100,7 @@ class MessageDispatcher(
             DispatchBatchedOperations(defaultOperationsPerDestination ?? emptyDestinationAndOperations, numberOfDefaultOperations, transaction, azureServiceBusTransaction, orderingRequired, cancellationToken)
         ];
 
-        try
-        {
-            await Task.WhenAll(dispatchTasks).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
-        {
-            Log.Error("Exception from Send.", ex);
-            throw;
-        }
+        await Task.WhenAll(dispatchTasks).ConfigureAwait(false);
     }
 
     // The parameters of this method are deliberately mutable and of the original collection type to make sure
@@ -275,14 +268,14 @@ class MessageDispatcher(
             // when it tries to establish a link to a non-existing entity.
             catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
-                if (Log.IsWarnEnabled)
-                {
-                    Log.Warn($"Skipping publishing messages to topic {destination} because the destination does not exist.");
-                }
-
                 if (throwOnMissingTopic)
                 {
                     throw;
+                }
+
+                if (Log.IsWarnEnabled && warnedMissingTopics.TryAdd(destination, 0))
+                {
+                    Log.Warn($"Skipping publishing messages to topic {destination} because the destination does not exist.");
                 }
 
                 return;
@@ -400,14 +393,14 @@ class MessageDispatcher(
         }
         catch (ServiceBusException e) when (isMulticast && e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {
-            if (Log.IsWarnEnabled)
-            {
-                Log.Warn($"Publishing message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
-            }
-
             if (throwOnMissingTopic)
             {
                 throw;
+            }
+
+            if (Log.IsWarnEnabled && warnedMissingTopics.TryAdd(destination, 0))
+            {
+                Log.Warn($"Publishing message with message ID '{message.MessageId}' to topic {destination} failed because the destination does not exist.");
             }
         }
         catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.ServiceCommunicationProblem)
