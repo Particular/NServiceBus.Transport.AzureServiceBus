@@ -9,8 +9,8 @@ using Azure.Messaging.ServiceBus;
 using EventRouting;
 using Logging;
 
-// Checks and provisions unconfirmed topics before the first AMQP attempt. The inner dispatcher must throw on missing topics.
-// Unconfirmed topics are set up separately so other destinations can dispatch while their setup is pending.
+// Checks and provisions unconfirmed topics before dispatching the original operations once. The inner dispatcher must throw on missing topics.
+// Nothing is sent until every unconfirmed topic in the call is set up, so a setup failure leaves no partial dispatch behind.
 // Topics stay confirmed for the lifetime of the endpoint, so topics deleted while it runs are not recreated.
 sealed class TopicCreatingDispatcher(
     IMessageDispatcher inner,
@@ -18,120 +18,87 @@ sealed class TopicCreatingDispatcher(
     DestinationManager destinationManager,
     Func<string, CancellationToken, Task<bool>> topicExists,
     Func<string, CancellationToken, Task> createTopic,
-    TopicAdministrationLimiter administrationLimiter,
-    TimeSpan recoveryTimeout,
-    TimeProvider timeProvider) : IMessageDispatcher
+    TopicAdministrationLimiter administrationLimiter) : IMessageDispatcher
 {
-    public static readonly TimeSpan DefaultRecoveryTimeout = TimeSpan.FromSeconds(30);
     public TopicCreatingDispatcher(IMessageDispatcher inner, TopicTopology topology, DestinationManager destinationManager,
         Func<string, CancellationToken, Task<bool>> topicExists, Func<string, CancellationToken, Task> createTopic)
         : this(inner, topology, destinationManager, topicExists, createTopic,
             new TopicAdministrationLimiter(TopicAdministrationLimiter.DefaultMinimumInterval,
-                TimeSpan.FromMilliseconds(Random.Shared.NextDouble() * TopicAdministrationLimiter.MaximumStartupDelay.TotalMilliseconds), TimeProvider.System),
-            DefaultRecoveryTimeout, TimeProvider.System)
+                TimeSpan.FromMilliseconds(Random.Shared.NextDouble() * TopicAdministrationLimiter.MaximumStartupDelay.TotalMilliseconds), TimeProvider.System))
     {
     }
 
     public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
     {
-        Dictionary<string, TransportOperations>? unconfirmed = null;
+        HashSet<string>? unconfirmed = null;
         foreach (var operation in outgoingMessages.MulticastTransportOperations)
         {
             var topic = operation.ExtractDestination(topology, destinationManager);
-            if (!IsConfirmed(topic))
+            if (!confirmed.ContainsKey(topic))
             {
-                unconfirmed ??= new Dictionary<string, TransportOperations>(StringComparer.OrdinalIgnoreCase);
-                if (!unconfirmed.TryGetValue(topic, out var operations))
-                {
-                    unconfirmed[topic] = operations = new TransportOperations();
-                }
-
-                operations.MulticastTransportOperations.Add(operation);
+                unconfirmed ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                unconfirmed.Add(topic);
             }
         }
 
-        // Splitting would hide the transaction limit that the inner dispatcher reports.
-        if (unconfirmed is null || ExceedsTransactionLimit(outgoingMessages, transaction))
-        {
-            return DispatchToConfirmedTopics(outgoingMessages, transaction, cancellationToken);
-        }
-
-        var rest = new TransportOperations();
-        rest.UnicastTransportOperations.AddRange(outgoingMessages.UnicastTransportOperations);
-        foreach (var operation in outgoingMessages.MulticastTransportOperations)
-        {
-            if (!unconfirmed.ContainsKey(operation.ExtractDestination(topology, destinationManager)))
-            {
-                rest.MulticastTransportOperations.Add(operation);
-            }
-        }
-
-        var dispatches = new List<Task>(unconfirmed.Count + 1);
-        if (rest.UnicastTransportOperations.Count > 0 || rest.MulticastTransportOperations.Count > 0)
-        {
-            dispatches.Add(DispatchToConfirmedTopics(rest, transaction, cancellationToken));
-        }
-
-        foreach (var (topic, operations) in unconfirmed)
-        {
-            dispatches.Add(DispatchToUnconfirmedTopic(topic, operations, transaction, cancellationToken));
-        }
-
-        return Task.WhenAll(dispatches);
+        return unconfirmed is null
+            ? inner.Dispatch(outgoingMessages, transaction, cancellationToken)
+            : DispatchAfterSetup(unconfirmed, outgoingMessages, transaction, cancellationToken);
     }
 
-    Task DispatchToConfirmedTopics(TransportOperations operations, TransportTransaction transaction, CancellationToken cancellationToken) =>
-        inner.Dispatch(operations, transaction, cancellationToken);
-
-    async Task DispatchToUnconfirmedTopic(string topic, TransportOperations operations, TransportTransaction transaction, CancellationToken cancellationToken)
+    async Task DispatchAfterSetup(HashSet<string> topics, TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken)
     {
-        var gate = gates.GetOrAdd(topic, static _ => new Gate());
-        var started = timeProvider.GetTimestamp();
-        using var deadline = new CancellationTokenSource(recoveryTimeout, timeProvider);
-        using var recovery = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
-        var recoveryToken = recovery.Token;
-        var held = false;
+        var pendingSetups = new List<Task>(topics.Count);
+        foreach (var topic in topics)
+        {
+            // Shared between callers, so no caller's token cancels it for the others. The SDK's own timeouts bound it.
+            pendingSetups.Add(setups.GetOrAdd(topic, static (topic, self) => new Lazy<Task>(() => self.SetUp(topic, CancellationToken.None)), this).Value);
+        }
+
+        await Task.WhenAll(pendingSetups).WaitAsync(cancellationToken).ConfigureAwait(false);
+
         try
         {
-            await gate.Semaphore.WaitAsync(recoveryToken).ConfigureAwait(false);
-            held = true;
-            if (timeProvider.GetElapsedTime(started) >= recoveryTimeout)
+            await inner.Dispatch(outgoingMessages, transaction, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+        {
+            // The SDK doesn't identify the missing entity. Check these topics again on the caller's next attempt.
+            foreach (var topic in topics)
             {
-                throw RecoveryTimedOut(topic, null);
-            }
-            if (gate.Confirmed)
-            {
-                gate.Semaphore.Release();
-                held = false;
-                await DispatchToConfirmedTopics(operations, transaction, recoveryToken).WaitAsync(recoveryToken).ConfigureAwait(false);
-                return;
+                setups.TryRemove(topic, out _);
             }
 
-            await EnsureTopicExists(topic, recoveryToken).ConfigureAwait(false);
-            await inner.Dispatch(operations, transaction, recoveryToken).WaitAsync(recoveryToken).ConfigureAwait(false);
-            gate.Confirmed = true;
+            throw;
         }
-        catch (Exception ex) when (ex.IsCausedBy(recoveryToken) && !cancellationToken.IsCancellationRequested)
+
+        foreach (var topic in topics)
         {
-            throw RecoveryTimedOut(topic, ex);
+            confirmed.TryAdd(topic, 0);
+        }
+    }
+
+    async Task SetUp(string topic, CancellationToken cancellationToken)
+    {
+        var succeeded = false;
+        try
+        {
+            // Exceptions from the check are failures, not a negative existence result.
+            var exists = await administrationLimiter.ExecuteAsync(_ => topicExists(topic, cancellationToken), cancellationToken).ConfigureAwait(false);
+            if (!exists)
+            {
+                await CreateTopic(topic, cancellationToken).ConfigureAwait(false);
+            }
+
+            succeeded = true;
         }
         finally
         {
-            if (held)
+            // Removed here rather than by the callers, which may have stopped waiting, so a failure is never cached
+            if (!succeeded)
             {
-                gate.Semaphore.Release();
+                setups.TryRemove(topic, out _);
             }
-        }
-    }
-
-    async Task EnsureTopicExists(string topic, CancellationToken cancellationToken)
-    {
-        // Exceptions from the check are failures, not a negative existence result.
-        var exists = await administrationLimiter.ExecuteAsync(_ => topicExists(topic, cancellationToken), cancellationToken)
-            .WaitAsync(cancellationToken).ConfigureAwait(false);
-        if (!exists)
-        {
-            await CreateTopic(topic, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -139,8 +106,7 @@ sealed class TopicCreatingDispatcher(
     {
         try
         {
-            await administrationLimiter.ExecuteAsync(_ => createTopic(topic, cancellationToken), cancellationToken)
-                .WaitAsync(cancellationToken).ConfigureAwait(false);
+            await administrationLimiter.ExecuteAsync(_ => createTopic(topic, cancellationToken), cancellationToken).ConfigureAwait(false);
 
             if (Log.IsInfoEnabled)
             {
@@ -158,36 +124,7 @@ sealed class TopicCreatingDispatcher(
         }
     }
 
-    TimeoutException RecoveryTimedOut(string topic, Exception? innerException) =>
-        new($"Publishing to topic {topic} did not recover within {recoveryTimeout.TotalSeconds:0.###} seconds while waiting for topic admission, setup, and delivery.", innerException);
-
-    bool IsConfirmed(string topic) => gates.TryGetValue(topic, out var gate) && gate.Confirmed;
-
-    static bool ExceedsTransactionLimit(TransportOperations outgoingMessages, TransportTransaction transaction)
-    {
-        if (!transaction.TryGet<AzureServiceBusTransportTransaction>(out var azureServiceBusTransaction) || !azureServiceBusTransaction.HasTransaction)
-        {
-            return false;
-        }
-
-        var count = 0;
-        foreach (var operation in outgoingMessages.UnicastTransportOperations)
-        {
-            count += operation.RequiredDispatchConsistency == DispatchConsistency.Default ? 1 : 0;
-        }
-        foreach (var operation in outgoingMessages.MulticastTransportOperations)
-        {
-            count += operation.RequiredDispatchConsistency == DispatchConsistency.Default ? 1 : 0;
-        }
-        return count > MessageDispatcher.MaxMessageThresholdForTransaction;
-    }
-
-    sealed class Gate
-    {
-        public readonly SemaphoreSlim Semaphore = new(1);
-        public volatile bool Confirmed;
-    }
-
-    readonly ConcurrentDictionary<string, Gate> gates = new(StringComparer.OrdinalIgnoreCase);
+    readonly ConcurrentDictionary<string, Lazy<Task>> setups = new(StringComparer.OrdinalIgnoreCase);
+    readonly ConcurrentDictionary<string, byte> confirmed = new(StringComparer.OrdinalIgnoreCase);
     static readonly ILog Log = LogManager.GetLogger<MessageDispatcher>();
 }

@@ -46,7 +46,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         // With ThrowOnMissingTopicWhenPublishing a missing topic is an error to surface, not to fix.
         var createMissingTopics = hostSettings.SetupInfrastructure && !transportSettings.ThrowOnMissingTopicWhenPublishing;
 
-        // When topics are created, the inner dispatcher throws on a missing topic so that the wrapper can create it and retry
+        // When topics are created, the inner dispatcher throws on a missing topic so that the wrapper only confirms topics it delivered to
         var dispatcher = new MessageDispatcher(
             defaultClient,
             messageSenderRegistry,
