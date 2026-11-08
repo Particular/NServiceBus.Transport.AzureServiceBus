@@ -20,6 +20,12 @@ public class RecordingServiceBusAdministrationClient(StringBuilder builder = nul
         return Task.FromResult<Response<SubscriptionProperties>>(null);
     }
 
+    public override Task<Response<bool>> TopicExistsAsync(string name, CancellationToken cancellationToken = default)
+    {
+        builder.AppendLine($"TopicExists('{name}')");
+        return Task.FromResult(Response.FromValue(false, null));
+    }
+
     public override Task<Response<TopicProperties>> CreateTopicAsync(CreateTopicOptions options, CancellationToken cancellationToken = default)
     {
         builder.AppendLine($"CreateTopicOptions: {JsonSerializer.Serialize(options, SkdJsonSerializerContext.PolymorphicOptions)}");

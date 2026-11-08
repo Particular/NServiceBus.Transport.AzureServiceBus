@@ -280,13 +280,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         SubscriptionManagerCreationOptions creationOptions,
         CancellationToken cancellationToken)
     {
-        var topicOptions = new CreateTopicOptions(topicName)
-        {
-            EnableBatchedOperations = true,
-            EnablePartitioning = creationOptions.EnablePartitioning,
-            SupportOrdering = creationOptions.RequiresSession,
-            MaxSizeInMegabytes = creationOptions.EntityMaximumSizeInMegabytes
-        };
+        var topicOptions = TopicCreator.Options(topicName, creationOptions.EnablePartitioning, creationOptions.RequiresSession, creationOptions.EntityMaximumSizeInMegabytes);
 
         try
         {

@@ -94,6 +94,16 @@ class MessageDispatcher(
             throw new Exception($"The number of outgoing messages ({numberOfDefaultOperations}) exceeds the limits permitted by Azure Service Bus ({MaxMessageThresholdForTransaction}) in a single transaction");
         }
 
+        // Before any send, so a failed topic setup sends nothing
+        var client = azureServiceBusTransaction?.ServiceBusClient ?? defaultClient;
+        List<Task>? topicSetups = null;
+        EnsureTopicsExist(defaultOperationsPerDestination, client, ref topicSetups, cancellationToken);
+        EnsureTopicsExist(isolatedOperationsPerDestination, client, ref topicSetups, cancellationToken);
+        if (topicSetups is not null)
+        {
+            await Task.WhenAll(topicSetups).ConfigureAwait(false);
+        }
+
         Task[] dispatchTasks =
         [
             DispatchIsolatedOperations(isolatedOperationsPerDestination ?? emptyDestinationAndOperations, numberOfIsolatedOperations, transaction, azureServiceBusTransaction, cancellationToken),
@@ -101,6 +111,30 @@ class MessageDispatcher(
         ];
 
         await Task.WhenAll(dispatchTasks).ConfigureAwait(false);
+    }
+
+    void EnsureTopicsExist(Dictionary<string, (bool IsMulticast, List<IOutgoingTransportOperation> Operations)>? operationsPerDestination,
+        ServiceBusClient client, ref List<Task>? topicSetups, CancellationToken cancellationToken)
+    {
+        if (operationsPerDestination is null)
+        {
+            return;
+        }
+
+        foreach (var (destination, (isMulticast, _)) in operationsPerDestination)
+        {
+            if (!isMulticast)
+            {
+                continue;
+            }
+
+            var setup = messageSenderRegistry.GetMessageSender(destination, client).EnsureTopicExists(cancellationToken);
+            if (!setup.IsCompletedSuccessfully)
+            {
+                topicSetups ??= [];
+                topicSetups.Add(setup.AsTask());
+            }
+        }
     }
 
     // The parameters of this method are deliberately mutable and of the original collection type to make sure
@@ -193,7 +227,7 @@ class MessageDispatcher(
         int batchCount = 0;
         List<ServiceBusMessage>? messagesTooLargeToBeBatched = null;
         client ??= defaultClient;
-        var sender = messageSenderRegistry.GetMessageSender(destination, client);
+        var sender = messageSenderRegistry.GetMessageSender(destination, client).Sender;
         while (messagesToSend.Count > 0)
         {
             try
@@ -382,7 +416,7 @@ class MessageDispatcher(
         Transaction? transaction, ServiceBusMessage message, CancellationToken cancellationToken)
     {
         client ??= defaultClient;
-        var sender = messageSenderRegistry.GetMessageSender(destination, client);
+        var sender = messageSenderRegistry.GetMessageSender(destination, client).Sender;
         try
         {
             // Making sure we have a suppress scope around the sending

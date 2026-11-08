@@ -7,34 +7,28 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 
-sealed class MessageSenderRegistry
+sealed class MessageSenderRegistry(TopicCreator? topicCreator = null)
 {
-    public ServiceBusSender GetMessageSender(string destination, ServiceBusClient client)
+    public DestinationSender GetMessageSender(string destination, ServiceBusClient client)
     {
         // According to the client SDK guidelines we can safely use these client objects for concurrent asynchronous
         // operations and from multiple threads.
         // see https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-performance-improvements
         var lazySender = destinationToSenderMapping.GetOrAdd((destination, client),
-            static arg =>
+            static (arg, innerTopicCreator) =>
             {
                 (string innerDestination, ServiceBusClient innerClient) = arg;
                 // Unfortunately Lazy closure allocates but this should be fine since the majority of the
                 // execution path will fall into the get and not the add.
-                return new Lazy<ServiceBusSender>(() => innerClient.CreateSender(innerDestination, new ServiceBusSenderOptions { Identifier = $"Sender-{innerDestination}-{Guid.NewGuid()}" }), LazyThreadSafetyMode.ExecutionAndPublication);
-            });
+                return new Lazy<DestinationSender>(() => new DestinationSender(innerDestination,
+                    innerClient.CreateSender(innerDestination, new ServiceBusSenderOptions { Identifier = $"Sender-{innerDestination}-{Guid.NewGuid()}" }),
+                    innerTopicCreator), LazyThreadSafetyMode.ExecutionAndPublication);
+            }, topicCreator);
         return lazySender.Value;
     }
 
     public Task Close(CancellationToken cancellationToken = default)
     {
-        static async Task CloseAndDispose(ServiceBusSender sender, CancellationToken cancellationToken)
-        {
-            await using (sender.ConfigureAwait(false))
-            {
-                await sender.CloseAsync(cancellationToken).ConfigureAwait(false);
-            }
-        }
-
         var tasks = new List<Task>(destinationToSenderMapping.Keys.Count);
         foreach (var key in destinationToSenderMapping.Keys)
         {
@@ -46,10 +40,10 @@ sealed class MessageSenderRegistry
             }
 
 
-            tasks.Add(CloseAndDispose(queue.Value, cancellationToken));
+            tasks.Add(queue.Value.Close(cancellationToken));
         }
         return Task.WhenAll(tasks);
     }
 
-    readonly ConcurrentDictionary<(string destination, ServiceBusClient client), Lazy<ServiceBusSender>> destinationToSenderMapping = new();
+    readonly ConcurrentDictionary<(string destination, ServiceBusClient client), Lazy<DestinationSender>> destinationToSenderMapping = new();
 }
