@@ -40,25 +40,22 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
         this.destinationManager = destinationManager;
 
-        messageSenderRegistry = new MessageSenderRegistry();
-
         // Creating topics requires installers and Manage rights. Throw mode surfaces missing topics instead.
         var createMissingTopics = hostSettings.SetupInfrastructure && !transportSettings.ThrowOnMissingTopicWhenPublishing;
 
-        // Throws on missing topics so the wrapper only confirms delivered topics
-        var dispatcher = new MessageDispatcher(
+        messageSenderRegistry = new MessageSenderRegistry(createMissingTopics
+            ? new TopicCreator(administrationClient, transportSettings.EnablePartitioning, transportSettings.EnableSessions, transportSettings.EntityMaximumSizeInMegabytes)
+            : null);
+
+        Dispatcher = new MessageDispatcher(
             defaultClient,
             messageSenderRegistry,
             transportSettings.Topology,
             destinationManager,
+            // A 404 right after creating the topic goes to the caller instead of dropping the event
             transportSettings.ThrowOnMissingTopicWhenPublishing || createMissingTopics,
             transportSettings.OutgoingNativeMessageCustomization
         );
-
-        Dispatcher = createMissingTopics
-            ? new TopicCreatingDispatcher(dispatcher, transportSettings.Topology, destinationManager,
-                async (topic, token) => (await administrationClient.TopicExistsAsync(topic, token).ConfigureAwait(false)).Value, CreateTopic)
-            : dispatcher;
 
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
         {
@@ -167,16 +164,6 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
             subQueue
         );
     }
-
-    // Matches the subscriber side. Endpoints sharing a topic must agree on sessions.
-    Task CreateTopic(string topic, CancellationToken cancellationToken) =>
-        administrationClient.CreateTopicAsync(new CreateTopicOptions(topic)
-        {
-            EnableBatchedOperations = true,
-            EnablePartitioning = transportSettings.EnablePartitioning,
-            SupportOrdering = transportSettings.EnableSessions,
-            MaxSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes
-        }, cancellationToken);
 
     public override async Task Shutdown(CancellationToken cancellationToken = default)
     {
