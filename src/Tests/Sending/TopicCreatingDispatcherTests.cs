@@ -438,7 +438,7 @@ public class TopicCreatingDispatcherTests
         return output;
     }
 
-    // TestingLoggerFactory writes "<timestamp> <LEVEL> <logger name> <message>" per entry, without a separator between entries
+    // Entries are "<timestamp> <LEVEL> <logger> <message>" with no separator
     static (string Level, string Message)[] DispatcherEntries(StringWriter output) =>
         [.. LogEntry.Matches(output.ToString())
             .Where(m => m.Groups["logger"].Value == "NServiceBus.Transport.AzureServiceBus.MessageDispatcher")
@@ -474,7 +474,7 @@ public class TopicCreatingDispatcherTests
         };
     }
 
-    // Each Dispatch call blocks until the test completes or fails it, in the order the calls started
+    // Each Dispatch blocks until the test completes it
     class ControlledDispatcher : IMessageDispatcher
     {
         public int Started => calls.Count;

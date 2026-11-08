@@ -95,7 +95,7 @@ public class TopicCreatingDispatcherPreflightTests
 
         firstCheck.SetException(new ServiceBusException("Check failed", ServiceBusFailureReason.ServiceBusy));
 
-        // Until the failed setup has removed itself, a new caller can still join it and get its failure
+        // Callers can join the failed setup until it removes itself
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         while (true)
         {

@@ -4,7 +4,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-// Shared by publisher-side topic checks and creates in one endpoint. This limits logical SDK calls, not each HTTP retry.
+// Per-endpoint limit on publisher-side topic admin calls. HTTP retries aren't counted.
 sealed class TopicAdministrationLimiter(TimeSpan minimumInterval, TimeSpan startupDelay, TimeProvider timeProvider)
 {
     public static readonly TimeSpan DefaultMinimumInterval = TimeSpan.FromMilliseconds(200);
@@ -34,7 +34,7 @@ sealed class TopicAdministrationLimiter(TimeSpan minimumInterval, TimeSpan start
             lastStarted = timeProvider.GetTimestamp();
             started = true;
 
-            // Keep the slot until the SDK call actually finishes, even if its caller has stopped waiting for it.
+            // Hold the slot until the SDK call finishes, even if the caller gave up
             return await operation(cancellationToken).ConfigureAwait(false);
         }
         finally

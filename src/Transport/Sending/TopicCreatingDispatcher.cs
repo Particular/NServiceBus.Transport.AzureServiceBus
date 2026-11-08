@@ -9,9 +9,8 @@ using Azure.Messaging.ServiceBus;
 using EventRouting;
 using Logging;
 
-// Checks and provisions unconfirmed topics before dispatching the original operations once. The inner dispatcher must throw on missing topics.
-// Nothing is sent until every unconfirmed topic in the call is set up, so a setup failure leaves no partial dispatch behind.
-// Topics stay confirmed for the lifetime of the endpoint, so topics deleted while it runs are not recreated.
+// Sets up unconfirmed topics, then dispatches the original operations once. The inner dispatcher must throw on missing topics.
+// Nothing is sent if setup fails. Topics deleted after confirmation aren't recreated.
 sealed class TopicCreatingDispatcher(
     IMessageDispatcher inner,
     TopicTopology topology,
@@ -51,7 +50,7 @@ sealed class TopicCreatingDispatcher(
         var pendingSetups = new List<Task>(topics.Count);
         foreach (var topic in topics)
         {
-            // Shared between callers, so no caller's token cancels it for the others. The SDK's own timeouts bound it.
+            // Shared, so no single caller cancels it. SDK timeouts bound it.
             pendingSetups.Add(setups.GetOrAdd(topic, static (topic, self) => new Lazy<Task>(() => self.SetUp(topic, CancellationToken.None)), this).Value);
         }
 
@@ -63,7 +62,7 @@ sealed class TopicCreatingDispatcher(
         }
         catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {
-            // The SDK doesn't identify the missing entity. Check these topics again on the caller's next attempt.
+            // The SDK doesn't say which entity is missing, so recheck them all next time
             foreach (var topic in topics)
             {
                 setups.TryRemove(topic, out _);
@@ -83,7 +82,7 @@ sealed class TopicCreatingDispatcher(
         var succeeded = false;
         try
         {
-            // Exceptions from the check are failures, not a negative existence result.
+            // A failed check is an error, not "missing"
             var exists = await administrationLimiter.ExecuteAsync(_ => topicExists(topic, cancellationToken), cancellationToken).ConfigureAwait(false);
             if (!exists)
             {
@@ -94,7 +93,7 @@ sealed class TopicCreatingDispatcher(
         }
         finally
         {
-            // Removed here rather than by the callers, which may have stopped waiting, so a failure is never cached
+            // Here rather than in callers, which may have stopped waiting
             if (!succeeded)
             {
                 setups.TryRemove(topic, out _);
@@ -115,7 +114,7 @@ sealed class TopicCreatingDispatcher(
         }
         catch (ServiceBusException e) when (e.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
-            // Another publisher or a subscriber created it. Still attempt delivery.
+            // Created concurrently elsewhere
             return;
         }
         catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))

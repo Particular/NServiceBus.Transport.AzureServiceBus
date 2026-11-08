@@ -42,11 +42,10 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 
         messageSenderRegistry = new MessageSenderRegistry();
 
-        // Publishers create missing topics only when installers are enabled, which also requires Manage rights.
-        // With ThrowOnMissingTopicWhenPublishing a missing topic is an error to surface, not to fix.
+        // Creating topics requires installers and Manage rights. Throw mode surfaces missing topics instead.
         var createMissingTopics = hostSettings.SetupInfrastructure && !transportSettings.ThrowOnMissingTopicWhenPublishing;
 
-        // When topics are created, the inner dispatcher throws on a missing topic so that the wrapper only confirms topics it delivered to
+        // Throws on missing topics so the wrapper only confirms delivered topics
         var dispatcher = new MessageDispatcher(
             defaultClient,
             messageSenderRegistry,
@@ -169,7 +168,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         );
     }
 
-    // Same settings as the subscriber side. Endpoints that share topics must agree on whether sessions are enabled.
+    // Matches the subscriber side. Endpoints sharing a topic must agree on sessions.
     Task CreateTopic(string topic, CancellationToken cancellationToken) =>
         administrationClient.CreateTopicAsync(new CreateTopicOptions(topic)
         {
