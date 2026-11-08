@@ -235,6 +235,40 @@ public class MessagePumpTests
         }
     }
 
+    [TestCase(ServiceBusFailureReason.ServiceBusy, true)]
+    [TestCase(ServiceBusFailureReason.ServiceTimeout, true)]
+    [TestCase(ServiceBusFailureReason.MessageLockLost, false)]
+    public async Task Should_warn_only_for_transient_recoverability_failures(ServiceBusFailureReason reason, bool warns)
+    {
+        var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Warn);
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var fakeClient = new FakeServiceBusClient();
+        var fakeReceiver = new FakeReceiver();
+        var criticalErrors = 0;
+
+        var pump = new MessagePump(fakeClient, new AzureServiceBusTransport("connection-string", TopicTopology.Default), "receiveAddress",
+            new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), false, false, "error"), (_, _, _) => criticalErrors++, null);
+
+        await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.FromException<InvalidOperationException>(new InvalidOperationException()),
+            (_, _) => Task.FromException<ErrorHandleResult>(new ServiceBusException("Sending to the error queue failed", reason)), CancellationToken.None);
+        await pump.StartReceive();
+
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(messageId: "SomeId", lockedUntil: DateTimeOffset.UtcNow.AddSeconds(60));
+
+        await fakeClient.Processors["receiveAddress"].ProcessMessage(receivedMessage, fakeReceiver);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(logOutput.ToString(), warns ? Does.Contain("due to a transient error") : Is.Empty);
+            Assert.That(criticalErrors, Is.Zero);
+            Assert.That(fakeReceiver.AbandonedMessages, Has.Exactly(1)
+                .Matches<(ServiceBusReceivedMessage Message, IDictionary<string, object> Props)>(abandoned => abandoned.Message.MessageId == "SomeId"));
+        }
+    }
+
     [Test]
     public async Task Should_complete_message_upon_failure_with_handled()
     {
