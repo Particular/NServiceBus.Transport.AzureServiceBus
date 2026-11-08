@@ -16,17 +16,8 @@ sealed class TopicCreatingDispatcher(
     TopicTopology topology,
     DestinationManager destinationManager,
     Func<string, CancellationToken, Task<bool>> topicExists,
-    Func<string, CancellationToken, Task> createTopic,
-    TopicAdministrationLimiter administrationLimiter) : IMessageDispatcher
+    Func<string, CancellationToken, Task> createTopic) : IMessageDispatcher
 {
-    public TopicCreatingDispatcher(IMessageDispatcher inner, TopicTopology topology, DestinationManager destinationManager,
-        Func<string, CancellationToken, Task<bool>> topicExists, Func<string, CancellationToken, Task> createTopic)
-        : this(inner, topology, destinationManager, topicExists, createTopic,
-            new TopicAdministrationLimiter(TopicAdministrationLimiter.DefaultMinimumInterval,
-                TimeSpan.FromMilliseconds(Random.Shared.NextDouble() * TopicAdministrationLimiter.MaximumStartupDelay.TotalMilliseconds), TimeProvider.System))
-    {
-    }
-
     public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
     {
         HashSet<string>? unconfirmed = null;
@@ -83,7 +74,7 @@ sealed class TopicCreatingDispatcher(
         try
         {
             // A failed check is an error, not "missing"
-            var exists = await administrationLimiter.ExecuteAsync(_ => topicExists(topic, cancellationToken), cancellationToken).ConfigureAwait(false);
+            var exists = await topicExists(topic, cancellationToken).ConfigureAwait(false);
             if (!exists)
             {
                 await CreateTopic(topic, cancellationToken).ConfigureAwait(false);
@@ -105,7 +96,7 @@ sealed class TopicCreatingDispatcher(
     {
         try
         {
-            await administrationLimiter.ExecuteAsync(_ => createTopic(topic, cancellationToken), cancellationToken).ConfigureAwait(false);
+            await createTopic(topic, cancellationToken).ConfigureAwait(false);
 
             if (Log.IsInfoEnabled)
             {

@@ -128,8 +128,7 @@ public class TopicCreatingDispatcherTests
         var destinationManager = new DestinationManager(HierarchyNamespaceOptions.None);
         var dispatcher = new TopicCreatingDispatcher(
             new MessageDispatcher(client, new MessageSenderRegistry(), topology, destinationManager, throwOnMissingTopic: true),
-            topology, destinationManager, static (_, _) => Task.FromResult(true), static (_, _) => Task.CompletedTask,
-            new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System));
+            topology, destinationManager, static (_, _) => Task.FromResult(true), static (_, _) => Task.CompletedTask);
         var transportTransaction = new TransportTransaction();
         using var _ = new AzureServiceBusTransportTransaction(client, "partition",
             new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted, Timeout = TimeSpan.FromMinutes(1) }, transportTransaction);
@@ -395,8 +394,7 @@ public class TopicCreatingDispatcherTests
 
     static TopicCreatingDispatcher CreateControlledDispatcher(IMessageDispatcher inner, Func<string, CancellationToken, Task<bool>> topicExists) =>
         new(inner, Topology(), new DestinationManager(HierarchyNamespaceOptions.None),
-            topicExists, static (_, _) => Task.CompletedTask,
-            new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System));
+            topicExists, static (_, _) => Task.CompletedTask);
 
     static TopicCreatingDispatcher CreateDispatcher(MissingTopicSender sender, Func<string, CancellationToken, Task> createTopic, string queue = null)
     {
@@ -411,8 +409,7 @@ public class TopicCreatingDispatcherTests
         var destinationManager = new DestinationManager(HierarchyNamespaceOptions.None);
         var inner = new MessageDispatcher(client, new MessageSenderRegistry(), topology, destinationManager, throwOnMissingTopic: true);
         return new TopicCreatingDispatcher(inner, topology, destinationManager,
-            (_, _) => Task.FromResult(sender.TopicExists), createTopic,
-            new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System));
+            (_, _) => Task.FromResult(sender.TopicExists), createTopic);
     }
 
     static TopicTopology Topology() => TopicTopology.FromOptions(new TopologyOptions

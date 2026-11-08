@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using Azure.Messaging.ServiceBus;
-using Microsoft.Extensions.Time.Testing;
 using NServiceBus.Transport.AzureServiceBus.EventRouting;
 using NUnit.Framework;
 using Routing;
@@ -175,62 +174,6 @@ public class TopicCreatingDispatcherPreflightTests
     }
 
     [Test]
-    public async Task Should_share_admin_pacing_across_different_topics()
-    {
-        var time = new FakeTimeProvider();
-        var limiter = new TopicAdministrationLimiter(TimeSpan.FromMilliseconds(200), TimeSpan.Zero, time);
-        var reads = 0;
-        var inner = new RecordingDispatcher();
-        var dispatcher = Create(inner,
-            (_, _) => { reads++; return Task.FromResult(true); }, static (_, _) => Task.CompletedTask, limiter);
-
-        var dispatch = dispatcher.Dispatch(Publish(typeof(EventA), typeof(EventB)), new TransportTransaction());
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(reads, Is.EqualTo(1));
-            Assert.That(inner.Calls, Is.Zero);
-            Assert.That(dispatch.IsCompleted, Is.False);
-        }
-        time.Advance(TimeSpan.FromMilliseconds(199));
-        Assert.That(reads, Is.EqualTo(1));
-        time.Advance(TimeSpan.FromMilliseconds(1));
-        await dispatch;
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(reads, Is.EqualTo(2));
-            Assert.That(inner.Calls, Is.EqualTo(1));
-        }
-    }
-
-    [Test]
-    public async Task Should_use_the_same_admission_limit_for_checks_and_creates()
-    {
-        var time = new FakeTimeProvider();
-        var limiter = new TopicAdministrationLimiter(TimeSpan.FromMilliseconds(200), TimeSpan.Zero, time);
-        var reads = 0;
-        var creates = 0;
-        var inner = new RecordingDispatcher();
-        var dispatcher = Create(inner,
-            (_, _) => { reads++; return Task.FromResult(false); },
-            (_, _) => { creates++; return Task.CompletedTask; }, limiter);
-
-        var dispatch = dispatcher.Dispatch(Publish(typeof(EventA)), new TransportTransaction());
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(reads, Is.EqualTo(1));
-            Assert.That(creates, Is.Zero);
-            Assert.That(inner.Calls, Is.Zero);
-        }
-        time.Advance(TimeSpan.FromMilliseconds(200));
-        await dispatch;
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(creates, Is.EqualTo(1));
-            Assert.That(inner.Calls, Is.EqualTo(1));
-        }
-    }
-
-    [Test]
     public void Should_not_retry_when_the_receive_transaction_has_aborted()
     {
         var transaction = new TransportTransaction();
@@ -258,8 +201,7 @@ public class TopicCreatingDispatcherPreflightTests
     }
 
     static TopicCreatingDispatcher Create(RecordingDispatcher inner,
-        Func<string, CancellationToken, Task<bool>> check, Func<string, CancellationToken, Task> create,
-        TopicAdministrationLimiter limiter = null)
+        Func<string, CancellationToken, Task<bool>> check, Func<string, CancellationToken, Task> create)
     {
         var topology = TopicTopology.FromOptions(new TopologyOptions
         {
@@ -269,8 +211,7 @@ public class TopicCreatingDispatcherPreflightTests
                 { typeof(EventB).FullName, "topic-b" }
             }
         });
-        return new TopicCreatingDispatcher(inner, topology, new DestinationManager(HierarchyNamespaceOptions.None), check, create,
-            limiter ?? new TopicAdministrationLimiter(TimeSpan.Zero, TimeSpan.Zero, TimeProvider.System));
+        return new TopicCreatingDispatcher(inner, topology, new DestinationManager(HierarchyNamespaceOptions.None), check, create);
     }
 
     static TransportOperations Publish(params Type[] types) =>
