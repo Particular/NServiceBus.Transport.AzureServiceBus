@@ -43,6 +43,8 @@ A pull request is listed here only when it is the canonical record for a decisio
 - Ordered and unordered processing use separate endpoints but can mix in one conversation; the session is released after each message; poison messages, concurrency, and the unsupported `TransportTransactionMode.None` with sessions — [#1450](https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/pull/1450)
 - Publish/subscribe with sessions: forwarder topology, forwarding configuration and error handling, quota handling, and no delayed retries — [#1493](https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/pull/1493)
 - Session state API; the description is empty, and the rationale is in the review threads — [#1503](https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/pull/1503)
+- With installers enabled and `ThrowOnMissingTopicWhenPublishing` off, the dispatcher creates missing topics before the first publish, sets up every topic in a dispatch call before sending, and makes one delivery attempt — [#1561](https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/pull/1561)
+- Dispatch failures are logged once, in the layer that handles them; missing-topic warnings are logged once per topic per endpoint start, and transient `onError` failures in the pumps log at Warn — [#1562](https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/pull/1562)
 - ServiceControl keeps receive properties such as the session ID as `ServiceControl.ReceiveProperties.*` pseudo-headers and restores them as dispatch properties on retry — [ServiceControl#5962](https://github.com/Particular/ServiceControl/pull/5962)
 
 Keep this index current when a canonical source is added, replaced, or retired; link, do not copy.
