@@ -332,17 +332,20 @@ sealed class MessagePump(
                         throw new ArgumentOutOfRangeException(nameof(result), result, "Unknown error handle result");
                 }
             }
-            catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
+            catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient)
             {
-                // Nothing else reports a transient failure here, for example when sending to the error queue fails
-                if (onErrorEx.IsTransient)
-                {
-                    Logger.Warn($"Failed to execute recoverability policy for message with native ID: `{nativeMessageId}` due to a transient error.", onErrorEx);
-                }
-                else
-                {
-                    Logger.Debug($"Failed to execute recoverability policy for message with native ID: `{nativeMessageId}` because the message lock was lost", onErrorEx);
-                }
+                // Nothing else reports this, for example when sending to the error queue fails
+                Logger.Warn($"Failed to execute recoverability policy for message with native ID: `{nativeMessageId}` due to a transient error.", onErrorEx);
+
+                await processMessageEventArgs.SafeAbandonMessage(message,
+                        nativeMessageId,
+                        TransactionMode,
+                        cancellationToken: messageProcessingCancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (ServiceBusException onErrorEx) when (onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
+            {
+                Logger.Debug($"Failed to execute recoverability policy for message with native ID: `{nativeMessageId}` because the message lock was lost", onErrorEx);
 
                 await processMessageEventArgs.SafeAbandonMessage(message,
                         nativeMessageId,
