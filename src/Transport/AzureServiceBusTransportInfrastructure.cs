@@ -37,14 +37,20 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         this.receiveSettingsAndClientPairs = receiveSettingsAndClientPairs;
         this.destinationManager = destinationManager;
 
-        messageSenderRegistry = new MessageSenderRegistry();
+        // Creating topics requires installers and Manage rights. Throw mode surfaces missing topics instead.
+        var createMissingTopics = hostSettings.SetupInfrastructure && !transportSettings.ThrowOnMissingTopicWhenPublishing;
+
+        messageSenderRegistry = new MessageSenderRegistry(createMissingTopics
+            ? new TopicCreator(administrationClient, transportSettings.EnablePartitioning, transportSettings.EntityMaximumSizeInMegabytes)
+            : null);
 
         Dispatcher = new MessageDispatcher(
             defaultClient,
             messageSenderRegistry,
             transportSettings.Topology,
             destinationManager,
-            transportSettings.ThrowOnMissingTopicWhenPublishing,
+            // A 404 right after creating the topic goes to the caller instead of dropping the event
+            transportSettings.ThrowOnMissingTopicWhenPublishing || createMissingTopics,
             transportSettings.OutgoingNativeMessageCustomization
         );
         Receivers = receiveSettingsAndClientPairs.ToDictionary(static settingsAndClient =>
