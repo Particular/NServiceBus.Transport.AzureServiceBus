@@ -334,7 +334,15 @@ sealed class SessionsEnabledMessagePump(
             }
             catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason is ServiceBusFailureReason.MessageLockLost or ServiceBusFailureReason.SessionLockLost)
             {
-                Logger.Debug("Failed to execute recoverability.", onErrorEx);
+                // Nothing else reports a transient failure here, for example when sending to the error queue fails
+                if (onErrorEx.IsTransient)
+                {
+                    Logger.Warn($"Failed to execute recoverability policy for message with native ID: `{nativeMessageId}` due to a transient error.", onErrorEx);
+                }
+                else
+                {
+                    Logger.Debug($"Failed to execute recoverability policy for message with native ID: `{nativeMessageId}` because the session or message lock was lost", onErrorEx);
+                }
 
                 await processMessageEventArgs.SafeAbandonMessage(message,
                         TransactionMode,

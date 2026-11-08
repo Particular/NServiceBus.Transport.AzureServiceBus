@@ -334,7 +334,15 @@ sealed class MessagePump(
             }
             catch (ServiceBusException onErrorEx) when (onErrorEx.IsTransient || onErrorEx.Reason == ServiceBusFailureReason.MessageLockLost)
             {
-                Logger.Debug($"Failed to execute recoverability policy for message with native ID: `{nativeMessageId}` due to transient service bus exception", onErrorEx);
+                // Nothing else reports a transient failure here, for example when sending to the error queue fails
+                if (onErrorEx.IsTransient)
+                {
+                    Logger.Warn($"Failed to execute recoverability policy for message with native ID: `{nativeMessageId}` due to a transient error.", onErrorEx);
+                }
+                else
+                {
+                    Logger.Debug($"Failed to execute recoverability policy for message with native ID: `{nativeMessageId}` because the message lock was lost", onErrorEx);
+                }
 
                 await processMessageEventArgs.SafeAbandonMessage(message,
                         nativeMessageId,
