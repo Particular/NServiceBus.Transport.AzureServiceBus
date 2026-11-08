@@ -252,7 +252,6 @@ class MessageDispatcher(
                     Log.Debug($"Sending batch '{batchCount}' with '{messageBatch.Count}' message ids '{logBuilder!.ToString(0, logBuilder.Length - 1)}' to destination {destination}.");
                 }
 
-
                 using var scope = transaction.ToScope();
                 await sender.SendMessagesAsync(messageBatch, cancellationToken).ConfigureAwait(false);
                 //committable tx will not be committed because this scope is not the owner
