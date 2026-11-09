@@ -254,7 +254,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         try
         {
-            await creationOptions.AdministrationClient.CreateSubscriptionAsync(subscriptionOptions, cancellationToken).ConfigureAwait(false);
+            await SubscriptionCreation.CreateWithRetries(subscriptionOptions, creationOptions.SubscriptionCreationRetryOptions,
+                token => creationOptions.AdministrationClient.CreateSubscriptionAsync(subscriptionOptions, token), cancellationToken).ConfigureAwait(false);
         }
         catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
@@ -321,8 +322,9 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         try
         {
-            await creationOptions.AdministrationClient.CreateSubscriptionAsync(subscriptionOptions,
-                new CreateRuleOptions("$default", new FalseRuleFilter()), cancellationToken).ConfigureAwait(false);
+            await SubscriptionCreation.CreateWithRetries(subscriptionOptions, creationOptions.SubscriptionCreationRetryOptions,
+                token => creationOptions.AdministrationClient.CreateSubscriptionAsync(subscriptionOptions,
+                    new CreateRuleOptions("$default", new FalseRuleFilter()), token), cancellationToken).ConfigureAwait(false);
         }
         catch (ServiceBusException createSbe) when (createSbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
