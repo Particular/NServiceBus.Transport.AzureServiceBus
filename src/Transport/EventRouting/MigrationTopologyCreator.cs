@@ -7,7 +7,7 @@ using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Logging;
 
-sealed class MigrationTopologyCreator(AzureServiceBusTransport transportSettings)
+sealed class MigrationTopologyCreator(AzureServiceBusTransport transportSettings, ServiceBusRetryOptions? subscriptionCreationRetryOptions = null)
 {
     static readonly ILog Logger = LogManager.GetLogger<TopologyCreator>();
 
@@ -74,8 +74,9 @@ sealed class MigrationTopologyCreator(AzureServiceBusTransport transportSettings
 
                 try
                 {
-                    await adminClient.CreateSubscriptionAsync(subscription,
-                            new CreateRuleOptions("$default", new TrueRuleFilter()), cancellationToken)
+                    await SubscriptionCreation.CreateWithRetries(subscription, subscriptionCreationRetryOptions,
+                            token => adminClient.CreateSubscriptionAsync(subscription,
+                                new CreateRuleOptions("$default", new TrueRuleFilter()), token), cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (ServiceBusException sbe) when

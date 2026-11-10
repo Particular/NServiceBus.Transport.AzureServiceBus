@@ -27,5 +27,7 @@ sealed class SubscriptionManagerCreationOptions
 
     public TimeSpan TimeBeforeTriggeringCircuitBreaker { get; init; }
 
+    internal ServiceBusRetryOptions? SubscriptionCreationRetryOptions { get; init; }
+
     public required Action<string, Exception, CancellationToken> CriticalErrorAction { get; init; }
 }
