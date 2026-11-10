@@ -18,4 +18,6 @@ sealed class SubscriptionManagerCreationOptions
     public bool SetupInfrastructure { get; init; }
 
     internal int MaxDeliveryCount { get; init; } = int.MaxValue;
+
+    internal ServiceBusRetryOptions? SubscriptionCreationRetryOptions { get; init; }
 }
