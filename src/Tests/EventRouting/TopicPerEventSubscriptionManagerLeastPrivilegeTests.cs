@@ -8,7 +8,6 @@ using Azure;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Extensibility;
-using NServiceBus.Transport.AzureServiceBus.EventRouting;
 using NUnit.Framework;
 using Unicast.Messages;
 
@@ -52,8 +51,7 @@ public class TopicPerEventSubscriptionManagerLeastPrivilegeTests
         {
             SubscribingQueueName = "SubscribingQueue",
             Client = new ProbingServiceBusClient(probeFailure),
-            AdministrationClient = new UnauthorizedAdministrationClient(),
-            CriticalErrorAction = (_, _, _) => { }
+            AdministrationClient = new UnauthorizedAdministrationClient()
         }, new TopologyOptions(), new StartupDiagnosticEntries());
 
     class UnauthorizedAdministrationClient : ServiceBusAdministrationClient

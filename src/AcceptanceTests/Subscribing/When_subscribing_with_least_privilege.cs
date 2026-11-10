@@ -1,5 +1,6 @@
 namespace NServiceBus.AcceptanceTests.NativePubSub;
 
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using AcceptanceTesting;
@@ -8,7 +9,6 @@ using Logging;
 using NServiceBus.AcceptanceTests.EndpointTemplates;
 using NServiceBus.Configuration.AdvancedExtensibility;
 using NUnit.Framework;
-using Transport.AzureServiceBus;
 using Transport.AzureServiceBus.AcceptanceTests;
 
 public class When_subscribing_with_least_privilege : NServiceBusAcceptanceTest
@@ -21,8 +21,8 @@ public class When_subscribing_with_least_privilege : NServiceBusAcceptanceTest
 
     static async Task CleanupTopic()
     {
-        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
-        var topicName = AcceptanceTestEntityNames.For(typeof(MyEvent).ToTopicName());
+        var adminClient = new ServiceBusAdministrationClient(Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        var topicName = typeof(MyEvent).ToTopicName();
 
         if (await adminClient.TopicExistsAsync(topicName))
         {
@@ -63,8 +63,8 @@ public class When_subscribing_with_least_privilege : NServiceBusAcceptanceTest
     {
         Requires.NativePubSubSupport();
 
-        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
-        await adminClient.CreateTopicAsync(AcceptanceTestEntityNames.For(typeof(MyEvent).ToTopicName()));
+        var adminClient = new ServiceBusAdministrationClient(Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        await adminClient.CreateTopicAsync(typeof(MyEvent).ToTopicName());
 
         var context = await Scenario.Define<Context>()
             .WithEndpoint<Subscriber>(b => b.CustomConfig(UseLeastPrivilege))
@@ -78,7 +78,7 @@ public class When_subscribing_with_least_privilege : NServiceBusAcceptanceTest
     static void UseLeastPrivilege(EndpointConfiguration c)
     {
         c.GetSettings().Set("Installers.Enable", false);
-        c.ConfigureTransport<AzureServiceBusTransport>().ConnectionString = AcceptanceTestConnectionString.RestrictedConnectionString;
+        c.ConfigureTransport<AzureServiceBusTransport>().ConnectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString_Restricted");
     }
 
     public class Context : ScenarioContext

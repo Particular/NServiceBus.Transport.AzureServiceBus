@@ -1,5 +1,6 @@
 namespace NServiceBus.AcceptanceTests.NativePubSub;
 
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using AcceptanceTesting;
@@ -19,17 +20,17 @@ public class When_subscribing_with_least_privilege_and_correlation_filter : NSer
     [SetUp]
     public async Task Setup()
     {
-        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
+        var adminClient = new ServiceBusAdministrationClient(Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
 
-        await CleanupEntity(adminClient, AcceptanceTestEntityNames.For(SharedTopicName));
+        await CleanupEntity(adminClient, SharedTopicName);
     }
 
     [TearDown]
     public async Task Teardown()
     {
-        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
+        var adminClient = new ServiceBusAdministrationClient(Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
 
-        await CleanupEntity(adminClient, AcceptanceTestEntityNames.For(SharedTopicName));
+        await CleanupEntity(adminClient, SharedTopicName);
     }
 
     static async Task CleanupEntity(ServiceBusAdministrationClient adminClient, string topicName)
@@ -73,8 +74,8 @@ public class When_subscribing_with_least_privilege_and_correlation_filter : NSer
     {
         Requires.NativePubSubSupport();
 
-        var adminClient = new ServiceBusAdministrationClient(AcceptanceTestConnectionString.Get());
-        await adminClient.CreateTopicAsync(AcceptanceTestEntityNames.For(SharedTopicName));
+        var adminClient = new ServiceBusAdministrationClient(Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString"));
+        await adminClient.CreateTopicAsync(SharedTopicName);
 
         var context = await Scenario.Define<Context>()
             .WithEndpoint<Subscriber>(b => b.CustomConfig(UseLeastPrivilege))
@@ -88,7 +89,7 @@ public class When_subscribing_with_least_privilege_and_correlation_filter : NSer
     static void UseLeastPrivilege(EndpointConfiguration c)
     {
         c.GetSettings().Set("Installers.Enable", false);
-        c.ConfigureTransport<AzureServiceBusTransport>().ConnectionString = AcceptanceTestConnectionString.RestrictedConnectionString;
+        c.ConfigureTransport<AzureServiceBusTransport>().ConnectionString = Environment.GetEnvironmentVariable("AzureServiceBus_ConnectionString_Restricted");
     }
 
     public class Context : ScenarioContext
