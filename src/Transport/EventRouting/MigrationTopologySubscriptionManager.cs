@@ -162,8 +162,9 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 
         try
         {
-            await CreationOptions.AdministrationClient.CreateSubscriptionAsync(subscription,
-                new CreateRuleOptions("$default", new FalseRuleFilter()), cancellationToken).ConfigureAwait(false);
+            await SubscriptionCreation.CreateWithRetries(subscription, CreationOptions.SubscriptionCreationRetryOptions,
+                token => CreationOptions.AdministrationClient.CreateSubscriptionAsync(subscription,
+                    new CreateRuleOptions("$default", new FalseRuleFilter()), token), cancellationToken).ConfigureAwait(false);
         }
         catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
         {
