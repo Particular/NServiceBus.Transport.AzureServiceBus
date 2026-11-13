@@ -79,16 +79,22 @@ jobs:
         run: dotnet build src --configuration Release
         background: true
 
+      - name: Setup WSL
+        uses: Particular/setup-wsl-action@v1.2.0
+        timeout-minutes: 5
+        with:
+          memory: 6GB
+
       - parallel:
           - name: Setup Azure Service Bus Emulator
-            uses: Particular/setup-azureservicebus-action@v2.5.0
+            uses: Particular/setup-azureservicebus-action@v3.0.0
             with:
               connection-string-name: AzureServiceBus_Emulator_ConnectionString
               azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
               use-emulator: true
               tag: ASBTransport
           - name: Setup Azure Service Bus
-            uses: Particular/setup-azureservicebus-action@v2.5.0
+            uses: Particular/setup-azureservicebus-action@v3.0.0
             with:
               connection-string-name: AzureServiceBus_ConnectionString
               azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
