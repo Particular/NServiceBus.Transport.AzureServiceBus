@@ -79,6 +79,12 @@ jobs:
         run: dotnet build src --configuration Release
         background: true
 
+      - name: Setup WSL
+        uses: Particular/setup-wsl-action@v1.2.0
+        timeout-minutes: 5
+        with:
+          memory: 6GB
+
       - parallel:
           - name: Setup Azure Service Bus Emulator
             uses: Particular/setup-azureservicebus-action@v3.0.0
