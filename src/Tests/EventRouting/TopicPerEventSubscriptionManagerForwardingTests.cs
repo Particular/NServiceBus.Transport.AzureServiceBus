@@ -19,6 +19,160 @@ using Unicast.Messages;
 public class TopicPerEventSubscriptionManagerForwardingTests
 {
     [Test]
+    public async Task Should_start_forwarders_for_mapped_events_and_fallback_topic_when_not_subscribed()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, ["Topic1", "Topic2"] },
+                { typeof(MyEvent2).FullName, ["Topic2"] }
+            },
+            FallbackTopic = new FallbackTopicOptions { TopicName = "FallbackTopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
+        };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
+
+        await subscriptionManager.StartForwarders();
+
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[]
+        {
+            "Topic1/SubscribingQueue",
+            "Topic2/SubscribingQueue",
+            "FallbackTopic/SubscribingQueue"
+        }));
+    }
+
+    [Test]
+    public async Task Should_apply_hierarchy_namespace_to_forwarded_topics()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            HierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" },
+            SubscribedEventToTopicsMap = { { typeof(MyEvent1).FullName, ["Topic1"] } },
+            FallbackTopic = new FallbackTopicOptions { TopicName = "FallbackTopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
+        };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, subscribingQueueName: "my-hierarchy/SubscribingQueue");
+
+        await subscriptionManager.StartForwarders();
+
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[]
+        {
+            "my-hierarchy/Topic1/SubscribingQueue",
+            "my-hierarchy/FallbackTopic/SubscribingQueue"
+        }));
+    }
+
+    [Test]
+    public async Task Should_also_forward_from_the_unprefixed_fallback_topic_when_types_are_excluded_from_the_hierarchy()
+    {
+        var hierarchyOptions = new HierarchyNamespaceOptions { HierarchyNamespace = "my-hierarchy" };
+        hierarchyOptions.ExcludeMessageType<MyEvent2>();
+        var topologyOptions = new TopologyOptions
+        {
+            HierarchyOptions = hierarchyOptions,
+            FallbackTopic = new FallbackTopicOptions { TopicName = "FallbackTopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
+        };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, subscribingQueueName: "my-hierarchy/SubscribingQueue");
+
+        await subscriptionManager.StartForwarders();
+
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[]
+        {
+            "my-hierarchy/FallbackTopic/SubscribingQueue",
+            "FallbackTopic/SubscribingQueue"
+        }));
+    }
+
+    [Test]
+    public async Task Should_not_start_forwarders_without_mapped_events_or_fallback_topic()
+    {
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), clientFactory);
+
+        await subscriptionManager.StartForwarders();
+
+        Assert.That(clientFactory.Processors, Is.Empty);
+    }
+
+    [Test]
+    public async Task Should_not_start_forwarders_from_topology_mapping_when_auto_subscribe_is_active()
+    {
+        var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Info);
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap = { { typeof(MyEvent1).FullName, ["Topic1"] } },
+            FallbackTopic = new FallbackTopicOptions { TopicName = "FallbackTopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
+        };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, autoSubscribeActive: true);
+
+        await subscriptionManager.StartForwarders();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(clientFactory.Processors, Is.Empty);
+            Assert.That(logOutput.ToString(), Is.Empty);
+        }
+    }
+
+    [Test]
+    public async Task Should_not_log_missing_mapping_when_auto_subscribe_is_active()
+    {
+        var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Info);
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), new FakeForwardingClientFactory(), autoSubscribeActive: true);
+
+        await subscriptionManager.StartForwarders();
+
+        Assert.That(logOutput.ToString(), Is.Empty);
+    }
+
+    [Test]
+    public async Task Should_log_missing_mapping_when_auto_subscribe_is_disabled()
+    {
+        var logOutput = new StringWriter();
+#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
+        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Info);
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), new FakeForwardingClientFactory());
+
+        await subscriptionManager.StartForwarders();
+
+        Assert.That(logOutput.ToString(), Does.Contain("Auto-subscribe is disabled and neither subscribed event mappings nor a fallback topic are configured"));
+    }
+
+    [Test]
+    public async Task Should_start_forwarders_for_explicit_subscriptions_when_auto_subscribe_is_active()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            SubscribedEventToTopicsMap =
+            {
+                { typeof(MyEvent1).FullName, ["Topic1"] },
+                { typeof(MyEvent2).FullName, ["Topic2"] }
+            }
+        };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, autoSubscribeActive: true);
+
+        await subscriptionManager.StartForwarders();
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue" }));
+    }
+
+    [Test]
     public async Task Should_not_start_forwarders_when_sessions_are_disabled()
     {
         var topologyOptions = new TopologyOptions { SubscribedEventToTopicsMap = { { typeof(MyEvent1).FullName, ["Topic1"] } } };
@@ -98,7 +252,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
             }
         };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, new FailingAdministrationClient("FailingTopic"));
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, new FailingAdministrationClient("FailingTopic"), autoSubscribeActive: true);
         await subscriptionManager.StartForwarders();
 
         var starts = 0;
@@ -127,7 +281,7 @@ public class TopicPerEventSubscriptionManagerForwardingTests
             }
         };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, autoSubscribeActive: true);
         await subscriptionManager.StartForwarders();
 
         var starts = 0;
@@ -145,16 +299,14 @@ public class TopicPerEventSubscriptionManagerForwardingTests
     [Test]
     public async Task Should_start_forwarder_immediately_when_subscribing_after_started()
     {
+        var topologyOptions = new TopologyOptions { SubscribedEventToTopicsMap = { { typeof(MyEvent1).FullName, ["Topic1"] } } };
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), clientFactory);
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
 
         await subscriptionManager.StartForwarders();
-
-        Assert.That(clientFactory.RunningForwarders, Is.Empty);
-
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent2))], new ContextBag());
 
-        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { typeof(MyEvent2).FullName + "/SubscribingQueue" }));
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue", typeof(MyEvent2).FullName + "/SubscribingQueue" }));
     }
 
     [Test]
@@ -174,8 +326,34 @@ public class TopicPerEventSubscriptionManagerForwardingTests
         await subscriptionManager.StartForwarders();
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
 
-        Assert.That(clientFactory.Processors, Has.Exactly(2).Items);
-        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue", "Topic2/SubscribingQueue" }));
+        using (Assert.EnterMultipleScope())
+        {
+            // Each forwarder started from the mapping is restarted once when subscribing, and never runs twice
+            Assert.That(clientFactory.Processors, Has.Exactly(4).Items);
+            Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue", "Topic2/SubscribingQueue" }));
+            Assert.That(clientFactory.Clients.Where(client => !client.SubscriptionProcessors.Single().IsActive).Select(client => client.DisposeCount), Is.All.EqualTo(1));
+        }
+    }
+
+    [Test]
+    public async Task Should_restart_forwarder_started_from_the_mapping_with_a_new_client_when_subscribing()
+    {
+        var topologyOptions = new TopologyOptions { SubscribedEventToTopicsMap = { { typeof(MyEvent1).FullName, ["Topic1"] } } };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
+
+        await subscriptionManager.StartForwarders();
+        var clientStartedFromMapping = clientFactory.Clients.Single();
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(clientFactory.Clients, Has.Count.EqualTo(2));
+            Assert.That(clientStartedFromMapping.DisposeCount, Is.EqualTo(1));
+            Assert.That(clientFactory.Clients.Last().SubscriptionProcessors.Single().IsActive, Is.True);
+            Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue" }));
+        }
     }
 
     [Test]
@@ -214,7 +392,6 @@ public class TopicPerEventSubscriptionManagerForwardingTests
         var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
 
         await subscriptionManager.StartForwarders();
-        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
         await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
 
         Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "SharedTopic/SubscribingQueue" }));
@@ -224,17 +401,36 @@ public class TopicPerEventSubscriptionManagerForwardingTests
         Assert.That(clientFactory.RunningForwarders, Is.Empty);
     }
 
+    [Test]
+    public async Task Should_keep_fallback_forwarder_when_unsubscribing_an_event_routed_through_the_fallback_topic()
+    {
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions { TopicName = "FallbackTopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
+        };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
+
+        await subscriptionManager.StartForwarders();
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+        await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
+
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "FallbackTopic/SubscribingQueue" }));
+    }
+
     internal static TopicPerEventTopologySubscriptionManager CreateSubscriptionManager(TopologyOptions topologyOptions,
         FakeForwardingClientFactory clientFactory,
         ServiceBusAdministrationClient administrationClient = null,
         string subscribingQueueName = "SubscribingQueue",
-        bool requiresSession = true) =>
+        bool requiresSession = true,
+        bool autoSubscribeActive = false) =>
         new(new SubscriptionManagerCreationOptions
         {
             SubscribingQueueName = subscribingQueueName,
             Client = new RecordingServiceBusClient(),
             AdministrationClient = administrationClient ?? new RecordingServiceBusAdministrationClient(),
             RequiresSession = requiresSession,
+            AutoSubscribeActive = autoSubscribeActive,
             ForwarderClientFactory = clientFactory.Create,
             CriticalErrorAction = (_, _, _) => { }
         }, topologyOptions, new StartupDiagnosticEntries());
