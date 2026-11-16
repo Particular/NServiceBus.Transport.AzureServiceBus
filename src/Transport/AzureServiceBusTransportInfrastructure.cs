@@ -99,7 +99,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
         string receiveAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
         SubQueue subQueue = ToSubQueue(receiveSettings.ReceiveAddress);
-        if (transportSettings.EnableSessions)
+        if (transportSettings.EnableSessions.IsEnabled)
         {
             if (subQueue != SubQueue.None)
             {
@@ -114,6 +114,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     AdministrationClient = administrationClient,
                     Client = defaultClient,
                     RequiresSession = true,
+                    ForwardAllMappedEvents = transportSettings.EnableSessions.ForwardingMode == SessionForwardingMode.AllMappedEvents,
                     ForwarderClientFactory = forwarderClientFactory,
                     EnablePartitioning = transportSettings.EnablePartitioning,
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
