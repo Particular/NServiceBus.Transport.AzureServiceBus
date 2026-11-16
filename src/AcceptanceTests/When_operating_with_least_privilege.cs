@@ -51,7 +51,6 @@ public class When_operating_with_least_privilege : NServiceBusAcceptanceTest
 
                     var transport = c.ConfigureTransport<AzureServiceBusTransport>();
                     transport.ConnectionString = AcceptanceTestConnectionString.RestrictedConnectionString;
-                    transport.EnableSessions = SessionOptions.Enabled(SessionForwardingMode.AllMappedEvents);
                 });
                 b.When(session => session.SendLocal(new MyCommand()));
             })
@@ -66,6 +65,11 @@ public class When_operating_with_least_privilege : NServiceBusAcceptanceTest
 
                     var transport = c.ConfigureTransport<AzureServiceBusTransport>();
                     transport.ConnectionString = AcceptanceTestConnectionString.RestrictedConnectionString;
+                    // Without auto-subscribe a session-enabled subscriber forwards its events only when forwarding all mapped events
+                    if (transport.EnableSessions.IsEnabled)
+                    {
+                        transport.EnableSessions = SessionOptions.Enabled(SessionForwardingMode.AllMappedEvents);
+                    }
                 });
             })
             .Run();
