@@ -326,8 +326,34 @@ public class TopicPerEventSubscriptionManagerForwardingTests
         await subscriptionManager.StartForwarders();
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
 
-        Assert.That(clientFactory.Processors, Has.Exactly(2).Items);
-        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue", "Topic2/SubscribingQueue" }));
+        using (Assert.EnterMultipleScope())
+        {
+            // Each forwarder started from the mapping is restarted once when subscribing, and never runs twice
+            Assert.That(clientFactory.Processors, Has.Exactly(4).Items);
+            Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue", "Topic2/SubscribingQueue" }));
+            Assert.That(clientFactory.Clients.Where(client => !client.SubscriptionProcessors.Single().IsActive).Select(client => client.DisposeCount), Is.All.EqualTo(1));
+        }
+    }
+
+    [Test]
+    public async Task Should_restart_forwarder_started_from_the_mapping_with_a_new_client_when_subscribing()
+    {
+        var topologyOptions = new TopologyOptions { SubscribedEventToTopicsMap = { { typeof(MyEvent1).FullName, ["Topic1"] } } };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory);
+
+        await subscriptionManager.StartForwarders();
+        var clientStartedFromMapping = clientFactory.Clients.Single();
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(clientFactory.Clients, Has.Count.EqualTo(2));
+            Assert.That(clientStartedFromMapping.DisposeCount, Is.EqualTo(1));
+            Assert.That(clientFactory.Clients.Last().SubscriptionProcessors.Single().IsActive, Is.True);
+            Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue" }));
+        }
     }
 
     [Test]
