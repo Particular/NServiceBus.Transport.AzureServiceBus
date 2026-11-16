@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using NServiceBus;
 using NServiceBus.AcceptanceTesting.Customization;
 using NServiceBus.AcceptanceTesting.Support;
+using NServiceBus.AcceptanceTests.Feature;
 using NServiceBus.AcceptanceTests.Routing;
 using NServiceBus.AcceptanceTests.Routing.NativePublishSubscribe;
 using NServiceBus.AcceptanceTests.Sagas;
@@ -12,6 +13,7 @@ using NServiceBus.Pipeline;
 using NServiceBus.Transport;
 using NServiceBus.Transport.AzureServiceBus;
 using NServiceBus.Transport.AzureServiceBus.AcceptanceTests;
+using NServiceBus.Transport.AzureServiceBus.AcceptanceTests.Sending;
 using Conventions = NServiceBus.AcceptanceTesting.Customization.Conventions;
 
 public class GenerateRandomSessionIdForSends : Behavior<IOutgoingSendContext>
@@ -87,12 +89,22 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         }
 
         //Use default topology mapping if not overriden by specific test configuration
-        if (!ApplyMappingsToSupportMultipleInheritance(endpointName, topology))
+        if (!ApplyTestSpecificMappings(endpointName, topology))
         {
-            foreach (var eventType in publisherMetadata.Publishers.SelectMany(p => p.Events))
+            foreach (var publisher in publisherMetadata.Publishers)
             {
-                topology.PublishTo(eventType, eventType.ToTopicName());
-                topology.SubscribeTo(eventType, eventType.ToTopicName());
+                var publishedByThisEndpoint = publisher.PublisherName == endpointName;
+                foreach (var eventType in publisher.Events)
+                {
+                    topology.PublishTo(eventType, eventType.ToTopicName());
+
+                    // In session mode every subscription mapping starts a forwarder, which fails when nothing creates the subscription.
+                    // A publisher that handles the events it publishes itself needs a test-specific mapping.
+                    if (!publishedByThisEndpoint)
+                    {
+                        topology.SubscribeTo(eventType, eventType.ToTopicName());
+                    }
+                }
             }
         }
 
@@ -109,7 +121,8 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         return Task.CompletedTask;
     }
 
-    static bool ApplyMappingsToSupportMultipleInheritance(string endpointName, TopicPerEventTopology topology)
+    // Mappings for endpoints the default mapping does not fit: subscribing through multiple inheritance, or publishers that handle their own events
+    static bool ApplyTestSpecificMappings(string endpointName, TopicPerEventTopology topology)
     {
         if (endpointName == Conventions.EndpointNamingConvention(typeof(MultiSubscribeToPolymorphicEvent.Subscriber)))
         {
@@ -155,6 +168,26 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         {
             topology.SubscribeTo<When_multiple_versions_of_a_message_is_published.V1Event>(
                 typeof(When_multiple_versions_of_a_message_is_published.V2Event).ToTopicName());
+            return true;
+        }
+
+        if (endpointName == Conventions.EndpointNamingConvention(typeof(When_subscribing_in_FST.EndpointWithStartupTask)))
+        {
+            topology.PublishTo<When_subscribing_in_FST.LocalEvent>(typeof(When_subscribing_in_FST.LocalEvent).ToTopicName());
+            topology.SubscribeTo<When_subscribing_in_FST.LocalEvent>(typeof(When_subscribing_in_FST.LocalEvent).ToTopicName());
+            return true;
+        }
+
+        if (endpointName == Conventions.EndpointNamingConvention(typeof(When_customizing_an_outgoing_native_message.Endpoint)))
+        {
+            topology.PublishTo<When_customizing_an_outgoing_native_message.MessageSessionPublishedEvent>(
+                typeof(When_customizing_an_outgoing_native_message.MessageSessionPublishedEvent).ToTopicName());
+            topology.SubscribeTo<When_customizing_an_outgoing_native_message.MessageSessionPublishedEvent>(
+                typeof(When_customizing_an_outgoing_native_message.MessageSessionPublishedEvent).ToTopicName());
+            topology.PublishTo<When_customizing_an_outgoing_native_message.MessageHandlerContextPublishedEvent>(
+                typeof(When_customizing_an_outgoing_native_message.MessageHandlerContextPublishedEvent).ToTopicName());
+            topology.SubscribeTo<When_customizing_an_outgoing_native_message.MessageHandlerContextPublishedEvent>(
+                typeof(When_customizing_an_outgoing_native_message.MessageHandlerContextPublishedEvent).ToTopicName());
             return true;
         }
 
