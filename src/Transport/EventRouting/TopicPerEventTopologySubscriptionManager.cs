@@ -91,7 +91,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         foreach (var (topic, registration) in registrations)
         {
-            await subscriptionForwarders.Register(topic, subscriptionName, registration, cancellationToken).ConfigureAwait(false);
+            await subscriptionForwarders.Register(topic, subscriptionName, registration, subscriptionProvisioned: false, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -137,7 +137,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             {
                 try
                 {
-                    await subscriptionForwarders.Register(group.Key, subscriptionName, entry.eventTypeFullName, cancellationToken).ConfigureAwait(false);
+                    await subscriptionForwarders.Register(group.Key, subscriptionName, entry.eventTypeFullName, subscriptionProvisioned: true, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
                 {
