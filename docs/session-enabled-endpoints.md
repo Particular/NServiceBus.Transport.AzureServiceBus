@@ -32,7 +32,7 @@ Revisit when a concrete use case for "ordered up to the input queue" appears.
 
 ## Subscription-creation rights
 
-Forwarders start when `Subscribe` is called, normally through auto-subscribe at startup, so starting forwarders is coupled to creating subscriptions. Session-enabled mode requires an identity that is allowed to create subscriptions, and this is a documented requirement.
+The endpoint forwards from the subscriptions that `Subscribe` creates, normally through auto-subscribe at startup, so starting forwarders is coupled to creating subscriptions. Forwarders start when the receivers start, and a `Subscribe` call after the endpoint started starts its forwarder immediately. Session-enabled mode requires an identity that is allowed to create subscriptions, and this is a documented requirement.
 
 Session-enabled endpoints cannot run in a low-privilege mode where subscriptions are provisioned externally and the endpoint has no management rights. Revisit when users report this as a blocker. One option is a transport setting that disables subscription creation but still starts forwarders.
 
