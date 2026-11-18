@@ -39,6 +39,9 @@ public class FakeSessionProcessorClient() : ServiceBusClient("Endpoint=sb://fake
         return processor;
     }
 
+    public override Task<ServiceBusSessionReceiver> AcceptSessionAsync(string topicName, string subscriptionName, string sessionId, ServiceBusSessionReceiverOptions options = null, CancellationToken cancellationToken = default) =>
+        Task.FromResult<ServiceBusSessionReceiver>(new FakeSessionReceiver());
+
     public override ServiceBusSender CreateSender(string queueOrTopicName, ServiceBusSenderOptions options)
     {
         var sender = new FakeSender();
@@ -117,5 +120,7 @@ public class FakeSessionProcessorClient() : ServiceBusClient("Endpoint=sb://fake
     class FakeSessionReceiver : ServiceBusSessionReceiver
     {
         public override Task CompleteMessageAsync(ServiceBusReceivedMessage message, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public override Task CloseAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }
