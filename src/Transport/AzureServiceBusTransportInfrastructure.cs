@@ -120,6 +120,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     AdministrationClient = administrationClient,
                     Client = defaultClient,
                     RequiresSession = true,
+                    ForwardAllMappedEvents = transportSettings.EnableSessions.ForwardingMode == SessionForwardingMode.AllMappedEvents,
                     ForwarderClientFactory = forwarderClientFactory,
                     EnablePartitioning = transportSettings.EnablePartitioning,
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
