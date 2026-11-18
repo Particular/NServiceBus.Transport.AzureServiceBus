@@ -44,7 +44,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
         var createMissingTopics = hostSettings.SetupInfrastructure && !transportSettings.ThrowOnMissingTopicWhenPublishing;
 
         messageSenderRegistry = new MessageSenderRegistry(createMissingTopics
-            ? new TopicCreator(administrationClient, transportSettings.EnablePartitioning, transportSettings.EnableSessions, transportSettings.EntityMaximumSizeInMegabytes)
+            ? new TopicCreator(administrationClient, transportSettings.EnablePartitioning, transportSettings.EnableSessions.IsEnabled, transportSettings.EntityMaximumSizeInMegabytes)
             : null);
 
         Dispatcher = new MessageDispatcher(
@@ -105,7 +105,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
     {
         string receiveAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
         SubQueue subQueue = ToSubQueue(receiveSettings.ReceiveAddress);
-        if (transportSettings.EnableSessions)
+        if (transportSettings.EnableSessions.IsEnabled)
         {
             if (subQueue != SubQueue.None)
             {

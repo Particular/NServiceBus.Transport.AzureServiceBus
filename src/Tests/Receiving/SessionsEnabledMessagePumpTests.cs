@@ -105,7 +105,7 @@ public class SessionsEnabledMessagePumpTests
     }
 
     static SessionsEnabledMessagePump CreatePump(SubscriptionManager subscriptionManager) =>
-        new(new FakeSessionProcessorClient(), new AzureServiceBusTransport("connection-string", TopicTopology.Default) { EnableSessions = true }, "receiveAddress",
+        new(new FakeSessionProcessorClient(), new AzureServiceBusTransport("connection-string", TopicTopology.Default) { EnableSessions = SessionOptions.Enabled() }, "receiveAddress",
             new ReceiveSettings("TestReceiver", new QueueAddress("receiveAddress"), true, false, "error"), (_, _, _) => { },
             subscriptionManager);
 
