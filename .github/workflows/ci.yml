@@ -63,7 +63,7 @@ jobs:
 
       - parallel:
           - name: Setup Azure Service Bus Emulator
-            uses: Particular/setup-azureservicebus-action@v3.0.0
+            uses: Particular/setup-azureservicebus-action@f56e1b7b5abdda6adacb9c14e6c82546e6316217
             with:
               connection-string-name: AzureServiceBus_Emulator_ConnectionString
               azure-credentials: ${{ secrets.AZURE_ACI_CREDENTIALS }}
