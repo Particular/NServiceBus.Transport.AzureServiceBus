@@ -54,7 +54,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     // and keeps the fallback forwarder running until shutdown. The $ prefix cannot clash with a type full name.
     const string FallbackTopicForwardingRegistration = "$fallback-topic";
 
-    // Without auto-subscribe the topology mapping is the only source of subscriptions to forward from.
+    // Without auto-subscribe the topology mapping is the only source of subscriptions to forward from, and they must already exist.
     // With it, SubscribeAll not being called means the endpoint handles no events.
     public override async Task StartForwarders(CancellationToken cancellationToken = default)
     {
@@ -90,9 +90,39 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             return;
         }
 
+        await ThrowIfSubscriptionsAreMissing([.. registrations.Select(r => r.Topic).Distinct()], cancellationToken).ConfigureAwait(false);
+
         foreach (var (topic, registration) in registrations)
         {
             await subscriptionForwarders.Register(topic, subscriptionName, registration, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    async Task ThrowIfSubscriptionsAreMissing(string[] topics, CancellationToken cancellationToken)
+    {
+        var subscriptionExists = await Task.WhenAll(topics.Select(topic => SessionSubscriptionExists(CreationOptions.Client, topic, subscriptionName, cancellationToken)))
+            .ConfigureAwait(false);
+
+        var topicsWithoutSubscription = topics.Where((_, index) => !subscriptionExists[index]).ToArray();
+        if (topicsWithoutSubscription.Length > 0)
+        {
+            throw new InvalidOperationException($"Auto-subscribe is disabled, so subscription '{subscriptionName}' must exist before the endpoint starts, but it does not exist on topics {string.Join(", ", topicsWithoutSubscription.Select(topic => $"'{topic}'"))}. Create the subscriptions, for example with the asb-transport command-line tool, or enable auto-subscribe.");
+        }
+    }
+
+    // Accepting a session needs only Listen rights, unlike the administration client. A new session ID has no messages, so nothing is received or locked.
+    static async Task<bool> SessionSubscriptionExists(ServiceBusClient client, string topicName, string subscriptionName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var receiver = await client.AcceptSessionAsync(topicName, subscriptionName, Guid.NewGuid().ToString(), cancellationToken: cancellationToken).ConfigureAwait(false);
+            await receiver.DisposeAsync().ConfigureAwait(false);
+            return true;
+        }
+        // Also reported when the topic does not exist
+        catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+        {
+            return false;
         }
     }
 
