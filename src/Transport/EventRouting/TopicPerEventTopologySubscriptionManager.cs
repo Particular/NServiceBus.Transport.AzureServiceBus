@@ -54,21 +54,21 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     // and keeps the fallback forwarder running until shutdown. The $ prefix cannot clash with a type full name.
     const string FallbackTopicForwardingRegistration = "$fallback-topic";
 
-    // Without auto-subscribe the topology mapping is the only source of subscriptions to forward from, and they must already exist.
-    // With it, SubscribeAll not being called means the endpoint handles no events.
+    // Without auto-subscribe nothing creates subscriptions, so the endpoint forwards from the ones the handled and mapped events
+    // resolve to, which must already exist. With it, SubscribeAll not being called means the endpoint handles no events.
     public override async Task StartForwarders(CancellationToken cancellationToken = default)
     {
         if (CreationOptions.RequiresSession && !CreationOptions.AutoSubscribeActive && !subscribeAllCalled)
         {
-            await RegisterForwardersFromTopologyMapping(cancellationToken).ConfigureAwait(false);
+            await RegisterForwardersForHandledAndMappedEvents(cancellationToken).ConfigureAwait(false);
         }
 
         await subscriptionForwarders.Start(cancellationToken).ConfigureAwait(false);
     }
 
-    async Task RegisterForwardersFromTopologyMapping(CancellationToken cancellationToken)
+    async Task RegisterForwardersForHandledAndMappedEvents(CancellationToken cancellationToken)
     {
-        var registrations = (from eventTypeFullName in topologyOptions.SubscribedEventToTopicsMap.Keys
+        var registrations = (from eventTypeFullName in CreationOptions.HandledEventTypeFullNames().Union(topologyOptions.SubscribedEventToTopicsMap.Keys)
                              from entry in MapEventToSubscriptionEntries(eventTypeFullName)
                              select (entry.Topic, Registration: eventTypeFullName)).ToList();
 
@@ -82,12 +82,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             {
                 registrations.Add((fallbackTopicName, FallbackTopicForwardingRegistration));
             }
-        }
-
-        if (registrations.Count == 0)
-        {
-            Logger.InfoFormat("Auto-subscribe is disabled and neither subscribed event mappings nor a fallback topic are configured. Events relying on the default topic convention will only be forwarded from subscription '{0}' to '{1}' after explicit Subscribe calls.", subscriptionName, CreationOptions.SubscribingQueueName);
-            return;
         }
 
         await ThrowIfSubscriptionsAreMissing([.. registrations.Select(r => r.Topic).Distinct()], cancellationToken).ConfigureAwait(false);

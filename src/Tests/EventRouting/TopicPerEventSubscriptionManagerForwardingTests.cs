@@ -169,33 +169,47 @@ public class TopicPerEventSubscriptionManagerForwardingTests
     }
 
     [Test]
-    public async Task Should_not_log_missing_mapping_when_auto_subscribe_is_active()
+    public async Task Should_start_forwarders_for_handled_events_on_their_default_topics_and_for_mapped_events()
     {
-        var logOutput = new StringWriter();
-#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
-        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Info);
-#pragma warning restore CS0618 // Type or member is obsolete
-
-        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), new FakeForwardingClientFactory(), autoSubscribeActive: true);
+        var topologyOptions = new TopologyOptions { SubscribedEventToTopicsMap = { { typeof(MyEvent1).FullName, ["Topic1"] } } };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory,
+            handledEventTypeFullNames: [typeof(MyEvent1).FullName, typeof(MyEvent2).FullName]);
 
         await subscriptionManager.StartForwarders();
 
-        Assert.That(logOutput.ToString(), Is.Empty);
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[]
+        {
+            "Topic1/SubscribingQueue",
+            $"{typeof(MyEvent2).FullName}/SubscribingQueue"
+        }));
     }
 
     [Test]
-    public async Task Should_log_missing_mapping_when_auto_subscribe_is_disabled()
+    public async Task Should_forward_handled_events_without_mapping_from_the_fallback_topic()
     {
-        var logOutput = new StringWriter();
-#pragma warning disable CS0618 // Type or member is obsolete - Test is testing logging
-        using var logScope = LogManager.Use<TestingLoggerFactory>().BeginScope(logOutput, LogLevel.Info);
-#pragma warning restore CS0618 // Type or member is obsolete
-
-        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), new FakeForwardingClientFactory());
+        var topologyOptions = new TopologyOptions
+        {
+            FallbackTopic = new FallbackTopicOptions { TopicName = "FallbackTopic", RoutingMode = TopicRoutingMode.CorrelationFilter }
+        };
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(topologyOptions, clientFactory, handledEventTypeFullNames: [typeof(MyEvent2).FullName]);
 
         await subscriptionManager.StartForwarders();
 
-        Assert.That(logOutput.ToString(), Does.Contain("Auto-subscribe is disabled and neither subscribed event mappings nor a fallback topic are configured"));
+        Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "FallbackTopic/SubscribingQueue" }));
+    }
+
+    [Test]
+    public void Should_throw_when_the_default_topic_subscription_of_a_handled_event_does_not_exist()
+    {
+        var client = new RecordingServiceBusClient { MissingSubscriptions = { $"{typeof(MyEvent2).FullName}/SubscribingQueue" } };
+        var subscriptionManager = CreateSubscriptionManager(new TopologyOptions(), new FakeForwardingClientFactory(), client: client,
+            handledEventTypeFullNames: [typeof(MyEvent2).FullName]);
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(() => subscriptionManager.StartForwarders());
+
+        Assert.That(exception.Message, Does.Contain($"'{typeof(MyEvent2).FullName}'"));
     }
 
     [Test]
@@ -444,11 +458,13 @@ public class TopicPerEventSubscriptionManagerForwardingTests
         string subscribingQueueName = "SubscribingQueue",
         bool requiresSession = true,
         bool autoSubscribeActive = false,
-        ServiceBusClient client = null) =>
+        ServiceBusClient client = null,
+        string[] handledEventTypeFullNames = null) =>
         new(new SubscriptionManagerCreationOptions
         {
             SubscribingQueueName = subscribingQueueName,
             Client = client ?? new RecordingServiceBusClient(),
+            HandledEventTypeFullNames = () => handledEventTypeFullNames ?? [],
             AdministrationClient = administrationClient ?? new RecordingServiceBusAdministrationClient(),
             RequiresSession = requiresSession,
             AutoSubscribeActive = autoSubscribeActive,
