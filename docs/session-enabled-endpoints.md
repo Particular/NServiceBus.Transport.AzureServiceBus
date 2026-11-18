@@ -32,9 +32,11 @@ Revisit when a concrete use case for "ordered up to the input queue" appears.
 
 ## Subscription-creation rights
 
-The endpoint forwards from the subscriptions that `Subscribe` creates, usually via auto-subscribe at startup, so starting forwarders is tied to creating subscriptions. Forwarders start when receivers start, and a `Subscribe` call after the endpoint has started starts its forwarder immediately. Session-enabled mode requires an identity that is allowed to create subscriptions, and this is a documented requirement.
+The endpoint forwards from the subscriptions that `Subscribe` creates, usually via auto-subscribe at startup, so starting forwarders is tied to creating subscriptions. Forwarders start when receivers start, and a `Subscribe` call after the endpoint has started starts its forwarder immediately. With auto-subscribe, session-enabled mode requires an identity that is allowed to create subscriptions.
 
-Session-enabled endpoints cannot run in a low-privilege mode where subscriptions are provisioned externally and the endpoint has no management rights. Revisit when users report this as a blocker. One option is a transport setting that disables subscription creation but still starts forwarders.
+With auto-subscribe disabled and no `Subscribe` call before the receivers start, the endpoint forwards from the subscriptions in the topology mapping: the `SubscribeTo` mappings and the fallback topic. This supports least-privilege deployments that create the subscriptions outside the endpoint, for example with the `asb-transport` command-line tool. Events without a `SubscribeTo` mapping or a fallback topic are not forwarded in this mode, and the endpoint logs this at startup.
+
+A mapped subscription that does not exist does not fail the start. Its forwarder reports errors, and the circuit breaker raises a critical error after `TimeToWaitBeforeTriggeringCircuitBreaker`. When a `Subscribe` call later creates the subscription, the forwarder restarts with a new client, because a client that connected before the subscription existed keeps reporting it as missing for several seconds.
 
 ## Forwarder throttling
 
