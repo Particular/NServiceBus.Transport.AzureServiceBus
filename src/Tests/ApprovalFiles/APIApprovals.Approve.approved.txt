@@ -12,6 +12,7 @@ namespace NServiceBus
     {
         public AzureServiceBusTransport(string connectionString, NServiceBus.TopicTopology topology) { }
         public AzureServiceBusTransport(string fullyQualifiedNamespace, Azure.Core.TokenCredential tokenCredential, NServiceBus.TopicTopology topology) { }
+        public bool AssertTopologyExists { get; set; }
         public System.TimeSpan? AutoDeleteOnIdle { get; set; }
         public bool? AutoForwardDeadLetteredMessagesToErrorQueue { get; set; }
         public bool EnablePartitioning { get; set; }

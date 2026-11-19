@@ -1,5 +1,6 @@
 namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -22,7 +23,24 @@ public class RecordingServiceBusClient(StringBuilder builder = null, bool subscr
     public override ServiceBusRuleManager CreateRuleManager(string topicName, string subscriptionName) =>
         new RecordingRuleManager(topicName, subscriptionName, builder, subscriptionsMustExist);
 
+    // Entries are "topic/subscription"
+    public HashSet<string> MissingSubscriptions { get; } = [];
+
+    public bool SubscriptionsRequireSession { get; set; } = true;
+
+    public override Task<ServiceBusSessionReceiver> AcceptSessionAsync(string topicName, string subscriptionName, string sessionId, ServiceBusSessionReceiverOptions options = null, CancellationToken cancellationToken = default) =>
+        MissingSubscriptions.Contains($"{topicName}/{subscriptionName}")
+            ? Task.FromException<ServiceBusSessionReceiver>(new ServiceBusException("The messaging entity could not be found", ServiceBusFailureReason.MessagingEntityNotFound))
+            : SubscriptionsRequireSession
+                ? Task.FromResult<ServiceBusSessionReceiver>(new EmptySessionReceiver())
+                : Task.FromException<ServiceBusSessionReceiver>(new InvalidOperationException("A sessionful message receiver cannot be created on an entity that does not require sessions."));
+
     public override string ToString() => builder.ToString();
+
+    class EmptySessionReceiver : ServiceBusSessionReceiver
+    {
+        public override Task CloseAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
 
     class RecordingRuleManager(string topicName, string subscriptionName, StringBuilder builder, bool subscriptionMustExist) : ServiceBusRuleManager
     {
