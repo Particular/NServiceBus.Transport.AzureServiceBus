@@ -9,7 +9,7 @@ using NUnit.Framework;
 using Unicast.Messages;
 
 [TestFixture]
-public class LeastPrivilegeModeTests
+public class AssertTopologyExistsTests
 {
     [Test]
     public async Task Should_forward_from_existing_subscriptions_without_using_the_administration_client()
@@ -120,7 +120,7 @@ public class LeastPrivilegeModeTests
             Client = client,
             AdministrationClient = new RecordingServiceBusAdministrationClient(administration),
             RequiresSession = requiresSession,
-            LeastPrivilegeMode = true,
+            AssertTopologyExists = true,
             SetupInfrastructure = true,
             ForwarderClientFactory = clientFactory.Create,
             CriticalErrorAction = (_, _, _) => { }
