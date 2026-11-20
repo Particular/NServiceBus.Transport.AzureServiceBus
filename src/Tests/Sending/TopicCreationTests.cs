@@ -511,7 +511,7 @@ public class TopicCreationTests
         var client = new FakeServiceBusClient();
         var sender = new MissingTopicSender { TopicExists = true };
         client.Senders["topic-a"] = sender;
-        var transport = new AzureServiceBusTransport("connectionString", Topology()) { EnableSessions = enableSessions };
+        var transport = new AzureServiceBusTransport("connectionString", Topology()) { EnableSessions = enableSessions ? SessionOptions.Enabled() : SessionOptions.Disabled };
         var hostSettings = new HostSettings("endpoint", "host", new StartupDiagnosticEntries(), (_, _, _) => { }, true);
         var infrastructure = new AzureServiceBusTransportInfrastructure(transport, hostSettings, [], client, null,
             new RecordingServiceBusAdministrationClient(recorded), new DestinationManager(HierarchyNamespaceOptions.None));

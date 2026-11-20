@@ -25,7 +25,7 @@ public static class AzureServiceBusSessionStateExtensions
         {
             throw new InvalidOperationException(
                 "Azure Service Bus session state is not available for the current message. It can only be " +
-                "accessed when the endpoint has sessions enabled (AzureServiceBusTransport.EnableSessions = true) " +
+                "accessed when the endpoint has sessions enabled (AzureServiceBusTransport.EnableSessions = SessionOptions.Enabled()) " +
                 "and the message was received from a session-enabled queue.");
         }
 
