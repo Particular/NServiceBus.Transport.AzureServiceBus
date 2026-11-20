@@ -59,6 +59,7 @@ sealed class SessionsEnabledMessagePump(
     {
         if (subscriptionManager != null)
         {
+            subscriptionManager.ThrowIfSubscribingFailed();
             await subscriptionManager.StartForwarders(cancellationToken).ConfigureAwait(false);
         }
 

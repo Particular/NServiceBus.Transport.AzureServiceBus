@@ -22,6 +22,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     readonly string subscriptionName;
     readonly DestinationManager destinationManager;
     readonly ISubscriptionForwarders subscriptionForwarders;
+    volatile string? subscribingFailure;
 
     public TopicPerEventTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
         TopologyOptions topologyOptions,
@@ -76,6 +77,12 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                                  group (eventTypeFullName, entry) by entry.Topic into g
                                  select g).ToArray();
 
+        if (CreationOptions.AssertTopologyExists)
+        {
+            await SubscribeThroughExistingSubscriptions(allEntriesByTopic, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         ExceptionDispatchInfo? provisioningFailure = null;
         try
         {
@@ -110,6 +117,72 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         }
 
         provisioningFailure?.Throw();
+    }
+
+    async Task SubscribeThroughExistingSubscriptions(IGrouping<string, (string EventTypeFullName, SubscriptionEntry Entry)>[] entriesByTopic,
+        CancellationToken cancellationToken)
+    {
+        var exists = await Task.WhenAll(entriesByTopic.Select(group => SubscriptionExists(group.Key, cancellationToken))).ConfigureAwait(false);
+        var existing = entriesByTopic.Where((_, i) => exists[i]).ToArray();
+
+        await Task.WhenAll(existing.Select(group => AddFilterRules(group.Key, subscriptionName,
+            [.. group.Where(e => e.Entry.RoutingMode is TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlLikeFilter)],
+            CreationOptions, cancellationToken))).ConfigureAwait(false);
+
+        foreach (var group in existing)
+        {
+            foreach (var (eventTypeFullName, _) in group)
+            {
+                await subscriptionForwarders.Register(group.Key, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        var missingTopics = entriesByTopic.Where((_, i) => !exists[i]).Select(group => group.Key).ToArray();
+        if (missingTopics.Length > 0)
+        {
+            subscribingFailure = $"AssertTopologyExists is enabled, so subscription '{subscriptionName}' must exist before the endpoint subscribes, but it does not exist on topics {string.Join(", ", missingTopics.Select(t => $"'{t}'"))}. Create the subscriptions, for example with the asb-transport command-line tool.";
+            throw new InvalidOperationException(subscribingFailure);
+        }
+    }
+
+    public override void ThrowIfSubscribingFailed()
+    {
+        if (subscribingFailure is { } message)
+        {
+            throw new InvalidOperationException(message);
+        }
+    }
+
+    // Accepting a session needs only Listen rights, unlike the administration client, and reports a missing subscription
+    // immediately, unlike peeking or browsing rules (Azure/azure-sdk-for-net#64167). A new session ID has no messages, so nothing is received or locked.
+    async Task<bool> SubscriptionExists(string topicName, CancellationToken cancellationToken)
+    {
+        bool subscriptionRequiresSession;
+        try
+        {
+            var receiver = await CreationOptions.Client.AcceptSessionAsync(topicName, subscriptionName, Guid.NewGuid().ToString(), cancellationToken: cancellationToken).ConfigureAwait(false);
+            await receiver.DisposeAsync().ConfigureAwait(false);
+            subscriptionRequiresSession = true;
+        }
+        // The SDK reports an existing subscription that does not require sessions this way
+        catch (InvalidOperationException)
+        {
+            subscriptionRequiresSession = false;
+        }
+        // Also reported when the topic does not exist
+        catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+        {
+            return false;
+        }
+
+        if (subscriptionRequiresSession != CreationOptions.RequiresSession)
+        {
+            throw new InvalidOperationException(subscriptionRequiresSession
+                ? $"Subscription '{subscriptionName}' on topic '{topicName}' requires sessions, but the endpoint does not have sessions enabled."
+                : $"Subscription '{subscriptionName}' on topic '{topicName}' does not require sessions, but the endpoint has sessions enabled.");
+        }
+
+        return true;
     }
 
     static async Task ProvisionSubscriptionForTopic(string topicName,
@@ -257,7 +330,12 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             await subscriptionForwarders.Unregister(entry.Topic, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
         }
 
-        await DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken).ConfigureAwait(false);
+        // Deleting a subscription needs Manage rights, while deleting a rule does not
+        var entriesToDelete = CreationOptions.AssertTopologyExists
+            ? [.. entries.Where(e => e.RoutingMode is TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlLikeFilter)]
+            : entries;
+
+        await DeleteSubscriptionsOrRulesForEntries(entriesToDelete, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken).ConfigureAwait(false);
     }
 
     public override Task ShutdownForwarders(CancellationToken cancellationToken = default) => subscriptionForwarders.Shutdown(cancellationToken);

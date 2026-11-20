@@ -59,6 +59,8 @@ sealed class MessagePump(
 
     public async Task StartReceive(CancellationToken cancellationToken = default)
     {
+        subscriptionManager?.ThrowIfSubscribingFailed();
+
         var receiveOptions = new ServiceBusProcessorOptions
         {
             PrefetchCount = CalculatePrefetchCount(limitations!.MaxConcurrency),
