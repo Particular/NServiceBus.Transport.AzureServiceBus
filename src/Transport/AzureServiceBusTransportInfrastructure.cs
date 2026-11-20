@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using EventRouting;
+using Features;
+using Unicast;
 
 sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
 {
@@ -120,6 +122,8 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     AdministrationClient = administrationClient,
                     Client = defaultClient,
                     RequiresSession = true,
+                    AutoSubscribeActive = IsAutoSubscribeActive(hostSettings),
+                    HandledEventTypeFullNames = () => GetHandledEventTypeFullNames(hostSettings),
                     ForwarderClientFactory = forwarderClientFactory,
                     EnablePartitioning = transportSettings.EnablePartitioning,
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
@@ -163,6 +167,23 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                 : null,
             subQueue
         );
+    }
+
+    // Raw mode has no core settings and no auto-subscribe
+    internal static bool IsAutoSubscribeActive(HostSettings hostSettings) => hostSettings.CoreSettings?.IsFeatureActive<AutoSubscribe>() ?? false;
+
+    // The events auto-subscribe would subscribe to. Raw mode has no core settings and no handlers.
+    internal static string[] GetHandledEventTypeFullNames(HostSettings hostSettings)
+    {
+        if (hostSettings.CoreSettings is not { } settings || !settings.TryGet(out MessageHandlerRegistry handlerRegistry))
+        {
+            return [];
+        }
+
+        var conventions = settings.Get<Conventions>();
+        return [.. handlerRegistry.GetMessageTypes()
+            .Where(messageType => !conventions.IsCommandType(messageType) && conventions.IsEventType(messageType))
+            .Select(eventType => eventType.FullName ?? throw new InvalidOperationException("Message type full name is null"))];
     }
 
     public override async Task Shutdown(CancellationToken cancellationToken = default)

@@ -23,6 +23,11 @@ sealed class SubscriptionManagerCreationOptions
 
     public bool SetupInfrastructure { get; init; }
 
+    public bool AutoSubscribeActive { get; init; }
+
+    // Evaluated when forwarders start, once all handlers are registered
+    public Func<string[]> HandledEventTypeFullNames { get; init; } = () => [];
+
     internal int MaxDeliveryCount { get; init; } = int.MaxValue;
 
     public TimeSpan TimeBeforeTriggeringCircuitBreaker { get; init; }

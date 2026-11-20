@@ -32,9 +32,11 @@ Revisit when a concrete use case for "ordered up to the input queue" appears.
 
 ## Subscription-creation rights
 
-The endpoint forwards from the subscriptions that `Subscribe` creates, usually via auto-subscribe at startup, so starting forwarders is tied to creating subscriptions. Forwarders start when receivers start, and a `Subscribe` call after the endpoint has started starts its forwarder immediately. Session-enabled mode requires an identity that is allowed to create subscriptions, and this is a documented requirement.
+Forwarders start when the receivers start. With auto-subscribe active, `SubscribeAll` creates the subscriptions, which requires Manage rights, and the endpoint forwards from the subscribed events. A `Subscribe` call after the endpoint started creates the subscription and starts its forwarder immediately.
 
-Session-enabled endpoints cannot run in a low-privilege mode where subscriptions are provisioned externally and the endpoint has no management rights. Revisit when users report this as a blocker. One option is a transport setting that disables subscription creation but still starts forwarders.
+With auto-subscribe disabled and no `Subscribe` call before the receivers start, nothing creates subscriptions. The endpoint forwards from the subscriptions that auto-subscribe would create for the events it handles, plus those for events with a `SubscribeTo` mapping and the fallback topic. Each event resolves to its topics as in `SubscribeAll`: its `SubscribeTo` mapping, otherwise the fallback topic, otherwise the topic named after the event type. Each of these subscriptions must exist when the endpoint starts. This supports least-privilege deployments that run auto-subscribe in development and create the production subscriptions with the `asb-transport` command-line tool before deploying a new version.
+
+The endpoint checks each subscription by accepting a new session on it, which needs only Listen rights and receives no message. When a subscription or its topic does not exist, the endpoint fails to start and lists the topics without the subscription. A deployment that did not create a subscription fails at startup instead of leaving events in a subscription that nothing forwards from. The check runs when the receivers start, so a `Subscribe` call after the endpoint started cannot create a subscription in time.
 
 ## Forwarder throttling
 

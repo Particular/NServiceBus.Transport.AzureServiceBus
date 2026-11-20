@@ -4,10 +4,10 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Extensibility;
+using NServiceBus.Settings;
 using NServiceBus.Transport.AzureServiceBus.EventRouting;
+using NServiceBus.Unicast;
 using NUnit.Framework;
-using Unicast.Messages;
 
 [TestFixture]
 public class AzureServiceBusTransportInfrastructureTests
@@ -46,6 +46,7 @@ public class AzureServiceBusTransportInfrastructureTests
         }
     }
 
+    // Raw mode, so the forwarders are started from the topology mapping
     static async Task<AzureServiceBusTransportInfrastructure> CreateStartedInfrastructure(FakeSessionProcessorClient receiveClient, FakeForwardingClientFactory clientFactory, CancellationToken cancellationToken)
     {
         var topology = TopicTopology.Default;
@@ -61,13 +62,40 @@ public class AzureServiceBusTransportInfrastructureTests
 
         await pump.Initialize(new PushRuntimeSettings(1), (_, _) => Task.CompletedTask,
             (_, _) => Task.FromResult(ErrorHandleResult.Handled), cancellationToken);
-        await pump.Subscriptions!.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag(), cancellationToken);
         await pump.StartReceive(cancellationToken);
 
         return infrastructure;
     }
 
+    [Test]
+    public void Should_list_handled_events_but_not_commands()
+    {
+        var settings = new SettingsHolder();
+        settings.Set(new Conventions());
+        var handlerRegistry = settings.GetOrCreate<MessageHandlerRegistry>();
+        handlerRegistry.AddHandler<EventAndCommandHandler>();
+        var hostSettings = new HostSettings("endpoint", "host", new StartupDiagnosticEntries(), (_, _, _) => { }, false, settings);
+
+        Assert.That(AzureServiceBusTransportInfrastructure.GetHandledEventTypeFullNames(hostSettings), Is.EquivalentTo(new[] { typeof(HandledEvent).FullName }));
+    }
+
+    [Test]
+    public void Should_list_no_handled_events_in_raw_mode() =>
+        Assert.That(AzureServiceBusTransportInfrastructure.GetHandledEventTypeFullNames(
+            new HostSettings("endpoint", "host", new StartupDiagnosticEntries(), (_, _, _) => { }, false)), Is.Empty);
+
     class MyEvent1;
 
     class MyEvent2;
+
+    class HandledEvent : IEvent;
+
+    class HandledCommand : ICommand;
+
+    class EventAndCommandHandler : IHandleMessages<HandledEvent>, IHandleMessages<HandledCommand>
+    {
+        public Task Handle(HandledEvent message, IMessageHandlerContext context) => Task.CompletedTask;
+
+        public Task Handle(HandledCommand message, IMessageHandlerContext context) => Task.CompletedTask;
+    }
 }
