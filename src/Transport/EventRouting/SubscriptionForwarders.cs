@@ -80,17 +80,8 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
 
                     foreach (var forwarder in startedForwarders)
                     {
-                        try
-                        {
-                            // Best effort
-                            // Not canceled, so that the rollback also completes when the start was canceled
-                            await forwarder.Stop(CancellationToken.None).ConfigureAwait(false);
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(e);
-                            throw;
-                        }
+                        // Not canceled, so that the rollback also completes when the start was canceled
+                        await forwarder.Stop(CancellationToken.None).ConfigureAwait(false);
                     }
                 }
             }
