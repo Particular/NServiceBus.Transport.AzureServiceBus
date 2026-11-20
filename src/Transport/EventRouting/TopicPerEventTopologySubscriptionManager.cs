@@ -22,6 +22,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     readonly string subscriptionName;
     readonly DestinationManager destinationManager;
     readonly ISubscriptionForwarders subscriptionForwarders;
+    volatile bool subscribeAllCalled;
 
     public TopicPerEventTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
         TopologyOptions topologyOptions,
@@ -49,14 +50,88 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
     static readonly ILog Logger = LogManager.GetLogger<TopicPerEventTopologySubscriptionManager>();
 
-    public override Task StartForwarders(CancellationToken cancellationToken = default)
+    // The event types arriving through the fallback topic are unknown, so this registration is never unsubscribed
+    // and keeps the fallback forwarder running until shutdown. The $ prefix cannot clash with a type full name.
+    const string FallbackTopicForwardingRegistration = "$fallback-topic";
+
+    // Without auto-subscribe the topology mapping is the only source of subscriptions to forward from, and they must already exist.
+    // With it, SubscribeAll not being called means the endpoint handles no events.
+    public override async Task StartForwarders(CancellationToken cancellationToken = default)
     {
-        return subscriptionForwarders.Start(cancellationToken);
+        if (CreationOptions.RequiresSession && !CreationOptions.AutoSubscribeActive && !subscribeAllCalled)
+        {
+            await RegisterForwardersFromTopologyMapping(cancellationToken).ConfigureAwait(false);
+        }
+
+        await subscriptionForwarders.Start(cancellationToken).ConfigureAwait(false);
+    }
+
+    async Task RegisterForwardersFromTopologyMapping(CancellationToken cancellationToken)
+    {
+        var registrations = (from eventTypeFullName in topologyOptions.SubscribedEventToTopicsMap.Keys
+                             from entry in MapEventToSubscriptionEntries(eventTypeFullName)
+                             select (entry.Topic, Registration: eventTypeFullName)).ToList();
+
+        if (topologyOptions.FallbackTopic?.TopicName is { Length: > 0 } fallbackTopicName)
+        {
+            var fallbackDestination = destinationManager.GetDestination(fallbackTopicName);
+            registrations.Add((fallbackDestination, FallbackTopicForwardingRegistration));
+
+            // Event types excluded from the hierarchy are published to the unprefixed fallback topic
+            if (topologyOptions.HierarchyOptions.MessageTypeFullNamesToExclude.Count > 0 && fallbackDestination != fallbackTopicName)
+            {
+                registrations.Add((fallbackTopicName, FallbackTopicForwardingRegistration));
+            }
+        }
+
+        if (registrations.Count == 0)
+        {
+            Logger.InfoFormat("Auto-subscribe is disabled and neither subscribed event mappings nor a fallback topic are configured. Events relying on the default topic convention will only be forwarded from subscription '{0}' to '{1}' after explicit Subscribe calls.", subscriptionName, CreationOptions.SubscribingQueueName);
+            return;
+        }
+
+        await ThrowIfSubscriptionsAreMissing([.. registrations.Select(r => r.Topic).Distinct()], cancellationToken).ConfigureAwait(false);
+
+        foreach (var (topic, registration) in registrations)
+        {
+            await subscriptionForwarders.Register(topic, subscriptionName, registration, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    async Task ThrowIfSubscriptionsAreMissing(string[] topics, CancellationToken cancellationToken)
+    {
+        var subscriptionExists = await Task.WhenAll(topics.Select(topic => SessionSubscriptionExists(CreationOptions.Client, topic, subscriptionName, cancellationToken)))
+            .ConfigureAwait(false);
+
+        var topicsWithoutSubscription = topics.Where((_, index) => !subscriptionExists[index]).ToArray();
+        if (topicsWithoutSubscription.Length > 0)
+        {
+            throw new InvalidOperationException($"Auto-subscribe is disabled, so subscription '{subscriptionName}' must exist before the endpoint starts, but it does not exist on topics {string.Join(", ", topicsWithoutSubscription.Select(topic => $"'{topic}'"))}. Create the subscriptions, for example with the asb-transport command-line tool, or enable auto-subscribe.");
+        }
+    }
+
+    // Accepting a session needs only Listen rights, unlike the administration client. A new session ID has no messages, so nothing is received or locked.
+    static async Task<bool> SessionSubscriptionExists(ServiceBusClient client, string topicName, string subscriptionName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var receiver = await client.AcceptSessionAsync(topicName, subscriptionName, Guid.NewGuid().ToString(), cancellationToken: cancellationToken).ConfigureAwait(false);
+            await receiver.DisposeAsync().ConfigureAwait(false);
+            return true;
+        }
+        // Also reported when the topic does not exist
+        catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+        {
+            return false;
+        }
     }
 
     public override async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
         CancellationToken cancellationToken = default)
     {
+        // Set before provisioning so that a failed auto-subscribe still counts as subscribed
+        subscribeAllCalled = true;
+
         var invalidConfig = ValidateSubscriptionConfiguration(eventTypes);
         if (invalidConfig != null)
         {

@@ -22,7 +22,20 @@ public class RecordingServiceBusClient(StringBuilder builder = null, bool subscr
     public override ServiceBusRuleManager CreateRuleManager(string topicName, string subscriptionName) =>
         new RecordingRuleManager(topicName, subscriptionName, builder, subscriptionsMustExist);
 
+    // Entries are "topic/subscription"
+    public HashSet<string> MissingSubscriptions { get; } = [];
+
+    public override Task<ServiceBusSessionReceiver> AcceptSessionAsync(string topicName, string subscriptionName, string sessionId, ServiceBusSessionReceiverOptions options = null, CancellationToken cancellationToken = default) =>
+        MissingSubscriptions.Contains($"{topicName}/{subscriptionName}")
+            ? Task.FromException<ServiceBusSessionReceiver>(new ServiceBusException("The messaging entity could not be found", ServiceBusFailureReason.MessagingEntityNotFound))
+            : Task.FromResult<ServiceBusSessionReceiver>(new EmptySessionReceiver());
+
     public override string ToString() => builder.ToString();
+
+    class EmptySessionReceiver : ServiceBusSessionReceiver
+    {
+        public override Task CloseAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
 
     class RecordingRuleManager(string topicName, string subscriptionName, StringBuilder builder, bool subscriptionMustExist) : ServiceBusRuleManager
     {

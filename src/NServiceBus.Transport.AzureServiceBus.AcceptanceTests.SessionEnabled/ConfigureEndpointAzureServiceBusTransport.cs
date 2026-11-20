@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using NServiceBus;
@@ -89,26 +90,10 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         }
 
         //Use default topology mapping if not overriden by specific test configuration
-        if (!ApplyTestSpecificMappings(endpointName, topology))
-        {
-            foreach (var publisher in publisherMetadata.Publishers)
-            {
-                var publishedByThisEndpoint = publisher.PublisherName == endpointName;
-                foreach (var eventType in publisher.Events)
-                {
-                    topology.PublishTo(eventType, eventType.ToTopicName());
-
-                    // Only subscribers get subscription mappings, as in a real deployment.
-                    // A publisher that handles the events it publishes itself needs a test-specific mapping.
-                    if (!publishedByThisEndpoint)
-                    {
-                        topology.SubscribeTo(eventType, eventType.ToTopicName());
-                    }
-                }
-            }
-        }
+        var subscribedEvents = ApplyTestSpecificMappings(endpointName, topology) ?? ApplyDefaultMappings(endpointName, topology, publisherMetadata);
 
         configuration.UseTransport(transport);
+        SubscribeBeforeReceivingWithoutAutoSubscribe.Enable(configuration, subscribedEvents);
 
         configuration.EnableTestIndependence();
 
@@ -121,28 +106,53 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         return Task.CompletedTask;
     }
 
-    // Mappings for endpoints the default mapping does not fit: subscribing through multiple inheritance, or publishers that handle their own events
-    static bool ApplyTestSpecificMappings(string endpointName, TopicPerEventTopology topology)
+    // Returns the subscribed event types
+    static Type[] ApplyDefaultMappings(string endpointName, TopicPerEventTopology topology, PublisherMetadata publisherMetadata)
+    {
+        var subscribedEvents = new List<Type>();
+        foreach (var publisher in publisherMetadata.Publishers)
+        {
+            var publishedByThisEndpoint = publisher.PublisherName == endpointName;
+            foreach (var eventType in publisher.Events)
+            {
+                topology.PublishTo(eventType, eventType.ToTopicName());
+
+                // Only subscribers get subscription mappings, as in a real deployment.
+                // A publisher that handles the events it publishes itself needs a test-specific mapping.
+                if (!publishedByThisEndpoint)
+                {
+                    topology.SubscribeTo(eventType, eventType.ToTopicName());
+                    subscribedEvents.Add(eventType);
+                }
+            }
+        }
+
+        return [.. subscribedEvents];
+    }
+
+    // Mappings for endpoints the default mapping does not fit: subscribing through multiple inheritance, or publishers that handle their own events.
+    // Returns the subscribed event types, or null when the default mapping applies.
+    static Type[] ApplyTestSpecificMappings(string endpointName, TopicPerEventTopology topology)
     {
         if (endpointName == Conventions.EndpointNamingConvention(typeof(MultiSubscribeToPolymorphicEvent.Subscriber)))
         {
             topology.SubscribeTo<MultiSubscribeToPolymorphicEvent.IMyEvent>(typeof(MultiSubscribeToPolymorphicEvent.MyEvent1).ToTopicName());
             topology.SubscribeTo<MultiSubscribeToPolymorphicEvent.IMyEvent>(typeof(MultiSubscribeToPolymorphicEvent.MyEvent2).ToTopicName());
-            return true;
+            return [typeof(MultiSubscribeToPolymorphicEvent.IMyEvent)];
         }
 
         if (endpointName == Conventions.EndpointNamingConvention(typeof(When_subscribing_to_a_base_event.GeneralSubscriber)))
         {
             topology.SubscribeTo<When_subscribing_to_a_base_event.IBaseEvent>(typeof(When_subscribing_to_a_base_event.SpecificEvent).ToTopicName());
             topology.SubscribeTo<When_subscribing_to_a_base_event.SpecificEvent>(typeof(When_subscribing_to_a_base_event.SpecificEvent).ToTopicName());
-            return true;
+            return [typeof(When_subscribing_to_a_base_event.IBaseEvent)];
         }
 
         if (endpointName == Conventions.EndpointNamingConvention(typeof(When_subscribing_to_a_base_event.Publisher)))
         {
             topology.PublishTo<When_subscribing_to_a_base_event.IBaseEvent>(typeof(When_subscribing_to_a_base_event.SpecificEvent).ToTopicName());
             topology.PublishTo<When_subscribing_to_a_base_event.SpecificEvent>(typeof(When_subscribing_to_a_base_event.SpecificEvent).ToTopicName());
-            return true;
+            return [];
         }
 
         if (endpointName == Conventions.EndpointNamingConvention(
@@ -152,7 +162,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
                 typeof(When_publishing_an_event_implementing_two_unrelated_interfaces.CompositeEvent).ToTopicName());
             topology.SubscribeTo<When_publishing_an_event_implementing_two_unrelated_interfaces.IEventB>(
                 typeof(When_publishing_an_event_implementing_two_unrelated_interfaces.CompositeEvent).ToTopicName());
-            return true;
+            return [typeof(When_publishing_an_event_implementing_two_unrelated_interfaces.IEventA), typeof(When_publishing_an_event_implementing_two_unrelated_interfaces.IEventB)];
         }
 
         if (endpointName == Conventions.EndpointNamingConvention(
@@ -160,7 +170,7 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         {
             topology.SubscribeTo<When_started_by_base_event_from_other_saga.IBaseEvent>(
                 typeof(When_started_by_base_event_from_other_saga.ISomethingHappenedEvent).ToTopicName());
-            return true;
+            return [typeof(When_started_by_base_event_from_other_saga.IBaseEvent)];
         }
 
         if (endpointName == Conventions.EndpointNamingConvention(
@@ -168,14 +178,14 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
         {
             topology.SubscribeTo<When_multiple_versions_of_a_message_is_published.V1Event>(
                 typeof(When_multiple_versions_of_a_message_is_published.V2Event).ToTopicName());
-            return true;
+            return [typeof(When_multiple_versions_of_a_message_is_published.V1Event)];
         }
 
         if (endpointName == Conventions.EndpointNamingConvention(typeof(When_subscribing_in_FST.EndpointWithStartupTask)))
         {
             topology.PublishTo<When_subscribing_in_FST.LocalEvent>(typeof(When_subscribing_in_FST.LocalEvent).ToTopicName());
             topology.SubscribeTo<When_subscribing_in_FST.LocalEvent>(typeof(When_subscribing_in_FST.LocalEvent).ToTopicName());
-            return true;
+            return [typeof(When_subscribing_in_FST.LocalEvent)];
         }
 
         if (endpointName == Conventions.EndpointNamingConvention(typeof(When_customizing_an_outgoing_native_message.Endpoint)))
@@ -188,10 +198,10 @@ public class ConfigureEndpointAzureServiceBusTransport : IConfigureEndpointTestE
                 typeof(When_customizing_an_outgoing_native_message.MessageHandlerContextPublishedEvent).ToTopicName());
             topology.SubscribeTo<When_customizing_an_outgoing_native_message.MessageHandlerContextPublishedEvent>(
                 typeof(When_customizing_an_outgoing_native_message.MessageHandlerContextPublishedEvent).ToTopicName());
-            return true;
+            return [typeof(When_customizing_an_outgoing_native_message.MessageSessionPublishedEvent), typeof(When_customizing_an_outgoing_native_message.MessageHandlerContextPublishedEvent)];
         }
 
-        return false;
+        return null;
     }
 
     public Task Cleanup() => Task.CompletedTask;
