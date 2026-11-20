@@ -12,10 +12,12 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
 {
     readonly Dictionary<(string Topic, string Subscription), OrderedSubscriptionForwarder> forwarders = [];
     readonly SemaphoreSlim lockSemaphore = new(1, 1);
+    // Forwarders registered before their subscription was known to exist, e.g. from the topology mapping
+    readonly HashSet<(string Topic, string Subscription)> unprovisionedForwarders = [];
     bool started;
 
     // Until Start is called forwarders are only recorded, because whether SubscribeAll ran is only known when receiving starts
-    public async Task Register(string topic, string subscription, string eventTypeFullName, CancellationToken cancellationToken = default)
+    public async Task Register(string topic, string subscription, string eventTypeFullName, bool subscriptionProvisioned, CancellationToken cancellationToken = default)
     {
         await lockSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
@@ -23,7 +25,8 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
         {
             // Synchronized via lockSemaphore
             // ReSharper disable InconsistentlySynchronizedField
-            if (!forwarders.TryGetValue((topic, subscription), out var forwarder))
+            var key = (topic, subscription);
+            if (!forwarders.TryGetValue(key, out var forwarder))
             {
                 forwarder = new OrderedSubscriptionForwarder(clientFactory, topic, subscription, inputQueue, timeBeforeTriggeringCircuitBreaker, criticalErrorAction);
                 forwarder.RegisterType(eventTypeFullName);
@@ -32,11 +35,24 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
                     await forwarder.Start(cancellationToken).ConfigureAwait(false);
                 }
                 // We do not add the forwarder to the collection until we know it completed its Start
-                forwarders[(topic, subscription)] = forwarder;
+                forwarders[key] = forwarder;
+
+                if (!subscriptionProvisioned)
+                {
+                    unprovisionedForwarders.Add(key);
+                }
             }
             else
             {
                 forwarder.RegisterType(eventTypeFullName);
+
+                if (subscriptionProvisioned && unprovisionedForwarders.Remove(key) && started)
+                {
+                    // A forwarder started before its subscription existed keeps reporting it as missing for a while after it was created.
+                    // Restarting it once the subscription is provisioned creates a new client, which finds the subscription.
+                    await forwarder.Stop(cancellationToken).ConfigureAwait(false);
+                }
+
                 if (started)
                 {
                     await forwarder.Start(cancellationToken).ConfigureAwait(false);
@@ -104,6 +120,7 @@ sealed class SubscriptionForwarders(Func<ServiceBusClient> clientFactory, string
                 && forwarder.UnregisterType(eventTypeFullName))
             {
                 forwarders.Remove((topic, subscription));
+                unprovisionedForwarders.Remove((topic, subscription));
 
                 try
                 {
