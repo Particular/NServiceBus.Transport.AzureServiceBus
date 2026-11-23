@@ -408,7 +408,9 @@ public partial class AzureServiceBusTransport : TransportDefinition
     /// <summary>
     /// Makes subscribing assert that topics and subscriptions exist instead of creating them, for identities without Manage rights.
     /// Subscribing checks that the subscription exists and adds the filter rules of filtered routing, but does not create topics or subscriptions.
-    /// The endpoint fails to start when a subscription does not exist, also when auto-subscribe subscribes. Unsubscribing does not delete subscriptions.
+    /// The endpoint fails to start when a subscription does not exist or cannot be checked, also when auto-subscribe subscribes.
+    /// Unsubscribing throws <see cref="InvalidOperationException"/>, because the topology is managed outside the endpoint.
+    /// Applies to the topic-per-event and migration topologies.
     /// </summary>
     public bool AssertTopologyExists { get; set; }
 

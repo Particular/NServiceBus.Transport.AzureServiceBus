@@ -72,7 +72,7 @@ public class When_asserting_topology_exists : NServiceBusAcceptanceTest
             .Done(c => c.EndpointsStarted)
             .Run());
 
-        Assert.That(exception!.Message, Does.Contain("must exist before the endpoint subscribes").And.Contain(AcceptanceTestEntityNames.For(typeof(MyEvent).ToTopicName())));
+        Assert.That(exception!.Message, Does.Contain($"must exist on topic '{AcceptanceTestEntityNames.For(typeof(MyEvent).ToTopicName())}'"));
     }
 
     static void UseAssertTopologyExists(EndpointConfiguration c)

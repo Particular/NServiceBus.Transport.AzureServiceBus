@@ -67,23 +67,149 @@ public class AssertTopologyExistsTests
         });
     }
 
-    [Test]
-    public async Task Should_not_delete_subscriptions_when_unsubscribing()
+    [TestCase(TopicRoutingMode.NotMultiplexed)]
+    [TestCase(TopicRoutingMode.CorrelationFilter)]
+    public async Task Should_reject_unsubscribing_and_keep_forwarding(TopicRoutingMode routingMode)
     {
+        var client = new RecordingServiceBusClient();
         var administration = new StringBuilder();
         var clientFactory = new FakeForwardingClientFactory();
-        var subscriptionManager = CreateSubscriptionManager(new RecordingServiceBusClient(), administration, clientFactory);
+        var subscriptionManager = CreateSubscriptionManager(client, administration, clientFactory, routingMode: routingMode);
 
         await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
         await subscriptionManager.StartForwarders();
-        await subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag());
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag()));
 
         Assert.Multiple(() =>
         {
-            Assert.That(clientFactory.RunningForwarders, Is.Empty);
+            Assert.That(exception!.Message, Does.Contain("cannot unsubscribe from").And.Contain(typeof(MyEvent1).FullName));
+            Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue" }));
+            Assert.That(client.ToString(), Does.Not.Contain("DeleteRule"));
             Assert.That(administration.ToString(), Is.Empty);
         });
     }
+
+    [Test]
+    public async Task Should_fail_starting_when_checking_a_subscription_fails_unexpectedly()
+    {
+        var client = new RecordingServiceBusClient();
+        var probeFailure = new UnauthorizedAccessException("Listen claim required");
+        client.ProbeFailures.Add("Topic2/SubscribingQueue", probeFailure);
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(client, new StringBuilder(), clientFactory);
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
+        await subscriptionManager.StartForwarders();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.Message, Does.Contain("'Topic2'").And.Contain(probeFailure.Message).And.Not.Contain("'Topic1'"));
+            Assert.That(exception.InnerException, Is.SameAs(probeFailure));
+            Assert.That(() => subscriptionManager.ThrowIfSubscribingFailed(), Throws.InvalidOperationException.With.Message.EqualTo(exception.Message));
+            Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue" }));
+        });
+    }
+
+    [Test]
+    public async Task Should_clear_only_the_failures_of_subscriptions_that_exist_when_subscribing_again()
+    {
+        var client = new RecordingServiceBusClient();
+        client.MissingSubscriptions.Add("Topic1/SubscribingQueue");
+        client.MissingSubscriptions.Add("Topic2/SubscribingQueue");
+        var subscriptionManager = CreateSubscriptionManager(client, new StringBuilder(), new FakeForwardingClientFactory());
+
+        Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
+
+        client.MissingSubscriptions.Remove("Topic1/SubscribingQueue");
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        Assert.That(() => subscriptionManager.ThrowIfSubscribingFailed(),
+            Throws.InvalidOperationException.With.Message.Contain("'Topic2'").And.Message.Not.Contain("'Topic1'"));
+
+        client.MissingSubscriptions.Remove("Topic2/SubscribingQueue");
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent2))], new ContextBag());
+
+        Assert.That(() => subscriptionManager.ThrowIfSubscribingFailed(), Throws.Nothing);
+    }
+
+    [Test]
+    public async Task Should_check_subscriptions_and_add_rules_without_using_the_administration_client_in_the_migration_topology()
+    {
+        var client = new RecordingServiceBusClient { SubscriptionsRequireSession = false };
+        var administration = new StringBuilder();
+        var subscriptionManager = CreateMigrationSubscriptionManager(client, administration);
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(() => subscriptionManager.ThrowIfSubscribingFailed(), Throws.Nothing);
+            Assert.That(client.ToString(), Does.Contain("CreateRuleOptions(topicName: 'SubscribeTopic', subscriptionName: 'SubscribingQueue')"));
+            Assert.That(administration.ToString(), Is.Empty);
+        });
+    }
+
+    [TestCase("SubscribeTopic")]
+    [TestCase("MigratedTopic")]
+    public void Should_fail_subscribing_and_starting_when_a_subscription_does_not_exist_in_the_migration_topology(string missingTopic)
+    {
+        var client = new RecordingServiceBusClient { SubscriptionsRequireSession = false };
+        client.MissingSubscriptions.Add($"{missingTopic}/SubscribingQueue");
+        var administration = new StringBuilder();
+        var subscriptionManager = CreateMigrationSubscriptionManager(client, administration);
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.Message, Does.Contain($"must exist on topic '{missingTopic}'"));
+            Assert.That(() => subscriptionManager.ThrowIfSubscribingFailed(), Throws.InvalidOperationException.With.Message.EqualTo(exception.Message));
+            Assert.That(administration.ToString(), Is.Empty);
+        });
+    }
+
+    [Test]
+    public void Should_reject_unsubscribing_in_the_migration_topology()
+    {
+        var client = new RecordingServiceBusClient { SubscriptionsRequireSession = false };
+        var administration = new StringBuilder();
+        var subscriptionManager = CreateMigrationSubscriptionManager(client, administration);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(() => subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent1)), new ContextBag()),
+                Throws.InvalidOperationException.With.Message.Contain("cannot unsubscribe from"));
+            Assert.That(() => subscriptionManager.Unsubscribe(new MessageMetadata(typeof(MyEvent2)), new ContextBag()),
+                Throws.InvalidOperationException.With.Message.Contain("cannot unsubscribe from"));
+            Assert.That(client.ToString(), Does.Not.Contain("DeleteRule"));
+            Assert.That(administration.ToString(), Is.Empty);
+        });
+    }
+
+    static MigrationTopologySubscriptionManager CreateMigrationSubscriptionManager(RecordingServiceBusClient client, StringBuilder administration) =>
+        new(new SubscriptionManagerCreationOptions
+        {
+            SubscribingQueueName = "SubscribingQueue",
+            Client = client,
+            AdministrationClient = new RecordingServiceBusAdministrationClient(administration),
+            AssertTopologyExists = true,
+            SetupInfrastructure = true,
+            CriticalErrorAction = (_, _, _) => { }
+        },
+#pragma warning disable CS0618 // Type or member is obsolete
+        new MigrationTopologyOptions
+#pragma warning restore CS0618 // Type or member is obsolete
+        {
+            TopicToPublishTo = "PublishTopic",
+            TopicToSubscribeOn = "SubscribeTopic",
+            EventsToMigrateMap = { typeof(MyEvent1).FullName },
+            SubscribedEventToTopicsMap = { { typeof(MyEvent2).FullName, ["MigratedTopic"] } }
+        }, new StartupDiagnosticEntries());
 
     [TestCase(true, false, "does not require sessions, but the endpoint has sessions enabled")]
     [TestCase(false, true, "requires sessions, but the endpoint does not have sessions enabled")]

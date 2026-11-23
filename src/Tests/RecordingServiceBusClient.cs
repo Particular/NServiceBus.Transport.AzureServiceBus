@@ -31,8 +31,13 @@ public class RecordingServiceBusClient(StringBuilder builder = null, bool subscr
     // Entries are "topic/subscription" and do not require sessions, regardless of SubscriptionsRequireSession
     public HashSet<string> SubscriptionsWithoutSessions { get; } = [];
 
+    // Entries are "topic/subscription" and fail the existence check with the given exception
+    public Dictionary<string, Exception> ProbeFailures { get; } = [];
+
     public override Task<ServiceBusSessionReceiver> AcceptSessionAsync(string topicName, string subscriptionName, string sessionId, ServiceBusSessionReceiverOptions options = null, CancellationToken cancellationToken = default) =>
-        MissingSubscriptions.Contains($"{topicName}/{subscriptionName}")
+        ProbeFailures.TryGetValue($"{topicName}/{subscriptionName}", out var failure)
+            ? Task.FromException<ServiceBusSessionReceiver>(failure)
+            : MissingSubscriptions.Contains($"{topicName}/{subscriptionName}")
             ? Task.FromException<ServiceBusSessionReceiver>(new ServiceBusException("The messaging entity could not be found", ServiceBusFailureReason.MessagingEntityNotFound))
             : SubscriptionsRequireSession && !SubscriptionsWithoutSessions.Contains($"{topicName}/{subscriptionName}")
                 ? Task.FromResult<ServiceBusSessionReceiver>(new EmptySessionReceiver())

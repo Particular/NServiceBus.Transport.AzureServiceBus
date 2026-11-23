@@ -48,6 +48,11 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
     {
         WriteSubscriptionManifest(eventTypes);
 
+        if (CreationOptions.AssertTopologyExists)
+        {
+            return SubscribeThroughExistingSubscriptions(eventTypes, cancellationToken);
+        }
+
         return eventTypes.Length switch
         {
             0 => Task.CompletedTask,
@@ -85,19 +90,7 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
     {
         if (topologyOptions.EventsToMigrateMap.TryGetValue(eventTypeFullName, out _))
         {
-            var ruleManager = CreationOptions.Client.CreateRuleManager(topologyOptions.TopicToSubscribeOn, subscriptionName);
-            await using (ruleManager.ConfigureAwait(false))
-            {
-                try
-                {
-                    var ruleName =
-                        topologyOptions.SubscribedEventToRuleNameMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName);
-                    await ruleManager.CreateRuleAsync(new CreateRuleOptions(ruleName, new SqlRuleFilter($"[{Headers.EnclosedMessageTypes}] LIKE '%{eventTypeFullName}%'")), cancellationToken).ConfigureAwait(false);
-                }
-                catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
-                {
-                }
-            }
+            await CreateMigrationRule(eventTypeFullName, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -110,13 +103,83 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
             return;
         }
 
-        throw new Exception($"When using migration topology, every event needs to be marked either as migrated or pending migration to avoid message loss. In the topology configuration use either MigratedSubscribedEvent<'{eventTypeFullName}'>() or EventToMigrate<'{eventTypeFullName}'>(), depending on the migration state of this event.");
+        throw UnmarkedEvent(eventTypeFullName);
     }
+
+    // Events pending migration need a rule on the subscription of the migration topic; migrated events need only their subscriptions
+    async Task SubscribeThroughExistingSubscriptions(MessageMetadata[] eventTypes, CancellationToken cancellationToken)
+    {
+        var eventsWithRulesByTopic = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+
+        foreach (var eventType in eventTypes)
+        {
+            var eventTypeFullName = eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null");
+
+            if (topologyOptions.EventsToMigrateMap.TryGetValue(eventTypeFullName, out _))
+            {
+                EventsWithRules(topologyOptions.TopicToSubscribeOn ?? throw new InvalidOperationException("The migration topology has no topic to subscribe on")).Add(eventTypeFullName);
+            }
+            else if (topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entries))
+            {
+                foreach (var entry in entries)
+                {
+                    EventsWithRules(destinationManager.GetDestination(entry.Topic, eventTypeFullName));
+                }
+            }
+            else
+            {
+                throw UnmarkedEvent(eventTypeFullName);
+            }
+        }
+
+        var results = await Task.WhenAll(eventsWithRulesByTopic.Select(async topic =>
+            (topic.Key, await AssertSubscription(topic.Key, subscriptionName, async token =>
+            {
+                foreach (var eventTypeFullName in topic.Value)
+                {
+                    await CreateMigrationRule(eventTypeFullName, token).ConfigureAwait(false);
+                }
+            }, cancellationToken).ConfigureAwait(false)))).ConfigureAwait(false);
+
+        RecordSubscribingResults(results);
+
+        List<string> EventsWithRules(string topicName)
+        {
+            if (!eventsWithRulesByTopic.TryGetValue(topicName, out var events))
+            {
+                events = [];
+                eventsWithRulesByTopic[topicName] = events;
+            }
+
+            return events;
+        }
+    }
+
+    async Task CreateMigrationRule(string eventTypeFullName, CancellationToken cancellationToken)
+    {
+        var ruleManager = CreationOptions.Client.CreateRuleManager(topologyOptions.TopicToSubscribeOn, subscriptionName);
+        await using (ruleManager.ConfigureAwait(false))
+        {
+            try
+            {
+                var ruleName =
+                    topologyOptions.SubscribedEventToRuleNameMap.GetValueOrDefault(eventTypeFullName, eventTypeFullName);
+                await ruleManager.CreateRuleAsync(new CreateRuleOptions(ruleName, new SqlRuleFilter($"[{Headers.EnclosedMessageTypes}] LIKE '%{eventTypeFullName}%'")), cancellationToken).ConfigureAwait(false);
+            }
+            catch (ServiceBusException sbe) when (sbe.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+            {
+            }
+        }
+    }
+
+    static Exception UnmarkedEvent(string eventTypeFullName) =>
+        new($"When using migration topology, every event needs to be marked either as migrated or pending migration to avoid message loss. In the topology configuration use either MigratedSubscribedEvent<'{eventTypeFullName}'>() or EventToMigrate<'{eventTypeFullName}'>(), depending on the migration state of this event.");
 
     public override async Task Unsubscribe(MessageMetadata eventType, ContextBag context,
         CancellationToken cancellationToken = default)
     {
         var eventTypeFullName = eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null");
+        ThrowIfUnsubscribingIsNotSupported(eventTypeFullName);
 
         if (topologyOptions.EventsToMigrateMap.TryGetValue(eventTypeFullName, out _))
         {

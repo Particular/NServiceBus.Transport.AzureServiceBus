@@ -22,7 +22,6 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     readonly string subscriptionName;
     readonly DestinationManager destinationManager;
     readonly ISubscriptionForwarders subscriptionForwarders;
-    volatile string? subscribingFailure;
 
     public TopicPerEventTopologySubscriptionManager(SubscriptionManagerCreationOptions creationOptions,
         TopologyOptions topologyOptions,
@@ -122,74 +121,20 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     async Task SubscribeThroughExistingSubscriptions(IGrouping<string, (string EventTypeFullName, SubscriptionEntry Entry)>[] entriesByTopic,
         CancellationToken cancellationToken)
     {
-        var requiresSession = await Task.WhenAll(entriesByTopic.Select(group => SubscriptionRequiresSession(group.Key, cancellationToken))).ConfigureAwait(false);
-        // Only forwards from subscriptions that exist and match the endpoint's session setting
-        var existing = entriesByTopic.Where((_, i) => requiresSession[i] == CreationOptions.RequiresSession).ToArray();
-
-        await Task.WhenAll(existing.Select(group => AddFilterRules(group.Key, subscriptionName,
-            [.. group.Where(e => e.Entry.RoutingMode is TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlLikeFilter)],
-            CreationOptions, cancellationToken))).ConfigureAwait(false);
-
-        foreach (var group in existing)
-        {
-            foreach (var (eventTypeFullName, _) in group)
+        var results = await Task.WhenAll(entriesByTopic.Select(async group =>
+            (group.Key, await AssertSubscription(group.Key, subscriptionName, async token =>
             {
-                await subscriptionForwarders.Register(group.Key, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
-            }
-        }
+                await AddFilterRules(group.Key, subscriptionName,
+                    [.. group.Where(e => e.Entry.RoutingMode is TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlLikeFilter)],
+                    CreationOptions, token).ConfigureAwait(false);
 
-        var failures = new List<string>();
+                foreach (var (eventTypeFullName, _) in group)
+                {
+                    await subscriptionForwarders.Register(group.Key, subscriptionName, eventTypeFullName, token).ConfigureAwait(false);
+                }
+            }, cancellationToken).ConfigureAwait(false)))).ConfigureAwait(false);
 
-        var missingTopics = entriesByTopic.Where((_, i) => requiresSession[i] is null).Select(group => group.Key).ToArray();
-        if (missingTopics.Length > 0)
-        {
-            failures.Add($"AssertTopologyExists is enabled, so subscription '{subscriptionName}' must exist before the endpoint subscribes, but it does not exist on topics {string.Join(", ", missingTopics.Select(t => $"'{t}'"))}. Create the subscriptions, for example with the asb-transport command-line tool.");
-        }
-
-        failures.AddRange(entriesByTopic
-            .Select((group, i) => (Topic: group.Key, RequiresSession: requiresSession[i]))
-            .Where(s => s.RequiresSession is { } value && value != CreationOptions.RequiresSession)
-            .Select(s => s.RequiresSession == true
-                ? $"Subscription '{subscriptionName}' on topic '{s.Topic}' requires sessions, but the endpoint does not have sessions enabled."
-                : $"Subscription '{subscriptionName}' on topic '{s.Topic}' does not require sessions, but the endpoint has sessions enabled."));
-
-        if (failures.Count > 0)
-        {
-            // Recorded so that the receivers fail to start, because Core's auto-subscribe logs the exception and continues
-            subscribingFailure = string.Join(" ", failures);
-            throw new InvalidOperationException(subscribingFailure);
-        }
-    }
-
-    public override void ThrowIfSubscribingFailed()
-    {
-        if (subscribingFailure is { } message)
-        {
-            throw new InvalidOperationException(message);
-        }
-    }
-
-    // Accepting a session needs only Listen rights, unlike the administration client, and reports a missing subscription
-    // immediately, unlike peeking or browsing rules (Azure/azure-sdk-for-net#64167). A new session ID has no messages, so nothing is received or locked.
-    // Returns null when the subscription does not exist
-    async Task<bool?> SubscriptionRequiresSession(string topicName, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var receiver = await CreationOptions.Client.AcceptSessionAsync(topicName, subscriptionName, Guid.NewGuid().ToString(), cancellationToken: cancellationToken).ConfigureAwait(false);
-            await receiver.DisposeAsync().ConfigureAwait(false);
-            return true;
-        }
-        // The SDK reports an existing subscription that does not require sessions this way
-        catch (InvalidOperationException)
-        {
-            return false;
-        }
-        // Also reported when the topic does not exist
-        catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
-        {
-            return null;
-        }
+        RecordSubscribingResults(results);
     }
 
     static async Task ProvisionSubscriptionForTopic(string topicName,
@@ -330,6 +275,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     public override async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
     {
         var eventTypeFullName = eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null");
+        ThrowIfUnsubscribingIsNotSupported(eventTypeFullName);
+
         var entries = MapEventToSubscriptionEntries(eventTypeFullName);
 
         foreach (var entry in entries)
@@ -337,12 +284,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             await subscriptionForwarders.Unregister(entry.Topic, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
         }
 
-        // Deleting a subscription needs Manage rights, while deleting a rule does not
-        var entriesToDelete = CreationOptions.AssertTopologyExists
-            ? [.. entries.Where(e => e.RoutingMode is TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlLikeFilter)]
-            : entries;
-
-        await DeleteSubscriptionsOrRulesForEntries(entriesToDelete, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken).ConfigureAwait(false);
+        await DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken).ConfigureAwait(false);
     }
 
     public override Task ShutdownForwarders(CancellationToken cancellationToken = default) => subscriptionForwarders.Shutdown(cancellationToken);
