@@ -28,10 +28,13 @@ public class RecordingServiceBusClient(StringBuilder builder = null, bool subscr
 
     public bool SubscriptionsRequireSession { get; set; } = true;
 
+    // Entries are "topic/subscription" and do not require sessions, regardless of SubscriptionsRequireSession
+    public HashSet<string> SubscriptionsWithoutSessions { get; } = [];
+
     public override Task<ServiceBusSessionReceiver> AcceptSessionAsync(string topicName, string subscriptionName, string sessionId, ServiceBusSessionReceiverOptions options = null, CancellationToken cancellationToken = default) =>
         MissingSubscriptions.Contains($"{topicName}/{subscriptionName}")
             ? Task.FromException<ServiceBusSessionReceiver>(new ServiceBusException("The messaging entity could not be found", ServiceBusFailureReason.MessagingEntityNotFound))
-            : SubscriptionsRequireSession
+            : SubscriptionsRequireSession && !SubscriptionsWithoutSessions.Contains($"{topicName}/{subscriptionName}")
                 ? Task.FromResult<ServiceBusSessionReceiver>(new EmptySessionReceiver())
                 : Task.FromException<ServiceBusSessionReceiver>(new InvalidOperationException("A sessionful message receiver cannot be created on an entity that does not require sessions."));
 

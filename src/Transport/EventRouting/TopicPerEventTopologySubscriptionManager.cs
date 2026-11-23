@@ -122,8 +122,9 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     async Task SubscribeThroughExistingSubscriptions(IGrouping<string, (string EventTypeFullName, SubscriptionEntry Entry)>[] entriesByTopic,
         CancellationToken cancellationToken)
     {
-        var exists = await Task.WhenAll(entriesByTopic.Select(group => SubscriptionExists(group.Key, cancellationToken))).ConfigureAwait(false);
-        var existing = entriesByTopic.Where((_, i) => exists[i]).ToArray();
+        var requiresSession = await Task.WhenAll(entriesByTopic.Select(group => SubscriptionRequiresSession(group.Key, cancellationToken))).ConfigureAwait(false);
+        // Only forwards from subscriptions that exist and match the endpoint's session setting
+        var existing = entriesByTopic.Where((_, i) => requiresSession[i] == CreationOptions.RequiresSession).ToArray();
 
         await Task.WhenAll(existing.Select(group => AddFilterRules(group.Key, subscriptionName,
             [.. group.Where(e => e.Entry.RoutingMode is TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlLikeFilter)],
@@ -137,10 +138,25 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
             }
         }
 
-        var missingTopics = entriesByTopic.Where((_, i) => !exists[i]).Select(group => group.Key).ToArray();
+        var failures = new List<string>();
+
+        var missingTopics = entriesByTopic.Where((_, i) => requiresSession[i] is null).Select(group => group.Key).ToArray();
         if (missingTopics.Length > 0)
         {
-            subscribingFailure = $"AssertTopologyExists is enabled, so subscription '{subscriptionName}' must exist before the endpoint subscribes, but it does not exist on topics {string.Join(", ", missingTopics.Select(t => $"'{t}'"))}. Create the subscriptions, for example with the asb-transport command-line tool.";
+            failures.Add($"AssertTopologyExists is enabled, so subscription '{subscriptionName}' must exist before the endpoint subscribes, but it does not exist on topics {string.Join(", ", missingTopics.Select(t => $"'{t}'"))}. Create the subscriptions, for example with the asb-transport command-line tool.");
+        }
+
+        failures.AddRange(entriesByTopic
+            .Select((group, i) => (Topic: group.Key, RequiresSession: requiresSession[i]))
+            .Where(s => s.RequiresSession is { } value && value != CreationOptions.RequiresSession)
+            .Select(s => s.RequiresSession == true
+                ? $"Subscription '{subscriptionName}' on topic '{s.Topic}' requires sessions, but the endpoint does not have sessions enabled."
+                : $"Subscription '{subscriptionName}' on topic '{s.Topic}' does not require sessions, but the endpoint has sessions enabled."));
+
+        if (failures.Count > 0)
+        {
+            // Recorded so that the receivers fail to start, because Core's auto-subscribe logs the exception and continues
+            subscribingFailure = string.Join(" ", failures);
             throw new InvalidOperationException(subscribingFailure);
         }
     }
@@ -155,34 +171,25 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
     // Accepting a session needs only Listen rights, unlike the administration client, and reports a missing subscription
     // immediately, unlike peeking or browsing rules (Azure/azure-sdk-for-net#64167). A new session ID has no messages, so nothing is received or locked.
-    async Task<bool> SubscriptionExists(string topicName, CancellationToken cancellationToken)
+    // Returns null when the subscription does not exist
+    async Task<bool?> SubscriptionRequiresSession(string topicName, CancellationToken cancellationToken)
     {
-        bool subscriptionRequiresSession;
         try
         {
             var receiver = await CreationOptions.Client.AcceptSessionAsync(topicName, subscriptionName, Guid.NewGuid().ToString(), cancellationToken: cancellationToken).ConfigureAwait(false);
             await receiver.DisposeAsync().ConfigureAwait(false);
-            subscriptionRequiresSession = true;
+            return true;
         }
         // The SDK reports an existing subscription that does not require sessions this way
         catch (InvalidOperationException)
         {
-            subscriptionRequiresSession = false;
+            return false;
         }
         // Also reported when the topic does not exist
         catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
         {
-            return false;
+            return null;
         }
-
-        if (subscriptionRequiresSession != CreationOptions.RequiresSession)
-        {
-            throw new InvalidOperationException(subscriptionRequiresSession
-                ? $"Subscription '{subscriptionName}' on topic '{topicName}' requires sessions, but the endpoint does not have sessions enabled."
-                : $"Subscription '{subscriptionName}' on topic '{topicName}' does not require sessions, but the endpoint has sessions enabled.");
-        }
-
-        return true;
     }
 
     static async Task ProvisionSubscriptionForTopic(string topicName,

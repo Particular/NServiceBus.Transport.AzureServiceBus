@@ -92,8 +92,37 @@ public class AssertTopologyExistsTests
         var client = new RecordingServiceBusClient { SubscriptionsRequireSession = subscriptionRequiresSession };
         var subscriptionManager = CreateSubscriptionManager(client, new StringBuilder(), new FakeForwardingClientFactory(), requiresSession: endpointRequiresSession);
 
-        Assert.That(() => subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag()),
-            Throws.InvalidOperationException.With.Message.Contains(expectedMessage));
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag()));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.Message, Does.Contain(expectedMessage));
+            // Core's auto-subscribe logs the exception and continues, so the receivers must fail to start
+            Assert.That(() => subscriptionManager.ThrowIfSubscribingFailed(), Throws.InvalidOperationException.With.Message.EqualTo(exception.Message));
+        });
+    }
+
+    [Test]
+    public async Task Should_forward_from_matching_subscriptions_when_another_subscription_has_a_different_session_setting()
+    {
+        var client = new RecordingServiceBusClient();
+        client.SubscriptionsWithoutSessions.Add("Topic2/SubscribingQueue");
+        var administration = new StringBuilder();
+        var clientFactory = new FakeForwardingClientFactory();
+        var subscriptionManager = CreateSubscriptionManager(client, administration, clientFactory);
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
+        await subscriptionManager.StartForwarders();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.Message, Does.Contain("'Topic2'").And.Not.Contain("'Topic1'"));
+            Assert.That(() => subscriptionManager.ThrowIfSubscribingFailed(), Throws.InvalidOperationException.With.Message.EqualTo(exception.Message));
+            Assert.That(clientFactory.RunningForwarders, Is.EquivalentTo(new[] { "Topic1/SubscribingQueue" }));
+            Assert.That(administration.ToString(), Is.Empty);
+        });
     }
 
     [Test]
