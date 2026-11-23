@@ -3,6 +3,7 @@ namespace NServiceBus.Transport.AzureServiceBus;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -48,6 +49,11 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
     static readonly ILog Logger = LogManager.GetLogger<TopicPerEventTopologySubscriptionManager>();
 
+    public override Task StartForwarders(CancellationToken cancellationToken = default)
+    {
+        return subscriptionForwarders.Start(cancellationToken);
+    }
+
     public override async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context,
         CancellationToken cancellationToken = default)
     {
@@ -70,17 +76,40 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                                  group (eventTypeFullName, entry) by entry.Topic into g
                                  select g).ToArray();
 
-        await Task.WhenAll([.. allEntriesByTopic.Select(group =>
-            ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, cancellationToken))])
-            .ConfigureAwait(false);
+        ExceptionDispatchInfo? provisioningFailure = null;
+        try
+        {
+            await Task.WhenAll([.. allEntriesByTopic.Select(group =>
+                ProvisionSubscriptionForTopic(group.Key, [.. group], subscriptionName, CreationOptions, cancellationToken))])
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
+        {
+            provisioningFailure = ExceptionDispatchInfo.Capture(ex);
+        }
 
+        // Also after a provisioning failure, so that the subscriptions that already exist are forwarded from.
+        // Registering only starts forwarders once receiving has started; the first forwarder that fails to start ends the subscribe.
         foreach (var group in allEntriesByTopic)
         {
             foreach ((string eventTypeFullName, SubscriptionEntry entry) entry in group)
             {
-                await subscriptionForwarders.StartForwarding(group.Key, subscriptionName, entry.eventTypeFullName, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await subscriptionForwarders.Register(group.Key, subscriptionName, entry.eventTypeFullName, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (!ex.IsCausedBy(cancellationToken))
+                {
+                    Logger.Error($"Failed to start forwarding '{entry.eventTypeFullName}' from subscription '{subscriptionName}' on topic '{group.Key}' to '{CreationOptions.SubscribingQueueName}'.", ex);
+
+                    // The provisioning failure is the root cause, so it takes precedence over the logged start failure
+                    provisioningFailure?.Throw();
+                    throw;
+                }
             }
         }
+
+        provisioningFailure?.Throw();
     }
 
     static async Task ProvisionSubscriptionForTopic(string topicName,
@@ -225,13 +254,13 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
 
         foreach (var entry in entries)
         {
-            await subscriptionForwarders.StopForwarding(entry.Topic, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
+            await subscriptionForwarders.Unregister(entry.Topic, subscriptionName, eventTypeFullName, cancellationToken).ConfigureAwait(false);
         }
 
         await DeleteSubscriptionsOrRulesForEntries(entries, eventTypeFullName, subscriptionName, CreationOptions, cancellationToken).ConfigureAwait(false);
     }
 
-    public override Task Shutdown(CancellationToken cancellationToken = default) => subscriptionForwarders.Shutdown(cancellationToken);
+    public override Task ShutdownForwarders(CancellationToken cancellationToken = default) => subscriptionForwarders.Shutdown(cancellationToken);
 
     static async Task CreateCatchAllSubscription(string topicName, string subscriptionName,
         SubscriptionManagerCreationOptions creationOptions,
