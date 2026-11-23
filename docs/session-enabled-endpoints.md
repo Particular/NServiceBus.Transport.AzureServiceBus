@@ -41,7 +41,7 @@ The endpoint forwards from the subscriptions that `Subscribe` creates or finds, 
 - starts forwarders only for subscriptions that exist;
 - never creates topics or subscriptions.
 
-Core's auto-subscribe logs a failed subscribe and continues, so with `AssertTopologyExists` the receivers fail the start when a subscription does not exist, has a different session setting, or cannot be checked. The endpoint records the result per topic, so a later `Subscribe` that finds the subscription clears the failure for that topic only.
+Core's auto-subscribe logs a failed subscribe and continues, so with `AssertTopologyExists` the receivers fail the start when a subscription does not exist, has a different session setting, or cannot be checked. The endpoint records the result per topic and event, so a later `Subscribe` clears only the failures of the events it subscribed successfully. In the migration topology, an event marked neither as migrated nor as pending migration is recorded as a failure, and the other events are still checked.
 
 `Unsubscribe` throws `InvalidOperationException` in this mode. The endpoint does not own the topology, so whoever creates the subscriptions also removes them or their filter rules. Deleting only the rules of filtered routing would leave catch-all subscriptions forwarding events after a successful unsubscribe.
 

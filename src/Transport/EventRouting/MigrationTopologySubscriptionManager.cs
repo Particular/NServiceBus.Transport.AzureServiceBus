@@ -109,7 +109,8 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
     // Events pending migration need a rule on the subscription of the migration topic; migrated events need only their subscriptions
     async Task SubscribeThroughExistingSubscriptions(MessageMetadata[] eventTypes, CancellationToken cancellationToken)
     {
-        var eventsWithRulesByTopic = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        var eventsByTopic = new Dictionary<string, List<(string EventTypeFullName, bool NeedsRule)>>(StringComparer.Ordinal);
+        var unmarkedEvents = new List<string>();
 
         foreach (var eventType in eventTypes)
         {
@@ -117,38 +118,39 @@ sealed class MigrationTopologySubscriptionManager : SubscriptionManager
 
             if (topologyOptions.EventsToMigrateMap.TryGetValue(eventTypeFullName, out _))
             {
-                EventsWithRules(topologyOptions.TopicToSubscribeOn ?? throw new InvalidOperationException("The migration topology has no topic to subscribe on")).Add(eventTypeFullName);
+                EventsOn(topologyOptions.TopicToSubscribeOn ?? throw new InvalidOperationException("The migration topology has no topic to subscribe on")).Add((eventTypeFullName, true));
             }
             else if (topologyOptions.SubscribedEventToTopicsMap.TryGetValue(eventTypeFullName, out var entries))
             {
                 foreach (var entry in entries)
                 {
-                    EventsWithRules(destinationManager.GetDestination(entry.Topic, eventTypeFullName));
+                    EventsOn(destinationManager.GetDestination(entry.Topic, eventTypeFullName)).Add((eventTypeFullName, false));
                 }
             }
             else
             {
-                throw UnmarkedEvent(eventTypeFullName);
+                unmarkedEvents.Add(eventTypeFullName);
             }
         }
 
-        var results = await Task.WhenAll(eventsWithRulesByTopic.Select(async topic =>
-            (topic.Key, await AssertSubscription(topic.Key, subscriptionName, async token =>
+        var results = await Task.WhenAll(eventsByTopic.Select(async topic =>
+            (topic.Key, topic.Value.Select(e => e.EventTypeFullName).Distinct().ToArray(), await AssertSubscription(topic.Key, subscriptionName, async token =>
             {
-                foreach (var eventTypeFullName in topic.Value)
+                foreach (var (eventTypeFullName, _) in topic.Value.Where(e => e.NeedsRule))
                 {
                     await CreateMigrationRule(eventTypeFullName, token).ConfigureAwait(false);
                 }
             }, cancellationToken).ConfigureAwait(false)))).ConfigureAwait(false);
 
-        RecordSubscribingResults(results);
+        // Recorded with the checked topics, so that an unmarked event does not prevent checking the marked ones
+        RecordSubscribingResults([.. results, .. unmarkedEvents.Select(e => (string.Empty, new[] { e }, (SubscribingFailure?)new SubscribingFailure(UnmarkedEvent(e).Message)))]);
 
-        List<string> EventsWithRules(string topicName)
+        List<(string EventTypeFullName, bool NeedsRule)> EventsOn(string topicName)
         {
-            if (!eventsWithRulesByTopic.TryGetValue(topicName, out var events))
+            if (!eventsByTopic.TryGetValue(topicName, out var events))
             {
                 events = [];
-                eventsWithRulesByTopic[topicName] = events;
+                eventsByTopic[topicName] = events;
             }
 
             return events;

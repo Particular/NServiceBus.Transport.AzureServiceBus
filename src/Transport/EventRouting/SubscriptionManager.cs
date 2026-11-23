@@ -14,8 +14,9 @@ abstract class SubscriptionManager(
     SubscriptionManagerCreationOptions creationOptions)
     : ISubscriptionManager
 {
-    // Per topic, so that a successful recheck of one topic does not clear the failures of others
-    readonly ConcurrentDictionary<string, string> subscribingFailures = new(StringComparer.Ordinal);
+    // Per topic and event, so that a successful subscribe does not clear the failures of other topics or of other events on the same topic.
+    // Events without a topic are recorded with an empty topic.
+    readonly ConcurrentDictionary<(string Topic, string EventType), string> subscribingFailures = new();
 
     protected SubscriptionManagerCreationOptions CreationOptions { get; } = creationOptions;
 
@@ -35,7 +36,11 @@ abstract class SubscriptionManager(
     {
         if (!subscribingFailures.IsEmpty)
         {
-            throw new InvalidOperationException(string.Join(" ", subscribingFailures.OrderBy(f => f.Key, StringComparer.Ordinal).Select(f => f.Value)));
+            throw new InvalidOperationException(string.Join(" ", subscribingFailures
+                .OrderBy(f => f.Key.Topic, StringComparer.Ordinal)
+                .ThenBy(f => f.Key.EventType, StringComparer.Ordinal)
+                .Select(f => f.Value)
+                .Distinct()));
         }
     }
 
@@ -51,18 +56,21 @@ abstract class SubscriptionManager(
         }
     }
 
-    // Records the result of every checked topic and throws when any of them failed
-    protected void RecordSubscribingResults(IReadOnlyCollection<(string Topic, SubscribingFailure? Failure)> results)
+    // Records the result for every event on every checked topic and throws when any of them failed
+    protected void RecordSubscribingResults(IReadOnlyCollection<(string Topic, string[] EventTypes, SubscribingFailure? Failure)> results)
     {
-        foreach (var (topic, failure) in results)
+        foreach (var (topic, eventTypes, failure) in results)
         {
-            if (failure is null)
+            foreach (var eventType in eventTypes)
             {
-                subscribingFailures.TryRemove(topic, out _);
-            }
-            else
-            {
-                subscribingFailures[topic] = failure.Message;
+                if (failure is null)
+                {
+                    subscribingFailures.TryRemove((topic, eventType), out _);
+                }
+                else
+                {
+                    subscribingFailures[(topic, eventType)] = failure.Message;
+                }
             }
         }
 
@@ -78,7 +86,7 @@ abstract class SubscriptionManager(
         }
 
         var exceptions = failures.Select(f => f.Exception).OfType<Exception>().ToArray();
-        throw new InvalidOperationException(string.Join(" ", failures.Select(f => f.Message)), exceptions.Length switch
+        throw new InvalidOperationException(string.Join(" ", failures.Select(f => f.Message).Distinct()), exceptions.Length switch
         {
             0 => null,
             1 => exceptions[0],

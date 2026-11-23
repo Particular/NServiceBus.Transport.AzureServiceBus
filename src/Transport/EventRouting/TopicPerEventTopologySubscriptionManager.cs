@@ -122,7 +122,7 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         CancellationToken cancellationToken)
     {
         var results = await Task.WhenAll(entriesByTopic.Select(async group =>
-            (group.Key, await AssertSubscription(group.Key, subscriptionName, async token =>
+            (group.Key, group.Select(e => e.EventTypeFullName).Distinct().ToArray(), await AssertSubscription(group.Key, subscriptionName, async token =>
             {
                 await AddFilterRules(group.Key, subscriptionName,
                     [.. group.Where(e => e.Entry.RoutingMode is TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlLikeFilter)],

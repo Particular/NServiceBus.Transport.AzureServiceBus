@@ -174,6 +174,45 @@ public class AssertTopologyExistsTests
     }
 
     [Test]
+    public async Task Should_keep_the_failure_of_an_event_when_another_event_on_the_same_topic_subscribes()
+    {
+        var client = new RecordingServiceBusClient();
+        client.FailRulesContaining.Add(nameof(MyEvent1));
+        var subscriptionManager = CreateSubscriptionManager(client, new StringBuilder(), new FakeForwardingClientFactory(),
+            routingMode: TopicRoutingMode.CorrelationFilter, event2Topic: "Topic1");
+
+        Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2))], new ContextBag()));
+
+        client.FailRulesContaining.Clear();
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent2))], new ContextBag());
+
+        Assert.That(() => subscriptionManager.ThrowIfSubscribingFailed(), Throws.InvalidOperationException.With.Message.Contain("'Topic1'"));
+
+        await subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1))], new ContextBag());
+
+        Assert.That(() => subscriptionManager.ThrowIfSubscribingFailed(), Throws.Nothing);
+    }
+
+    [Test]
+    public void Should_check_marked_events_and_fail_starting_when_an_event_is_not_marked_in_the_migration_topology()
+    {
+        var client = new RecordingServiceBusClient { SubscriptionsRequireSession = false };
+        client.MissingSubscriptions.Add("MigratedTopic/SubscribingQueue");
+        var subscriptionManager = CreateMigrationSubscriptionManager(client, new StringBuilder());
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(() =>
+            subscriptionManager.SubscribeAll([new MessageMetadata(typeof(MyEvent1)), new MessageMetadata(typeof(MyEvent2)), new MessageMetadata(typeof(MyEvent3))], new ContextBag()));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.Message, Does.Contain("must exist on topic 'MigratedTopic'").And.Contain($"MigratedSubscribedEvent<'{typeof(MyEvent3).FullName}'>()"));
+            Assert.That(client.ToString(), Does.Contain("CreateRuleOptions(topicName: 'SubscribeTopic', subscriptionName: 'SubscribingQueue')"));
+            Assert.That(() => subscriptionManager.ThrowIfSubscribingFailed(), Throws.InvalidOperationException.With.Message.EqualTo(exception.Message));
+        });
+    }
+
+    [Test]
     public void Should_reject_unsubscribing_in_the_migration_topology()
     {
         var client = new RecordingServiceBusClient { SubscriptionsRequireSession = false };
@@ -268,7 +307,7 @@ public class AssertTopologyExistsTests
     }
 
     static TopicPerEventTopologySubscriptionManager CreateSubscriptionManager(RecordingServiceBusClient client, StringBuilder administration,
-        FakeForwardingClientFactory clientFactory, TopicRoutingMode routingMode = TopicRoutingMode.NotMultiplexed, bool requiresSession = true) =>
+        FakeForwardingClientFactory clientFactory, TopicRoutingMode routingMode = TopicRoutingMode.NotMultiplexed, bool requiresSession = true, string event2Topic = "Topic2") =>
         new(new SubscriptionManagerCreationOptions
         {
             SubscribingQueueName = "SubscribingQueue",
@@ -284,11 +323,13 @@ public class AssertTopologyExistsTests
             SubscribedEventToTopicsMap =
             {
                 { typeof(MyEvent1).FullName, [new SubscriptionEntry("Topic1", routingMode)] },
-                { typeof(MyEvent2).FullName, [new SubscriptionEntry("Topic2", routingMode)] }
+                { typeof(MyEvent2).FullName, [new SubscriptionEntry(event2Topic, routingMode)] }
             }
         }, new StartupDiagnosticEntries());
 
     class MyEvent1;
 
     class MyEvent2;
+
+    class MyEvent3;
 }
