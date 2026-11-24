@@ -93,6 +93,10 @@ namespace NServiceBus
     {
         public static void SetSessionId(this NServiceBus.PublishOptions options, string sessionId) { }
     }
+    public static class ReplyOptionsExtensions
+    {
+        public static void SetSessionId(this NServiceBus.ReplyOptions options, string sessionId) { }
+    }
     public static class SendOptionsExtensions
     {
         public static void SetSessionId(this NServiceBus.SendOptions options, string sessionId) { }
