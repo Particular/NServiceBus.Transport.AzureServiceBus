@@ -23,6 +23,8 @@ sealed class SubscriptionManagerCreationOptions
 
     public bool SetupInfrastructure { get; init; }
 
+    public bool AssertTopologyExists { get; init; }
+
     internal int MaxDeliveryCount { get; init; } = int.MaxValue;
 
     public TimeSpan TimeBeforeTriggeringCircuitBreaker { get; init; }

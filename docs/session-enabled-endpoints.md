@@ -32,9 +32,20 @@ Revisit when a concrete use case for "ordered up to the input queue" appears.
 
 ## Subscription-creation rights
 
-The endpoint forwards from the subscriptions that `Subscribe` creates, usually via auto-subscribe at startup, so starting forwarders is tied to creating subscriptions. Forwarders start when receivers start, and a `Subscribe` call after the endpoint has started starts its forwarder immediately. Session-enabled mode requires an identity that is allowed to create subscriptions, and this is a documented requirement.
+The endpoint forwards from the subscriptions that `Subscribe` creates or finds, usually via auto-subscribe at startup. Forwarders start when receivers start, and a `Subscribe` call after the endpoint has started starts its forwarder immediately. By default, `Subscribe` creates missing subscriptions, which requires Manage rights.
 
-Session-enabled endpoints cannot run in a low-privilege mode where subscriptions are provisioned externally and the endpoint has no management rights. Revisit when users report this as a blocker. One option is a transport setting that disables subscription creation but still starts forwarders.
+`AssertTopologyExists` makes `Subscribe` assert the topology instead of creating it. It supports identities with only Send and Listen rights, for deployments that create topics and subscriptions outside the endpoint, for example with the `asb-transport` command-line tool. The setting applies to endpoints with and without sessions and to the topic-per-event and migration topologies, and auto-subscribe stays enabled. In this mode, `Subscribe`:
+
+- checks that each subscription exists and that its session setting matches the endpoint;
+- adds the filter rules of filtered routing, which needs only Listen rights;
+- starts forwarders only for subscriptions that exist;
+- never creates topics or subscriptions.
+
+Core's auto-subscribe logs a failed subscribe and continues, so with `AssertTopologyExists` the receivers fail the start when a subscription does not exist, has a different session setting, or cannot be checked. The endpoint records the result per topic and event, so a later `Subscribe` clears only the failures of the events it subscribed successfully. In the migration topology, an event marked neither as migrated nor as pending migration is recorded as a failure, and the other events are still checked.
+
+`Unsubscribe` throws `InvalidOperationException` in this mode. The endpoint does not own the topology, so whoever creates the subscriptions also removes them or their filter rules. Deleting only the rules of filtered routing would leave catch-all subscriptions forwarding events after a successful unsubscribe.
+
+The check accepts a session with a new session ID, which needs only Listen rights and receives nothing. Peeking the subscription or browsing its rules also needs only Listen rights, but the SDK reports a missing subscription as a timeout after about 12 seconds ([Azure/azure-sdk-for-net#64167](https://github.com/Azure/azure-sdk-for-net/issues/64167)). On a subscription that does not require sessions, the SDK throws `InvalidOperationException`, which the check reads as an existing subscription without sessions.
 
 ## Forwarder throttling
 

@@ -15,5 +15,6 @@ Mapped properties:
   - UseWebSockets
 
 Unmapped properties:
+  - AssertTopologyExists
   - EnableSessions
   - WebProxy

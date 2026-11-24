@@ -14,7 +14,8 @@ A forwarder per subscription completes the subscription message and sends it to 
 
 - Retries are configured once per endpoint, and the topology stays close to the non-session one.
 - An endpoint that needs both ordered and unordered processing must be split into two endpoints. [#1450](https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/pull/1450) accepts this split for send/receive as well.
-- Forwarders need subscription-creation rights and can be throttled while they drain a backlog. [Session-enabled endpoints](../session-enabled-endpoints.md) records both as accepted, with the conditions for revisiting them.
+- Forwarders start from the subscriptions that `Subscribe` creates or finds. Creating subscriptions requires Manage rights. With `AssertTopologyExists` ([#1588](https://github.com/Particular/NServiceBus.Transport.AzureServiceBus/pull/1588)), an endpoint needs only Send and Listen rights when the subscriptions are created outside it. [Session-enabled endpoints](../session-enabled-endpoints.md) describes both modes.
+- Forwarders can be throttled while they drain a backlog. [Session-enabled endpoints](../session-enabled-endpoints.md) records this as accepted, with the conditions for revisiting it.
 
 If the forwarder approach needs to be revisited, for example because of throughput limits or AMQP link limits, start from the alternatives below.
 

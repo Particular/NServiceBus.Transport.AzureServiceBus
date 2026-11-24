@@ -125,6 +125,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
                     MaxDeliveryCount = transportSettings.MaxDeliveryCount,
                     SetupInfrastructure = hostSettings.SetupInfrastructure,
+                    AssertTopologyExists = transportSettings.AssertTopologyExists,
                     SubscribingQueueName = receiveAddress,
                     CriticalErrorAction = hostSettings.CriticalErrorAction,
                     TimeBeforeTriggeringCircuitBreaker = transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker
@@ -156,6 +157,7 @@ sealed class AzureServiceBusTransportInfrastructure : TransportInfrastructure
                     EntityMaximumSizeInMegabytes = transportSettings.EntityMaximumSizeInMegabytes,
                     MaxDeliveryCount = transportSettings.MaxDeliveryCount,
                     SetupInfrastructure = hostSettings.SetupInfrastructure,
+                    AssertTopologyExists = transportSettings.AssertTopologyExists,
                     SubscribingQueueName = receiveAddress,
                     CriticalErrorAction = hostSettings.CriticalErrorAction,
                     TimeBeforeTriggeringCircuitBreaker = transportSettings.TimeToWaitBeforeTriggeringCircuitBreaker

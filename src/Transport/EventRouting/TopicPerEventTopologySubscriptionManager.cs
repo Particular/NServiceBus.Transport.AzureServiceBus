@@ -76,6 +76,12 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
                                  group (eventTypeFullName, entry) by entry.Topic into g
                                  select g).ToArray();
 
+        if (CreationOptions.AssertTopologyExists)
+        {
+            await SubscribeThroughExistingSubscriptions(allEntriesByTopic, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         ExceptionDispatchInfo? provisioningFailure = null;
         try
         {
@@ -110,6 +116,25 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
         }
 
         provisioningFailure?.Throw();
+    }
+
+    async Task SubscribeThroughExistingSubscriptions(IGrouping<string, (string EventTypeFullName, SubscriptionEntry Entry)>[] entriesByTopic,
+        CancellationToken cancellationToken)
+    {
+        var results = await Task.WhenAll(entriesByTopic.Select(async group =>
+            (group.Key, group.Select(e => e.EventTypeFullName).Distinct().ToArray(), await AssertSubscription(group.Key, subscriptionName, async token =>
+            {
+                await AddFilterRules(group.Key, subscriptionName,
+                    [.. group.Where(e => e.Entry.RoutingMode is TopicRoutingMode.CorrelationFilter or TopicRoutingMode.SqlLikeFilter)],
+                    CreationOptions, token).ConfigureAwait(false);
+
+                foreach (var (eventTypeFullName, _) in group)
+                {
+                    await subscriptionForwarders.Register(group.Key, subscriptionName, eventTypeFullName, token).ConfigureAwait(false);
+                }
+            }, cancellationToken).ConfigureAwait(false)))).ConfigureAwait(false);
+
+        RecordSubscribingResults(results);
     }
 
     static async Task ProvisionSubscriptionForTopic(string topicName,
@@ -250,6 +275,8 @@ sealed class TopicPerEventTopologySubscriptionManager : SubscriptionManager
     public override async Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
     {
         var eventTypeFullName = eventType.MessageType.FullName ?? throw new InvalidOperationException("Message type full name is null");
+        ThrowIfUnsubscribingIsNotSupported(eventTypeFullName);
+
         var entries = MapEventToSubscriptionEntries(eventTypeFullName);
 
         foreach (var entry in entries)

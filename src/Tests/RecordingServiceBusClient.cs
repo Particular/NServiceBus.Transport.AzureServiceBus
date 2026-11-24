@@ -1,6 +1,8 @@
 namespace NServiceBus.Transport.AzureServiceBus.Tests;
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
@@ -20,11 +22,39 @@ public class RecordingServiceBusClient(StringBuilder builder = null, bool subscr
         CreatedSubscriptions.GetOrCreateValue(builder).Add($"{topicName}/{subscriptionName}");
 
     public override ServiceBusRuleManager CreateRuleManager(string topicName, string subscriptionName) =>
-        new RecordingRuleManager(topicName, subscriptionName, builder, subscriptionsMustExist);
+        new RecordingRuleManager(topicName, subscriptionName, builder, subscriptionsMustExist, FailRulesContaining);
+
+    // Creating a rule whose serialized options contain one of these strings fails
+    public HashSet<string> FailRulesContaining { get; } = [];
+
+    // Entries are "topic/subscription"
+    public HashSet<string> MissingSubscriptions { get; } = [];
+
+    public bool SubscriptionsRequireSession { get; set; } = true;
+
+    // Entries are "topic/subscription" and do not require sessions, regardless of SubscriptionsRequireSession
+    public HashSet<string> SubscriptionsWithoutSessions { get; } = [];
+
+    // Entries are "topic/subscription" and fail the existence check with the given exception
+    public Dictionary<string, Exception> ProbeFailures { get; } = [];
+
+    public override Task<ServiceBusSessionReceiver> AcceptSessionAsync(string topicName, string subscriptionName, string sessionId, ServiceBusSessionReceiverOptions options = null, CancellationToken cancellationToken = default) =>
+        ProbeFailures.TryGetValue($"{topicName}/{subscriptionName}", out var failure)
+            ? Task.FromException<ServiceBusSessionReceiver>(failure)
+            : MissingSubscriptions.Contains($"{topicName}/{subscriptionName}")
+            ? Task.FromException<ServiceBusSessionReceiver>(new ServiceBusException("The messaging entity could not be found", ServiceBusFailureReason.MessagingEntityNotFound))
+            : SubscriptionsRequireSession && !SubscriptionsWithoutSessions.Contains($"{topicName}/{subscriptionName}")
+                ? Task.FromResult<ServiceBusSessionReceiver>(new EmptySessionReceiver())
+                : Task.FromException<ServiceBusSessionReceiver>(new InvalidOperationException("A sessionful message receiver cannot be created on an entity that does not require sessions."));
 
     public override string ToString() => builder.ToString();
 
-    class RecordingRuleManager(string topicName, string subscriptionName, StringBuilder builder, bool subscriptionMustExist) : ServiceBusRuleManager
+    class EmptySessionReceiver : ServiceBusSessionReceiver
+    {
+        public override Task CloseAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    class RecordingRuleManager(string topicName, string subscriptionName, StringBuilder builder, bool subscriptionMustExist, HashSet<string> failRulesContaining) : ServiceBusRuleManager
     {
         public override Task CreateRuleAsync(CreateRuleOptions options, CancellationToken cancellationToken = default)
         {
@@ -33,7 +63,13 @@ public class RecordingServiceBusClient(StringBuilder builder = null, bool subscr
                 throw new ServiceBusException("The subscription does not exist", ServiceBusFailureReason.MessagingEntityNotFound);
             }
 
-            builder.AppendLine($"CreateRuleOptions(topicName: '{topicName}', subscriptionName: '{subscriptionName}'): {JsonSerializer.Serialize(options, SkdJsonSerializerContext.PolymorphicOptions)}");
+            var serialized = JsonSerializer.Serialize(options, SkdJsonSerializerContext.PolymorphicOptions);
+            if (failRulesContaining.Any(serialized.Contains))
+            {
+                throw new ServiceBusException("Creating the rule failed", ServiceBusFailureReason.ServiceCommunicationProblem);
+            }
+
+            builder.AppendLine($"CreateRuleOptions(topicName: '{topicName}', subscriptionName: '{subscriptionName}'): {serialized}");
             return Task.CompletedTask;
         }
 
